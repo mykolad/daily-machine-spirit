@@ -49,7 +49,7 @@ resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2024-11-15
   }
 }
 
-// Matches RiteRepository: one container, partition key /pk.
+// Matches RiteRepository: one container, partition key /partition.
 resource rites 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-11-15' = {
   parent: database
   name: 'rites'
@@ -57,7 +57,7 @@ resource rites 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@20
     resource: {
       id: 'rites'
       partitionKey: {
-        paths: ['/pk']
+        paths: ['/partition']
         kind: 'Hash'
         version: 2
       }

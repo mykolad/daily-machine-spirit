@@ -8,7 +8,7 @@ and what lives outside Azure.
 |---|---|---|
 | Resource group | `machinespirit-rg` | |
 | AI Services | `machinespirit-ai` | `gpt-6-sol` writes the rites, `gpt-6-luna` is the fallback; keys off |
-| Cosmos DB | `machinespirit-cosmos` | free tier (1000 RU/s, 25 GB for the account's lifetime); databases `machinespirit` and `machinespirit-staging` at 400 RU/s each, container `rites`; keys off |
+| Cosmos DB | `machinespirit-cosmos` | free tier (1000 RU/s, 25 GB for the account's lifetime); databases `machinespirit` and `machinespirit-staging` at 400 RU/s each, container `rites` (partition key `/partition`); keys off |
 | Key Vault | `machinespirit-kv`, `machinespirit-kv-staging` | one per environment, so staging can't read production's secrets |
 | Storage | `machinespiritprod`, `machinespiritstaging` | the Functions host's storage; keys off |
 | Functions app | `machinespirit-app`, `machinespirit-app-staging` | Flex Consumption, .NET 10 isolated, 512 MB instances, at most 10; staging admits only the owner's IP |
