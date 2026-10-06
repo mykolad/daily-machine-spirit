@@ -15,7 +15,7 @@ builder.ConfigureFunctionsWebApplication();
 var cosmos = builder.Configuration.GetSection(CosmosOptions.SectionName).Get<CosmosOptions>() ?? new CosmosOptions();
 builder.Services.AddSingleton(_ => CosmosClients.Create(cosmos));
 builder.Services.AddSingleton(services =>
-    services.GetRequiredService<CosmosClient>().GetContainer(cosmos.Database, ItemRepository.ContainerName));
-builder.Services.AddSingleton<IItemRepository, ItemRepository>();
+    services.GetRequiredService<CosmosClient>().GetContainer(cosmos.Database, RiteRepository.ContainerName));
+builder.Services.AddSingleton<IRiteRepository, RiteRepository>();
 
 builder.Build().Run();

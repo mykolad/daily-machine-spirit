@@ -46,7 +46,7 @@ public sealed class CosmosTestContainer : IAsyncLifetime
                 "The Cosmos DB emulator isn't reachable. Start it: docker run -d -p 8081:8081 -p 8080:8080 " +
                 "mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-latest --protocol https", ex);
         }
-        Container = await database.CreateContainerAsync(ItemRepository.ContainerName, ItemRepository.PartitionKeyPath);
+        Container = await database.CreateContainerAsync(RiteRepository.ContainerName, RiteRepository.PartitionKeyPath);
     }
 
     public async Task DisposeAsync()

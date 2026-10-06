@@ -4,14 +4,14 @@
 
 A satirical website: AI and vibe coding turn software engineers into tech-priests who recite rituals and prompts
 instead of understanding their tools. Every day at 00:00 UTC an LLM writes one **prayer** or **ritual** to the Machine
-Spirit, plus a **Heretical Truth**: one or two plain sentences on what really happens. Visitors react with **Blessed**
-or **Heresy**.
+Spirit, plus a **Heretical Truth**: one or two plain sentences on what really happens. Either kind is a **rite** (the
+design's word, and `Rite` in the code). Visitors react with **Blessed** or **Heresy**.
 
 - Tagline: *In the grim darkness of the far future, no one reads the code.* Footer: *Knowledge is lost. The rituals
   remain.*
 - Its data is in its own Cosmos DB account (free tier). It shares only the Azure OpenAI models, Key Vault and Grafana with
   existing projects.
-- Runs as **one Azure Functions app** (Flex Consumption, .NET 10 isolated worker): a timer generates the daily item,
+- Runs as **one Azure Functions app** (Flex Consumption, .NET 10 isolated worker): a timer generates the daily rite,
   HTTP functions serve the pages and the API. Cloudflare sits in front (`dailymachinespirit.fyi`).
 
 ## Solution layout
@@ -51,14 +51,14 @@ tools/coverage.ps1                — tests + coverage report + the coverage gat
 - **Routes at the site root:** `host.json` sets `routePrefix` to `""`, so `/healthz` is `/healthz`, not `/api/healthz`.
 - **`/healthz`** returns `{status, version}`; `version` is the short commit, which the .NET SDK puts into the
   assembly's informational version when it builds in a git checkout (`AppVersion`). A build outside git says `dev`.
-- **Data: Cosmos DB, one container `items`** (partition key `/pk`, NoSQL API, System.Text.Json with camelCase names).
-  - An item's document id is its day (`2026-10-07`), so Cosmos itself allows one item per day:
-    `ItemRepository.TryAdd` returns false for a second one.
-  - Cosmos has no auto-increment, so a counter document hands out the item numbers ("NO. 214"). A transactional
-    batch saves the item and takes its number together, retrying if another save took the number first.
-  - Every document is in one partition (`"items"`): a few hundred small items a year are far below a partition's
+- **Data: Cosmos DB, one container `rites`** (partition key `/pk`, NoSQL API, System.Text.Json with camelCase names).
+  - A rite's document id is its day (`2026-10-07`), so Cosmos itself allows one rite per day:
+    `RiteRepository.TryAdd` returns false for a second one.
+  - Cosmos has no auto-increment, so a counter document hands out the rite numbers ("NO. 214"). A transactional
+    batch saves the rite and takes its number together, retrying if another save took the number first.
+  - Every document is in one partition (`"rites"`): a few hundred small rites a year are far below a partition's
     limits, and a batch needs one partition.
-  - `Item.Similarity` holds the scores for "More rites", whatever method produced them (Jev, to begin with); scores
+  - `Rite.Similarity` holds the scores for "More rites", whatever method produced them (Jev, to begin with); scores
     from different `ScoresGeneratorVersion`s aren't comparable.
   - Timestamps are written as UTC ("Z") and read back as UTC.
 - **Entra ID only** for Cosmos DB: the app's managed identity in Azure, your `az login` locally
