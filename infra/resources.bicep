@@ -1,10 +1,11 @@
 // Everything in the resource group: what both environments share (the models, the Cosmos DB account, the identity that
-// deploys this file) and one module per environment.
-param location string
-param prefix string
+// deploys this file) and one module per environment. main.bicep deploys it the first time (with the group); routine
+// changes deploy it into the existing group, which is all the infrastructure identity may do.
+param location string = resourceGroup().location
+param prefix string = 'machinespirit'
 param ownerPrincipalId string
 param stagingAllowedIp string
-param githubSubjectPrefix string
+param githubSubjectPrefix string = 'repo:mykolad@2202717/daily-machine-spirit@1406418170'
 
 var roles = {
   owner: '8e3af657-a8ff-443c-a75c-2fe8c4bcb635'

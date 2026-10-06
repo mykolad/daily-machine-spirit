@@ -19,8 +19,7 @@ uses a key or a password: basic-auth publishing is off too, so deploys sign in w
 
 ## First deployment
 
-Once, from your machine, as an Owner of the subscription. Later changes go through the same command (a workflow will do
-it on merge).
+Once, from your machine, as an Owner of the subscription: `main.bicep` creates the resource group, then everything in it.
 
 ```powershell
 az login
@@ -40,10 +39,21 @@ az deployment sub create --location swedencentral --name machinespirit --templat
   --parameters ownerPrincipalId="$owner" stagingAllowedIp="$ip"
 ```
 
-Preview changes first with `az deployment sub what-if` and the same arguments. When your IP changes, run it again with
-the new one.
-
 The Cosmos DB free tier can only be chosen when the account is created, and a subscription gets one free account.
+
+## Later changes
+
+Into the existing group, with `resources.bicep`: that's all the infrastructure identity (Owner of this group only) can do,
+so a deploy workflow will use the same command. Preview first with `what-if`:
+
+```powershell
+az deployment group what-if -g machinespirit-rg --template-file infra/resources.bicep `
+  --parameters ownerPrincipalId=$owner stagingAllowedIp=$ip
+az deployment group create -g machinespirit-rg --name machinespirit --template-file infra/resources.bicep `
+  --parameters ownerPrincipalId=$owner stagingAllowedIp=$ip
+```
+
+(In bash, the same with `\` line breaks and `"$owner"`, `"$ip"`.) When your IP changes, deploy again with the new one.
 
 ## Secrets
 
