@@ -163,6 +163,7 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
         var date = new DateOnly(2026, 10, 7);
 
         Assert.True((await missing.GetByNumber(1, CancellationToken.None)).IsLeft);
+        Assert.True((await missing.GetPublishedOn(date, CancellationToken.None)).IsLeft);
         Assert.True((await missing.GetNewest(1, CancellationToken.None)).IsLeft);
         Assert.True((await missing.Add(MakeRite(date, "Lost"), CancellationToken.None)).IsLeft);
         Assert.True((await missing.SaveScores(date, new RiteSimilarity(), CancellationToken.None)).IsLeft);

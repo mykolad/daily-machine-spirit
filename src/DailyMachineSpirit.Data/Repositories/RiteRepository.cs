@@ -45,7 +45,7 @@ public class RiteRepository : IRiteRepository
                     cancellationToken: cancellationToken);
                 return Some(response.Resource.ToRite());
             }
-            catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            catch (CosmosException ex) when (IsMissingItem(ex))
             {
                 return Option<Rite>.None;
             }
@@ -124,6 +124,10 @@ public class RiteRepository : IRiteRepository
         }
     }
 
+    // A missing document is 404 with sub-status 0. A missing container or database is also 404 (sub-status 1003), but
+    // that's an outage, which must reach the caller as an error rather than as "nothing there".
+    private static bool IsMissingItem(CosmosException ex) => ex is { StatusCode: HttpStatusCode.NotFound, SubStatusCode: 0 };
+
     private async Task<(int LastNumber, Option<string> ETag)> ReadLastNumber(CancellationToken cancellationToken)
     {
         try
@@ -132,7 +136,7 @@ public class RiteRepository : IRiteRepository
                 cancellationToken: cancellationToken);
             return (response.Resource.LastNumber, response.ETag);
         }
-        catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        catch (CosmosException ex) when (IsMissingItem(ex))
         {
             return (0, None);
         }
