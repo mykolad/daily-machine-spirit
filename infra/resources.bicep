@@ -10,7 +10,6 @@ param stagingAllowedIp string
 param githubSubjectPrefix string = 'repo:mykolad@2202717/daily-machine-spirit@1406418170'
 
 var roles = {
-  owner: '8e3af657-a8ff-443c-a75c-2fe8c4bcb635'
   cognitiveServicesOpenAiUser: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
 }
 
@@ -126,12 +125,10 @@ resource infrastructureDeployerTrust 'Microsoft.ManagedIdentity/userAssignedIden
   }
 }
 
-resource infrastructureDeployerOwner 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(resourceGroup().id, infrastructureDeployer.id, roles.owner)
-  properties: {
+module infrastructureDeployerOwner 'modules/resourceGroupOwner.bicep' = {
+  name: 'infrastructure-deployer-owner'
+  params: {
     principalId: infrastructureDeployer.properties.principalId
-    principalType: 'ServicePrincipal'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roles.owner)
   }
 }
 

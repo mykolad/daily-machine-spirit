@@ -15,15 +15,7 @@ param aiAccountName string
 param ownerPrincipalId string
 param githubSubjectPrefix string
 
-var roles = {
-  storageBlobDataOwner: 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b'
-  storageQueueDataContributor: '974c5e8b-45b9-4653-ba55-5f855dd0fb88'
-  storageTableDataContributor: '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
-  keyVaultSecretsUser: '4633458b-17de-408a-b874-0445c86b69e6'
-  keyVaultSecretsOfficer: 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7'
-  cognitiveServicesOpenAiUser: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
-  websiteContributor: 'de139f84-1756-47ae-9be6-808fbbe84772'
-}
+var keyVaultSecretsOfficer = 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7'
 var appName = '${prefix}-app${nameSuffix}'
 var databaseName = '${prefix}${nameSuffix}'
 var deploymentContainer = 'deployments'
@@ -84,11 +76,11 @@ resource vault 'Microsoft.KeyVault/vaults@2024-11-01' = {
 
 resource ownerSecrets 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   scope: vault
-  name: guid(vault.id, ownerPrincipalId, roles.keyVaultSecretsOfficer)
+  name: guid(vault.id, ownerPrincipalId, keyVaultSecretsOfficer)
   properties: {
     principalId: ownerPrincipalId
     principalType: 'User'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roles.keyVaultSecretsOfficer)
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', keyVaultSecretsOfficer)
   }
 }
 
@@ -216,65 +208,15 @@ resource noBasicAuthFtp 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@
   }
 }
 
-resource appStorage 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  scope: storage
-  name: guid(storage.id, app.id, roles.storageBlobDataOwner)
-  properties: {
+module appAccess 'appAccess.bicep' = {
+  name: 'app-access${nameSuffix}'
+  params: {
     principalId: app.identity.principalId
-    principalType: 'ServicePrincipal'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roles.storageBlobDataOwner)
-  }
-}
-
-// The Functions host also keeps queues and tables in its storage, besides the blob leases and deployment packages.
-resource appStorageQueues 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  scope: storage
-  name: guid(storage.id, app.id, roles.storageQueueDataContributor)
-  properties: {
-    principalId: app.identity.principalId
-    principalType: 'ServicePrincipal'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roles.storageQueueDataContributor)
-  }
-}
-
-resource appStorageTables 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  scope: storage
-  name: guid(storage.id, app.id, roles.storageTableDataContributor)
-  properties: {
-    principalId: app.identity.principalId
-    principalType: 'ServicePrincipal'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roles.storageTableDataContributor)
-  }
-}
-
-resource appSecrets 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  scope: vault
-  name: guid(vault.id, app.id, roles.keyVaultSecretsUser)
-  properties: {
-    principalId: app.identity.principalId
-    principalType: 'ServicePrincipal'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roles.keyVaultSecretsUser)
-  }
-}
-
-resource appModels 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  scope: ai
-  name: guid(ai.id, app.id, roles.cognitiveServicesOpenAiUser)
-  properties: {
-    principalId: app.identity.principalId
-    principalType: 'ServicePrincipal'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roles.cognitiveServicesOpenAiUser)
-  }
-}
-
-// Data Contributor on this environment's database only.
-resource appData 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-11-15' = {
-  parent: cosmos
-  name: guid(cosmos.id, app.id, 'data-contributor')
-  properties: {
-    principalId: app.identity.principalId
-    roleDefinitionId: '${cosmos.id}/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002'
-    scope: '${cosmos.id}/dbs/${database.name}'
+    storageAccountName: storage.name
+    vaultName: vault.name
+    aiAccountName: ai.name
+    cosmosAccountName: cosmos.name
+    databaseName: database.name
   }
 }
 
@@ -294,13 +236,11 @@ resource githubTrust 'Microsoft.ManagedIdentity/userAssignedIdentities/federated
   }
 }
 
-resource githubDeploysApp 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  scope: app
-  name: guid(app.id, githubDeployer.id, roles.websiteContributor)
-  properties: {
+module githubDeploysApp 'appDeployerAccess.bicep' = {
+  name: 'app-deployer-access${nameSuffix}'
+  params: {
     principalId: githubDeployer.properties.principalId
-    principalType: 'ServicePrincipal'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roles.websiteContributor)
+    appName: app.name
   }
 }
 
