@@ -56,7 +56,8 @@ dotnet build DailyMachineSpirit.slnx
 ./tools/coverage.ps1        # tests, the coverage gate, HTML report at coverage/index.html
 ```
 
-Raise `$MinLineCoverage` in `tools/coverage.ps1` as coverage grows; never lower it to get a PR through.
+The minimum line coverage is **95%** (`$MinLineCoverage` in `tools/coverage.ps1`). If some code really can't be covered,
+ask the owner before lowering it; never lower it just to get a PR through.
 
 ## Running locally
 

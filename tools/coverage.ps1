@@ -10,8 +10,8 @@ param(
     # Release by default so the numbers match Build and Test (Debug builds have more coverable lines).
     [string] $Configuration = 'Release',
     [switch] $NoBuild,
-    # Ratchet this up as tests are added; never lower it to get a PR through.
-    [double] $MinLineCoverage = 85
+    # The target is 95%. Lowering it is the owner's decision, never a way to get a PR through.
+    [double] $MinLineCoverage = 95
 )
 
 $ErrorActionPreference = 'Stop'
