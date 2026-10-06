@@ -10,12 +10,12 @@ namespace DailyMachineSpirit.Data.Repositories;
 public class RiteRepository : IRiteRepository
 {
     public const string ContainerName = "rites";
-    public const string PartitionKeyPath = "/pk";
+    public const string PartitionKeyPath = "/partition";
     /// <summary>
     /// Every document shares one partition. A few hundred small rites a year are far below a partition's limits, and one
     /// partition lets a transactional batch save a rite and take its number together.
     /// </summary>
-    internal const string Partition = "rites";
+    internal const string SharedPartition = "rites";
     // A try fails only if another rite took the next number in between: that's rare, and retrying is cheap.
     private const int MaxSaveAttempts = 5;
 

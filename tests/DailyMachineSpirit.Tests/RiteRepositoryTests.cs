@@ -98,7 +98,7 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
         var date = new DateOnly(2026, 10, 7);
         await cosmos.Container.CreateItemAsync(new
         {
-            id = "2026-10-07", pk = "rites", type = "rite", number = 1, publishedOnUtc = date, kind = "prayer",
+            id = "2026-10-07", partition = "rites", type = "rite", number = 1, publishedOnUtc = date, kind = "prayer",
             title = (string?)null, text = "", hereticalTruth = "", generatedByModel = "", generatedAtUtc = DateTime.UtcNow,
         });
 

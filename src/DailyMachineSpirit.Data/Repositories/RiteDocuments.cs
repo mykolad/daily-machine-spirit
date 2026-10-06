@@ -11,7 +11,7 @@ internal sealed class RiteDocument
     public const string RiteType = "rite";
 
     public string Id { get; set; } = string.Empty;
-    public string Pk { get; set; } = RiteRepository.Partition;
+    public string Partition { get; set; } = RiteRepository.SharedPartition;
     public string Type { get; set; } = RiteType;
     public int Number { get; set; }
     public DateOnly PublishedOnUtc { get; set; }
@@ -66,7 +66,7 @@ internal sealed class NumberCounterDocument
     public const string CounterId = "rite-number";
 
     public string Id { get; set; } = CounterId;
-    public string Pk { get; set; } = RiteRepository.Partition;
+    public string Partition { get; set; } = RiteRepository.SharedPartition;
     public string Type { get; set; } = "counter";
     public int LastNumber { get; set; }
 }

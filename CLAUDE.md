@@ -62,7 +62,7 @@ tools/coverage.ps1                — tests + coverage report + the coverage gat
 - **Routes at the site root:** `host.json` sets `routePrefix` to `""`, so `/healthz` is `/healthz`, not `/api/healthz`.
 - **`/healthz`** returns `{status, version}`; `version` is the short commit, which the .NET SDK puts into the
   assembly's informational version when it builds in a git checkout (`AppVersion`). A build outside git says `dev`.
-- **Data: Cosmos DB, one container `rites`** (partition key `/pk`, NoSQL API, System.Text.Json with camelCase names).
+- **Data: Cosmos DB, one container `rites`** (partition key `/partition`, NoSQL API, System.Text.Json with camelCase names).
   - A rite's document id is its day (`2026-10-07`), so Cosmos itself allows one rite per day:
     `RiteRepository.Add` returns `DayAlreadyHasRite` on the left of its `Either` for a second one.
   - Cosmos has no auto-increment, so a counter document hands out the rite numbers ("NO. 214"). A transactional
