@@ -11,18 +11,31 @@ internal sealed class RiteDocument
     public const string RiteType = "rite";
 
     public string Id { get; set; } = string.Empty;
+
     public string Partition { get; set; } = RiteRepository.SharedPartition;
+
     public string Type { get; set; } = RiteType;
+
     public int Number { get; set; }
+
     public DateOnly PublishedOnUtc { get; set; }
+
     public RiteKind Kind { get; set; }
+
     public string Title { get; set; } = string.Empty;
+
     public string Text { get; set; } = string.Empty;
+
     public string HereticalTruth { get; set; } = string.Empty;
+
     public string GeneratedByModel { get; set; } = string.Empty;
+
     public DateTime GeneratedAtUtc { get; set; }
+
     public int BlessedCount { get; set; }
+
     public int HeresyCount { get; set; }
+
     // Null when missing: the JSON serializer doesn't know Option, so this is the one place a rite's null lives.
     public RiteSimilarity? Similarity { get; set; }
 
@@ -66,8 +79,11 @@ internal sealed class NumberCounterDocument
     public const string CounterId = "rite-number";
 
     public string Id { get; set; } = CounterId;
+
     public string Partition { get; set; } = RiteRepository.SharedPartition;
+
     public string Type { get; set; } = "counter";
+
     public int LastNumber { get; set; }
 }
 

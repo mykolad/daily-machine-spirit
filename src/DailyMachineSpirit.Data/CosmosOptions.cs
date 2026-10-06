@@ -11,6 +11,7 @@ public class CosmosOptions
 
     /// <summary>The account's endpoint, e.g. <c>https://&lt;account&gt;.documents.azure.com:443/</c>.</summary>
     public string Endpoint { get; set; } = string.Empty;
+
     public string Database { get; set; } = string.Empty;
 }
 
