@@ -64,7 +64,7 @@ tools/coverage.ps1                — tests + coverage report + the coverage gat
   assembly's informational version when it builds in a git checkout (`AppVersion`). A build outside git says `dev`.
 - **Data: Cosmos DB, one container `rites`** (partition key `/pk`, NoSQL API, System.Text.Json with camelCase names).
   - A rite's document id is its day (`2026-10-07`), so Cosmos itself allows one rite per day:
-    `RiteRepository.TryAdd` returns false for a second one.
+    `RiteRepository.Add` returns `DayAlreadyHasRite` on the left of its `Either` for a second one.
   - Cosmos has no auto-increment, so a counter document hands out the rite numbers ("NO. 214"). A transactional
     batch saves the rite and takes its number together, retrying if another save took the number first.
   - Every document is in one partition (`"rites"`): a few hundred small rites a year are far below a partition's
@@ -73,8 +73,8 @@ tools/coverage.ps1                — tests + coverage report + the coverage gat
     from different `ScoresGeneratorVersion`s aren't comparable.
   - Timestamps are written as UTC ("Z") and read back as UTC.
 - **Entra ID only** for Cosmos DB: the app's managed identity in Azure, your `az login` locally
-  (`CosmosClients.Create`); the account's keys stay off. The database and container are created by the setup, not the
-  app (its data-plane role can't create them). Settings: `Cosmos:Endpoint`, `Cosmos:Database`.
+  (`CosmosClients.Create`); the account's keys stay off. The account, databases, container, role assignments and the
+  app's settings are all created by the Bicep in `infra/`, never by the app (its data-plane role can't create them). Settings: `Cosmos:Endpoint`, `Cosmos:Database`.
 
 ## Pull requests
 
