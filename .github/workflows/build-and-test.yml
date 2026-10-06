@@ -22,6 +22,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
+    # The repository tests run against the Cosmos DB emulator. It has a well-known key and holds nothing but the
+    # tests' throwaway databases. HTTPS, because the .NET SDK doesn't talk HTTP to it.
+    services:
+      cosmos:
+        image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-latest
+        ports:
+          - 8081:8081
+          - 8080:8080
+        env:
+          PROTOCOL: https
+
     steps:
       - uses: actions/checkout@v7
 
@@ -43,6 +54,14 @@ jobs:
       - name: Build
         run: dotnet build DailyMachineSpirit.slnx -c Release --no-restore
 
+      - name: Wait for the Cosmos DB emulator
+        run: |
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:8080/ready >/dev/null && exit 0
+            sleep 2
+          done
+          echo "::error title=Cosmos DB emulator::Not ready after 2 minutes."; exit 1
+
       # Same script as local runs; the coverage minimum lives there.
       - name: Test, coverage report, and coverage gate
         shell: pwsh
@@ -61,3 +80,4 @@ jobs:
             TestResults/**/*.trx
             coverage/
           retention-days: 14
+
