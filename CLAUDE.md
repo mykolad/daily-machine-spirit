@@ -49,6 +49,14 @@ tools/coverage.ps1                — tests + coverage report + the coverage gat
 - **`/healthz`** returns `{status, version}`; `version` is the short commit, which the .NET SDK puts into the
   assembly's informational version when it builds in a git checkout (`AppVersion`). A build outside git says `dev`.
 
+## Pull requests
+
+- **Every change to an open PR is a new commit on top.** Don't amend, squash or force-push commits that are already
+  pushed: whoever is reviewing or has the branch checked out keeps a stable history. Squashing, if wanted, happens at
+  merge.
+- **To bring a PR up to date with `master`, merge `master` into its branch** (a merge commit); don't rebase. `master`
+  requires branches to be up to date before merging.
+
 ## Building and testing
 
 ```
