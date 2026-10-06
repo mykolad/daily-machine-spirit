@@ -21,7 +21,7 @@ public class RiteRepository : IRiteRepository
 
     public static readonly Error DayAlreadyHasRite = Error.New("That day already has a rite.");
 
-    private static readonly PartitionKey PartitionKey = new(Partition);
+    private static readonly PartitionKey PartitionKey = new(SharedPartition);
     private readonly Container container;
 
     public RiteRepository(Container container)
