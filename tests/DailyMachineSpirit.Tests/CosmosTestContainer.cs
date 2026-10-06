@@ -1,3 +1,4 @@
+using System.Net;
 using DailyMachineSpirit.Data;
 using DailyMachineSpirit.Data.Repositories;
 using LanguageExt;
@@ -45,11 +46,13 @@ public sealed class CosmosTestContainer : IAsyncLifetime
         {
             created = await client.CreateDatabaseAsync($"test-{Guid.NewGuid():N}");
         }
-        catch (HttpRequestException ex)
+        // Nothing listening: HttpRequestException. Still starting up: the SDK's 503.
+        catch (Exception ex) when (ex is HttpRequestException
+            || ex is CosmosException { StatusCode: HttpStatusCode.ServiceUnavailable })
         {
             throw new InvalidOperationException(
-                "The Cosmos DB emulator isn't reachable. Start it: docker run -d -p 8081:8081 -p 8080:8080 " +
-                "mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-latest --protocol https", ex);
+                "The Cosmos DB emulator isn't reachable or is still starting. Start it, and wait for http://localhost:8080/ready: " +
+                "docker run -d -p 8081:8081 -p 8080:8080 mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-latest --protocol https", ex);
         }
         database = created;
         await created.CreateContainerAsync(RiteRepository.ContainerName, RiteRepository.PartitionKeyPath);
