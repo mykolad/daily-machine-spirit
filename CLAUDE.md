@@ -65,6 +65,14 @@ tools/coverage.ps1                — tests + coverage report + the coverage gat
   (`CosmosClients.Create`); the account's keys stay off. The database and container are created by the setup, not the
   app (its data-plane role can't create them). Settings: `Cosmos:Endpoint`, `Cosmos:Database`.
 
+## Pull requests
+
+- **Every change to an open PR is a new commit on top.** Don't amend, squash or force-push commits that are already
+  pushed: whoever is reviewing or has the branch checked out keeps a stable history. Squashing, if wanted, happens at
+  merge.
+- **To bring a PR up to date with `master`, merge `master` into its branch** (a merge commit); don't rebase. `master`
+  requires branches to be up to date before merging.
+
 ## Building and testing
 
 ```
