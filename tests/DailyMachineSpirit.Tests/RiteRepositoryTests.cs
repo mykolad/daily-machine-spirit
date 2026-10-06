@@ -14,31 +14,6 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
 
     public Task DisposeAsync() => cosmos.DisposeAsync();
 
-    private RiteRepository Repository => new(cosmos.Container);
-
-    private static Rite MakeRite(DateOnly date, string title) => new()
-    {
-        PublishedOnUtc = date,
-        Kind = RiteKind.Ritual,
-        Title = title,
-        Text = "Press Re-run thrice, intoning `it passed locally`.",
-        HereticalTruth = "Your test depends on timing.",
-        GeneratedByModel = "gpt-6-sol",
-        GeneratedAtUtc = date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
-    };
-
-    /// <summary>The result of a call expected to succeed; a test fails with the error otherwise.</summary>
-    private static T Ok<T>(Either<Error, T> result)
-        => result.Match(
-            Right: value => value,
-            Left: error => throw new Xunit.Sdk.XunitException($"Expected success, but: {error}"));
-
-    private async Task<Rite> AddOrFail(Rite rite) => Ok(await Repository.Add(rite, CancellationToken.None));
-
-    private async Task<Rite> PublishedOnOrFail(DateOnly date)
-        => Ok(await Repository.GetPublishedOn(date, CancellationToken.None))
-            .IfNone(() => throw new Xunit.Sdk.XunitException($"Expected a rite on {date}."));
-
     [Fact]
     public async Task Add_SavesTheRite_ThenFindsItByNumberAndDay()
     {
@@ -198,4 +173,29 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
     public async Task Cancellation_StillThrows()
         => await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => Repository.GetNewest(1, new CancellationToken(canceled: true)));
+
+    private RiteRepository Repository => new(cosmos.Container);
+
+    private static Rite MakeRite(DateOnly date, string title) => new()
+    {
+        PublishedOnUtc = date,
+        Kind = RiteKind.Ritual,
+        Title = title,
+        Text = "Press Re-run thrice, intoning `it passed locally`.",
+        HereticalTruth = "Your test depends on timing.",
+        GeneratedByModel = "gpt-6-sol",
+        GeneratedAtUtc = date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
+    };
+
+    /// <summary>The result of a call expected to succeed; a test fails with the error otherwise.</summary>
+    private static T Ok<T>(Either<Error, T> result)
+        => result.Match(
+            Right: value => value,
+            Left: error => throw new Xunit.Sdk.XunitException($"Expected success, but: {error}"));
+
+    private async Task<Rite> AddOrFail(Rite rite) => Ok(await Repository.Add(rite, CancellationToken.None));
+
+    private async Task<Rite> PublishedOnOrFail(DateOnly date)
+        => Ok(await Repository.GetPublishedOn(date, CancellationToken.None))
+            .IfNone(() => throw new Xunit.Sdk.XunitException($"Expected a rite on {date}."));
 }

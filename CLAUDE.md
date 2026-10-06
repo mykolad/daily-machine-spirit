@@ -46,6 +46,8 @@ tools/coverage.ps1                — tests + coverage report + the coverage gat
   converted to `Option` where the data enters (e.g. `RiteDocument.Similarity`). The JSON serializers set
   `RespectNullableAnnotations`, so a null arriving in a non-nullable property fails at the boundary instead of
   slipping in.
+- **Member order:** constants and fields, constructor, then public members (in a test class: setup and teardown, then
+  the tests), and private helpers last.
 - **One blank line between properties** (and between methods), never two in a row. Constants or fields that share one
   comment stay together as a group.
 - **Records and `with`** for data: properties are `init`-only, and a changed value is a copy
