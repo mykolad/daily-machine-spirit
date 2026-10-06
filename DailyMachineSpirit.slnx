@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DailyMachineSpirit.Functions/DailyMachineSpirit.Functions.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DailyMachineSpirit.Tests/DailyMachineSpirit.Tests.csproj" />
+  </Folder>
+</Solution>
