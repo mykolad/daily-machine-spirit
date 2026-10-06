@@ -5,7 +5,8 @@ using Microsoft.Azure.Cosmos;
 namespace DailyMachineSpirit.Tests;
 
 /// <summary>
-/// A fresh database and container in the Cosmos DB emulator for each test class, deleted again afterwards. The tests need
+/// A fresh database and container in the Cosmos DB emulator for every test (xUnit makes a new test class instance per
+/// test, and each holds one of these), deleted again afterwards, so tests never see each other's data. The tests need
 /// the emulator running (CI starts it; locally see CLAUDE.md), at <see cref="EndpointVariable"/> or localhost:8081.
 /// </summary>
 public sealed class CosmosTestContainer : IAsyncLifetime

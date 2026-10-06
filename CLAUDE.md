@@ -80,7 +80,8 @@ dotnet build DailyMachineSpirit.slnx
 ./tools/coverage.ps1        # tests, the coverage gate, HTML report at coverage/index.html
 ```
 
-The repository tests need the Cosmos DB emulator (each test class gets its own throwaway database):
+The repository tests need the Cosmos DB emulator (every test gets its own throwaway database, so they never see each
+other's data):
 
 ```
 docker run -d -p 8081:8081 -p 8080:8080 mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-latest --protocol https
