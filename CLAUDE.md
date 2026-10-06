@@ -20,6 +20,7 @@ or **Heresy**.
 src/DailyMachineSpirit.Functions  — the Functions app (HTTP and timer functions)
 tests/DailyMachineSpirit.Tests    — xUnit unit tests
 tools/coverage.ps1                — tests + coverage report + the coverage gate (Build and Test runs it)
+infra/                            — Bicep for all of Azure (main.bicep); infra/README.md covers what Bicep can't do
 ```
 
 ## Code style rules
@@ -41,7 +42,9 @@ tools/coverage.ps1                — tests + coverage report + the coverage gat
 - **Privacy:** never store or log anything about visitors (no IPs, no user agents). Reactions are anonymous.
 - **Accessibility:** WCAG 2.2 AA wins over design fidelity; record each such change in the design docs.
 - **No secrets:** Azure is reached with managed identities and GitHub's OIDC; credentials that must exist live in Key
-  Vault.
+  Vault, and their values are set by hand, never in the repo or in Bicep.
+- **Infrastructure as code:** every Azure resource and role assignment is in `infra/` (Bicep). Change Azure by changing
+  the Bicep, never by hand in the portal, so the files stay the truth.
 
 ## Key design decisions
 
