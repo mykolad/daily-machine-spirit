@@ -1,0 +1,51 @@
+<#
+.SYNOPSIS
+    Runs the tests with coverage and enforces the minimum line coverage.
+    The Build and Test workflow runs exactly this script, so a local run reproduces its gate.
+.EXAMPLE
+    ./tools/coverage.ps1
+    ./tools/coverage.ps1 -NoBuild   # as Build and Test runs it, after a Release build
+#>
+param(
+    # Release by default so the numbers match Build and Test (Debug builds have more coverable lines).
+    [string] $Configuration = 'Release',
+    [switch] $NoBuild,
+    # The target is 95%. Lowering it is the owner's decision, never a way to get a PR through.
+    [double] $MinLineCoverage = 95
+)
+
+$ErrorActionPreference = 'Stop'
+Set-Location (Split-Path $PSScriptRoot -Parent)
+
+Remove-Item TestResults, coverage -Recurse -Force -ErrorAction SilentlyContinue
+
+dotnet tool restore
+if ($LASTEXITCODE -ne 0) { throw 'dotnet tool restore failed.' }
+
+# Only the unit test project: smoke tests (once they exist) target a deployed app and run in the deploys.
+$testArgs = @(
+    'test', 'tests/DailyMachineSpirit.Tests/DailyMachineSpirit.Tests.csproj', '-c', $Configuration,
+    '--collect', 'XPlat Code Coverage',
+    '--settings', 'tests/DailyMachineSpirit.Tests/coverage.runsettings',
+    '--results-directory', 'TestResults',
+    '--logger', 'trx;LogFileName=results.trx'
+)
+if ($NoBuild) { $testArgs += '--no-build' }
+
+dotnet @testArgs
+$testExitCode = $LASTEXITCODE
+
+# Report even when tests fail, so the partial coverage is still visible.
+dotnet tool run reportgenerator '-reports:TestResults/*/coverage.cobertura.xml' '-targetdir:coverage' '-reporttypes:MarkdownSummaryGithub;JsonSummary;Html'
+if ($LASTEXITCODE -ne 0) { throw 'Coverage report generation failed.' }
+
+if ($testExitCode -ne 0) { throw 'Tests failed.' }
+
+$lineCoverage = (Get-Content coverage/Summary.json -Raw | ConvertFrom-Json).summary.linecoverage
+Write-Host "Line coverage: $lineCoverage% (minimum $MinLineCoverage%). Report: coverage/index.html"
+
+if ($lineCoverage -lt $MinLineCoverage) {
+    $message = "Line coverage $lineCoverage% is below the required $MinLineCoverage%."
+    if ($env:GITHUB_ACTIONS) { Write-Host "::error title=Coverage too low::$message" }
+    throw $message
+}
