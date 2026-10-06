@@ -29,78 +29,100 @@ public class RiteRepository : IRiteRepository
         this.container = container;
     }
 
-    public async Task<Option<Rite>> GetByNumber(int number, CancellationToken cancellationToken)
-        => (await Query<RiteDocument>(
+    public Task<Either<Error, Option<Rite>>> GetByNumber(int number, CancellationToken cancellationToken)
+        => Attempt(async () => (await Query<RiteDocument>(
             new QueryDefinition("SELECT * FROM c WHERE c.type = @type AND c.number = @number")
                 .WithParameter("@type", RiteDocument.RiteType)
                 .WithParameter("@number", number),
-            cancellationToken)).HeadOrNone().Map(document => document.ToRite());
+            cancellationToken)).HeadOrNone().Map(document => document.ToRite()));
 
-    public async Task<Option<Rite>> GetPublishedOn(DateOnly utcDate, CancellationToken cancellationToken)
-    {
-        try
+    public Task<Either<Error, Option<Rite>>> GetPublishedOn(DateOnly utcDate, CancellationToken cancellationToken)
+        => Attempt(async () =>
         {
-            var response = await container.ReadItemAsync<RiteDocument>(RiteDocument.IdFor(utcDate), PartitionKey, cancellationToken: cancellationToken);
-            return response.Resource.ToRite();
-        }
-        catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
-        {
-            return None;
-        }
-    }
+            try
+            {
+                var response = await container.ReadItemAsync<RiteDocument>(RiteDocument.IdFor(utcDate), PartitionKey,
+                    cancellationToken: cancellationToken);
+                return Some(response.Resource.ToRite());
+            }
+            catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                return Option<Rite>.None;
+            }
+        });
 
-    public async Task<List<Rite>> GetNewest(int count, CancellationToken cancellationToken)
-        => (await Query<RiteDocument>(
+    public Task<Either<Error, List<Rite>>> GetNewest(int count, CancellationToken cancellationToken)
+        => Attempt(async () => (await Query<RiteDocument>(
             new QueryDefinition("SELECT TOP @count * FROM c WHERE c.type = @type ORDER BY c.publishedOnUtc DESC")
                 .WithParameter("@count", count)
                 .WithParameter("@type", RiteDocument.RiteType),
-            cancellationToken)).Select(document => document.ToRite()).ToList();
+            cancellationToken)).Select(document => document.ToRite()).ToList());
 
-    public async Task<Either<Error, Rite>> Add(Rite rite, CancellationToken cancellationToken)
-    {
-        for (var attempt = 1; ; attempt++)
+    public Task<Either<Error, Rite>> Add(Rite rite, CancellationToken cancellationToken)
+        => AttemptEither(async () =>
         {
-            var (lastNumber, counterETag) = await ReadLastNumber(cancellationToken);
-            var number = lastNumber + 1;
-            var counter = new NumberCounterDocument { LastNumber = number };
+            for (var attempt = 1; ; attempt++)
+            {
+                var (lastNumber, counterETag) = await ReadLastNumber(cancellationToken);
+                var number = lastNumber + 1;
+                var counter = new NumberCounterDocument { LastNumber = number };
 
-            var batch = container.CreateTransactionalBatch(PartitionKey);
-            batch = counterETag.Match(
-                Some: etag => batch.ReplaceItem(NumberCounterDocument.CounterId, counter,
-                    new TransactionalBatchItemRequestOptions { IfMatchEtag = etag }),
-                None: () => batch.CreateItem(counter));
-            batch = batch.CreateItem(RiteDocument.From(rite, number));
+                var batch = container.CreateTransactionalBatch(PartitionKey);
+                batch = counterETag.Match(
+                    Some: etag => batch.ReplaceItem(NumberCounterDocument.CounterId, counter,
+                        new TransactionalBatchItemRequestOptions { IfMatchEtag = etag }),
+                    None: () => batch.CreateItem(counter));
+                batch = batch.CreateItem(RiteDocument.From(rite, number));
 
-            using var response = await batch.ExecuteAsync(cancellationToken);
-            if (response.IsSuccessStatusCode)
-                return rite with { Number = number };
+                using var response = await batch.ExecuteAsync(cancellationToken);
+                if (response.IsSuccessStatusCode)
+                    return Right<Error, Rite>(rite with { Number = number });
 
-            // A batch stops at its first failed operation; the ones after it report 424 (failed dependency).
-            var counterStatus = response[0].StatusCode;
-            var riteStatus = response[1].StatusCode;
-            if (riteStatus == HttpStatusCode.Conflict)
-                return DayAlreadyHasRite;
-            var numberTaken = counterStatus is HttpStatusCode.PreconditionFailed or HttpStatusCode.Conflict;
-            if (!numberTaken || attempt == MaxSaveAttempts)
-                throw new InvalidOperationException(
-                    $"Saving the rite for {rite.PublishedOnUtc:yyyy-MM-dd} failed: {response.StatusCode} (counter {counterStatus}, rite {riteStatus}). {response.ErrorMessage}");
-        }
-    }
+                // A batch stops at its first failed operation; the ones after it report 424 (failed dependency).
+                var counterStatus = response[0].StatusCode;
+                var riteStatus = response[1].StatusCode;
+                if (riteStatus == HttpStatusCode.Conflict)
+                    return DayAlreadyHasRite;
+                var numberTaken = counterStatus is HttpStatusCode.PreconditionFailed or HttpStatusCode.Conflict;
+                if (!numberTaken || attempt == MaxSaveAttempts)
+                    return Error.New(
+                        $"Saving the rite for {rite.PublishedOnUtc:yyyy-MM-dd} failed: {response.StatusCode} (counter {counterStatus}, rite {riteStatus}). {response.ErrorMessage}");
+            }
+        });
 
-    public async Task SaveScores(DateOnly publishedOnUtc, RiteSimilarity similarity, CancellationToken cancellationToken)
-    {
-        await container.PatchItemAsync<RiteDocument>(RiteDocument.IdFor(publishedOnUtc), PartitionKey,
-            [PatchOperation.Set("/similarity", Utc.From(similarity))], cancellationToken: cancellationToken);
-    }
+    public Task<Either<Error, Unit>> SaveScores(DateOnly publishedOnUtc, RiteSimilarity similarity, CancellationToken cancellationToken)
+        => Attempt(async () =>
+        {
+            await container.PatchItemAsync<RiteDocument>(RiteDocument.IdFor(publishedOnUtc), PartitionKey,
+                [PatchOperation.Set("/similarity", Utc.From(similarity))], cancellationToken: cancellationToken);
+            return unit;
+        });
 
-    public async Task<Dictionary<int, float[]>> GetScoresByRiteNumber(string scoresGeneratorVersion, CancellationToken cancellationToken)
-        => (await Query<NumberAndScores>(
+    public Task<Either<Error, Dictionary<int, float[]>>> GetScoresByRiteNumber(string scoresGeneratorVersion, CancellationToken cancellationToken)
+        => Attempt(async () => (await Query<NumberAndScores>(
             new QueryDefinition("SELECT c.number, c.similarity.scores FROM c WHERE c.type = @type AND c.similarity.scoresGeneratorVersion = @version")
                 .WithParameter("@type", RiteDocument.RiteType)
                 .WithParameter("@version", scoresGeneratorVersion),
-            cancellationToken)).ToDictionary(r => r.Number, r => r.Scores);
+            cancellationToken)).ToDictionary(r => r.Number, r => r.Scores));
 
     private sealed record NumberAndScores(int Number, float[] Scores);
+
+    // Any Cosmos call can fail (network, throttling, a missing role, an unreadable document): callers get that as an Error
+    // to handle, with the exception inside for the logs. Cancellation still throws, as everywhere in .NET.
+    private static Task<Either<Error, T>> Attempt<T>(Func<Task<T>> operation)
+        => AttemptEither(async () => Right<Error, T>(await operation()));
+
+    private static async Task<Either<Error, T>> AttemptEither<T>(Func<Task<Either<Error, T>>> operation)
+    {
+        try
+        {
+            return await operation();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return Error.New(ex);
+        }
+    }
 
     private async Task<(int LastNumber, Option<string> ETag)> ReadLastNumber(CancellationToken cancellationToken)
     {

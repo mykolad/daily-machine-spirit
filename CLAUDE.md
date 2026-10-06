@@ -35,9 +35,12 @@ tools/coverage.ps1                — tests + coverage report + the coverage gat
   don't add tests whose only purpose is a log line. To wait for background work, wait for its observable result.
 - Spell out names in workflows and jobs ("Deploy Master", not "CD").
 - **No nulls in our code.** A value that may be missing is `Option<T>` (LanguageExt: `Some`, `None`, `Optional(x)`,
-  `Map`, `Bind`, `Match`, `IfNone`); an expected failure the caller decides about is `Either<Error, T>` (e.g.
-  `RiteRepository.Add` returns `DayAlreadyHasRite` on the left). Unexpected failures stay exceptions. Stick to the
-  readable part of LanguageExt (Option, Either, Error); not `Fin`, `Eff`, `Aff`, `Try` or `Validation`.
+  `Map`, `Bind`, `Match`, `IfNone`).
+- **Failures are values.** Anything that can fail at run time (Cosmos, HTTP, the models) returns `Either<Error, T>`, so
+  callers have to handle it: a named error for an expected outcome (`RiteRepository.DayAlreadyHasRite`), and
+  `Error.New(exception)` for everything else, which keeps the exception for the logs. Only cancellation still throws:
+  the caller asked for it. Stick to the readable part of LanguageExt (Option, Either, Error); not `Fin`, `Eff`, `Aff`,
+  `Try` or `Validation`.
 - **Nullable warnings are build errors** (`Directory.Build.props`), and there's no `null!`. Input and output can still
   carry nulls (JSON documents, HTTP requests and responses, configuration, SDK results), so `T?` belongs only there,
   converted to `Option` where the data enters (e.g. `RiteDocument.Similarity`). The JSON serializers set
