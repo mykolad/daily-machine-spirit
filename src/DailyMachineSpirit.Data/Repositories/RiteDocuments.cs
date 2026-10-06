@@ -1,9 +1,11 @@
 using System.Globalization;
 using DailyMachineSpirit.Data.Entities;
+using LanguageExt;
+using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Data.Repositories;
 
-/// <summary>An <see cref="Rite"/> as stored: its id is its day, so Cosmos itself allows one rite per day.</summary>
+/// <summary>A <see cref="Rite"/> as stored: its id is its day, so Cosmos itself allows one rite per day.</summary>
 internal sealed class RiteDocument
 {
     public const string RiteType = "rite";
@@ -21,6 +23,7 @@ internal sealed class RiteDocument
     public DateTime GeneratedAtUtc { get; set; }
     public int BlessedCount { get; set; }
     public int HeresyCount { get; set; }
+    // Null when missing: the JSON serializer doesn't know Option, so this is the one place a rite's null lives.
     public RiteSimilarity? Similarity { get; set; }
 
     public static string IdFor(DateOnly publishedOnUtc) => publishedOnUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
@@ -38,7 +41,7 @@ internal sealed class RiteDocument
         GeneratedAtUtc = Utc.From(rite.GeneratedAtUtc),
         BlessedCount = rite.BlessedCount,
         HeresyCount = rite.HeresyCount,
-        Similarity = rite.Similarity is { } similarity ? Utc.From(similarity) : null,
+        Similarity = rite.Similarity.Map(Utc.From).OrNull(),
     };
 
     public Rite ToRite() => new()
@@ -53,7 +56,7 @@ internal sealed class RiteDocument
         GeneratedAtUtc = GeneratedAtUtc,
         BlessedCount = BlessedCount,
         HeresyCount = HeresyCount,
-        Similarity = Similarity,
+        Similarity = Optional(Similarity),
     };
 }
 
@@ -78,10 +81,11 @@ internal static class Utc
         _ => value,
     };
 
-    public static RiteSimilarity From(RiteSimilarity similarity) => new()
-    {
-        ScoresGeneratorVersion = similarity.ScoresGeneratorVersion,
-        Scores = similarity.Scores,
-        CreatedAtUtc = From(similarity.CreatedAtUtc),
-    };
+    public static RiteSimilarity From(RiteSimilarity similarity) => similarity with { CreatedAtUtc = From(similarity.CreatedAtUtc) };
+}
+
+internal static class OptionExtensions
+{
+    /// <summary>For the JSON documents only, which store a missing value as null.</summary>
+    public static T? OrNull<T>(this Option<T> option) where T : class => option.MatchUnsafe(value => value, () => null);
 }

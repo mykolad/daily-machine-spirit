@@ -2,6 +2,7 @@ using System.Text.Json;
 using DailyMachineSpirit.Functions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Tests;
 
@@ -22,7 +23,10 @@ public class HealthFunctionTests
     [InlineData("1.0.0+abc", "abc")]
     [InlineData("1.0.0+", AppVersion.Local)]
     [InlineData("1.0.0", AppVersion.Local)]
-    [InlineData(null, AppVersion.Local)]
-    public void FromInformationalVersion_TakesTheShortCommit(string? informationalVersion, string expected)
+    public void FromInformationalVersion_TakesTheShortCommit(string informationalVersion, string expected)
         => Assert.Equal(expected, AppVersion.FromInformationalVersion(informationalVersion));
+
+    [Fact]
+    public void FromInformationalVersion_WithoutOne_IsLocal()
+        => Assert.Equal(AppVersion.Local, AppVersion.FromInformationalVersion(None));
 }

@@ -34,6 +34,14 @@ tools/coverage.ps1                — tests + coverage report + the coverage gat
 - **Tests check behaviour, not logs.** Assert on outcomes: what's saved, returned or sent. Never on log messages, and
   don't add tests whose only purpose is a log line. To wait for background work, wait for its observable result.
 - Spell out names in workflows and jobs ("Deploy Master", not "CD").
+- **No nulls in our code.** A value that may be missing is `Option<T>` (LanguageExt: `Some`, `None`, `Optional(x)`,
+  `Map`, `Bind`, `Match`, `IfNone`); an expected failure the caller decides about is `Either<Error, T>` (e.g.
+  `RiteRepository.Add` returns `DayAlreadyHasRite` on the left). Unexpected failures stay exceptions. Stick to the
+  readable part of LanguageExt (Option, Either, Error); not `Fin`, `Eff`, `Aff`, `Try` or `Validation`.
+- **Nullable warnings are build errors** (`Directory.Build.props`). `T?` appears only where a framework or the JSON
+  serializer needs a null (e.g. `RiteDocument.Similarity`), converted to `Option` at that one boundary; no `null!`.
+- **Records and `with`** for data: properties are `init`-only, and a changed value is a copy
+  (`rite with { Number = number }`), not a mutation.
 
 ## Ground rules
 

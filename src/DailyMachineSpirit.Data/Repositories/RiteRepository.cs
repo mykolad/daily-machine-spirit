@@ -1,6 +1,9 @@
 using System.Net;
 using DailyMachineSpirit.Data.Entities;
+using LanguageExt;
+using LanguageExt.Common;
 using Microsoft.Azure.Cosmos;
+using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Data.Repositories;
 
@@ -16,6 +19,8 @@ public class RiteRepository : IRiteRepository
     // A try fails only if another rite took the next number in between: that's rare, and retrying is cheap.
     private const int MaxSaveAttempts = 5;
 
+    public static readonly Error DayAlreadyHasRite = Error.New("That day already has a rite.");
+
     private static readonly PartitionKey PartitionKey = new(Partition);
     private readonly Container container;
 
@@ -24,14 +29,14 @@ public class RiteRepository : IRiteRepository
         this.container = container;
     }
 
-    public async Task<Rite?> GetByNumber(int number, CancellationToken cancellationToken)
+    public async Task<Option<Rite>> GetByNumber(int number, CancellationToken cancellationToken)
         => (await Query<RiteDocument>(
             new QueryDefinition("SELECT * FROM c WHERE c.type = @type AND c.number = @number")
                 .WithParameter("@type", RiteDocument.RiteType)
                 .WithParameter("@number", number),
-            cancellationToken)).SingleOrDefault()?.ToRite();
+            cancellationToken)).HeadOrNone().Map(document => document.ToRite());
 
-    public async Task<Rite?> GetPublishedOn(DateOnly utcDate, CancellationToken cancellationToken)
+    public async Task<Option<Rite>> GetPublishedOn(DateOnly utcDate, CancellationToken cancellationToken)
     {
         try
         {
@@ -40,7 +45,7 @@ public class RiteRepository : IRiteRepository
         }
         catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
-            return null;
+            return None;
         }
     }
 
@@ -49,9 +54,9 @@ public class RiteRepository : IRiteRepository
             new QueryDefinition("SELECT TOP @count * FROM c WHERE c.type = @type ORDER BY c.publishedOnUtc DESC")
                 .WithParameter("@count", count)
                 .WithParameter("@type", RiteDocument.RiteType),
-            cancellationToken)).Select(d => d.ToRite()).ToList();
+            cancellationToken)).Select(document => document.ToRite()).ToList();
 
-    public async Task<bool> TryAdd(Rite rite, CancellationToken cancellationToken)
+    public async Task<Either<Error, Rite>> Add(Rite rite, CancellationToken cancellationToken)
     {
         for (var attempt = 1; ; attempt++)
         {
@@ -60,24 +65,21 @@ public class RiteRepository : IRiteRepository
             var counter = new NumberCounterDocument { LastNumber = number };
 
             var batch = container.CreateTransactionalBatch(PartitionKey);
-            batch = counterETag is null
-                ? batch.CreateItem(counter)
-                : batch.ReplaceItem(NumberCounterDocument.CounterId, counter,
-                    new TransactionalBatchItemRequestOptions { IfMatchEtag = counterETag });
+            batch = counterETag.Match(
+                Some: etag => batch.ReplaceItem(NumberCounterDocument.CounterId, counter,
+                    new TransactionalBatchItemRequestOptions { IfMatchEtag = etag }),
+                None: () => batch.CreateItem(counter));
             batch = batch.CreateItem(RiteDocument.From(rite, number));
 
             using var response = await batch.ExecuteAsync(cancellationToken);
             if (response.IsSuccessStatusCode)
-            {
-                rite.Number = number;
-                return true;
-            }
+                return rite with { Number = number };
 
             // A batch stops at its first failed operation; the ones after it report 424 (failed dependency).
             var counterStatus = response[0].StatusCode;
             var riteStatus = response[1].StatusCode;
             if (riteStatus == HttpStatusCode.Conflict)
-                return false;
+                return DayAlreadyHasRite;
             var numberTaken = counterStatus is HttpStatusCode.PreconditionFailed or HttpStatusCode.Conflict;
             if (!numberTaken || attempt == MaxSaveAttempts)
                 throw new InvalidOperationException(
@@ -100,7 +102,7 @@ public class RiteRepository : IRiteRepository
 
     private sealed record NumberAndScores(int Number, float[] Scores);
 
-    private async Task<(int LastNumber, string? ETag)> ReadLastNumber(CancellationToken cancellationToken)
+    private async Task<(int LastNumber, Option<string> ETag)> ReadLastNumber(CancellationToken cancellationToken)
     {
         try
         {
@@ -110,7 +112,7 @@ public class RiteRepository : IRiteRepository
         }
         catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
-            return (0, null);
+            return (0, None);
         }
     }
 

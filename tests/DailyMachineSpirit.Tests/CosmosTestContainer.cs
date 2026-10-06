@@ -1,6 +1,8 @@
 using DailyMachineSpirit.Data;
 using DailyMachineSpirit.Data.Repositories;
+using LanguageExt;
 using Microsoft.Azure.Cosmos;
+using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Tests;
 
@@ -16,7 +18,7 @@ public sealed class CosmosTestContainer : IAsyncLifetime
     private const string EmulatorKey = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
 
     private readonly CosmosClient client;
-    private Database? database;
+    private Option<Database> database = None;
 
     public CosmosTestContainer()
     {
@@ -32,13 +34,16 @@ public sealed class CosmosTestContainer : IAsyncLifetime
         client = new CosmosClient(endpoint, EmulatorKey, options);
     }
 
-    public Container Container { get; private set; } = null!;
+    public Container Container => database
+        .Map(created => created.GetContainer(RiteRepository.ContainerName))
+        .IfNone(() => throw new InvalidOperationException("The test database is created in InitializeAsync."));
 
     public async Task InitializeAsync()
     {
+        Database created;
         try
         {
-            database = await client.CreateDatabaseAsync($"test-{Guid.NewGuid():N}");
+            created = await client.CreateDatabaseAsync($"test-{Guid.NewGuid():N}");
         }
         catch (HttpRequestException ex)
         {
@@ -46,13 +51,13 @@ public sealed class CosmosTestContainer : IAsyncLifetime
                 "The Cosmos DB emulator isn't reachable. Start it: docker run -d -p 8081:8081 -p 8080:8080 " +
                 "mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-latest --protocol https", ex);
         }
-        Container = await database.CreateContainerAsync(RiteRepository.ContainerName, RiteRepository.PartitionKeyPath);
+        database = created;
+        await created.CreateContainerAsync(RiteRepository.ContainerName, RiteRepository.PartitionKeyPath);
     }
 
     public async Task DisposeAsync()
     {
-        if (database is not null)
-            await database.DeleteAsync();
+        await database.IfSomeAsync(created => created.DeleteAsync());
         client.Dispose();
     }
 }
