@@ -9,6 +9,8 @@ param nameSuffix string
 @description('Storage account names allow only lowercase letters and digits, up to 24.')
 param storageAccountName string
 @description('The only IPv4 address the app admits; empty admits everyone (production sits behind Cloudflare).')
+// Secure, so the nested deployment's history masks it too (secure doesn't carry across module boundaries).
+@secure()
 param allowedIp string
 param cosmosAccountName string
 param aiAccountName string

@@ -13,6 +13,8 @@ param ownerPrincipalId string
 
 @description('The owner\'s public IPv4 address: the only address staging admits. Given at deploy time, never committed.')
 // Required: an empty value would leave staging open to everyone (empty means "no restriction" only for production).
+// Secure, so deployment history and CLI output mask it: it identifies the owner.
+@secure()
 @minLength(7)
 param stagingAllowedIp string
 
