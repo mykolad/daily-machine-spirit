@@ -38,8 +38,11 @@ tools/coverage.ps1                — tests + coverage report + the coverage gat
   `Map`, `Bind`, `Match`, `IfNone`); an expected failure the caller decides about is `Either<Error, T>` (e.g.
   `RiteRepository.Add` returns `DayAlreadyHasRite` on the left). Unexpected failures stay exceptions. Stick to the
   readable part of LanguageExt (Option, Either, Error); not `Fin`, `Eff`, `Aff`, `Try` or `Validation`.
-- **Nullable warnings are build errors** (`Directory.Build.props`). `T?` appears only where a framework or the JSON
-  serializer needs a null (e.g. `RiteDocument.Similarity`), converted to `Option` at that one boundary; no `null!`.
+- **Nullable warnings are build errors** (`Directory.Build.props`), and there's no `null!`. Input and output can still
+  carry nulls (JSON documents, HTTP requests and responses, configuration, SDK results), so `T?` belongs only there,
+  converted to `Option` where the data enters (e.g. `RiteDocument.Similarity`). The JSON serializers set
+  `RespectNullableAnnotations`, so a null arriving in a non-nullable property fails at the boundary instead of
+  slipping in.
 - **Records and `with`** for data: properties are `init`-only, and a changed value is a copy
   (`rite with { Number = number }`), not a mutation.
 

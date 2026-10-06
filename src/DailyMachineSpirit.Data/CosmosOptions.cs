@@ -30,6 +30,9 @@ public static class CosmosClients
         UseSystemTextJsonSerializerWithOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
         {
             Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
+            // A stored document can still say "title": null. By default that would put a null into a non-nullable
+            // string; this makes reading it fail right here instead.
+            RespectNullableAnnotations = true,
         },
     };
 }

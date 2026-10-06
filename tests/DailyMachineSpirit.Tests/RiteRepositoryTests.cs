@@ -93,6 +93,19 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task GetPublishedOn_ADocumentWithANullTitle_FailsInsteadOfReturningANull()
+    {
+        var date = new DateOnly(2026, 10, 7);
+        await cosmos.Container.CreateItemAsync(new
+        {
+            id = "2026-10-07", pk = "rites", type = "rite", number = 1, publishedOnUtc = date, kind = "prayer",
+            title = (string?)null, text = "", hereticalTruth = "", generatedByModel = "", generatedAtUtc = DateTime.UtcNow,
+        });
+
+        await Assert.ThrowsAnyAsync<Exception>(() => Repository.GetPublishedOn(date, CancellationToken.None));
+    }
+
+    [Fact]
     public async Task GetNewest_ReturnsTheNewestFirst()
     {
         foreach (var day in new[] { 3, 5, 4 })
