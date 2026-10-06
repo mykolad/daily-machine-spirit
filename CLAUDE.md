@@ -9,8 +9,8 @@ or **Heresy**.
 
 - Tagline: *In the grim darkness of the far future, no one reads the code.* Footer: *Knowledge is lost. The rituals
   remain.*
-- It runs on existing shared Azure resources (the SQL server and database, Key Vault, the Azure OpenAI models, Grafana)
-  rather than its own copies.
+- Everything it runs on in Azure is its own, in one resource group defined in Bicep (`infra/`): the models, a Cosmos DB
+  account, a Key Vault and a Functions app per environment. Only the Grafana Cloud stack is shared, with its own token.
 - Runs as **one Azure Functions app** (Flex Consumption, .NET 10 isolated worker): a timer generates the daily item,
   HTTP functions serve the pages and the API. Cloudflare sits in front (`dailymachinespirit.fyi`).
 
@@ -86,4 +86,5 @@ HTTP functions run without storage. Timer functions need `AzureWebJobsStorage`: 
 ## Build and Test
 
 `.github/workflows/build-and-test.yml` (**Build and Test**, job `build-and-test`) runs on every PR and on pushes to
-`master`: restore, Release build, then `tools/coverage.ps1 -NoBuild` (the same gate as a local run).
+`master`: restore, Release build, a Bicep lint and build of `infra/` (any warning fails it), then
+`tools/coverage.ps1 -NoBuild` (the same gate as a local run).
