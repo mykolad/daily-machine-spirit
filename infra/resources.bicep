@@ -29,7 +29,7 @@ resource ai 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   }
 }
 
-// Sol writes the items; Luna is the fallback when Sol fails. Capacity is in thousands of tokens a minute: one item a day
+// Sol writes the rites; Luna is the fallback when Sol fails. Capacity is in thousands of tokens a minute: one rite a day
 // needs a tiny fraction.
 resource sol 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
   parent: ai

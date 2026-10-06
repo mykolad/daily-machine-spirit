@@ -11,7 +11,7 @@ or **Heresy**.
   remain.*
 - Everything it runs on in Azure is its own, in one resource group defined in Bicep (`infra/`): the models, a Cosmos DB
   account, a Key Vault and a Functions app per environment. Only the Grafana Cloud stack is shared, with its own token.
-- Runs as **one Azure Functions app** (Flex Consumption, .NET 10 isolated worker): a timer generates the daily item,
+- Runs as **one Azure Functions app** (Flex Consumption, .NET 10 isolated worker): a timer generates the daily rite,
   HTTP functions serve the pages and the API. Cloudflare sits in front (`dailymachinespirit.fyi`).
 
 ## Solution layout
