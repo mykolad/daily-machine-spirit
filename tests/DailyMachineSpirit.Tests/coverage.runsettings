@@ -5,7 +5,7 @@
       <DataCollector friendlyName="XPlat code coverage">
         <Configuration>
           <Format>cobertura</Format>
-          <Include>[DailyMachineSpirit.Functions]*</Include>
+          <Include>[DailyMachineSpirit.Functions]*,[DailyMachineSpirit.Data]*</Include>
           <!-- Program.cs is the composition root (DI wiring, startup): running the app exercises it, not unit tests. -->
           <ExcludeByFile>**/Program.cs</ExcludeByFile>
           <ExcludeByAttribute>GeneratedCodeAttribute,CompilerGeneratedAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>

@@ -1,0 +1,11 @@
+<Project>
+
+  <!-- For every project: no nulls slip through. A nullable warning is a build error, and maybe-absent values are
+       LanguageExt's Option<T> (CLAUDE.md, "Code style rules"). -->
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <WarningsAsErrors>$(WarningsAsErrors);nullable</WarningsAsErrors>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>
