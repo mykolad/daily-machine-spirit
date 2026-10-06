@@ -12,6 +12,8 @@ param prefix string = 'machinespirit'
 param ownerPrincipalId string
 
 @description('The owner\'s public IPv4 address: the only address staging admits. Given at deploy time, never committed.')
+// Required: an empty value would leave staging open to everyone (empty means "no restriction" only for production).
+@minLength(7)
 param stagingAllowedIp string
 
 @description('GitHub\'s OIDC subject prefix for this repository (immutable format: owner and repository ids).')

@@ -4,6 +4,8 @@
 param location string = resourceGroup().location
 param prefix string = 'machinespirit'
 param ownerPrincipalId string
+// Required: an empty value would leave staging open to everyone (empty means "no restriction" only for production).
+@minLength(7)
 param stagingAllowedIp string
 param githubSubjectPrefix string = 'repo:mykolad@2202717/daily-machine-spirit@1406418170'
 
