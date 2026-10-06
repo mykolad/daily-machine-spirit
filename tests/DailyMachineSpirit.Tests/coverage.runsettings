@@ -5,9 +5,10 @@
       <DataCollector friendlyName="XPlat code coverage">
         <Configuration>
           <Format>cobertura</Format>
-          <Include>[DailyMachineSpirit.Functions]*</Include>
-          <!-- Program.cs is the composition root (DI wiring, startup): running the app exercises it, not unit tests. -->
-          <ExcludeByFile>**/Program.cs</ExcludeByFile>
+          <Include>[DailyMachineSpirit.Functions]*,[DailyMachineSpirit.Data]*</Include>
+          <!-- EF migrations are generated code. Program.cs is the composition root (DI wiring, startup): running the
+               app exercises it, not unit tests. -->
+          <ExcludeByFile>**/Migrations/*.cs,**/Program.cs</ExcludeByFile>
           <ExcludeByAttribute>GeneratedCodeAttribute,CompilerGeneratedAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
           <SkipAutoProps>true</SkipAutoProps>
         </Configuration>
