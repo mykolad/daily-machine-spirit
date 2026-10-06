@@ -6,38 +6,38 @@ using static LanguageExt.Prelude;
 namespace DailyMachineSpirit.Data.Repositories;
 
 /// <summary>A <see cref="Rite"/> as stored: its id is its day, so Cosmos itself allows one rite per day.</summary>
-internal sealed class RiteDocument
+internal sealed record RiteDocument
 {
     public const string RiteType = "rite";
 
-    public string Id { get; set; } = string.Empty;
+    public string Id { get; init; } = string.Empty;
 
-    public string Partition { get; set; } = RiteRepository.SharedPartition;
+    public string Partition { get; init; } = RiteRepository.SharedPartition;
 
-    public string Type { get; set; } = RiteType;
+    public string Type { get; init; } = RiteType;
 
-    public int Number { get; set; }
+    public int Number { get; init; }
 
-    public DateOnly PublishedOnUtc { get; set; }
+    public DateOnly PublishedOnUtc { get; init; }
 
-    public RiteKind Kind { get; set; }
+    public RiteKind Kind { get; init; }
 
-    public string Title { get; set; } = string.Empty;
+    public string Title { get; init; } = string.Empty;
 
-    public string Text { get; set; } = string.Empty;
+    public string Text { get; init; } = string.Empty;
 
-    public string HereticalTruth { get; set; } = string.Empty;
+    public string HereticalTruth { get; init; } = string.Empty;
 
-    public string GeneratedByModel { get; set; } = string.Empty;
+    public string GeneratedByModel { get; init; } = string.Empty;
 
-    public DateTime GeneratedAtUtc { get; set; }
+    public DateTime GeneratedAtUtc { get; init; }
 
-    public int BlessedCount { get; set; }
+    public int BlessedCount { get; init; }
 
-    public int HeresyCount { get; set; }
+    public int HeresyCount { get; init; }
 
     // Null when missing: the JSON serializer doesn't know Option, so this is the one place a rite's null lives.
-    public RiteSimilarity? Similarity { get; set; }
+    public RiteSimilarity? Similarity { get; init; }
 
     public static string IdFor(DateOnly publishedOnUtc) => publishedOnUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
@@ -74,17 +74,17 @@ internal sealed class RiteDocument
 }
 
 /// <summary>The last rite number given out. Cosmos has no auto-increment, so this document hands them out.</summary>
-internal sealed class NumberCounterDocument
+internal sealed record NumberCounterDocument
 {
     public const string CounterId = "rite-number";
 
-    public string Id { get; set; } = CounterId;
+    public string Id { get; init; } = CounterId;
 
-    public string Partition { get; set; } = RiteRepository.SharedPartition;
+    public string Partition { get; init; } = RiteRepository.SharedPartition;
 
-    public string Type { get; set; } = "counter";
+    public string Type { get; init; } = "counter";
 
-    public int LastNumber { get; set; }
+    public int LastNumber { get; init; }
 }
 
 internal static class Utc
