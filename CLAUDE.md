@@ -9,8 +9,8 @@ or **Heresy**.
 
 - Tagline: *In the grim darkness of the far future, no one reads the code.* Footer: *Knowledge is lost. The rituals
   remain.*
-- It runs on existing shared Azure resources (the SQL server and database, Key Vault, the Azure OpenAI models, Grafana)
-  rather than its own copies.
+- Its data is in its own Cosmos DB account (free tier). It shares only the Azure OpenAI models, Key Vault and Grafana with
+  existing projects.
 - Runs as **one Azure Functions app** (Flex Consumption, .NET 10 isolated worker): a timer generates the daily item,
   HTTP functions serve the pages and the API. Cloudflare sits in front (`dailymachinespirit.fyi`).
 
@@ -18,8 +18,8 @@ or **Heresy**.
 
 ```
 src/DailyMachineSpirit.Functions  — the Functions app (HTTP and timer functions)
-src/DailyMachineSpirit.Data       — EF Core: DbContext, entities, migrations, repositories
-tests/DailyMachineSpirit.Tests    — xUnit unit tests (SQLite in memory for the repositories; SQL Server in CI)
+src/DailyMachineSpirit.Data       — Cosmos DB: entities, documents, repositories
+tests/DailyMachineSpirit.Tests    — xUnit tests (the repository tests run against the Cosmos DB emulator)
 tools/coverage.ps1                — tests + coverage report + the coverage gate (Build and Test runs it)
 ```
 
@@ -51,33 +51,31 @@ tools/coverage.ps1                — tests + coverage report + the coverage gat
 - **Routes at the site root:** `host.json` sets `routePrefix` to `""`, so `/healthz` is `/healthz`, not `/api/healthz`.
 - **`/healthz`** returns `{status, version}`; `version` is the short commit, which the .NET SDK puts into the
   assembly's informational version when it builds in a git checkout (`AppVersion`). A build outside git says `dev`.
-- **Data:** one `Items` row per UTC day (a unique index on `PublishedOnUtc`, so two generations for the same day
-  can't both save; `ItemRepository.TryAdd` returns false for the loser). `ItemProfiles` keeps each item's
-  similarity scores for "More rites", whatever method produced them (Jev, to begin with); scores from different
-  `ScoresGeneratorVersion`s aren't comparable.
-- **The production database is shared with another app**, so everything lives in the `machinespirit` schema, including
-  the migrations history (`machinespirit.__EFMigrationsHistory`, set in `MachineSpiritDbContext.ConfigureSqlServer`).
-  Nothing may touch `dbo`. CI checks this (below).
-- **Entra ID only** for SQL: the connection string uses `Authentication=Active Directory Managed Identity` in Azure and
-  `Active Directory Default` locally; no password anywhere. The connect timeout is raised to 60 s
-  (`SqlConnectionStrings.WithResumeTimeout`), so a paused serverless database (staging) can resume during the login.
-
-## EF Core migrations
-
-The Functions app is the startup project (the tools build its host to get the DbContext); there's no design-time
-factory:
-
-```
-dotnet ef migrations add <Name> --project src/DailyMachineSpirit.Data --startup-project src/DailyMachineSpirit.Functions
-```
-
-The app never migrates on startup; the deploys will run a migration bundle.
+- **Data: Cosmos DB, one container `items`** (partition key `/pk`, NoSQL API, System.Text.Json with camelCase names).
+  - An item's document id is its day (`2026-10-07`), so Cosmos itself allows one item per day:
+    `ItemRepository.TryAdd` returns false for a second one.
+  - Cosmos has no auto-increment, so a counter document hands out the item numbers ("NO. 214"). A transactional
+    batch saves the item and takes its number together, retrying if another save took the number first.
+  - Every document is in one partition (`"items"`): a few hundred small items a year are far below a partition's
+    limits, and a batch needs one partition.
+  - `Item.Similarity` holds the scores for "More rites", whatever method produced them (Jev, to begin with); scores
+    from different `ScoresGeneratorVersion`s aren't comparable.
+  - Timestamps are written as UTC ("Z") and read back as UTC.
+- **Entra ID only** for Cosmos DB: the app's managed identity in Azure, your `az login` locally
+  (`CosmosClients.Create`); the account's keys stay off. The database and container are created by the setup, not the
+  app (its data-plane role can't create them). Settings: `Cosmos:Endpoint`, `Cosmos:Database`.
 
 ## Building and testing
 
 ```
 dotnet build DailyMachineSpirit.slnx
 ./tools/coverage.ps1        # tests, the coverage gate, HTML report at coverage/index.html
+```
+
+The repository tests need the Cosmos DB emulator (each test class gets its own throwaway database):
+
+```
+docker run -d -p 8081:8081 -p 8080:8080 mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-latest --protocol https
 ```
 
 The minimum line coverage is **95%** (`$MinLineCoverage` in `tools/coverage.ps1`). If some code really can't be covered,
@@ -93,21 +91,12 @@ cp local.settings.example.json local.settings.json   # once; local.settings.json
 func start
 ```
 
-For anything that reads the database, set `ConnectionStrings:DefaultConnection` in `local.settings.json` (e.g. the
-staging database with `Authentication=Active Directory Default`, as your `az login`; never production's). HTTP
-functions run without storage. Timer functions need `AzureWebJobsStorage`: run the Azurite emulator
+For anything that reads data, set `Cosmos:Endpoint` and `Cosmos:Database` in `local.settings.json` (e.g. staging's
+database, as your `az login`; never production's). HTTP functions run without storage. Timer functions need `AzureWebJobsStorage`: run the Azurite emulator
 (`docker run -p 10000-10002:10000-10002 mcr.microsoft.com/azure-storage/azurite`).
 
 ## Build and Test
 
-`.github/workflows/build-and-test.yml` (**Build and Test**, job `build-and-test`) runs on every PR and on pushes to
-`master`, with two required jobs:
-- **`build-and-test`:** restore, Release build, then `tools/coverage.ps1 -NoBuild` (the same gate as a local run).
-- **`clean-database-migrations`**, against a throwaway SQL Server 2022 container (SQL auth; its password protects nothing
-  but that container):
-  1. `dotnet ef migrations has-pending-model-changes`: a model change without a migration fails the PR.
-  2. A migration bundle applies the whole chain to a database that already holds another app's tables and migrations
-     history in `dbo` (standing in for the shared production database), rolls every migration back (`efbundle 0`),
-     and applies them again. Then it checks that our history is in `machinespirit` and `dbo` is untouched.
-  3. The repository tests (`*RepositoryTests`) run against SQL Server: with `SQLSERVER_TEST_CONNECTION` set,
-     `TestDatabase` gives each test class its own database built by the migrations (SQLite otherwise).
+`.github/workflows/build-and-test.yml` (**Build and Test**, job `build-and-test`, the required check) runs on every PR
+and on pushes to `master`: restore, Release build, then `tools/coverage.ps1 -NoBuild` (the same gate as a local run),
+with the Cosmos DB emulator as a service container for the repository tests.

@@ -7,10 +7,9 @@ public class Item
     public const int MaxTitleLength = 120;
     public const int MaxTextLength = 2000;
     public const int MaxHereticalTruthLength = 1000;
-    public const int MaxModelLength = 100;
 
-    /// <summary>Also the number the page shows ("A RITUAL · NO. 214").</summary>
-    public int Id { get; set; }
+    /// <summary>Given when the item is saved; the page shows it ("A RITUAL · NO. 214") and links to it.</summary>
+    public int Number { get; set; }
     public DateOnly PublishedOnUtc { get; set; }
     public ItemKind Kind { get; set; }
     public string Title { get; set; } = string.Empty;
@@ -21,10 +20,22 @@ public class Item
     public DateTime GeneratedAtUtc { get; set; }
     public int BlessedCount { get; set; }
     public int HeresyCount { get; set; }
+    /// <summary>For "More rites"; added after the item is saved, so it can be missing.</summary>
+    public ItemSimilarity? Similarity { get; set; }
 }
 
 public enum ItemKind
 {
     Prayer,
     Ritual,
+}
+
+/// <summary>What an item is about: items with close <see cref="Scores"/> are related.</summary>
+public class ItemSimilarity
+{
+    /// <summary>Scores from different generator versions aren't comparable.</summary>
+    public string ScoresGeneratorVersion { get; set; } = string.Empty;
+    /// <summary>The item's position along the generator's dimensions (e.g. how likely each topic and style is).</summary>
+    public float[] Scores { get; set; } = [];
+    public DateTime CreatedAtUtc { get; set; }
 }

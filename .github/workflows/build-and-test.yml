@@ -22,6 +22,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
+    # The repository tests run against the Cosmos DB emulator. It has a well-known key and holds nothing but the
+    # tests' throwaway databases. HTTPS, because the .NET SDK doesn't talk HTTP to it.
+    services:
+      cosmos:
+        image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-latest
+        ports:
+          - 8081:8081
+          - 8080:8080
+        env:
+          PROTOCOL: https
+
     steps:
       - uses: actions/checkout@v7
 
@@ -43,6 +54,14 @@ jobs:
       - name: Build
         run: dotnet build DailyMachineSpirit.slnx -c Release --no-restore
 
+      - name: Wait for the Cosmos DB emulator
+        run: |
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:8080/ready >/dev/null && exit 0
+            sleep 2
+          done
+          echo "::error title=Cosmos DB emulator::Not ready after 2 minutes."; exit 1
+
       # Same script as local runs; the coverage minimum lives there.
       - name: Test, coverage report, and coverage gate
         shell: pwsh
@@ -62,94 +81,3 @@ jobs:
             coverage/
           retention-days: 14
 
-  # The unit tests use SQLite with EnsureCreated(), so nothing else builds the database from the real migrations on SQL
-  # Server. Runs in parallel with build-and-test.
-  clean-database-migrations:
-    name: clean-database-migrations
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-
-    # A throwaway SQL Server for this job only (SQL auth: the container has no Entra ID). The password
-    # protects nothing but this container, so it isn't a secret.
-    services:
-      sqlserver:
-        image: mcr.microsoft.com/mssql/server:2022-latest
-        env:
-          ACCEPT_EULA: Y
-          MSSQL_SA_PASSWORD: Throwaway-container-2026!
-        ports:
-          - 1433:1433
-        options: >-
-          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Throwaway-container-2026!' -C -Q 'SELECT 1' || exit 1"
-          --health-interval 10s --health-timeout 5s --health-retries 20
-
-    env:
-      SQL_SERVER: Server=localhost,1433;User ID=sa;Password=Throwaway-container-2026!;TrustServerCertificate=True
-      DATABASE: shared_database
-
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-dotnet@v6
-        with:
-          dotnet-version: 10.0.x
-
-      - uses: actions/cache@v6
-        with:
-          path: ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'dotnet-tools.json') }}
-          restore-keys: nuget-${{ runner.os }}-
-
-      - name: Restore and build
-        run: |
-          dotnet restore DailyMachineSpirit.slnx
-          dotnet tool restore
-          dotnet build DailyMachineSpirit.slnx -c Release --no-restore
-
-      - name: No model change without a migration
-        run: >-
-          dotnet ef migrations has-pending-model-changes
-          --project src/DailyMachineSpirit.Data --startup-project src/DailyMachineSpirit.Functions --configuration Release --no-build
-
-      # The same kind of bundle the deploys will run.
-      - name: Build the migration bundle
-        run: |
-          dotnet ef migrations bundle --project src/DailyMachineSpirit.Data --startup-project src/DailyMachineSpirit.Functions \
-            --configuration Release --self-contained --target-runtime linux-x64 --output efbundle --force
-
-      # Production's database is shared with another app, whose tables and migrations history live in dbo. Stand in
-      # for them, so the next steps show that ours stay in their own schema and leave dbo alone.
-      - name: Another app's tables in dbo
-        run: |
-          sqlcmd() { docker exec ${{ job.services.sqlserver.id }} /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Throwaway-container-2026!' -C -b "$@"; }
-          sqlcmd -Q "CREATE DATABASE $DATABASE"
-          sqlcmd -d $DATABASE -Q "CREATE TABLE dbo.__EFMigrationsHistory (MigrationId nvarchar(150) PRIMARY KEY, ProductVersion nvarchar(32) NOT NULL);
-            INSERT dbo.__EFMigrationsHistory VALUES ('20200101000000_OtherApp', '10.0.0');
-            CREATE TABLE dbo.Items (Id int PRIMARY KEY); INSERT dbo.Items VALUES (1);"
-
-      - name: Apply every migration to an empty schema
-        run: ./efbundle --connection "$SQL_SERVER;Database=$DATABASE"
-
-      # "0" rolls back to before the first migration: every Down runs. Then the whole chain again.
-      - name: Roll every migration back, then apply them again
-        run: |
-          ./efbundle 0 --connection "$SQL_SERVER;Database=$DATABASE"
-          ./efbundle --connection "$SQL_SERVER;Database=$DATABASE"
-
-      - name: Our migrations stayed in their schema
-        run: |
-          # -h -1 -W: just the value, no header or padding.
-          sql() { docker exec ${{ job.services.sqlserver.id }} /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Throwaway-container-2026!' -C -b -h -1 -W -d $DATABASE -Q "SET NOCOUNT ON; $1"; }
-          ours=$(sql "SELECT COUNT(*) FROM machinespirit.__EFMigrationsHistory")
-          theirs=$(sql "SELECT COUNT(*) FROM dbo.__EFMigrationsHistory")
-          other_rows=$(sql "SELECT COUNT(*) FROM dbo.Items")
-          dbo_tables=$(sql "SELECT COUNT(*) FROM sys.tables WHERE schema_id = SCHEMA_ID('dbo')")
-          echo "machinespirit history: $ours; dbo history: $theirs; dbo.Items rows: $other_rows; dbo tables: $dbo_tables"
-          [ "$ours" -gt 0 ] && [ "$theirs" = 1 ] && [ "$other_rows" = 1 ] && [ "$dbo_tables" = 2 ] \
-            || { echo "::error title=Migrations left their schema::Expected our history in machinespirit and dbo untouched."; exit 1; }
-
-      # Each test class gets its own database with the migrations applied (see TestDatabase).
-      - name: Repository tests on SQL Server
-        env:
-          SQLSERVER_TEST_CONNECTION: ${{ env.SQL_SERVER }}
-        run: dotnet test tests/DailyMachineSpirit.Tests -c Release --no-build --filter "FullyQualifiedName~RepositoryTests" --logger "console;verbosity=normal"
