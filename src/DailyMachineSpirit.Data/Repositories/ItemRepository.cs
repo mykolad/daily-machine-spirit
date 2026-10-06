@@ -87,9 +87,8 @@ public class ItemRepository : IItemRepository
 
     public async Task SaveScores(DateOnly publishedOnUtc, ItemSimilarity similarity, CancellationToken cancellationToken)
     {
-        similarity.CreatedAtUtc = Utc.From(similarity.CreatedAtUtc);
         await container.PatchItemAsync<ItemDocument>(ItemDocument.IdFor(publishedOnUtc), PartitionKey,
-            [PatchOperation.Set("/similarity", similarity)], cancellationToken: cancellationToken);
+            [PatchOperation.Set("/similarity", Utc.From(similarity))], cancellationToken: cancellationToken);
     }
 
     public async Task<Dictionary<int, float[]>> GetScoresByItemNumber(string scoresGeneratorVersion, CancellationToken cancellationToken)

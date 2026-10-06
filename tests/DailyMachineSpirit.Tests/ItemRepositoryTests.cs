@@ -121,6 +121,20 @@ public sealed class ItemRepositoryTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task TryAdd_WithScoresAlreadyAttached_StoresTheirTimestampAsUtc()
+    {
+        var scoredAt = new DateTime(2026, 10, 7, 0, 0, 9, DateTimeKind.Utc);
+        var item = MakeItem(new DateOnly(2026, 10, 7), "Scored first");
+        item.Similarity = new ItemSimilarity { ScoresGeneratorVersion = "jev/v1", Scores = [0.5f], CreatedAtUtc = scoredAt.ToLocalTime() };
+
+        await repository.TryAdd(item, CancellationToken.None);
+        var saved = await repository.GetPublishedOn(item.PublishedOnUtc, CancellationToken.None);
+
+        Assert.Equal(scoredAt, saved?.Similarity?.CreatedAtUtc);
+        Assert.Equal(DateTimeKind.Utc, saved?.Similarity?.CreatedAtUtc.Kind);
+    }
+
+    [Fact]
     public async Task SaveScores_StoresTheScoresExactly_AndReplacesOlderOnes()
     {
         var item = MakeItem(new DateOnly(2026, 10, 7), "Scored");

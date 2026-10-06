@@ -38,7 +38,7 @@ internal sealed class ItemDocument
         GeneratedAtUtc = Utc.From(item.GeneratedAtUtc),
         BlessedCount = item.BlessedCount,
         HeresyCount = item.HeresyCount,
-        Similarity = item.Similarity,
+        Similarity = item.Similarity is { } similarity ? Utc.From(similarity) : null,
     };
 
     public Item ToItem() => new()
@@ -76,5 +76,12 @@ internal static class Utc
         DateTimeKind.Local => value.ToUniversalTime(),
         DateTimeKind.Unspecified => DateTime.SpecifyKind(value, DateTimeKind.Utc),
         _ => value,
+    };
+
+    public static ItemSimilarity From(ItemSimilarity similarity) => new()
+    {
+        ScoresGeneratorVersion = similarity.ScoresGeneratorVersion,
+        Scores = similarity.Scores,
+        CreatedAtUtc = From(similarity.CreatedAtUtc),
     };
 }
