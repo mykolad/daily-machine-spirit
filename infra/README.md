@@ -15,7 +15,7 @@ and what lives outside Azure.
 | GitHub identities | `machinespirit-github-staging`, `-production`, `-infrastructure` | OIDC from this repository's GitHub environments of the same names |
 
 Each app has its own managed identity, with access to its own database, vault and storage, and to the models. Nothing
-uses a key or a password.
+uses a key or a password: basic-auth publishing is off too, so deploys sign in with Entra ID.
 
 ## First deployment
 

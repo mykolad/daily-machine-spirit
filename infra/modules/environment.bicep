@@ -17,6 +17,8 @@ param githubSubjectPrefix string
 
 var roles = {
   storageBlobDataOwner: 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b'
+  storageQueueDataContributor: '974c5e8b-45b9-4653-ba55-5f855dd0fb88'
+  storageTableDataContributor: '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
   keyVaultSecretsUser: '4633458b-17de-408a-b874-0445c86b69e6'
   keyVaultSecretsOfficer: 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7'
   cognitiveServicesOpenAiUser: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
@@ -171,7 +173,8 @@ resource app 'Microsoft.Web/sites@2024-04-01' = {
           priority: 100
         }
       ]
-      // Deploys go to the SCM site, which Entra ID already guards; the IP rule applies to visitors.
+      // Deploys go to the SCM site from GitHub's runners, whose addresses change, so the IP rule applies to visitors
+      // only. The SCM site takes Entra ID alone: basic-auth publishing credentials are off (below).
       scmIpSecurityRestrictionsUseMain: false
       appSettings: [
         {
@@ -195,6 +198,22 @@ resource app 'Microsoft.Web/sites@2024-04-01' = {
   }
 }
 
+resource noBasicAuthScm 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2024-04-01' = {
+  parent: app
+  name: 'scm'
+  properties: {
+    allow: false
+  }
+}
+
+resource noBasicAuthFtp 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2024-04-01' = {
+  parent: app
+  name: 'ftp'
+  properties: {
+    allow: false
+  }
+}
+
 resource appStorage 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   scope: storage
   name: guid(storage.id, app.id, roles.storageBlobDataOwner)
@@ -202,6 +221,27 @@ resource appStorage 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
     principalId: app.identity.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roles.storageBlobDataOwner)
+  }
+}
+
+// The Functions host also keeps queues and tables in its storage, besides the blob leases and deployment packages.
+resource appStorageQueues 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: storage
+  name: guid(storage.id, app.id, roles.storageQueueDataContributor)
+  properties: {
+    principalId: app.identity.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roles.storageQueueDataContributor)
+  }
+}
+
+resource appStorageTables 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: storage
+  name: guid(storage.id, app.id, roles.storageTableDataContributor)
+  properties: {
+    principalId: app.identity.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roles.storageTableDataContributor)
   }
 }
 

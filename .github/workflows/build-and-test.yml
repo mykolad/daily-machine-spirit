@@ -50,7 +50,7 @@ jobs:
           az bicep lint --file infra/main.bicep --diagnostics-format sarif > bicep-lint.sarif
           az bicep build --file infra/main.bicep --stdout > /dev/null
           if jq -e '[.runs[].results[]] | length > 0' bicep-lint.sarif > /dev/null; then
-            jq -r '.runs[].results[] | "::warning file=\(.locations[0].physicalLocation.artifactLocation.uri)::\(.message.text)"' bicep-lint.sarif
+            jq -r '.runs[].results[] | "::error file=\(.locations[0].physicalLocation.artifactLocation.uri)::\(.message.text)"' bicep-lint.sarif
             exit 1
           fi
 
