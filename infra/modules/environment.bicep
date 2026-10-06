@@ -135,6 +135,8 @@ resource app 'Microsoft.Web/sites@2024-04-01' = {
   name: appName
   location: location
   kind: 'functionapp,linux'
+  // Flex Consumption needs the deployment container to exist when the app is created, and the URL below only names it.
+  dependsOn: [deployments]
   identity: {
     type: 'SystemAssigned'
   }

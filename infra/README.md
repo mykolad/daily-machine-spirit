@@ -49,6 +49,8 @@ Into the existing group, with `resources.bicep`: that's all the infrastructure i
 so a deploy workflow will use the same command. Preview first with `what-if`:
 
 ```powershell
+$owner = az ad signed-in-user show --query id -o tsv
+$ip = Invoke-RestMethod https://api.ipify.org
 az deployment group what-if -g machinespirit-rg --template-file infra/resources.bicep `
   --parameters ownerPrincipalId=$owner stagingAllowedIp=$ip
 az deployment group create -g machinespirit-rg --name machinespirit --template-file infra/resources.bicep `
