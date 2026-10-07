@@ -46,27 +46,34 @@ public sealed class DailyRitePublisher
             .BindAsync(draft => rites.Publish(draft.Id, today, cancellationToken));
         return await published.MatchAsync(
             RightAsync: rite => Task.FromResult(Right<Error, PublishedRite>(new PublishedRite(rite, IsNew: true))),
-            // Another run got there first: it published today's rite (so this day has one), or it published the same
-            // draft (so this one isn't waiting any more). Either way, today's rite, if it exists now, stands.
-            LeftAsync: error => error == RiteRepository.DayAlreadyHasRite || error == RiteRepository.DraftNotWaiting
-                ? PublishedMeanwhile(today, error, cancellationToken)
-                : Task.FromResult(Left<Error, PublishedRite>(error)));
+            // Another run may have got there first: publishing the day's rite or this same draft, or publishing the last
+            // waiting draft while this run's fallback failed to write. Whatever failed, today's rite, if it exists now,
+            // stands.
+            LeftAsync: error => PublishedMeanwhile(today, error, cancellationToken));
     }
 
     private Task<Either<Error, Draft>> NextDraft(CancellationToken cancellationToken)
+        => TopOfTheCalendar(cancellationToken)
+            .BindAsync(top => top.Match(
+                Some: draft => Task.FromResult(Right<Error, Draft>(draft)),
+                // An empty backlog never leaves a day without its rite: one is written on the spot. The calendar is read
+                // again afterwards, since a refill running meanwhile may have saved a better draft.
+                None: () => refiller.AddDraft([], cancellationToken)
+                    .BindAsync(_ => TopOfTheCalendar(cancellationToken))
+                    .BindAsync(again => again.ToEither(Error.New("The backlog is still empty after writing a draft.")))));
+
+    private Task<Either<Error, Option<Draft>>> TopOfTheCalendar(CancellationToken cancellationToken)
         => drafts.GetWaiting(cancellationToken)
             .BindAsync(waiting => rites.GetNewest(LiturgicalCalendar.ResemblanceWindow, cancellationToken)
                 .BindAsync(recent => scriptorium.GetPlacements(cancellationToken)
-                    .BindAsync(placements => LiturgicalCalendar.Order(waiting, recent, placements.Order).HeadOrNone().Match(
-                        Some: draft => Task.FromResult(Right<Error, Draft>(draft)),
-                        // An empty backlog never leaves a day without its rite: one is written on the spot.
-                        None: () => refiller.AddDraft(waiting, cancellationToken)))));
+                    .MapAsync(placements => Task.FromResult(LiturgicalCalendar.Order(waiting, recent, placements.Order).HeadOrNone()))));
 
-    // Theirs stands, and this run's draft (if another) keeps waiting. When the day has no rite after all (the draft was
-    // published on another day), the original error stands, and the retry chooses again.
-    private Task<Either<Error, PublishedRite>> PublishedMeanwhile(DateOnly day, Error error, CancellationToken cancellationToken)
-        => rites.GetPublishedOn(day, cancellationToken)
-            .BindAsync(published => published.Match(
+    // Theirs stands, and this run's draft (if another) keeps waiting. When the day has no rite after all, or it can't be
+    // read, the original error stands, and the retry chooses again.
+    private async Task<Either<Error, PublishedRite>> PublishedMeanwhile(DateOnly day, Error error, CancellationToken cancellationToken)
+        => (await rites.GetPublishedOn(day, cancellationToken)).Match(
+            Right: published => published.Match(
                 Some: rite => Right<Error, PublishedRite>(new PublishedRite(rite, IsNew: false)),
-                None: () => Left<Error, PublishedRite>(error)));
+                None: () => Left<Error, PublishedRite>(error)),
+            Left: _ => Left<Error, PublishedRite>(error));
 }
