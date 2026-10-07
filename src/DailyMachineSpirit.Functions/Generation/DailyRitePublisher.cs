@@ -43,8 +43,10 @@ public sealed class DailyRitePublisher
             .BindAsync(draft => rites.Publish(draft.Id, today, cancellationToken));
         return await published.MatchAsync(
             RightAsync: rite => Task.FromResult(Right<Error, PublishedRite>(new PublishedRite(rite, IsNew: true))),
-            LeftAsync: error => error == RiteRepository.DayAlreadyHasRite
-                ? PublishedMeanwhile(today, cancellationToken)
+            // Another run got there first: it published today's rite (so this day has one), or it published the same
+            // draft (so this one isn't waiting any more). Either way, today's rite, if it exists now, stands.
+            LeftAsync: error => error == RiteRepository.DayAlreadyHasRite || error == RiteRepository.DraftNotWaiting
+                ? PublishedMeanwhile(today, error, cancellationToken)
                 : Task.FromResult(Left<Error, PublishedRite>(error)));
     }
 
@@ -56,10 +58,11 @@ public sealed class DailyRitePublisher
                     // An empty backlog never leaves a day without its rite: one is written on the spot.
                     None: () => refiller.AddDraft(waiting, cancellationToken))));
 
-    // Another run published the day's rite while this one was choosing: theirs stands, and this one's draft keeps waiting.
-    private Task<Either<Error, PublishedRite>> PublishedMeanwhile(DateOnly day, CancellationToken cancellationToken)
+    // Theirs stands, and this run's draft (if another) keeps waiting. When the day has no rite after all (the draft was
+    // published on another day), the original error stands, and the retry chooses again.
+    private Task<Either<Error, PublishedRite>> PublishedMeanwhile(DateOnly day, Error error, CancellationToken cancellationToken)
         => rites.GetPublishedOn(day, cancellationToken)
             .BindAsync(published => published.Match(
                 Some: rite => Right<Error, PublishedRite>(new PublishedRite(rite, IsNew: false)),
-                None: () => Left<Error, PublishedRite>(Error.New($"{day:yyyy-MM-dd} has a rite, but it can't be found."))));
+                None: () => Left<Error, PublishedRite>(error)));
 }

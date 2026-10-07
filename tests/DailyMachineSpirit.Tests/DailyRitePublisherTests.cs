@@ -88,6 +88,21 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task PublishToday_TwoRunsAtOnce_PublishOneRite_AndBothSucceed()
+    {
+        await testbed.AddDraft("The only draft", 0.9f);
+
+        var results = await Task.WhenAll(
+            testbed.Publisher().PublishToday(CancellationToken.None),
+            testbed.Publisher().PublishToday(CancellationToken.None));
+
+        var published = results.Select(Ok).ToList();
+        Assert.Single(published, run => run.IsNew);
+        Assert.All(published, run => Assert.Equal("The only draft", run.Rite.Title));
+        Assert.Equal(1, (await testbed.PublishedOn(Today)).Number);
+    }
+
+    [Fact]
     public async Task TimerFunction_PublishesTodaysRite_AndAsksForARefill()
     {
         await testbed.AddDraft("Next up", 0.9f);

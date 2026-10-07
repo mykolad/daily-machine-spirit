@@ -88,6 +88,24 @@ public class LiturgicalCalendarTests
         Assert.Equal(["Another cache", "A build"], Titles(ordered));
     }
 
+    [Fact]
+    public void Order_PutsDraftsAnOlderJudgeScored_AfterTheNewestJudges()
+    {
+        var judgedEarlier = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
+        var oldJudge = MakeDraft("Old judge, high score", RiteKind.Prayer, 0.9f, AboutCaches) with
+        {
+            Augury = new Augury { Quality = 0.9f, JudgedBy = "jev-1.12.0/quality-q1", JudgedAtUtc = judgedEarlier },
+        };
+        var newJudge = MakeDraft("New judge, low score", RiteKind.Prayer, 0.3f, AboutBuilds) with
+        {
+            Augury = new Augury { Quality = 0.3f, JudgedBy = "jev-1.13.0/quality-q1", JudgedAtUtc = judgedEarlier.AddDays(1) },
+        };
+
+        var ordered = LiturgicalCalendar.Order([oldJudge, newJudge], []);
+
+        Assert.Equal(["New judge, low score", "Old judge, high score"], Titles(ordered));
+    }
+
     private static string[] Titles(List<Draft> ordered) => ordered.Select(draft => draft.Title).ToArray();
 
     private static Draft MakeDraft(string title, RiteKind kind, float quality, float[] scores) => new()

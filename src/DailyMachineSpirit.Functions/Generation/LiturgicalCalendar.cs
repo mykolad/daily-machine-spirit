@@ -6,7 +6,8 @@ namespace DailyMachineSpirit.Functions.Generation;
 /// <summary>
 /// The Augury's order of the waiting drafts: the first is published next. Better drafts go first, but a draft much like
 /// the rites just before it waits, and prayers and rituals take turns where the qualities allow, so the days vary.
-/// Drafts without a quality (Jev off or failing) follow, oldest first.
+/// Drafts without a quality (Jev off or failing) follow, oldest first, and so do drafts an older judge scored: a quality
+/// is only comparable with the same judge's.
 /// </summary>
 public static class LiturgicalCalendar
 {
@@ -23,8 +24,13 @@ public static class LiturgicalCalendar
     {
         // Oldest first: each pick joins the end, as the rite before the next one.
         var before = recent.Take(ResemblanceWindow).Reverse().Select(rite => (rite.Kind, rite.Similarity)).ToList();
+        // The judge that scored most recently: after a new Jev model or quality question, drafts it hasn't judged yet
+        // wait behind the ones it has.
+        var judge = waiting.SelectMany(draft => draft.Augury).OrderByDescending(augury => augury.JudgedAtUtc)
+            .Select(augury => augury.JudgedBy).HeadOrNone();
+        bool IsJudged(Draft draft) => draft.Augury.Exists(augury => judge.Exists(newest => newest == augury.JudgedBy));
         // A fixed order to start from, so equal values always resolve the same way.
-        var judged = waiting.Where(draft => draft.Augury.IsSome).OrderBy(draft => draft.GeneratedAtUtc).ThenBy(draft => draft.Id).ToList();
+        var judged = waiting.Where(IsJudged).OrderBy(draft => draft.GeneratedAtUtc).ThenBy(draft => draft.Id).ToList();
 
         var ordered = new List<Draft>();
         while (judged.Count > 0)
@@ -36,7 +42,7 @@ public static class LiturgicalCalendar
             before.Add((next.Kind, next.Similarity));
         }
 
-        ordered.AddRange(waiting.Where(draft => draft.Augury.IsNone).OrderBy(draft => draft.GeneratedAtUtc).ThenBy(draft => draft.Id));
+        ordered.AddRange(waiting.Where(draft => !IsJudged(draft)).OrderBy(draft => draft.GeneratedAtUtc).ThenBy(draft => draft.Id));
         return ordered;
     }
 
