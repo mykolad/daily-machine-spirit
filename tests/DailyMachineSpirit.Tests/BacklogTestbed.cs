@@ -1,6 +1,7 @@
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Generation;
+using DailyMachineSpirit.Functions.Scriptorium;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
@@ -32,6 +33,8 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public DraftRepository Drafts => new(cosmos.Container);
 
+    public ScriptoriumRepository Scriptorium => new(cosmos.Container);
+
     public static string Answer(string title)
         => FakeChatClients.Answer(title, "Press Re-run thrice, O Machine Spirit.", "The test is flaky: fix its race instead.");
 
@@ -45,22 +48,35 @@ public sealed class BacklogTestbed : IAsyncLifetime
         return new BacklogRefiller(
             Drafts,
             Rites,
+            Scriptorium,
             new RiteWriter(Models, options, Time, NullLogger<RiteWriter>.Instance),
             Jev.Scorer(Time, FakeJev.ApiKey),
             options,
             NullLogger<BacklogRefiller>.Instance);
     }
 
-    public DailyRitePublisher Publisher() => new(Rites, Drafts, Refiller(), Time);
+    public DailyRitePublisher Publisher() => new(Rites, Drafts, Scriptorium, Refiller(), Time);
+
+    public Scribes Scribes() => new(Drafts, Rites, Scriptorium, Time);
+
+    /// <summary>Scribes whose every read fails, as when Cosmos is down: the container doesn't exist.</summary>
+    public Scribes ScribesWithoutCosmos()
+    {
+        var missing = cosmos.Container.Database.GetContainer("missing");
+        return new Scribes(new DraftRepository(missing), new RiteRepository(missing), new ScriptoriumRepository(missing), Time);
+    }
 
     /// <summary>A waiting draft, already judged, as if written by an earlier refill.</summary>
     public async Task<Draft> AddDraft(string title, float quality)
+        => await AddDraft(title, quality, RiteKind.Prayer);
+
+    public async Task<Draft> AddDraft(string title, float quality, RiteKind kind)
     {
         var draft = new Draft
         {
             Id = Guid.NewGuid(),
             State = DraftState.Waiting,
-            Kind = RiteKind.Prayer,
+            Kind = kind,
             Title = title,
             Text = "O Machine Spirit, let the cache be warm.",
             HereticalTruth = "A cold cache is just a cache that hasn't been read yet.",

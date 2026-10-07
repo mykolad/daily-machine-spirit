@@ -17,13 +17,16 @@ public sealed class DailyRitePublisher
 {
     private readonly IRiteRepository rites;
     private readonly IDraftRepository drafts;
+    private readonly IScriptoriumRepository scriptorium;
     private readonly BacklogRefiller refiller;
     private readonly TimeProvider time;
 
-    public DailyRitePublisher(IRiteRepository rites, IDraftRepository drafts, BacklogRefiller refiller, TimeProvider time)
+    public DailyRitePublisher(
+        IRiteRepository rites, IDraftRepository drafts, IScriptoriumRepository scriptorium, BacklogRefiller refiller, TimeProvider time)
     {
         this.rites = rites;
         this.drafts = drafts;
+        this.scriptorium = scriptorium;
         this.refiller = refiller;
         this.time = time;
     }
@@ -53,10 +56,11 @@ public sealed class DailyRitePublisher
     private Task<Either<Error, Draft>> NextDraft(CancellationToken cancellationToken)
         => drafts.GetWaiting(cancellationToken)
             .BindAsync(waiting => rites.GetNewest(LiturgicalCalendar.ResemblanceWindow, cancellationToken)
-                .BindAsync(recent => LiturgicalCalendar.Order(waiting, recent).HeadOrNone().Match(
-                    Some: draft => Task.FromResult(Right<Error, Draft>(draft)),
-                    // An empty backlog never leaves a day without its rite: one is written on the spot.
-                    None: () => refiller.AddDraft(waiting, cancellationToken))));
+                .BindAsync(recent => scriptorium.GetPlacements(cancellationToken)
+                    .BindAsync(placements => LiturgicalCalendar.Order(waiting, recent, placements.Order).HeadOrNone().Match(
+                        Some: draft => Task.FromResult(Right<Error, Draft>(draft)),
+                        // An empty backlog never leaves a day without its rite: one is written on the spot.
+                        None: () => refiller.AddDraft(waiting, cancellationToken)))));
 
     // Theirs stands, and this run's draft (if another) keeps waiting. When the day has no rite after all (the draft was
     // published on another day), the original error stands, and the retry chooses again.

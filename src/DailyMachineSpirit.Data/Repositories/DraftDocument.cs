@@ -35,6 +35,8 @@ internal sealed record DraftDocument
 
     public DateOnly? PublishedOnUtc { get; init; }
 
+    public DateTime? BurnedAtUtc { get; init; }
+
     public static string IdFor(Guid draftId) => draftId.ToString("D");
 
     public static DraftDocument From(Draft draft) => new()
@@ -50,6 +52,7 @@ internal sealed record DraftDocument
         Similarity = draft.Similarity.Map(Utc.From).OrNull(),
         Augury = draft.Augury.Map(augury => augury with { JudgedAtUtc = Utc.From(augury.JudgedAtUtc) }).OrNull(),
         PublishedOnUtc = draft.PublishedOnUtc.OrNullable(),
+        BurnedAtUtc = draft.BurnedAtUtc.Map(Utc.From).OrNullable(),
     };
 
     public Draft ToDraft() => new()
@@ -65,5 +68,6 @@ internal sealed record DraftDocument
         Similarity = Optional(Similarity),
         Augury = Optional(Augury),
         PublishedOnUtc = Optional(PublishedOnUtc),
+        BurnedAtUtc = Optional(BurnedAtUtc),
     };
 }

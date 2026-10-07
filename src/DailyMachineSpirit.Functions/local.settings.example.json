@@ -6,6 +6,7 @@
     "Cosmos__Endpoint": "",
     "Cosmos__Database": "",
     "AzureOpenAI__Endpoint": "",
-    "Jev__ApiKey": ""
+    "Jev__ApiKey": "",
+    "Scriptorium__Enabled": "true"
   }
 }

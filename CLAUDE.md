@@ -106,6 +106,22 @@ tools/coverage.ps1                — tests + coverage report + the coverage gat
     for the Augury. A draft Jev can't score still joins the backlog, without scores.
   - **Settings:** `AzureOpenAI:Endpoint` (the models are reached as the managed identity), `Jev:ApiKey` (a Key Vault
     reference in Azure; empty turns Jev off), and optionally `Generation:*` (`GenerationOptions`).
+- **The Scriptorium** (`/scriptorium`, `Scriptorium/`): where the **Scribes** (moderators) shape the Liturgical Calendar.
+  - **Actions:** **Anoint** (next to be published), **Exalt** / **Humble** (up or down one), **Consign to the Flames**
+    (burn: the draft is hidden, never deleted), **Restore from the Ashes**, **Summon New Rites** (a refill), and **Let
+    the Augury Decide** (forget the Scribes' order).
+  - **The Scribes' order** (the `placements` document) comes first; the Augury orders the rest. Moving a draft places
+    everything above it too, so the order stays what the Scribes saw.
+  - **Every action is a lesson:** it saves a `ScribeDecision` with the draft as it was, the Augury's place and quality
+    for it, and the Scribe's optional note, in the same batch as the change. #12 teaches the Augury from them.
+  - **Concurrency:** each change uses an ETag, so two Scribes can't overwrite each other: the later one is told to look
+    again.
+  - **Refills:** burning the last waiting draft asks for a refill at once (the `backlog-refills` queue), as does
+    Summon.
+  - **The page:** plain HTML forms, no script. Each action posts and redirects back with what happened. It's never
+    cached or indexed, and forms posted from another site are refused (`Sec-Fetch-Site`).
+  - **Access:** `Scriptorium:Enabled` is off by default. Staging turns it on, since only its owner's address can reach
+    it. Production turns it on only behind Cloudflare Access.
 
 ## Pull requests
 
