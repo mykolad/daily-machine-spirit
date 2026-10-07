@@ -11,7 +11,7 @@ public static class RitePrompt
     public const int TextLength = 400;
     public const int HereticalTruthLength = 250;
 
-    public static string Instructions(RiteKind kind, IReadOnlyList<string> recentTitles)
+    public static string Instructions(RiteKind kind, IReadOnlyList<string> titlesToAvoid)
     {
         var sb = new StringBuilder();
         sb.AppendLine("You write for The Daily Machine Spirit, a satirical website. Its joke: AI and vibe coding are turning");
@@ -36,10 +36,10 @@ public static class RitePrompt
         sb.AppendLine("  their names (no Adeptus Mechanicus, no Imperium, no Space Marines). \"The Omnissiah\" may appear at most once.");
         sb.AppendLine("- Family-friendly. No real people or companies mocked by name.");
 
-        if (recentTitles.Count > 0)
+        if (titlesToAvoid.Count > 0)
         {
-            sb.AppendLine("- The most recent rites are below: pick a different subject and title.");
-            foreach (var title in recentTitles)
+            sb.AppendLine("- These rites exist already: pick a different subject and title.");
+            foreach (var title in titlesToAvoid)
                 sb.AppendLine($"  * {title}");
         }
 
@@ -47,11 +47,11 @@ public static class RitePrompt
     }
 
     public static string Request(RiteKind kind)
-        => kind == RiteKind.Prayer ? "Write today's prayer." : "Write today's ritual.";
+        => kind == RiteKind.Prayer ? "Write a prayer." : "Write a ritual.";
 }
 
-/// <summary>The model's answer: its JSON schema is made from this record, descriptions included.</summary>
-public sealed record RiteDraft(
+/// <summary>The words of a rite, as the model answers them: its JSON schema is made from this record, descriptions included.</summary>
+public sealed record RiteContent(
     [property: Description("The rite's name, like \"The Rite of Re-Run\".")] string Title,
     [property: Description("The prayer or ritual itself, in solemn liturgical language.")] string Text,
     [property: Description("What really happens and what would fix it, in plain modern English.")] string HereticalTruth);

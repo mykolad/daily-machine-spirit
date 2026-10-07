@@ -13,7 +13,6 @@ public class RiteWriterTests
     private const string Sol = "gpt-6-sol";
     private const string Luna = "gpt-6-luna";
 
-    private static readonly DateOnly Day = new(2026, 10, 7);
     private static readonly string GoodAnswer = FakeChatClients.Answer(
         "The Rite of Re-Run", "Press Re-run thrice, O Machine Spirit.", "The test is flaky: fix its race instead.");
 
@@ -25,24 +24,24 @@ public class RiteWriterTests
     {
         models.Answers(Sol, FakeChatClients.Answer("  The Rite of Re-Run ", " Press Re-run thrice. ", " It's flaky. "));
 
-        var rite = Ok(await Writer(retryDelaySeconds: 0).Write(Day, RiteKind.Ritual, [], CancellationToken.None));
+        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, [], CancellationToken.None));
 
-        Assert.Equal("The Rite of Re-Run", rite.Title);
-        Assert.Equal("Press Re-run thrice.", rite.Text);
-        Assert.Equal("It's flaky.", rite.HereticalTruth);
-        Assert.Equal(Day, rite.PublishedOnUtc);
-        Assert.Equal(RiteKind.Ritual, rite.Kind);
-        Assert.Equal(Sol, rite.GeneratedByModel);
-        Assert.Equal(time.GetUtcNow().UtcDateTime, rite.GeneratedAtUtc);
+        Assert.Equal("The Rite of Re-Run", draft.Title);
+        Assert.Equal("Press Re-run thrice.", draft.Text);
+        Assert.Equal("It's flaky.", draft.HereticalTruth);
+        Assert.Equal(DraftState.Waiting, draft.State);
+        Assert.Equal(RiteKind.Ritual, draft.Kind);
+        Assert.Equal(Sol, draft.GeneratedByModel);
+        Assert.Equal(time.GetUtcNow().UtcDateTime, draft.GeneratedAtUtc);
         Assert.Single(models.Requests);
     }
 
     [Fact]
-    public async Task Write_AsksForTheKind_AndListsTheRecentTitles()
+    public async Task Write_AsksForTheKind_AndListsTheTitlesToAvoid()
     {
         models.Answers(Sol, GoodAnswer);
 
-        await Writer(retryDelaySeconds: 0).Write(Day, RiteKind.Prayer, ["Litany of the Clean Cache", "The Rite of Re-Run"], CancellationToken.None);
+        await Writer(retryDelaySeconds: 0).Write(RiteKind.Prayer, ["Litany of the Clean Cache", "The Rite of Re-Run"], CancellationToken.None);
 
         var messages = models.Requests.Single().Messages;
         var instructions = messages.Single(message => message.Role == ChatRole.System).Text;
@@ -50,7 +49,7 @@ public class RiteWriterTests
         Assert.Contains("* Litany of the Clean Cache", instructions);
         Assert.Contains("* The Rite of Re-Run", instructions);
         Assert.Contains("Never quote or paraphrase Games Workshop", instructions);
-        Assert.Equal("Write today's prayer.", messages.Single(message => message.Role == ChatRole.User).Text);
+        Assert.Equal("Write a prayer.", messages.Single(message => message.Role == ChatRole.User).Text);
     }
 
     [Theory]
@@ -62,9 +61,9 @@ public class RiteWriterTests
     {
         models.Answers(Sol, unusable, GoodAnswer);
 
-        var rite = Ok(await Writer(retryDelaySeconds: 0).Write(Day, RiteKind.Ritual, [], CancellationToken.None));
+        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, [], CancellationToken.None));
 
-        Assert.Equal("The Rite of Re-Run", rite.Title);
+        Assert.Equal("The Rite of Re-Run", draft.Title);
         Assert.Equal(2, models.Requests.Count);
     }
 
@@ -79,9 +78,9 @@ public class RiteWriterTests
             field == "title" ? tooLong : "Title", field == "text" ? tooLong : "Text.", field == "hereticalTruth" ? tooLong : "Truth."),
             GoodAnswer);
 
-        var rite = Ok(await Writer(retryDelaySeconds: 0).Write(Day, RiteKind.Ritual, [], CancellationToken.None));
+        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, [], CancellationToken.None));
 
-        Assert.Equal("The Rite of Re-Run", rite.Title);
+        Assert.Equal("The Rite of Re-Run", draft.Title);
         Assert.Equal(2, models.Requests.Count);
     }
 
@@ -93,9 +92,9 @@ public class RiteWriterTests
     {
         models.Answers(Sol, FakeChatClients.Answer(title, text, hereticalTruth), GoodAnswer);
 
-        var rite = Ok(await Writer(retryDelaySeconds: 0).Write(Day, RiteKind.Ritual, [], CancellationToken.None));
+        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, [], CancellationToken.None));
 
-        Assert.Equal("The Rite of Re-Run", rite.Title);
+        Assert.Equal("The Rite of Re-Run", draft.Title);
     }
 
     [Fact]
@@ -103,9 +102,9 @@ public class RiteWriterTests
     {
         models.Answers(Sol, FakeChatClients.Answer("Title", "O Omnissiah, let the build pass.", "Truth."));
 
-        var rite = Ok(await Writer(retryDelaySeconds: 0).Write(Day, RiteKind.Prayer, [], CancellationToken.None));
+        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Prayer, [], CancellationToken.None));
 
-        Assert.Equal("O Omnissiah, let the build pass.", rite.Text);
+        Assert.Equal("O Omnissiah, let the build pass.", draft.Text);
     }
 
     [Fact]
@@ -113,9 +112,9 @@ public class RiteWriterTests
     {
         models.Fails(Sol, 3).Answers(Luna, GoodAnswer);
 
-        var rite = Ok(await Writer(retryDelaySeconds: 0).Write(Day, RiteKind.Ritual, [], CancellationToken.None));
+        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, [], CancellationToken.None));
 
-        Assert.Equal(Luna, rite.GeneratedByModel);
+        Assert.Equal(Luna, draft.GeneratedByModel);
         Assert.Equal([Sol, Sol, Sol, Luna], models.Requests.Select(request => request.Model));
     }
 
@@ -124,7 +123,7 @@ public class RiteWriterTests
     {
         models.Fails(Sol, 3).Fails(Luna, 3);
 
-        var result = await Writer(retryDelaySeconds: 0).Write(Day, RiteKind.Ritual, [], CancellationToken.None);
+        var result = await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, [], CancellationToken.None);
 
         Assert.Contains("gpt-6-luna, try 3: The model is overloaded.", Failed(result).Message);
         Assert.Equal(6, models.Requests.Count);
@@ -135,13 +134,13 @@ public class RiteWriterTests
     {
         models.Fails(Sol, 1).Answers(Sol, GoodAnswer);
 
-        var writing = Writer(retryDelaySeconds: 30).Write(Day, RiteKind.Ritual, [], CancellationToken.None);
+        var writing = Writer(retryDelaySeconds: 30).Write(RiteKind.Ritual, [], CancellationToken.None);
         time.Advance(TimeSpan.FromSeconds(29));
         Assert.Single(models.Requests);
         time.Advance(TimeSpan.FromSeconds(1));
-        var rite = Ok(await writing);
+        var draft = Ok(await writing);
 
-        Assert.Equal("The Rite of Re-Run", rite.Title);
+        Assert.Equal("The Rite of Re-Run", draft.Title);
         Assert.Equal(2, models.Requests.Count);
     }
 
@@ -151,7 +150,7 @@ public class RiteWriterTests
         models.Answers(Sol, GoodAnswer);
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => Writer(retryDelaySeconds: 0).Write(Day, RiteKind.Ritual, [], new CancellationToken(canceled: true)));
+            () => Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, [], new CancellationToken(canceled: true)));
     }
 
     private RiteWriter Writer(int retryDelaySeconds)

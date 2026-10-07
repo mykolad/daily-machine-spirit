@@ -19,16 +19,22 @@ public sealed class DailyRiteFunction
         this.logger = logger;
     }
 
-    // A failed run (every model failing, Cosmos down) is tried again later in the day; publishing skips a day that
-    // already has its rite, so a retry is always safe.
+    /// <summary>Publishes today's rite, then asks for the backlog to be refilled (the message is the reason).</summary>
+    // A failed run (every model failing on an empty backlog, Cosmos down) is tried again later in the day; publishing
+    // skips a day that already has its rite, so a retry is always safe.
     [Function("DailyRite")]
     [FixedDelayRetry(3, "00:20:00")]
-    public async Task Run([TimerTrigger(Schedule)] TimerInfo timer, CancellationToken cancellationToken)
+    [QueueOutput(RefillBacklogFunction.QueueName)]
+    public async Task<string> Run([TimerTrigger(Schedule)] TimerInfo timer, CancellationToken cancellationToken)
     {
         var result = await publisher.PublishToday(cancellationToken);
-        result.Match(
-            Right: published => logger.LogInformation("Rite NO. {Number} for {Day}: {Outcome}.",
-                published.Rite.Number, published.Rite.PublishedOnUtc, published.IsNew ? "published now" : "already published"),
+        return result.Match(
+            Right: published =>
+            {
+                logger.LogInformation("Rite NO. {Number} for {Day}: {Outcome}.",
+                    published.Rite.Number, published.Rite.PublishedOnUtc, published.IsNew ? "published now" : "already published");
+                return RefillBacklogFunction.AfterPublishing;
+            },
             // Thrown here, at the edge, so the host counts the run as failed (and retries it).
             Left: error => throw error.ToException());
     }

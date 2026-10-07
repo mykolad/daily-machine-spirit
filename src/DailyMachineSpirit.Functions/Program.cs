@@ -20,14 +20,16 @@ builder.Services.AddSingleton(_ => CosmosClients.Create(cosmos));
 builder.Services.AddSingleton(services =>
     services.GetRequiredService<CosmosClient>().GetContainer(cosmos.Database, RiteRepository.ContainerName));
 builder.Services.AddSingleton<IRiteRepository, RiteRepository>();
+builder.Services.AddSingleton<IDraftRepository, DraftRepository>();
 
-// The daily rite. Created only when the timer runs, so HTTP functions start without the generation settings.
+// The daily rite and the backlog. Created only when the timer or a refill runs, so HTTP functions start without the generation settings.
 builder.Services.Configure<GenerationOptions>(builder.Configuration.GetSection(GenerationOptions.SectionName));
 builder.Services.Configure<JevOptions>(builder.Configuration.GetSection(JevOptions.SectionName));
 var openAI = builder.Configuration.GetSection(AzureOpenAIOptions.SectionName).Get<AzureOpenAIOptions>() ?? new AzureOpenAIOptions();
 builder.Services.AddSingleton<IChatClients>(_ => new AzureOpenAIChatClients(new Uri(openAI.Endpoint)));
 builder.Services.AddHttpClient<JevScorer>(http => http.Timeout = TimeSpan.FromSeconds(30));
 builder.Services.AddTransient<RiteWriter>();
+builder.Services.AddTransient<BacklogRefiller>();
 builder.Services.AddTransient<DailyRitePublisher>();
 
 builder.Build().Run();

@@ -21,13 +21,14 @@ public sealed class FakeJev : HttpMessageHandler
 
     public List<(JsonNode Body, string Authorization)> Requests { get; } = [];
 
-    /// <summary>An answer where "builds" and "repetition" are certain: everything else is 0.</summary>
+    /// <summary>An answer about builds and mostly repetition, judged "good" or "excellent" half and half.</summary>
     public static FakeJev AnsweringBuildsAndRepetition()
         => new(HttpStatusCode.OK, """
             {
               "answers": {
                 "topic": { "probabilities": { "builds": 1.0 } },
-                "act": { "probabilities": { "repetition": 0.75, "waiting": 0.25 } }
+                "act": { "probabilities": { "repetition": 0.75, "waiting": 0.25 } },
+                "quality": { "probabilities": { "excellent": 0.5, "good": 0.5 } }
               }
             }
             """);
