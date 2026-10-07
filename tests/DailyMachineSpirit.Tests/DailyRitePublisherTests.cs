@@ -88,6 +88,43 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task PublishToday_WhenItsFallbackFails_WhileAnotherRunPublishes_KeepsTheirs()
+    {
+        testbed.Models.Then(Sol,
+        [
+            async () =>
+            {
+                await testbed.AddRite(Today, "Published by another run");
+                throw new HttpRequestException("The model is overloaded.");
+            },
+        ]).Fails(Sol, 2).Fails(Luna, 3);
+
+        var published = Ok(await testbed.Publisher().PublishToday(CancellationToken.None));
+
+        Assert.False(published.IsNew);
+        Assert.Equal("Published by another run", published.Rite.Title);
+    }
+
+    [Fact]
+    public async Task PublishToday_AfterWritingAFallback_ChoosesFromTheCalendarAgain()
+    {
+        testbed.Models.Then(Sol,
+        [
+            async () =>
+            {
+                // A refill saves a better draft while the fallback is being written.
+                await testbed.AddDraft("Better, from a refill", 0.95f);
+                return Answer("The fallback");
+            },
+        ]);
+
+        var published = Ok(await testbed.Publisher().PublishToday(CancellationToken.None));
+
+        Assert.Equal("Better, from a refill", published.Rite.Title);
+        Assert.Equal("The fallback", Assert.Single(await testbed.Waiting()).Title);
+    }
+
+    [Fact]
     public async Task PublishToday_TwoRunsAtOnce_PublishOneRite_AndBothSucceed()
     {
         await testbed.AddDraft("The only draft", 0.9f);
