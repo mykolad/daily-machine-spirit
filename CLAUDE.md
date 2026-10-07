@@ -83,6 +83,17 @@ tools/coverage.ps1                — tests + coverage report + the coverage gat
   (`CosmosClients.Create`); the account's keys stay off. The account, databases, container, role assignments and the
   app's settings are all created by the Bicep in `infra/`, never by the app (its data-plane role can't create them). Settings: `Cosmos:Endpoint`, `Cosmos:Database`.
 
+- **The daily rite** (`Generation/`): the `DailyRite` timer runs at 00:00 UTC and publishes today's rite only if the
+  day has none, so a retry or a caught-up run never replaces one visitors have seen. Prayers and rituals alternate by
+  date (`DailyRitePublisher.KindFor`).
+  - `RiteWriter` asks `gpt-6-sol` for a `RiteDraft` (JSON schema output), up to 3 times, then `gpt-6-luna`
+    (`Generation:Models`). An answer that's empty, too long or uses a forbidden name is asked for again, never cut.
+  - The prompt (`RitePrompt`) lists the recent titles, so the model picks another subject.
+  - `JevScorer` scores the saved rite for "More rites". Scoring failing (or `Jev:ApiKey` empty) still publishes the
+    rite, just without scores.
+  - Settings: `AzureOpenAI:Endpoint` (models reached as the managed identity), `Jev:ApiKey` (a Key Vault reference in
+    Azure), and optionally `Generation:*` (`GenerationOptions`).
+
 ## Pull requests
 
 - **Every change to an open PR is a new commit on top.** Don't amend, squash or force-push commits that are already
@@ -119,7 +130,8 @@ func start
 ```
 
 For anything that reads data, set `Cosmos:Endpoint` and `Cosmos:Database` in `local.settings.json` (e.g. staging's
-database, as your `az login`; never production's). HTTP functions run without storage. Timer functions need `AzureWebJobsStorage`: run the Azurite emulator
+database, as your `az login`; never production's). HTTP functions run without storage. The timer also needs `AzureOpenAI:Endpoint` (staging's, with the Cognitive Services OpenAI User role for your
+`az login`); `Jev:ApiKey` can stay empty. Timer functions need `AzureWebJobsStorage`: run the Azurite emulator
 (`docker run -p 10000-10002:10000-10002 mcr.microsoft.com/azure-storage/azurite`).
 
 ## Build and Test

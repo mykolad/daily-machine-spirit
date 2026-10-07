@@ -2,6 +2,7 @@ using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using LanguageExt;
 using LanguageExt.Common;
+using static DailyMachineSpirit.Tests.Expect;
 using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Tests;
@@ -187,12 +188,6 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
         GeneratedByModel = "gpt-6-sol",
         GeneratedAtUtc = date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
     };
-
-    /// <summary>The result of a call expected to succeed; a test fails with the error otherwise.</summary>
-    private static T Ok<T>(Either<Error, T> result)
-        => result.Match(
-            Right: value => value,
-            Left: error => throw new Xunit.Sdk.XunitException($"Expected success, but: {error}"));
 
     private async Task<Rite> AddOrFail(Rite rite) => Ok(await Repository.Add(rite, CancellationToken.None));
 
