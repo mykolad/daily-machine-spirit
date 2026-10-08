@@ -10,8 +10,8 @@ what really happens. Either kind is a **rite** (the design's word, and `Rite` in
 
 - Tagline: *In the grim darkness of the far future, no one reads the code.* Footer: *Knowledge is lost. The rituals
   remain.*
-- Its data is in its own Cosmos DB account (free tier). It shares only the Azure OpenAI models, Key Vault and Grafana with
-  existing projects.
+- Everything it runs on in Azure is its own, in one resource group defined in Bicep (`infra/`): the models, a Cosmos DB
+  account, a Key Vault and a Functions app per environment. Only the Grafana Cloud stack is shared, with its own token.
 - Runs as **one Azure Functions app** (Flex Consumption, .NET 10 isolated worker): a timer generates the daily rite,
   HTTP functions serve the pages and the API. Cloudflare sits in front (`dailymachinespirit.fyi`).
 
@@ -22,6 +22,7 @@ src/DailyMachineSpirit.Functions  — the Functions app (HTTP and timer function
 src/DailyMachineSpirit.Data       — Cosmos DB: entities, documents, repositories
 tests/DailyMachineSpirit.Tests    — xUnit tests (the repository tests run against the Cosmos DB emulator)
 tools/coverage.ps1                — tests + coverage report + the coverage gate (Build and Test runs it)
+infra/                            — Bicep for all of Azure (main.bicep); infra/README.md covers what Bicep can't do
 ```
 
 ## Code style rules
@@ -63,7 +64,9 @@ tools/coverage.ps1                — tests + coverage report + the coverage gat
 - **Privacy:** never store or log anything about visitors beyond what a feature needs (no IPs, no user agents).
 - **Accessibility:** WCAG 2.2 AA wins over design fidelity; record each such change in the design docs.
 - **No secrets:** Azure is reached with managed identities and GitHub's OIDC; credentials that must exist live in Key
-  Vault.
+  Vault, and their values are set by hand, never in the repo or in Bicep.
+- **Infrastructure as code:** every Azure resource and role assignment is in `infra/` (Bicep). Change Azure by changing
+  the Bicep, never by hand in the portal, so the files stay the truth.
 
 ## Key design decisions
 
@@ -150,5 +153,6 @@ database, as your `az login`; never production's). HTTP functions run without st
 ## Build and Test
 
 `.github/workflows/build-and-test.yml` (**Build and Test**, job `build-and-test`, the required check) runs on every PR
-and on pushes to `master`: restore, Release build, then `tools/coverage.ps1 -NoBuild` (the same gate as a local run),
-with the Cosmos DB emulator as a service container for the repository tests.
+and on pushes to `master`: restore, Release build, a Bicep lint and build of `infra/` (any warning fails it), then
+`tools/coverage.ps1 -NoBuild` (the same gate as a local run), with the Cosmos DB emulator as a service container for the
+repository tests.
