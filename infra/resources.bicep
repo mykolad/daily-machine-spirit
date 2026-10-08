@@ -88,6 +88,8 @@ resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' = {
     databaseAccountOfferType: 'Standard'
     enableFreeTier: true
     disableLocalAuth: true
+    // Azure's default for new accounts; with one region it does nothing, but leaving it out would turn it off.
+    enableAutomaticFailover: true
     consistencyPolicy: {
       defaultConsistencyLevel: 'Session'
     }
@@ -149,6 +151,7 @@ module staging 'modules/environment.bicep' = {
     aiAccountName: ai.name
     ownerPrincipalId: ownerPrincipalId
     githubSubjectPrefix: githubSubjectPrefix
+    scriptoriumEnabled: true
   }
 }
 
@@ -165,6 +168,8 @@ module production 'modules/environment.bicep' = if (deployProduction) {
     aiAccountName: ai.name
     ownerPrincipalId: ownerPrincipalId
     githubSubjectPrefix: githubSubjectPrefix
+    // On once Cloudflare Access guards the Scriptorium.
+    scriptoriumEnabled: false
   }
 }
 
