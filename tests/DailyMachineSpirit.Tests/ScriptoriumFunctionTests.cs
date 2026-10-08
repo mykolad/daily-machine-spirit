@@ -170,6 +170,36 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Single(await testbed.Waiting());
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("https://elsewhere.example")]
+    public async Task AFormWithoutFetchMetadata_IsForbidden_UnlessItsOriginIsThisSite(string origin)
+    {
+        var draft = await testbed.AddDraft("Kept", 0.5f);
+        var post = Post("");
+        post.Headers.Remove("Sec-Fetch-Site");
+        post.Headers.Origin = origin;
+
+        var response = await Function(enabled: true).Decide(post, draft.Id, "burn", CancellationToken.None);
+
+        Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<StatusCodeResult>(response.Result).StatusCode);
+        Assert.Single(await testbed.Waiting());
+    }
+
+    [Fact]
+    public async Task AFormWithoutFetchMetadata_FromThisSite_IsAccepted()
+    {
+        var draft = await testbed.AddDraft("Burned", 0.5f);
+        var post = Post("");
+        post.Headers.Remove("Sec-Fetch-Site");
+        post.Headers.Origin = "https://dailymachinespirit.fyi";
+
+        var response = await Function(enabled: true).Decide(post, draft.Id, "burn", CancellationToken.None);
+
+        Assert.IsType<RedirectResult>(response.Result);
+        Assert.Empty(await testbed.Waiting());
+    }
+
     [Fact]
     public async Task Actions_WhenTurnedOff_DoNotExist()
     {
@@ -221,6 +251,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var request = new DefaultHttpContext().Request;
         request.Method = "POST";
+        request.Host = new HostString("dailymachinespirit.fyi");
         request.Headers["Sec-Fetch-Site"] = "same-origin";
         request.ContentType = "application/x-www-form-urlencoded";
         request.Form = new FormCollection(new Dictionary<string, StringValues> { ["note"] = note });

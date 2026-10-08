@@ -111,6 +111,23 @@ public sealed class ScribesTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Moving_KeepsTheScribesEarlierOrder_BelowTheMovedDraft()
+    {
+        var w = await testbed.AddDraft("W", 0.9f);
+        var x = await testbed.AddDraft("X", 0.8f);
+        await testbed.AddDraft("Y", 0.7f);
+        var z = await testbed.AddDraft("Z", 0.6f);
+        Ok(await testbed.Scribes().Anoint(z.Id, "", CancellationToken.None));
+        // The Scribes now want Y before X, against the Augury's order.
+        Ok(await testbed.Scribes().Humble(x.Id, "", CancellationToken.None));
+
+        Ok(await testbed.Scribes().Exalt(w.Id, "", CancellationToken.None));
+
+        var view = Ok(await testbed.Scribes().View(CancellationToken.None));
+        Assert.Equal(["W", "Z", "Y", "X"], view.Calendar.Select(entry => entry.Draft.Title));
+    }
+
+    [Fact]
     public async Task ExaltingTheFirst_OrHumblingTheLast_ChangesNothing_AndRecordsNothing()
     {
         var first = await testbed.AddDraft("Excellent", 0.95f);
@@ -161,6 +178,54 @@ public sealed class ScribesTests : IAsyncLifetime
         Assert.Equal(ScribeAction.Restore, restored.Action);
         Assert.Equal(None, restored.CalendarPlace);
         Assert.Equal(Some("Funnier than I thought."), restored.Note);
+    }
+
+    [Fact]
+    public async Task Restore_ADraftThatWasAnointed_ReturnsItToTheAugurysOrder()
+    {
+        await testbed.AddDraft("Excellent", 0.95f);
+        var fair = await testbed.AddDraft("Fair", 0.4f);
+        Ok(await testbed.Scribes().Anoint(fair.Id, "", CancellationToken.None));
+        Ok(await testbed.Scribes().Burn(fair.Id, "", CancellationToken.None));
+
+        Ok(await testbed.Scribes().Restore(fair.Id, "", CancellationToken.None));
+
+        var view = Ok(await testbed.Scribes().View(CancellationToken.None));
+        Assert.Equal(["Excellent", "Fair"], view.Calendar.Select(entry => entry.Draft.Title));
+        // "Excellent" stays where the anointing put it; only the restored draft lost its place.
+        Assert.False(view.Calendar.Single(entry => entry.Draft.Title == "Fair").PlacedByScribes);
+    }
+
+    [Fact]
+    public async Task Restore_WorksForADraftBurnedLongAgo_BeyondTheAshesShown()
+    {
+        var first = await testbed.AddDraft("Burned first", 0.5f);
+        Ok(await testbed.Scribes().Burn(first.Id, "", CancellationToken.None));
+        for (var i = 0; i < Scribes.Shown; i++)
+        {
+            testbed.Time.Advance(TimeSpan.FromMinutes(1));
+            var later = await testbed.AddDraft($"Burned later {i}", 0.5f);
+            Ok(await testbed.Scribes().Burn(later.Id, "", CancellationToken.None));
+        }
+        Assert.DoesNotContain(Ok(await testbed.Scribes().View(CancellationToken.None)).Ashes, ash => ash.Id == first.Id);
+
+        Ok(await testbed.Scribes().Restore(first.Id, "", CancellationToken.None));
+
+        Assert.Equal("Burned first", Assert.Single(await testbed.Waiting()).Title);
+    }
+
+    [Fact]
+    public async Task TwoScribesBurningTheLastTwo_AtOnce_AtLeastOneSeesNoneLeft()
+    {
+        var one = await testbed.AddDraft("One", 0.5f);
+        var two = await testbed.AddDraft("Two", 0.5f);
+
+        var left = await Task.WhenAll(
+            testbed.Scribes().Burn(one.Id, "", CancellationToken.None),
+            testbed.Scribes().Burn(two.Id, "", CancellationToken.None));
+
+        Assert.Contains(0, left.Select(Ok));
+        Assert.Empty(await testbed.Waiting());
     }
 
     [Fact]

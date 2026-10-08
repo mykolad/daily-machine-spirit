@@ -113,15 +113,22 @@ public sealed class ScriptoriumFunction
     }
 
     // Turned off, the Scriptorium doesn't exist. A form posted from another site (a forged request riding a Scribe's
-    // sign-in) is forbidden: browsers say where a request comes from in Sec-Fetch-Site, and a request without it isn't
-    // from a browser, so it carries no sign-in to abuse.
+    // sign-in or address) is forbidden. Browsers say where a request comes from in Sec-Fetch-Site; ones too old for that
+    // still send Origin with a form post, which must then be this site. A request with neither is refused too.
     private Option<IActionResult> Refusal(HttpRequest request)
     {
         if (!options.Value.Enabled)
             return new NotFoundResult();
-        return request.Headers["Sec-Fetch-Site"].ToString() is "" or "same-origin"
-            ? None
-            : new StatusCodeResult(StatusCodes.Status403Forbidden);
+        return IsFromThisSite(request) ? None : new StatusCodeResult(StatusCodes.Status403Forbidden);
+    }
+
+    private static bool IsFromThisSite(HttpRequest request)
+    {
+        var fetchSite = request.Headers["Sec-Fetch-Site"].ToString();
+        if (fetchSite.Length > 0)
+            return fetchSite == "same-origin";
+        return Uri.TryCreate(request.Headers.Origin.ToString(), UriKind.Absolute, out var origin)
+            && string.Equals(origin.Authority, request.Host.Value, StringComparison.OrdinalIgnoreCase);
     }
 
     private ScriptoriumResponse Answer(HttpRequest request, string action, Either<Error, Unit> result)

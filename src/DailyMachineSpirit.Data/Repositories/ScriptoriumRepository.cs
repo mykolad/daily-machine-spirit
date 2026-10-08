@@ -25,11 +25,17 @@ public interface IScriptoriumRepository
     Task<Either<Error, Unit>> SavePlacements(Placements placements, Option<ScribeDecision> decision, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Moves a draft from one state to another (burning, restoring). <see cref="ScriptoriumRepository.ChangedMeanwhile"/>
-    /// when it isn't in <paramref name="from"/> any more.
+    /// Moves a draft from one state to another (burning, restoring), and saves <paramref name="placements"/> with it when
+    /// given (taking the draft out of the Scribes' order). <see cref="ScriptoriumRepository.ChangedMeanwhile"/> when the
+    /// draft isn't in <paramref name="from"/> any more, or another Scribe changed the order.
     /// </summary>
     Task<Either<Error, Draft>> ChangeState(
-        Guid draftId, DraftState from, DraftState to, ScribeDecision decision, CancellationToken cancellationToken);
+        Guid draftId,
+        DraftState from,
+        DraftState to,
+        ScribeDecision decision,
+        Option<Placements> placements,
+        CancellationToken cancellationToken);
 
     /// <summary>Burned drafts, the most recently burned first.</summary>
     Task<Either<Error, List<Draft>>> GetBurned(int count, CancellationToken cancellationToken);
@@ -59,19 +65,18 @@ public class ScriptoriumRepository : IScriptoriumRepository
         Placements placements, Option<ScribeDecision> decision, CancellationToken cancellationToken)
         => AttemptEither(async () =>
         {
-            var document = new PlacementsDocument { Order = placements.Order };
-            var batch = container.CreateTransactionalBatch(SharedPartitionKey);
-            // No ETag: nobody has placed a draft yet, and creating it fails if another Scribe just did.
-            batch = placements.ETag.Match(
-                Some: etag => batch.ReplaceItem(PlacementsDocument.PlacementsId, document,
-                    new TransactionalBatchItemRequestOptions { IfMatchEtag = etag }),
-                None: () => batch.CreateItem(document));
+            var batch = WithPlacements(container.CreateTransactionalBatch(SharedPartitionKey), placements);
             batch = decision.Match(Some: made => batch.CreateItem(ScribeDecisionDocument.From(made)), None: () => batch);
             return await Execute(batch, cancellationToken);
         });
 
     public Task<Either<Error, Draft>> ChangeState(
-        Guid draftId, DraftState from, DraftState to, ScribeDecision decision, CancellationToken cancellationToken)
+        Guid draftId,
+        DraftState from,
+        DraftState to,
+        ScribeDecision decision,
+        Option<Placements> placements,
+        CancellationToken cancellationToken)
         => AttemptEither(async () =>
         {
             var stored = await container.ReadOrNone<DraftDocument>(DraftDocument.IdFor(draftId), cancellationToken);
@@ -88,6 +93,7 @@ public class ScriptoriumRepository : IScriptoriumRepository
                         var batch = container.CreateTransactionalBatch(SharedPartitionKey)
                             .ReplaceItem(changed.Id, changed, new TransactionalBatchItemRequestOptions { IfMatchEtag = found.ETag })
                             .CreateItem(ScribeDecisionDocument.From(decision));
+                        batch = placements.Match(Some: order => WithPlacements(batch, order), None: () => batch);
                         return (await Execute(batch, cancellationToken)).Map(_ => changed.ToDraft());
                     },
                     None: () => Task.FromResult(Left<Error, Draft>(ChangedMeanwhile)));
@@ -108,13 +114,23 @@ public class ScriptoriumRepository : IScriptoriumRepository
                 .WithParameter("@type", ScribeDecisionDocument.DecisionType),
             cancellationToken)).Select(document => document.ToDecision()).ToList());
 
+    // No ETag: nobody has placed a draft yet, and creating the order fails if another Scribe just did.
+    private static TransactionalBatch WithPlacements(TransactionalBatch batch, Placements placements)
+    {
+        var document = new PlacementsDocument { Order = placements.Order };
+        return placements.ETag.Match(
+            Some: etag => batch.ReplaceItem(PlacementsDocument.PlacementsId, document,
+                new TransactionalBatchItemRequestOptions { IfMatchEtag = etag }),
+            None: () => batch.CreateItem(document));
+    }
+
     // A failed ETag or create means another Scribe got there first; anything else is an outage.
     private static async Task<Either<Error, Unit>> Execute(TransactionalBatch batch, CancellationToken cancellationToken)
     {
         using var response = await batch.ExecuteAsync(cancellationToken);
         if (response.IsSuccessStatusCode)
             return unit;
-        return response[0].StatusCode is HttpStatusCode.PreconditionFailed or HttpStatusCode.Conflict
+        return response.Any(result => result.StatusCode is HttpStatusCode.PreconditionFailed or HttpStatusCode.Conflict)
             ? ChangedMeanwhile
             : Error.New($"Saving the Scribes' change failed: {response.StatusCode}. {response.ErrorMessage}");
     }

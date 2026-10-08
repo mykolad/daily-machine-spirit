@@ -84,26 +84,35 @@ public sealed class Scribes
             ? None
             : Some<List<Guid>>([.. order[..index], order[index + 1], order[index]]), cancellationToken);
 
-    /// <summary>Burns the draft (it's kept, hidden, and can be restored); returns how many drafts are still waiting.</summary>
+    /// <summary>
+    /// Burns the draft (it's kept, hidden, and can be restored) and takes it out of the Scribes' order; returns how many
+    /// drafts are waiting after it. Counted after the burn is saved, so when two Scribes burn the last two at once, the
+    /// later one sees none left.
+    /// </summary>
     public Task<Either<Error, int>> Burn(Guid draftId, string note, CancellationToken cancellationToken)
         => Note(note).BindAsync(checkedNote => Calendar(cancellationToken)
             .BindAsync(calendar => calendar.Find(draftId).Match(
                 Some: found => scriptorium
                     .ChangeState(draftId, DraftState.Waiting, DraftState.Burned,
                         Decision(found.Draft, ScribeAction.Burn, checkedNote, Some(found.Place), Some(calendar.AuguryPlace(found.Draft))),
+                        WithoutDraft(calendar.Placements, draftId),
                         cancellationToken)
-                    .MapAsync(_ => Task.FromResult(calendar.Ordered.Count - 1)),
+                    .BindAsync(_ => drafts.GetWaiting(cancellationToken))
+                    .MapAsync(waiting => Task.FromResult(waiting.Count)),
                 None: () => Task.FromResult(Left<Error, int>(ScriptoriumRepository.ChangedMeanwhile)))));
 
-    /// <summary>Restores a burned draft: it waits again, in the Augury's order.</summary>
+    /// <summary>Restores a burned draft, however long ago it burned: it waits again, in the Augury's order.</summary>
     public Task<Either<Error, Unit>> Restore(Guid draftId, string note, CancellationToken cancellationToken)
-        => Note(note).BindAsync(checkedNote => scriptorium.GetBurned(Shown, cancellationToken)
-            .BindAsync(ashes => ashes.Where(draft => draft.Id == draftId).HeadOrNone().Match(
-                Some: draft => scriptorium
-                    .ChangeState(draftId, DraftState.Burned, DraftState.Waiting,
-                        Decision(draft, ScribeAction.Restore, checkedNote, None, None), cancellationToken)
-                    .MapAsync(_ => Task.FromResult(unit)),
-                None: () => Task.FromResult(Left<Error, Unit>(ScriptoriumRepository.ChangedMeanwhile)))));
+        => Note(note).BindAsync(checkedNote => drafts.Get(draftId, cancellationToken)
+            .BindAsync(stored => scriptorium.GetPlacements(cancellationToken)
+                .BindAsync(placements => stored.Filter(draft => draft.State == DraftState.Burned).Match(
+                    Some: draft => scriptorium
+                        .ChangeState(draftId, DraftState.Burned, DraftState.Waiting,
+                            Decision(draft, ScribeAction.Restore, checkedNote, None, None),
+                            WithoutDraft(placements, draftId),
+                            cancellationToken)
+                        .MapAsync(_ => Task.FromResult(unit)),
+                    None: () => Task.FromResult(Left<Error, Unit>(ScriptoriumRepository.ChangedMeanwhile))))));
 
     /// <summary>Forgets the Scribes' order, so the Augury orders every draft.</summary>
     public Task<Either<Error, Unit>> LetTheAuguryDecide(CancellationToken cancellationToken)
@@ -117,13 +126,28 @@ public sealed class Scribes
         => Note(note).BindAsync(checkedNote => Calendar(cancellationToken)
             .BindAsync(calendar => calendar.Find(draftId).Match(
                 Some: found => reorder(calendar.Ordered.Select(draft => draft.Id).ToList(), found.Place - 1).Match(
-                    Some: order => scriptorium.SavePlacements(
-                        calendar.Placements with { Order = order },
+                    Some: moved => scriptorium.SavePlacements(
+                        calendar.Placements with { Order = KeepingTheRest(moved, calendar) },
                         Decision(found.Draft, action, checkedNote, Some(found.Place), Some(calendar.AuguryPlace(found.Draft))),
                         cancellationToken),
                     // Already at the top (or bottom): nothing changes, so there's nothing to learn.
                     None: () => Task.FromResult(Right<Error, Unit>(unit))),
                 None: () => Task.FromResult(Left<Error, Unit>(ScriptoriumRepository.ChangedMeanwhile)))));
+
+    // The reordered top of the calendar, then the drafts the Scribes placed below it, still in their order: moving one
+    // draft never undoes an earlier decision about another.
+    private static List<Guid> KeepingTheRest(List<Guid> moved, CalendarState calendar)
+    {
+        var placedBelow = calendar.Ordered.Select(draft => draft.Id)
+            .Where(id => calendar.Placements.Order.Contains(id) && !moved.Contains(id));
+        return [.. moved, .. placedBelow];
+    }
+
+    // A burned or restored draft leaves the Scribes' order: a restored one starts again in the Augury's.
+    private static Option<Placements> WithoutDraft(Placements placements, Guid draftId)
+        => placements.Order.Contains(draftId)
+            ? Some(placements with { Order = placements.Order.Where(id => id != draftId).ToList() })
+            : None;
 
     private Task<Either<Error, CalendarState>> Calendar(CancellationToken cancellationToken)
         => drafts.GetWaiting(cancellationToken)
