@@ -16,6 +16,8 @@ param cosmosAccountName string
 param aiAccountName string
 param ownerPrincipalId string
 param githubSubjectPrefix string
+@description('Whether the app serves the Scriptorium, the moderators\' page. Only where the page is already restricted: staging\'s IP rule, or Cloudflare Access in production.')
+param scriptoriumEnabled bool
 
 var keyVaultSecretsOfficer = 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7'
 var appName = '${prefix}-app${nameSuffix}'
@@ -188,6 +190,15 @@ resource app 'Microsoft.Web/sites@2024-04-01' = {
         {
           name: 'AzureOpenAI__Endpoint'
           value: ai.properties.endpoint
+        }
+        {
+          // Resolved by the app's identity; until the secret is set (infra/README.md), Jev's calls fail and drafts go without its scores.
+          name: 'Jev__ApiKey'
+          value: '@Microsoft.KeyVault(VaultName=${vault.name};SecretName=JevApiKey)'
+        }
+        {
+          name: 'Scriptorium__Enabled'
+          value: scriptoriumEnabled ? 'true' : 'false'
         }
       ]
     }
