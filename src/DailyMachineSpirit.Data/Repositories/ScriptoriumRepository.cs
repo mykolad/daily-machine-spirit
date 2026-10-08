@@ -21,7 +21,10 @@ public interface IScriptoriumRepository
 {
     Task<Either<Error, Placements>> GetPlacements(CancellationToken cancellationToken);
 
-    /// <summary><see cref="ScriptoriumRepository.ChangedMeanwhile"/> when another Scribe saved an order since it was read.</summary>
+    /// <summary>
+    /// <see cref="ScriptoriumRepository.ChangedMeanwhile"/> when another Scribe saved an order since it was read, or when
+    /// the <paramref name="decision"/>'s draft isn't waiting any more (burned or published meanwhile).
+    /// </summary>
     Task<Either<Error, Unit>> SavePlacements(Placements placements, Option<ScribeDecision> decision, CancellationToken cancellationToken);
 
     /// <summary>
@@ -48,6 +51,8 @@ public class ScriptoriumRepository : IScriptoriumRepository
 {
     public static readonly Error ChangedMeanwhile = Error.New("Another Scribe changed this meanwhile.");
 
+    private static readonly string WaitingState = JsonNamingPolicy.CamelCase.ConvertName(nameof(DraftState.Waiting));
+
     private readonly Container container;
 
     public ScriptoriumRepository(Container container)
@@ -66,7 +71,9 @@ public class ScriptoriumRepository : IScriptoriumRepository
         => AttemptEither(async () =>
         {
             var batch = WithPlacements(container.CreateTransactionalBatch(SharedPartitionKey), placements);
-            batch = decision.Match(Some: made => batch.CreateItem(ScribeDecisionDocument.From(made)), None: () => batch);
+            batch = decision.Match(
+                Some: made => StillWaiting(batch, made.DraftId).CreateItem(ScribeDecisionDocument.From(made)),
+                None: () => batch);
             return await Execute(batch, cancellationToken);
         });
 
@@ -113,6 +120,13 @@ public class ScriptoriumRepository : IScriptoriumRepository
                 .WithParameter("@count", count)
                 .WithParameter("@type", ScribeDecisionDocument.DecisionType),
             cancellationToken)).Select(document => document.ToDecision()).ToList());
+
+    // Fails the batch (412) unless the draft still waits: setting its state to what it already is changes nothing, but
+    // only matches a waiting draft. A burned or published draft can't be reordered.
+    private static TransactionalBatch StillWaiting(TransactionalBatch batch, Guid draftId)
+        => batch.PatchItem(DraftDocument.IdFor(draftId),
+            [PatchOperation.Set("/state", WaitingState)],
+            new TransactionalBatchPatchItemRequestOptions { FilterPredicate = "FROM c WHERE c.state = '" + WaitingState + "'" });
 
     // No ETag: nobody has placed a draft yet, and creating the order fails if another Scribe just did.
     private static TransactionalBatch WithPlacements(TransactionalBatch batch, Placements placements)

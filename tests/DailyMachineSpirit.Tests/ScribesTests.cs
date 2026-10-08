@@ -107,6 +107,46 @@ public sealed class ScribesTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Reordering_ADraftBurnedWhileTheRequestRuns_IsChangedMeanwhile_AndRecordsNothing()
+    {
+        await testbed.AddDraft("Excellent", 0.95f);
+        var fair = await testbed.AddDraft("Fair", 0.4f);
+        // Right after this request reads the waiting drafts, another Scribe burns the one it's about to exalt.
+        var drafts = new InterruptedDrafts(testbed.Drafts,
+            async () => Ok(await testbed.Scribes().Burn(fair.Id, "Burned meanwhile.", CancellationToken.None)));
+        var scribes = new Scribes(drafts, testbed.Rites, testbed.Scriptorium, testbed.Time);
+
+        var result = await scribes.Exalt(fair.Id, "", CancellationToken.None);
+
+        Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Failed(result));
+        var view = Ok(await testbed.Scribes().View(CancellationToken.None));
+        Assert.Equal(ScribeAction.Burn, Assert.Single(view.Decisions).Action);
+        Assert.Equal(["Excellent"], view.Calendar.Select(entry => entry.Draft.Title));
+    }
+
+    [Fact]
+    public async Task ThePublisher_ReadsAConsistentCalendar_WhenADraftIsAnointedWhileItRuns()
+    {
+        await testbed.AddDraft("Excellent", 0.95f);
+        Guid anointedMeanwhile = Guid.Empty;
+        var drafts = new InterruptedDrafts(testbed.Drafts, async () =>
+        {
+            var arrived = await testbed.AddDraft("Arrived meanwhile", 0.5f);
+            anointedMeanwhile = arrived.Id;
+            Ok(await testbed.Scribes().Anoint(arrived.Id, "", CancellationToken.None));
+        });
+        var publisher = new DailyMachineSpirit.Functions.Generation.DailyRitePublisher(
+            testbed.Rites, drafts, testbed.Scriptorium, testbed.Refiller(), testbed.Time);
+
+        var published = Ok(await publisher.PublishToday(CancellationToken.None));
+
+        // The anointing came after the publisher read the order: it publishes from what it read, and the anointed draft
+        // is next.
+        Assert.Equal("Excellent", published.Rite.Title);
+        Assert.Equal(anointedMeanwhile, Ok(await testbed.Scribes().View(CancellationToken.None)).Calendar[0].Draft.Id);
+    }
+
+    [Fact]
     public async Task ThePublisher_PublishesTheAnointedDraft_OverTheAugurysPick()
     {
         await testbed.AddDraft("Excellent", 0.95f);
@@ -336,33 +376,5 @@ public sealed class ScribesTests : IAsyncLifetime
         var result = await testbed.ScribesWithoutCosmos().View(CancellationToken.None);
 
         Assert.True(result.IsLeft);
-    }
-
-    /// <summary>The real drafts, with something happening once, right after the first read of the waiting ones.</summary>
-    private sealed class InterruptedDrafts : IDraftRepository
-    {
-        private readonly IDraftRepository inner;
-        private Option<Func<Task>> interruption;
-
-        public InterruptedDrafts(IDraftRepository inner, Func<Task> interruption)
-        {
-            this.inner = inner;
-            this.interruption = interruption;
-        }
-
-        public Task<Either<Error, Draft>> Add(Draft draft, CancellationToken cancellationToken)
-            => inner.Add(draft, cancellationToken);
-
-        public Task<Either<Error, Option<Draft>>> Get(Guid draftId, CancellationToken cancellationToken)
-            => inner.Get(draftId, cancellationToken);
-
-        public async Task<Either<Error, List<Draft>>> GetWaiting(CancellationToken cancellationToken)
-        {
-            var waiting = await inner.GetWaiting(cancellationToken);
-            var pending = interruption;
-            interruption = None;
-            await pending.IfSomeAsync(interrupt => interrupt());
-            return waiting;
-        }
     }
 }
