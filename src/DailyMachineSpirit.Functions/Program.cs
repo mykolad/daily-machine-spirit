@@ -7,14 +7,31 @@ using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Scriptorium;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Functions.Worker.Builder;
+using Microsoft.Azure.Functions.Worker.OpenTelemetry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using OpenTelemetry;
+using OpenTelemetry.Trace;
 
 var builder = FunctionsApplication.CreateBuilder(args);
 
 // ASP.NET Core integration: HTTP functions take HttpRequest and return IActionResult.
 builder.ConfigureFunctionsWebApplication();
+
+// Logs and traces in OpenTelemetry form: the code's logs, each invocation, and its outgoing calls (the models, Jev,
+// Cosmos DB). Only the app exports, not the Functions host: the host's request spans carry each visitor's user agent,
+// which the site never keeps. Exported only where OTEL_EXPORTER_OTLP_* is set (Grafana Cloud, from infra/); a local
+// run exports nothing. The Azure SDKs (Cosmos DB among them) only emit their spans with this switch on.
+AppContext.SetSwitch("Azure.Experimental.EnableActivitySource", true);
+var telemetry = builder.Services.AddOpenTelemetry()
+    .UseFunctionsWorkerDefaults()
+    .WithTracing(tracing => tracing
+        .AddHttpClientInstrumentation()
+        .AddSource("Azure.Cosmos.Operation"))
+    .WithLogging();
+if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
+    telemetry.UseOtlpExporter();
 
 builder.Services.AddSingleton(TimeProvider.System);
 

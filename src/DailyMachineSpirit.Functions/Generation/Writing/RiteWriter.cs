@@ -19,9 +19,14 @@ public sealed class RiteWriter
     private const string Omnissiah = "Omnissiah";
 
     // The satire borrows its mood from a setting whose names it must not use (CLAUDE.md, Ground rules). The prompt
-    // forbids them; an answer that uses one anyway is asked for again.
+    // forbids them; an answer that uses one anyway is asked for again. The list catches the setting's distinctive coined
+    // names, the ones a model reaches for; it can't be complete, so the prompt's rule stays the first line.
     private static readonly string[] ForbiddenNames =
-        ["Warhammer", "Games Workshop", "Adeptus", "Mechanicus", "Imperium", "Astartes", "Space Marine", "Aquila"];
+    [
+        "Warhammer", "Games Workshop", "Adeptus", "Mechanicus", "Mechanicum", "Imperium", "Astartes", "Space Marine",
+        "Aquila", "Primarch", "Ultramarine", "Horus Heresy", "Emperor of Mankind", "Astra Militarum", "Ecclesiarchy",
+        "Tyranid", "Necron", "Eldar", "Aeldari",
+    ];
 
     private static readonly JsonSerializerOptions AnswerSerializerOptions = new(JsonSerializerOptions.Web)
     {
@@ -63,7 +68,7 @@ public sealed class RiteWriter
                     await Task.Delay(TimeSpan.FromSeconds(settings.RetryDelaySeconds), time, cancellationToken);
 
                 var written = (await Ask(model, messages, cancellationToken))
-                    .Bind(Check)
+                    .Bind(answer => Check(answer, kind))
                     .Map(content => new Draft
                     {
                         Id = Guid.NewGuid(),
@@ -114,7 +119,7 @@ public sealed class RiteWriter
         }
     }
 
-    private static Either<Error, RiteContent> Check(RiteContent answer)
+    private static Either<Error, RiteContent> Check(RiteContent answer, RiteKind kind)
     {
         var content = answer with
         {
@@ -134,8 +139,11 @@ public sealed class RiteWriter
         var forbidden = ForbiddenNames.Where(name => everything.Contains(name, StringComparison.OrdinalIgnoreCase)).ToList();
         if (forbidden.Count > 0)
             return Error.New($"The answer uses forbidden names: {string.Join(", ", forbidden)}.");
-        if (Occurrences(everything, Omnissiah) > 1)
-            return Error.New($"The answer names the {Omnissiah} more than once.");
+        // A prayer may call on the Omnissiah once; a heading, a Heretical Truth or a ritual never names it.
+        var allowedInText = kind == RiteKind.Prayer ? 1 : 0;
+        if (Occurrences(content.Title, Omnissiah) + Occurrences(content.HereticalTruth, Omnissiah) > 0
+            || Occurrences(content.Text, Omnissiah) > allowedInText)
+            return Error.New($"The answer names the {Omnissiah} where it isn't allowed: only once, in a prayer's text.");
 
         return content;
     }

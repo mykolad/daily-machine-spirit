@@ -91,6 +91,11 @@ infra/                            — Bicep for all of Azure (main.bicep); infra
 - **Entra ID only** for Cosmos DB: the app's managed identity in Azure, your `az login` locally
   (`CosmosClients.Create`); the account's keys stay off. The account, databases, container, role assignments and the
   app's settings are all created by the Bicep in `infra/`, never by the app (its data-plane role can't create them). Settings: `Cosmos:Endpoint`, `Cosmos:Database`.
+- **Telemetry: OpenTelemetry to Grafana Cloud.** The app (`Program.cs`) exports its logs and traces over OTLP wherever
+  `OTEL_EXPORTER_OTLP_ENDPOINT` is set; `infra/` sets it, with the token's header from the vault. The Functions host
+  doesn't export (no `telemetryMode` in `host.json`): its request spans carry visitors' user agents. So a failure the
+  host alone would see must be logged by the code. Each environment is its own service (the app's name), tagged with
+  `deployment.environment.name`. There's no Application Insights, so the portal's log stream stays empty: look in Grafana.
 - **The backlog and the daily rite** (`Generation/`). Rites are written ahead as **drafts** (`Draft`, documents of
   type `draft` next to the rites), so moderators, the Scribes of the Scriptorium, can choose what's published.
   - **Publishing:** the `DailyRite` timer runs at 00:00 UTC and publishes the top of the **Liturgical Calendar**, unless

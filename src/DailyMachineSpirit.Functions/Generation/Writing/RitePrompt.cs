@@ -32,7 +32,10 @@ public static class RitePrompt
         sb.AppendLine($"- Heretical Truth: one or two sentences, at most {HereticalTruthLength} characters, in plain modern English.");
         sb.AppendLine("- Commands, file names and settings go in `backticks`.");
         sb.AppendLine("- Everything must be original. Never quote or paraphrase Games Workshop or Warhammer 40,000 text, and don't use");
-        sb.AppendLine("  their names (no Adeptus Mechanicus, no Imperium, no Space Marines). \"The Omnissiah\" may appear at most once.");
+        sb.AppendLine("  their names (no Adeptus Mechanicus, no Imperium, no Space Marines).");
+        sb.AppendLine(kind == RiteKind.Prayer
+            ? "- \"The Omnissiah\" may appear at most once, in the text only (never in the title or the Heretical Truth)."
+            : "- Don't name \"the Omnissiah\".");
         sb.AppendLine("- Family-friendly. No real people or companies mocked by name.");
 
         if (titlesToAvoid.Count > 0)

@@ -68,17 +68,56 @@ az deployment group create -g machinespirit-rg --name machinespirit --template-f
 ## Secrets
 
 Bicep creates the vaults but never their values. Put each value in a file outside the repository and set it from there,
-so it stays out of your shell history:
+so it stays out of your shell history. `-o none` matters: without it, `az keyvault secret set` prints the value back.
+Production's vault exists only from launch (`deployProduction`); set its secrets then.
+
+| Secret | Used for | The app reads it from |
+|---|---|---|
+| `JevApiKey` | scoring drafts: their quality for the Augury, their similarity for "More rites" | `Jev__ApiKey`, a Key Vault reference |
+| `OtlpHeaders` | telemetry to Grafana Cloud (this site's own access-policy token) | `OTEL_EXPORTER_OTLP_HEADERS`, a Key Vault reference |
+
+### Jev
 
 ```powershell
-az keyvault secret set --vault-name machinespirit-kv-staging --name JevApiKey --file $HOME\.machinespirit\jev-key.txt
-az keyvault secret set --vault-name machinespirit-kv --name JevApiKey --file $HOME\.machinespirit\jev-key.txt
+az keyvault secret set --vault-name machinespirit-kv-staging --name JevApiKey `
+  --file $HOME\.machinespirit\jev-key.txt -o none
 ```
 
-| Secret | Used for | Added in |
-|---|---|---|
-| `JevApiKey` | scoring rites for "More rites" | the generation PR |
-| `OtlpHeaders` | telemetry to Grafana Cloud (this site's own access-policy token) | the telemetry PR |
+The app picks up a new value within a day, or at once after a restart (`az functionapp restart -g machinespirit-rg -n
+machinespirit-app-staging`).
+
+### Grafana Cloud
+
+The site sends its telemetry to an existing Grafana Cloud stack, with a token of its own, so it can be revoked without
+touching anything else.
+
+1. In the Grafana Cloud portal, open the stack's **OpenTelemetry** tile (Configure): note the **instance ID** and the
+   OTLP endpoint.
+2. Under **Administration → Cloud access policies**, create a policy for that stack with the scopes `metrics:write`,
+   `logs:write` and `traces:write`, then add a token to it. Save the token to `$HOME\.machinespirit\grafana-token.txt`.
+3. Turn it into the OTLP header and set it. Name `-Path` and `-Value`: PowerShell 7.6 swaps them in
+   `Set-Content -NoNewline <path> <value>`, which writes the header into a file *name* in the current directory.
+
+```powershell
+$token = (Get-Content -Path $HOME\.machinespirit\grafana-token.txt -Raw).Trim()
+$basic = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("<instance ID>:$token"))
+Set-Content -Path $HOME\.machinespirit\otlp-headers.txt -Value "Authorization=Basic%20$basic" -NoNewline
+az keyvault secret set --vault-name machinespirit-kv-staging --name OtlpHeaders `
+  --file $HOME\.machinespirit\otlp-headers.txt -o none
+```
+
+## Deploying the app by hand
+
+Until the deploy workflows exist, publish a branch to staging from its checkout (Azure Functions Core Tools v4, signed
+in with `az login`):
+
+```powershell
+cd src/DailyMachineSpirit.Functions
+func azure functionapp publish machinespirit-app-staging --dotnet-isolated
+```
+
+Staging runs that branch until the next publish; `https://machinespirit-app-staging.azurewebsites.net/healthz` shows
+its commit.
 
 ## Outside Azure
 

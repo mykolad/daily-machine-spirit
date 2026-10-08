@@ -35,7 +35,12 @@ public sealed class DailyRiteFunction
                     published.Rite.Number, published.Rite.PublishedOnUtc, published.IsNew ? "published now" : "already published");
                 return RefillBacklogFunction.AfterPublishing;
             },
-            // Thrown here, at the edge, so the host counts the run as failed (and retries it).
-            Left: error => throw error.ToException());
+            // Logged here, since only the app's telemetry is exported, then thrown, so the host counts the run as failed
+            // (and retries it).
+            Left: error =>
+            {
+                logger.LogError(error.ToException(), "Today's rite couldn't be published: {Reason}", error.Message);
+                throw error.ToException();
+            });
     }
 }
