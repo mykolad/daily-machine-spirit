@@ -18,10 +18,10 @@ var builder = FunctionsApplication.CreateBuilder(args);
 // ASP.NET Core integration: HTTP functions take HttpRequest and return IActionResult.
 builder.ConfigureFunctionsWebApplication();
 
-// Logs and traces in OpenTelemetry form: the host sends its own (invocations, triggers; host.json's telemetryMode), this
-// adds the code's logs and its outgoing calls (the models, Jev, Cosmos DB). Exported only where OTEL_EXPORTER_OTLP_* is
-// set (Grafana Cloud, from infra/); a local run exports nothing. The Azure SDKs (Cosmos DB among them) only emit their
-// spans with this switch on.
+// Logs and traces in OpenTelemetry form: the code's logs, each invocation, and its outgoing calls (the models, Jev,
+// Cosmos DB). Only the app exports, not the Functions host: the host's request spans carry each visitor's user agent,
+// which the site never keeps. Exported only where OTEL_EXPORTER_OTLP_* is set (Grafana Cloud, from infra/); a local
+// run exports nothing. The Azure SDKs (Cosmos DB among them) only emit their spans with this switch on.
 AppContext.SetSwitch("Azure.Experimental.EnableActivitySource", true);
 var telemetry = builder.Services.AddOpenTelemetry()
     .UseFunctionsWorkerDefaults()
