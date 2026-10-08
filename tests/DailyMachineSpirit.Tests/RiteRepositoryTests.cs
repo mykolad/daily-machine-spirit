@@ -168,6 +168,7 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
         Assert.True((await missing.GetPublishedOn(date, CancellationToken.None)).IsLeft);
         Assert.True((await missing.GetNewest(1, CancellationToken.None)).IsLeft);
         Assert.True((await missing.GetOlderThan(5, 6, CancellationToken.None)).IsLeft);
+        Assert.True((await missing.GetByNumbers([1, 2], CancellationToken.None)).IsLeft);
         Assert.True((await missing.React(1, Some(Reaction.Blessed), None, CancellationToken.None)).IsLeft);
         Assert.True((await missing.Add(MakeRite(date, "Lost"), CancellationToken.None)).IsLeft);
         Assert.True((await missing.SaveScores(date, new RiteSimilarity(), CancellationToken.None)).IsLeft);

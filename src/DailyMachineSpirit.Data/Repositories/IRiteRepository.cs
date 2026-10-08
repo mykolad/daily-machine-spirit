@@ -13,6 +13,9 @@ public interface IRiteRepository
 
     Task<Either<Error, List<Rite>>> GetNewest(int count, CancellationToken cancellationToken);
 
+    /// <summary>The rites with these numbers, in no particular order; numbers without a rite are left out.</summary>
+    Task<Either<Error, List<Rite>>> GetByNumbers(IReadOnlyCollection<int> numbers, CancellationToken cancellationToken);
+
     /// <summary>The rites numbered below <paramref name="number"/>, the newest first: a page of the archive.</summary>
     Task<Either<Error, List<Rite>>> GetOlderThan(int number, int count, CancellationToken cancellationToken);
 

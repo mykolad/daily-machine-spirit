@@ -72,6 +72,36 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.Contains("Back to the Archive", html);
         Assert.Contains("Copy text", html);
         Assert.DoesNotContain("Next litany in", html);
+        Assert.DoesNotContain("More rites", html);
+    }
+
+    [Fact]
+    public async Task Rite_OffersTheClosestRitesByTheirScores()
+    {
+        string[] titles = ["Cache A", "Builds B", "Cache C", "Cache D", "Builds E", "Cache F"];
+        float[][] scores = [[1f, 0f], [0f, 1f], [0.9f, 0.1f], [0.8f, 0.2f], [0f, 1f], [0.95f, 0.05f]];
+        for (var i = 0; i < titles.Length; i++)
+        {
+            await Add(Day.AddDays(i - titles.Length), titles[i]);
+            Ok(await Repository.SaveScores(Day.AddDays(i - titles.Length),
+                new RiteSimilarity { ScoresGeneratorVersion = "jev/q1", Scores = scores[i], CreatedAtUtc = DateTime.UtcNow },
+                CancellationToken.None));
+        }
+
+        var (_, html) = await Rite("1");
+
+        Assert.Equal(["Cache F", "Cache C", "Cache D"], MoreTitles(html));
+    }
+
+    [Fact]
+    public async Task Rite_WithoutScores_OffersTheNewestOtherRites()
+    {
+        for (var daysAgo = 4; daysAgo >= 0; daysAgo--)
+            await Add(Day.AddDays(-daysAgo), $"Rite {5 - daysAgo}");
+
+        var (_, html) = await Rite("4");
+
+        Assert.Equal(["Rite 5", "Rite 3", "Rite 2"], MoreTitles(html));
     }
 
     [Theory]
@@ -180,6 +210,10 @@ public sealed class SitePagesTests : IAsyncLifetime
         var result = Assert.IsType<ContentResult>(await serve(context));
         return (result.StatusCode ?? 0, result.Content ?? "", context.Response.Headers.CacheControl.ToString());
     }
+
+    // The More rites cards' titles, in order.
+    private static List<string> MoreTitles(string html)
+        => html.Split("""<span class="more-title">""").Skip(1).Select(part => part[..part.IndexOf("</span>", StringComparison.Ordinal)]).ToList();
 
     // The archive rows' titles, in order.
     private static List<string> Titles(string html)
