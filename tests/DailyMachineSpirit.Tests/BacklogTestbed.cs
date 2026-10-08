@@ -30,7 +30,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public int BacklogSize { get; set; } = 3;
 
-    public RiteRepository Rites => new(cosmos.Container);
+    public RiteRepository Rites => new(cosmos.Container, NullLogger<RiteRepository>.Instance);
 
     public DraftRepository Drafts => new(cosmos.Container);
 
@@ -64,7 +64,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
     public Scribes ScribesWithoutCosmos()
     {
         var missing = cosmos.Container.Database.GetContainer("missing");
-        return new Scribes(new DraftRepository(missing), new RiteRepository(missing), new ScriptoriumRepository(missing), Time);
+        return new Scribes(new DraftRepository(missing), new RiteRepository(missing, NullLogger<RiteRepository>.Instance), new ScriptoriumRepository(missing), Time);
     }
 
     /// <summary>A waiting draft, already judged, as if written by an earlier refill.</summary>
