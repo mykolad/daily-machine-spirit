@@ -116,6 +116,8 @@ public sealed class ReactionsTests : IAsyncLifetime
 
     [Theory]
     [InlineData("""{"reaction":"amen"}""")]
+    [InlineData("""{"reaction":"Blessed"}""")]
+    [InlineData("""{"reaction":"heresy","previous":"BLESSED"}""")]
     [InlineData("""{"reaction":"blessed","unexpected":true}""")]
     [InlineData("""{"reacton":"blessed"}""")]
     [InlineData("""{"reaction":1}""")]

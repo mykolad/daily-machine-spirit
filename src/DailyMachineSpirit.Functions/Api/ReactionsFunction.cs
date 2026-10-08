@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
+using LanguageExt;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
@@ -18,7 +20,6 @@ public sealed class ReactionsFunction
 {
     private static readonly JsonSerializerOptions BodyOptions = new(JsonSerializerDefaults.Web)
     {
-        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false) },
         // A misspelled field ("reacton") is a mistake to refuse, not a reaction of none.
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
     };
@@ -51,10 +52,10 @@ public sealed class ReactionsFunction
         {
             return new BadRequestResult();
         }
-        if (body is null)
+        if (body is null || !TryRead(body.Reaction, out var reaction) || !TryRead(body.Previous, out var previous))
             return new BadRequestResult();
 
-        var result = await rites.React(number, Optional(body.Reaction), Optional(body.Previous), cancellationToken);
+        var result = await rites.React(number, reaction, previous, cancellationToken);
         return result.Match(
             Right: counts => counts.Match<IActionResult>(
                 Some: saved => new OkObjectResult(new { blessed = saved.Blessed, heresy = saved.Heresy }),
@@ -64,5 +65,17 @@ public sealed class ReactionsFunction
                 logger.LogError(error.ToException(), "Rite NO. {Number}'s reaction couldn't be saved: {Reason}", number, error.Message);
                 return new StatusCodeResult(StatusCodes.Status503ServiceUnavailable);
             });
+    }
+
+    // Exactly the names the page sends, lowercase; anything else isn't a reaction. Null is no reaction.
+    private static bool TryRead(string? value, out Option<Reaction> reaction)
+    {
+        reaction = value switch
+        {
+            "blessed" => Some(Reaction.Blessed),
+            "heresy" => Some(Reaction.Heresy),
+            _ => None,
+        };
+        return value is null || reaction.IsSome;
     }
 }
