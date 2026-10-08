@@ -29,6 +29,7 @@ public sealed class ScriptoriumFunction
 {
     public const string Summoned = "summoned by a Scribe";
     public const string AllBurned = "every draft was burned";
+    public const string Uncounted = "the backlog couldn't be counted after a burn";
 
     // What the page says after each action, by the key in its address.
     private static readonly Dictionary<string, string> Outcomes = new()
@@ -95,7 +96,10 @@ public sealed class ScriptoriumFunction
 
     private async Task<ScriptoriumResponse> Act(HttpRequest request, Guid draftId, string action, CancellationToken cancellationToken)
     {
-        var note = (await request.ReadFormAsync(cancellationToken))["note"].ToString();
+        var form = await ReadForm(request, cancellationToken);
+        if (form.IsNone)
+            return new ScriptoriumResponse { Result = new BadRequestResult() };
+        var note = form.Map(fields => fields["note"].ToString()).IfNone(string.Empty);
         return action switch
         {
             "anoint" => Answer(request, action, await scribes.Anoint(draftId, note, cancellationToken)),
@@ -103,13 +107,31 @@ public sealed class ScriptoriumFunction
             "humble" => Answer(request, action, await scribes.Humble(draftId, note, cancellationToken)),
             "restore" => Answer(request, action, await scribes.Restore(draftId, note, cancellationToken)),
             "burn" => (await scribes.Burn(draftId, note, cancellationToken)).Match(
-                // Nothing waits any more: refill now rather than at the next daily run.
-                Right: waiting => waiting == 0
-                    ? new ScriptoriumResponse { Result = BackToPage("burn-last"), RefillReason = AllBurned }
-                    : new ScriptoriumResponse { Result = BackToPage("burn") },
+                // Nothing waits any more, or it can't be told: refill now rather than at the next daily run. A refill
+                // only writes what's missing, so an unneeded one costs a read.
+                Right: waiting => waiting.Match(
+                    Some: count => count == 0
+                        ? new ScriptoriumResponse { Result = BackToPage("burn-last"), RefillReason = AllBurned }
+                        : new ScriptoriumResponse { Result = BackToPage("burn") },
+                    None: () => new ScriptoriumResponse { Result = BackToPage("burn"), RefillReason = Uncounted }),
                 Left: error => Failure(request, error)),
             _ => new ScriptoriumResponse { Result = new NotFoundResult() },
         };
+    }
+
+    // The page's forms are always url-encoded; anything else is the client's mistake (400), not the Scriptorium's.
+    private static async Task<Option<IFormCollection>> ReadForm(HttpRequest request, CancellationToken cancellationToken)
+    {
+        if (!request.HasFormContentType)
+            return None;
+        try
+        {
+            return Some(await request.ReadFormAsync(cancellationToken));
+        }
+        catch (Exception ex) when (ex is (InvalidDataException or IOException) && !cancellationToken.IsCancellationRequested)
+        {
+            return None;
+        }
     }
 
     // Turned off, the Scriptorium doesn't exist. A form posted from another site (a forged request riding a Scribe's

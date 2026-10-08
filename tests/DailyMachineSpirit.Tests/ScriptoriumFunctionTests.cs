@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Primitives;
+using System.Text;
 using static DailyMachineSpirit.Tests.Expect;
 
 namespace DailyMachineSpirit.Tests;
@@ -119,6 +119,34 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Equal("/scriptorium?done=burn-last", Assert.IsType<RedirectResult>(response.Result).Url);
         Assert.Equal(ScriptoriumFunction.AllBurned, response.RefillReason);
         Assert.Empty(await testbed.Waiting());
+    }
+
+    [Fact]
+    public async Task Burning_WhenTheCountAfterwardsFails_StillBurns_AndAsksForARefill()
+    {
+        var burned = await testbed.AddDraft("Burned", 0.5f);
+        await testbed.AddDraft("Still waiting", 0.5f);
+        var scribes = new Scribes(new DraftsFailingAfterFirstRead(testbed.Drafts), testbed.Rites, testbed.Scriptorium, testbed.Time);
+        var function = new ScriptoriumFunction(scribes, Options.Create(new ScriptoriumOptions { Enabled = true }), NullLogger<ScriptoriumFunction>.Instance);
+
+        var response = await function.Decide(Post(""), burned.Id, "burn", CancellationToken.None);
+
+        Assert.Equal("/scriptorium?done=burn", Assert.IsType<RedirectResult>(response.Result).Url);
+        Assert.Equal(ScriptoriumFunction.Uncounted, response.RefillReason);
+        Assert.Equal("Still waiting", Assert.Single(await testbed.Waiting()).Title);
+    }
+
+    [Theory]
+    [InlineData("text/plain", "note=hello")]
+    [InlineData("multipart/form-data; boundary=rite", "--rite\r\nnot a part")]
+    public async Task AMalformedForm_IsTheClientsMistake_AndChangesNothing(string contentType, string body)
+    {
+        var draft = await testbed.AddDraft("Kept", 0.5f);
+
+        var response = await Function(enabled: true).Decide(Post(contentType, body), draft.Id, "burn", CancellationToken.None);
+
+        Assert.IsType<BadRequestResult>(response.Result);
+        Assert.Single(await testbed.Waiting());
     }
 
     [Fact]
@@ -252,15 +280,18 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         return request;
     }
 
-    // As a browser posts the page's form: same origin, with the note field.
+    // As a browser posts the page's form: same origin, with the note field, url-encoded.
     private static HttpRequest Post(string note)
+        => Post("application/x-www-form-urlencoded", $"note={Uri.EscapeDataString(note)}");
+
+    private static HttpRequest Post(string contentType, string body)
     {
         var request = new DefaultHttpContext().Request;
         request.Method = "POST";
         request.Host = new HostString("dailymachinespirit.fyi");
         request.Headers["Sec-Fetch-Site"] = "same-origin";
-        request.ContentType = "application/x-www-form-urlencoded";
-        request.Form = new FormCollection(new Dictionary<string, StringValues> { ["note"] = note });
+        request.ContentType = contentType;
+        request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
         return request;
     }
 

@@ -87,9 +87,10 @@ public sealed class Scribes
     /// <summary>
     /// Burns the draft (it's kept, hidden, and can be restored) and takes it out of the Scribes' order; returns how many
     /// drafts are waiting after it. Counted after the burn is saved, so when two Scribes burn the last two at once, the
-    /// later one sees none left.
+    /// later one sees none left. None when that count fails: the burn is saved all the same, and the caller can't tell
+    /// whether any draft is left.
     /// </summary>
-    public Task<Either<Error, int>> Burn(Guid draftId, string note, CancellationToken cancellationToken)
+    public Task<Either<Error, Option<int>>> Burn(Guid draftId, string note, CancellationToken cancellationToken)
         => Note(note).BindAsync(checkedNote => Calendar(cancellationToken)
             .BindAsync(calendar => calendar.Find(draftId).Match(
                 Some: found => scriptorium
@@ -97,9 +98,10 @@ public sealed class Scribes
                         Decision(found.Draft, ScribeAction.Burn, checkedNote, Some(found.Place), Some(calendar.AuguryPlace(found.Draft))),
                         WithoutDraft(calendar.Placements, draftId),
                         cancellationToken)
-                    .BindAsync(_ => drafts.GetWaiting(cancellationToken))
-                    .MapAsync(waiting => Task.FromResult(waiting.Count)),
-                None: () => Task.FromResult(Left<Error, int>(ScriptoriumRepository.ChangedMeanwhile)))));
+                    .MapAsync(async _ => (await drafts.GetWaiting(cancellationToken)).Match(
+                        Right: waiting => Some(waiting.Count),
+                        Left: _ => Option<int>.None)),
+                None: () => Task.FromResult(Left<Error, Option<int>>(ScriptoriumRepository.ChangedMeanwhile)))));
 
     /// <summary>Restores a burned draft, however long ago it burned: it waits again, in the Augury's order.</summary>
     public Task<Either<Error, Unit>> Restore(Guid draftId, string note, CancellationToken cancellationToken)

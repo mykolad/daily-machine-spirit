@@ -33,3 +33,24 @@ public sealed class InterruptedDrafts : IDraftRepository
         return waiting;
     }
 }
+
+/// <summary>The real drafts, except that every read of the waiting ones after the first fails, as if Cosmos went down.</summary>
+public sealed class DraftsFailingAfterFirstRead : IDraftRepository
+{
+    private readonly IDraftRepository inner;
+    private int reads;
+
+    public DraftsFailingAfterFirstRead(IDraftRepository inner)
+    {
+        this.inner = inner;
+    }
+
+    public Task<Either<Error, Draft>> Add(Draft draft, CancellationToken cancellationToken)
+        => inner.Add(draft, cancellationToken);
+
+    public Task<Either<Error, Option<Draft>>> Get(Guid draftId, CancellationToken cancellationToken)
+        => inner.Get(draftId, cancellationToken);
+
+    public async Task<Either<Error, List<Draft>>> GetWaiting(CancellationToken cancellationToken)
+        => ++reads == 1 ? await inner.GetWaiting(cancellationToken) : Error.New("Cosmos is down.");
+}
