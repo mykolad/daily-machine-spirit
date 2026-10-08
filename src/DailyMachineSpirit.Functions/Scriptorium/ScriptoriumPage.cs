@@ -106,7 +106,9 @@ public static partial class ScriptoriumPage
 
         DecisionForm(html, id, draft.Title,
         [
-            .. isFirst ? Array.Empty<(string, string, string)>() : [("anoint", "Anoint", "secondary"), ("exalt", "Exalt", "secondary")],
+            // Anointing the first is useful too: it keeps it first, ahead of a better draft a refill may bring.
+            ("anoint", "Anoint", "secondary"),
+            .. isFirst ? Array.Empty<(string, string, string)>() : [("exalt", "Exalt", "secondary")],
             .. isLast ? Array.Empty<(string, string, string)>() : [("humble", "Humble", "secondary")],
             ("burn", "Consign to the Flames", "danger"),
         ]);
@@ -197,7 +199,7 @@ public static partial class ScriptoriumPage
         .meta, .when, .optional { color: #b6a98f; }
         .meta { margin: 0 0 12px; font-size: 15px; }
         .decide label { display: block; font-weight: 600; margin-bottom: 4px; }
-        textarea { width: 100%; background: #100e0b; color: #ede3cf; border: 1px solid rgba(237,227,207,.22); border-radius: 12px; padding: 8px 12px; font: 16px/1.4 Figtree, sans-serif; margin-bottom: 8px; }
+        textarea { width: 100%; background: #100e0b; color: #ede3cf; border: 1px solid #b6a98f; border-radius: 12px; padding: 8px 12px; font: 16px/1.4 Figtree, sans-serif; margin-bottom: 8px; }
         button { min-height: 46px; padding: 10px 18px; border-radius: 999px; font: 600 16px/1.2 Figtree, sans-serif; cursor: pointer; border: 1px solid transparent; }
         .primary { background: #c9a25a; color: #100e0b; }
         .primary:hover { background: #d6b170; }

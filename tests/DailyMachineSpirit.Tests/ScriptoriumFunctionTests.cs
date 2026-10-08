@@ -32,6 +32,10 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Contains("The Rite of <code>git push --force</code>", html);
         Assert.Contains("Litany of the Endless Spinner", html);
         Assert.Contains("Restore from the Ashes", html);
+        // The top draft can be anointed (to keep it first), but not exalted.
+        var top = Ok(await testbed.Scribes().View(CancellationToken.None)).Calendar[0].Draft.Id;
+        Assert.Contains($"/scriptorium/drafts/{top:D}/anoint", html);
+        Assert.DoesNotContain($"/scriptorium/drafts/{top:D}/exalt", html);
         Assert.Contains("“Spinners &lt;again&gt;.”", html);
         Assert.Equal("no-store", request.HttpContext.Response.Headers.CacheControl.ToString());
         Assert.Equal("noindex", request.HttpContext.Response.Headers["X-Robots-Tag"].ToString());

@@ -68,7 +68,7 @@ public sealed class Scribes
                         }))));
     }
 
-    /// <summary>Makes the draft the next to be published.</summary>
+    /// <summary>Makes the draft the next to be published; for the first, it keeps it there, ahead of the Augury's later picks.</summary>
     public Task<Either<Error, Unit>> Anoint(Guid draftId, string note, CancellationToken cancellationToken)
         => Reorder(draftId, ScribeAction.Anoint, note, (order, index) => Some<List<Guid>>([order[index], .. order[..index]]), cancellationToken);
 
@@ -149,11 +149,13 @@ public sealed class Scribes
             ? Some(placements with { Order = placements.Order.Where(id => id != draftId).ToList() })
             : None;
 
+    // The Scribes' order is read first: a draft placed after that changes the order's ETag, so saving a change based on a
+    // waiting list without that draft fails (ChangedMeanwhile) rather than dropping its placement.
     private Task<Either<Error, CalendarState>> Calendar(CancellationToken cancellationToken)
-        => drafts.GetWaiting(cancellationToken)
-            .BindAsync(waiting => rites.GetNewest(LiturgicalCalendar.ResemblanceWindow, cancellationToken)
-                .BindAsync(recent => scriptorium.GetPlacements(cancellationToken)
-                    .MapAsync(placements => Task.FromResult(new CalendarState(
+        => scriptorium.GetPlacements(cancellationToken)
+            .BindAsync(placements => drafts.GetWaiting(cancellationToken)
+                .BindAsync(waiting => rites.GetNewest(LiturgicalCalendar.ResemblanceWindow, cancellationToken)
+                    .MapAsync(recent => Task.FromResult(new CalendarState(
                         LiturgicalCalendar.Order(waiting, recent, placements.Order),
                         LiturgicalCalendar.Order(waiting, recent, []),
                         placements)))));

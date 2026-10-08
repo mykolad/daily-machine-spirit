@@ -1,6 +1,8 @@
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Scriptorium;
+using LanguageExt;
+using LanguageExt.Common;
 using Microsoft.Extensions.AI;
 using static DailyMachineSpirit.Tests.BacklogTestbed;
 using static DailyMachineSpirit.Tests.Expect;
@@ -67,6 +69,41 @@ public sealed class ScribesTests : IAsyncLifetime
         Assert.Equal(Some(0.4f), decision.AuguryQuality);
         Assert.Equal(Some("The Heretical Truth names the real fix."), decision.Note);
         Assert.Equal(testbed.Time.GetUtcNow().UtcDateTime, decision.DecidedAtUtc);
+    }
+
+    [Fact]
+    public async Task Anoint_TheFirstDraft_KeepsItAheadOfABetterOneFromARefill()
+    {
+        var first = await testbed.AddDraft("The Augury's pick", 0.6f);
+        Ok(await testbed.Scribes().Anoint(first.Id, "Yes, this one.", CancellationToken.None));
+
+        await testbed.AddDraft("Better, from a refill", 0.95f);
+
+        var view = Ok(await testbed.Scribes().View(CancellationToken.None));
+        Assert.Equal(["The Augury's pick", "Better, from a refill"], view.Calendar.Select(entry => entry.Draft.Title));
+        Assert.Equal(Some("Yes, this one."), Assert.Single(view.Decisions).Note);
+    }
+
+    [Fact]
+    public async Task AnAnointingBetweenReadingTheOrderAndTheDrafts_IsNotLost()
+    {
+        await testbed.AddDraft("Excellent", 0.95f);
+        var fair = await testbed.AddDraft("Fair", 0.4f);
+        Guid anointedMeanwhile = Guid.Empty;
+        // Right after this request reads the waiting drafts, a refill adds one and another Scribe anoints it.
+        var drafts = new InterruptedDrafts(testbed.Drafts, async () =>
+        {
+            var arrived = await testbed.AddDraft("Arrived meanwhile", 0.5f);
+            anointedMeanwhile = arrived.Id;
+            Ok(await testbed.Scribes().Anoint(arrived.Id, "", CancellationToken.None));
+        });
+        var scribes = new Scribes(drafts, testbed.Rites, testbed.Scriptorium, testbed.Time);
+
+        var result = await scribes.Exalt(fair.Id, "", CancellationToken.None);
+
+        Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Failed(result));
+        var view = Ok(await testbed.Scribes().View(CancellationToken.None));
+        Assert.Equal(anointedMeanwhile, view.Calendar[0].Draft.Id);
     }
 
     [Fact]
@@ -299,5 +336,33 @@ public sealed class ScribesTests : IAsyncLifetime
         var result = await testbed.ScribesWithoutCosmos().View(CancellationToken.None);
 
         Assert.True(result.IsLeft);
+    }
+
+    /// <summary>The real drafts, with something happening once, right after the first read of the waiting ones.</summary>
+    private sealed class InterruptedDrafts : IDraftRepository
+    {
+        private readonly IDraftRepository inner;
+        private Option<Func<Task>> interruption;
+
+        public InterruptedDrafts(IDraftRepository inner, Func<Task> interruption)
+        {
+            this.inner = inner;
+            this.interruption = interruption;
+        }
+
+        public Task<Either<Error, Draft>> Add(Draft draft, CancellationToken cancellationToken)
+            => inner.Add(draft, cancellationToken);
+
+        public Task<Either<Error, Option<Draft>>> Get(Guid draftId, CancellationToken cancellationToken)
+            => inner.Get(draftId, cancellationToken);
+
+        public async Task<Either<Error, List<Draft>>> GetWaiting(CancellationToken cancellationToken)
+        {
+            var waiting = await inner.GetWaiting(cancellationToken);
+            var pending = interruption;
+            interruption = None;
+            await pending.IfSomeAsync(interrupt => interrupt());
+            return waiting;
+        }
     }
 }
