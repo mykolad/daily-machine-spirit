@@ -19,9 +19,14 @@ public sealed class RiteWriter
     private const string Omnissiah = "Omnissiah";
 
     // The satire borrows its mood from a setting whose names it must not use (CLAUDE.md, Ground rules). The prompt
-    // forbids them; an answer that uses one anyway is asked for again.
+    // forbids them; an answer that uses one anyway is asked for again. The list catches the setting's distinctive coined
+    // names, the ones a model reaches for; it can't be complete, so the prompt's rule stays the first line.
     private static readonly string[] ForbiddenNames =
-        ["Warhammer", "Games Workshop", "Adeptus", "Mechanicus", "Imperium", "Astartes", "Space Marine", "Aquila"];
+    [
+        "Warhammer", "Games Workshop", "Adeptus", "Mechanicus", "Mechanicum", "Imperium", "Astartes", "Space Marine",
+        "Aquila", "Primarch", "Ultramarine", "Horus Heresy", "Emperor of Mankind", "Astra Militarum", "Ecclesiarchy",
+        "Tyranid", "Necron", "Eldar", "Aeldari",
+    ];
 
     private static readonly JsonSerializerOptions AnswerSerializerOptions = new(JsonSerializerOptions.Web)
     {
