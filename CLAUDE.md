@@ -153,3 +153,12 @@ database, as your `az login`; never production's). HTTP functions run without st
 and on pushes to `master`: restore, Release build, a Bicep lint and build of `infra/` (any warning fails it), then
 `tools/coverage.ps1 -NoBuild` (the same gate as a local run), with the Cosmos DB emulator as a service container for the
 repository tests.
+
+## Deploying
+
+- **Deploy Master** (`deploy-master.yml`): when Build and Test passes on a push to `master`, the same commit is deployed
+  to staging. Production joins at launch.
+- **Deploy Branch to Staging** (`deploy-branch-to-staging.yml`): run by hand with a branch name, to try a PR on staging.
+- Both call `deploy.yml`, which publishes the app and deploys it as the GitHub environment's identity (OIDC: the
+  environment's `AZURE_*` variables hold ids, not secrets). One deployment per environment at a time.
+- Staging admits only the owner's address, so the workflow can't call `/healthz`; check it from your machine.
