@@ -92,10 +92,11 @@ infra/                            — Bicep for all of Azure (main.bicep); infra
   (`CosmosClients.Create`); the account's keys stay off. The account, databases, container, role assignments and the
   app's settings are all created by the Bicep in `infra/`, never by the app (its data-plane role can't create them). Settings: `Cosmos:Endpoint`, `Cosmos:Database`.
 
-- **Telemetry: OpenTelemetry to Grafana Cloud.** The host (`telemetryMode` in `host.json`) and the app (`Program.cs`)
-  export logs and traces over OTLP wherever `OTEL_EXPORTER_OTLP_ENDPOINT` is set; `infra/` sets it, with the token's
-  header from the vault. Each environment is its own service (the app's name), tagged with `deployment.environment.name`.
-  There's no Application Insights, so the portal's log stream stays empty: look in Grafana.
+- **Telemetry: OpenTelemetry to Grafana Cloud.** The app (`Program.cs`) exports its logs and traces over OTLP wherever
+  `OTEL_EXPORTER_OTLP_ENDPOINT` is set; `infra/` sets it, with the token's header from the vault. The Functions host
+  doesn't export (no `telemetryMode` in `host.json`): its request spans carry visitors' user agents. So a failure the
+  host alone would see must be logged by the code. Each environment is its own service (the app's name), tagged with
+  `deployment.environment.name`. There's no Application Insights, so the portal's log stream stays empty: look in Grafana.
 - **The pages** (`Pages/`) follow the design handoff (`design_handoff_daily_machine_spirit`, outside the repo; its
   README is the spec). They're rendered on the server as plain HTML with the CSS and a small script inlined, so a page
   is one request and works without the script (the truth then simply shows).
