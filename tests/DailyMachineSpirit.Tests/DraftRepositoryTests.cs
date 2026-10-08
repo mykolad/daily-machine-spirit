@@ -1,6 +1,7 @@
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using LanguageExt;
+using Microsoft.Extensions.Logging.Abstractions;
 using static DailyMachineSpirit.Tests.Expect;
 using static LanguageExt.Prelude;
 
@@ -105,7 +106,7 @@ public sealed class DraftRepositoryTests : IAsyncLifetime
         Assert.Equal(RiteRepository.DraftNotWaiting, Failed(Assert.Single(results, result => result.IsLeft)));
     }
 
-    private RiteRepository Rites => new(cosmos.Container);
+    private RiteRepository Rites => new(cosmos.Container, NullLogger<RiteRepository>.Instance);
 
     private DraftRepository Drafts => new(cosmos.Container);
 

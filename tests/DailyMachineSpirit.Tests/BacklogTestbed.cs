@@ -29,7 +29,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public int BacklogSize { get; set; } = 3;
 
-    public RiteRepository Rites => new(cosmos.Container);
+    public RiteRepository Rites => new(cosmos.Container, NullLogger<RiteRepository>.Instance);
 
     public DraftRepository Drafts => new(cosmos.Container);
 

@@ -76,9 +76,17 @@ public sealed class BacklogRefiller
     // Scores only order the backlog and power "More rites": a draft Jev couldn't score still joins it, after the scored
     // ones, rather than being lost.
     private async Task<Draft> Scored(Draft draft, CancellationToken cancellationToken)
-        => (await scorer.Score(draft, cancellationToken)).IfLeft(error =>
-        {
-            logger.LogWarning(error.ToException(), "Draft {Title} joins the backlog without scores: {Reason}", draft.Title, error.Message);
-            return draft;
-        });
+        => (await scorer.Score(draft, cancellationToken)).Match(
+            Right: scored =>
+            {
+                scored.Similarity.Match(
+                    Some: scores => logger.LogInformation("Draft {Title} was scored by {ScoresGenerator}.", draft.Title, scores.ScoresGeneratorVersion),
+                    None: () => logger.LogInformation("Draft {Title} joins the backlog without scores: scoring is turned off.", draft.Title));
+                return scored;
+            },
+            Left: error =>
+            {
+                logger.LogWarning(error.ToException(), "Draft {Title} joins the backlog without scores: {Reason}", draft.Title, error.Message);
+                return draft;
+            });
 }
