@@ -95,6 +95,23 @@ public sealed class SitePagesTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Rite_WhenMoreRitesFail_IsStillServed_WithoutThem()
+    {
+        await Add(Day.AddDays(-1), "Litany of the Clean Cache");
+        await Add(Day, "The Rite of Re-Run");
+        Ok(await Repository.SaveScores(Day,
+            new RiteSimilarity { ScoresGeneratorVersion = "jev/q1", Scores = [1f, 0f], CreatedAtUtc = DateTime.UtcNow },
+            CancellationToken.None));
+        var pages = new SitePages(new RitesWithoutScores(Repository), time, NullLogger<SitePages>.Instance);
+
+        var page = await Read(context => pages.Rite(context.Request, "2", CancellationToken.None));
+
+        Assert.Equal(StatusCodes.Status200OK, page.Status);
+        Assert.Contains("The Rite of Re-Run", page.Html);
+        Assert.DoesNotContain("More rites", page.Html);
+    }
+
+    [Fact]
     public async Task Rite_WithoutScores_OffersTheNewestOtherRites()
     {
         for (var daysAgo = 4; daysAgo >= 0; daysAgo--)
