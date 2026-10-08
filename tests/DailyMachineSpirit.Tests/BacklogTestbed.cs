@@ -1,6 +1,7 @@
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Generation;
+using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Scriptorium;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;

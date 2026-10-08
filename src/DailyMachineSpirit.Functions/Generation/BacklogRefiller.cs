@@ -1,5 +1,7 @@
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
+using DailyMachineSpirit.Functions.Generation.Scoring;
+using DailyMachineSpirit.Functions.Generation.Writing;
 using LanguageExt;
 using LanguageExt.Common;
 using Microsoft.Extensions.Logging;
@@ -15,7 +17,7 @@ public sealed class BacklogRefiller
     private readonly IRiteRepository rites;
     private readonly IScriptoriumRepository scriptorium;
     private readonly RiteWriter writer;
-    private readonly JevScorer scorer;
+    private readonly IRiteScorer scorer;
     private readonly IOptions<GenerationOptions> options;
     private readonly ILogger<BacklogRefiller> logger;
 
@@ -24,7 +26,7 @@ public sealed class BacklogRefiller
         IRiteRepository rites,
         IScriptoriumRepository scriptorium,
         RiteWriter writer,
-        JevScorer scorer,
+        IRiteScorer scorer,
         IOptions<GenerationOptions> options,
         ILogger<BacklogRefiller> logger)
     {

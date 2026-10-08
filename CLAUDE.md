@@ -18,7 +18,8 @@ what really happens. Either kind is a **rite** (the design's word, and `Rite` in
 ## Solution layout
 
 ```
-src/DailyMachineSpirit.Functions  — the Functions app (HTTP and timer functions)
+  Generation/                     — the backlog and the daily rite: Writing/, Chat/ (the models), Scoring/ (Jev)
+  Generation/                     — the backlog and the daily rite; Writing/ (prompt, writer), Chat/ (the models), Scoring/ (Jev)
 src/DailyMachineSpirit.Data       — Cosmos DB: entities, documents, repositories
 tests/DailyMachineSpirit.Tests    — xUnit tests (the repository tests run against the Cosmos DB emulator)
 tools/coverage.ps1                — tests + coverage report + the coverage gate (Build and Test runs it)
@@ -48,6 +49,10 @@ infra/                            — Bicep for all of Azure (main.bicep); infra
   converted to `Option` where the data enters (e.g. `RiteDocument.Similarity`). The JSON serializers set
   `RespectNullableAnnotations`, so a null arriving in a non-nullable property fails at the boundary instead of
   slipping in.
+- **One type per file**, so options, an interface and its implementation are separate files. Related files share a
+  folder (`Generation/Scoring/`), and the namespace follows the folder.
+- **Swappable services sit behind an interface** (`IChatClients`, `IRiteScorer`): the rest of the code never names the
+  vendor, and the vendor's settings (`JevOptions`) belong to its implementation.
 - **Member order:** constants and fields, constructor, then public members (in a test class: setup and teardown, then
   the tests), and private helpers last.
 - **One blank line between properties** (and between methods), never two in a row. Constants or fields that share one
@@ -105,8 +110,9 @@ infra/                            — Bicep for all of Azure (main.bicep); infra
   - **Writing:** `RiteWriter` asks `gpt-6-sol` for a `RiteContent` (JSON schema output), up to 3 times, then
     `gpt-6-luna` (`Generation:Models`). An answer that's empty, too long or uses a forbidden name is asked for again,
     never cut.
-  - **Scoring:** `JevScorer` scores each draft in one request: its similarity scores for "More rites" and its quality
-    for the Augury. A draft Jev can't score still joins the backlog, without scores.
+  - **Scoring:** an `IRiteScorer` scores each draft (`JevScorer` for now, swappable like the models): its similarity
+    scores for "More rites" and its quality for the Augury, in one request. A draft that can't be scored still joins the
+    backlog, without scores.
   - **Settings:** `AzureOpenAI:Endpoint` (the models are reached as the managed identity), `Jev:ApiKey` (a Key Vault
     reference in Azure; empty turns Jev off), and optionally `Generation:*` (`GenerationOptions`).
 - **The Scriptorium** (`/scriptorium`, `Scriptorium/`): where the **Scribes** (moderators) shape the Liturgical Calendar.

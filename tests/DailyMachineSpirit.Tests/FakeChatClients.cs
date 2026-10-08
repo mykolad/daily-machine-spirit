@@ -1,4 +1,4 @@
-using DailyMachineSpirit.Functions.Generation;
+using DailyMachineSpirit.Functions.Generation.Chat;
 using Microsoft.Extensions.AI;
 
 namespace DailyMachineSpirit.Tests;

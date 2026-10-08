@@ -1,6 +1,9 @@
 using DailyMachineSpirit.Data;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Generation;
+using DailyMachineSpirit.Functions.Generation.Chat;
+using DailyMachineSpirit.Functions.Generation.Scoring;
+using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Scriptorium;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Functions.Worker.Builder;
@@ -29,7 +32,7 @@ builder.Services.Configure<GenerationOptions>(builder.Configuration.GetSection(G
 builder.Services.Configure<JevOptions>(builder.Configuration.GetSection(JevOptions.SectionName));
 var openAI = builder.Configuration.GetSection(AzureOpenAIOptions.SectionName).Get<AzureOpenAIOptions>() ?? new AzureOpenAIOptions();
 builder.Services.AddSingleton<IChatClients>(_ => new AzureOpenAIChatClients(new Uri(openAI.Endpoint)));
-builder.Services.AddHttpClient<JevScorer>(http => http.Timeout = TimeSpan.FromSeconds(30));
+builder.Services.AddHttpClient<IRiteScorer, JevScorer>(http => http.Timeout = TimeSpan.FromSeconds(30));
 builder.Services.AddTransient<RiteWriter>();
 builder.Services.AddTransient<BacklogRefiller>();
 builder.Services.AddTransient<DailyRitePublisher>();

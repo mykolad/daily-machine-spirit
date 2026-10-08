@@ -1,6 +1,6 @@
 using System.Net;
 using System.Text.Json.Nodes;
-using DailyMachineSpirit.Functions.Generation;
+using DailyMachineSpirit.Functions.Generation.Scoring;
 using Microsoft.Extensions.Options;
 
 namespace DailyMachineSpirit.Tests;
