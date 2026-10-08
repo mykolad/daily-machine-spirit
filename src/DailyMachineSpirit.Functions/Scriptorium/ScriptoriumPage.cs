@@ -13,6 +13,59 @@ namespace DailyMachineSpirit.Functions.Scriptorium;
 /// </summary>
 public static partial class ScriptoriumPage
 {
+    private const string Styles = """
+        :root { color-scheme: dark; }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: #100e0b; color: #ede3cf; font: 16px/1.5 Figtree, system-ui, sans-serif; }
+        header, main { max-width: 820px; margin: 0 auto; padding: 28px clamp(16px, 4vw, 40px) 0; }
+        main { padding-bottom: 72px; }
+        footer { max-width: 600px; margin: 0 auto; padding: 0 16px 48px; text-align: center; }
+        .motto { margin: 0 0 8px; font: 700 16px Cinzel, serif; letter-spacing: .08em; color: #c9a25a; }
+        .disclaimer { margin: 0; font: 400 14px/1.6 Figtree, sans-serif; color: #b6a98f; }
+        .brand { margin: 0; font: 700 16px Cinzel, serif; letter-spacing: .04em; color: #c9a25a; }
+        h1 { font: 700 clamp(30px, 4.4vw, 46px)/1.1 Cinzel, serif; margin: 24px 0 8px; }
+        h2 { font: 700 26px/1.2 Cinzel, serif; margin: 0; }
+        h3 { font: 700 21px/1.2 Cinzel, serif; margin: 6px 0 8px; }
+        .lede { font: italic 400 20px/1.4 "EB Garamond", serif; color: #cdbd9e; margin: 0 0 16px; }
+        .status:not(:empty) { background: #1a1612; border-left: 4px solid #c9a25a; padding: 12px 16px; border-radius: 12px; }
+        section { margin-top: 44px; }
+        .section-head { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+        .actions, .buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+        .actions form { margin: 0; }
+        .calendar, .judgments { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 16px; }
+        .rite { background: #1a1612; border: 1px solid rgba(237,227,207,.1); border-radius: 20px; padding: 20px clamp(16px, 3vw, 24px); }
+        .ash { opacity: .92; }
+        .kicker { margin: 0; font: 700 13px Cinzel, serif; letter-spacing: .16em; text-transform: uppercase; color: #c9a25a; }
+        .placed { color: #f0b45a; }
+        .text { font: 400 19px/1.55 "EB Garamond", serif; margin: 0 0 12px; }
+        .truth { background: #141c1f; border: 1px solid #2e4248; border-radius: 16px; padding: 12px 16px; color: #dbe6e8; margin: 0 0 12px; }
+        .truth-label { display: block; font: 500 14px "JetBrains Mono", monospace; letter-spacing: .14em; text-transform: uppercase; color: #8cc4ae; }
+        code { font-family: "JetBrains Mono", monospace; font-size: .9em; background: #0b1214; color: #f0d58c; padding: 1px 6px; border-radius: 6px; }
+        .text code { background: #2b2117; color: #f0d58c; }
+        .meta, .when, .optional { color: #b6a98f; }
+        .meta { margin: 0 0 12px; font-size: 15px; }
+        .decide label { display: block; font-weight: 600; margin-bottom: 4px; }
+        textarea { width: 100%; background: #100e0b; color: #ede3cf; border: 1px solid #b6a98f; border-radius: 12px; padding: 8px 12px; font: 16px/1.4 Figtree, sans-serif; margin-bottom: 8px; }
+        button { min-height: 46px; padding: 10px 18px; border-radius: 999px; font: 600 16px/1.2 Figtree, sans-serif; cursor: pointer; border: 1px solid transparent; }
+        .primary { background: #c9a25a; color: #100e0b; }
+        .primary:hover { background: #d6b170; }
+        .outline, .secondary { background: transparent; color: #ede3cf; border-color: rgba(237,227,207,.22); }
+        .outline:hover, .secondary:hover { background: rgba(237,227,207,.08); border-color: rgba(237,227,207,.4); }
+        .danger { background: #3b1814; color: #f6cfc6; border-color: #d0604d; }
+        .danger:hover { background: #4a1f19; }
+        .judgments li { background: #1a1612; border-radius: 12px; padding: 10px 14px; }
+        .judgments cite { font-style: normal; font-weight: 600; }
+        .note { display: block; font: italic 18px/1.4 "EB Garamond", serif; color: #cdbd9e; }
+        a { color: #d9b874; }
+        a:hover { color: #f0d59a; }
+        :focus-visible { outline: 2px solid #f0b45a; outline-offset: 4px; }
+        .skip { position: absolute; left: -9999px; }
+        .skip:focus { left: 16px; top: 16px; background: #c9a25a; color: #100e0b; padding: 8px 16px; border-radius: 999px; }
+        .nowrap { white-space: nowrap; }
+        .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+        @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+        """;
+
     public static string Render(ScriptoriumView view, Option<string> status)
     {
         var html = new StringBuilder();
@@ -181,59 +234,6 @@ public static partial class ScriptoriumPage
             <header><p class="brand">The Daily Machine Spirit</p></header>
             """);
     }
-
-    private const string Styles = """
-        :root { color-scheme: dark; }
-        * { box-sizing: border-box; }
-        body { margin: 0; background: #100e0b; color: #ede3cf; font: 16px/1.5 Figtree, system-ui, sans-serif; }
-        header, main { max-width: 820px; margin: 0 auto; padding: 28px clamp(16px, 4vw, 40px) 0; }
-        main { padding-bottom: 72px; }
-        footer { max-width: 600px; margin: 0 auto; padding: 0 16px 48px; text-align: center; }
-        .motto { margin: 0 0 8px; font: 700 16px Cinzel, serif; letter-spacing: .08em; color: #c9a25a; }
-        .disclaimer { margin: 0; font: 400 14px/1.6 Figtree, sans-serif; color: #b6a98f; }
-        .brand { margin: 0; font: 700 16px Cinzel, serif; letter-spacing: .04em; color: #c9a25a; }
-        h1 { font: 700 clamp(30px, 4.4vw, 46px)/1.1 Cinzel, serif; margin: 24px 0 8px; }
-        h2 { font: 700 26px/1.2 Cinzel, serif; margin: 0; }
-        h3 { font: 700 21px/1.2 Cinzel, serif; margin: 6px 0 8px; }
-        .lede { font: italic 400 20px/1.4 "EB Garamond", serif; color: #cdbd9e; margin: 0 0 16px; }
-        .status:not(:empty) { background: #1a1612; border-left: 4px solid #c9a25a; padding: 12px 16px; border-radius: 12px; }
-        section { margin-top: 44px; }
-        .section-head { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-        .actions, .buttons { display: flex; flex-wrap: wrap; gap: 8px; }
-        .actions form { margin: 0; }
-        .calendar, .judgments { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 16px; }
-        .rite { background: #1a1612; border: 1px solid rgba(237,227,207,.1); border-radius: 20px; padding: 20px clamp(16px, 3vw, 24px); }
-        .ash { opacity: .92; }
-        .kicker { margin: 0; font: 700 13px Cinzel, serif; letter-spacing: .16em; text-transform: uppercase; color: #c9a25a; }
-        .placed { color: #f0b45a; }
-        .text { font: 400 19px/1.55 "EB Garamond", serif; margin: 0 0 12px; }
-        .truth { background: #141c1f; border: 1px solid #2e4248; border-radius: 16px; padding: 12px 16px; color: #dbe6e8; margin: 0 0 12px; }
-        .truth-label { display: block; font: 500 14px "JetBrains Mono", monospace; letter-spacing: .14em; text-transform: uppercase; color: #8cc4ae; }
-        code { font-family: "JetBrains Mono", monospace; font-size: .9em; background: #0b1214; color: #f0d58c; padding: 1px 6px; border-radius: 6px; }
-        .text code { background: #2b2117; color: #f0d58c; }
-        .meta, .when, .optional { color: #b6a98f; }
-        .meta { margin: 0 0 12px; font-size: 15px; }
-        .decide label { display: block; font-weight: 600; margin-bottom: 4px; }
-        textarea { width: 100%; background: #100e0b; color: #ede3cf; border: 1px solid #b6a98f; border-radius: 12px; padding: 8px 12px; font: 16px/1.4 Figtree, sans-serif; margin-bottom: 8px; }
-        button { min-height: 46px; padding: 10px 18px; border-radius: 999px; font: 600 16px/1.2 Figtree, sans-serif; cursor: pointer; border: 1px solid transparent; }
-        .primary { background: #c9a25a; color: #100e0b; }
-        .primary:hover { background: #d6b170; }
-        .outline, .secondary { background: transparent; color: #ede3cf; border-color: rgba(237,227,207,.22); }
-        .outline:hover, .secondary:hover { background: rgba(237,227,207,.08); border-color: rgba(237,227,207,.4); }
-        .danger { background: #3b1814; color: #f6cfc6; border-color: #d0604d; }
-        .danger:hover { background: #4a1f19; }
-        .judgments li { background: #1a1612; border-radius: 12px; padding: 10px 14px; }
-        .judgments cite { font-style: normal; font-weight: 600; }
-        .note { display: block; font: italic 18px/1.4 "EB Garamond", serif; color: #cdbd9e; }
-        a { color: #d9b874; }
-        a:hover { color: #f0d59a; }
-        :focus-visible { outline: 2px solid #f0b45a; outline-offset: 4px; }
-        .skip { position: absolute; left: -9999px; }
-        .skip:focus { left: 16px; top: 16px; background: #c9a25a; color: #100e0b; padding: 8px 16px; border-radius: 999px; }
-        .nowrap { white-space: nowrap; }
-        .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-        @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
-        """;
 
     private static string Kind(RiteKind kind) => kind == RiteKind.Prayer ? "A Prayer" : "A Ritual";
 
