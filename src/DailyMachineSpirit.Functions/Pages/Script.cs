@@ -65,8 +65,10 @@ public static class Script
           const reactions = document.querySelector('.reactions');
           if (reactions) {
             const key = 'dms-reactions-v1';
-            const remembered = () => { try { return JSON.parse(localStorage.getItem(key)) || {}; } catch { return {}; } };
-            const remember = (all) => { try { localStorage.setItem(key, JSON.stringify(all)); } catch { } };
+            // Where storage is blocked or full, the page itself remembers, so one reaction per rite holds while it's open.
+            let memory = {};
+            const remembered = () => { try { return JSON.parse(localStorage.getItem(key)) || memory; } catch { return memory; } };
+            const remember = (all) => { memory = all; try { localStorage.setItem(key, JSON.stringify(all)); } catch { } };
             const rite = reactions.dataset.rite;
             const buttons = [...reactions.querySelectorAll('[data-reaction]')];
             const counts = () => Object.fromEntries(buttons.map((b) => [b.dataset.reaction, Number(b.querySelector('.count').textContent.replace(/,/g, ''))]));
@@ -93,10 +95,10 @@ public static class Script
                   body: JSON.stringify({ reaction, previous }),
                 });
                 if (!response.ok) throw new Error(String(response.status));
-                const saved = await response.json();
+                // Saved: from here on the reaction counts, even if the answer can't be read.
                 if (reaction) all[rite] = reaction; else delete all[rite];
                 remember(all);
-                show(reaction, saved);
+                show(reaction, await response.json().catch(() => hoped));
               } catch {
                 show(previous, before);
                 say('Your reaction wasn’t recorded. Try again.');

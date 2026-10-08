@@ -187,9 +187,11 @@ public class RiteRepository : IRiteRepository
         }
         catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.PreconditionFailed)
         {
-            return add.Count > 0
-                ? await PatchCounts(document.Id, add, None, cancellationToken)
-                : new ReactionCounts(document.BlessedCount, document.HeresyCount);
+            if (add.Count > 0)
+                return await PatchCounts(document.Id, add, None, cancellationToken);
+            // Nothing to change, but the counts may have moved since the query: answer what's stored now.
+            var current = (await container.ReadItemAsync<RiteDocument>(document.Id, PartitionKey, cancellationToken: cancellationToken)).Resource;
+            return new ReactionCounts(current.BlessedCount, current.HeresyCount);
         }
     }
 
