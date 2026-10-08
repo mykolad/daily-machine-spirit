@@ -10,6 +10,8 @@ param ownerPrincipalId string
 @minLength(7)
 param stagingAllowedIp string
 param githubSubjectPrefix string = 'repo:mykolad@2202717/daily-machine-spirit@1406418170'
+// Off until launch (see main.bicep). Leaving it off later doesn't delete production, but stops updating it.
+param deployProduction bool = false
 
 var roles = {
   cognitiveServicesOpenAiUser: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
@@ -150,7 +152,7 @@ module staging 'modules/environment.bicep' = {
   }
 }
 
-module production 'modules/environment.bicep' = {
+module production 'modules/environment.bicep' = if (deployProduction) {
   name: 'production'
   params: {
     location: location
@@ -167,9 +169,11 @@ module production 'modules/environment.bicep' = {
 }
 
 output stagingAppHost string = staging.outputs.appHost
-output productionAppHost string = production.outputs.appHost
-output githubClientIds object = {
-  infrastructure: infrastructureDeployer.properties.clientId
-  staging: staging.outputs.githubClientId
-  production: production.outputs.githubClientId
-}
+output productionAppHost string = deployProduction ? production!.outputs.appHost : ''
+output githubClientIds object = union(
+  {
+    infrastructure: infrastructureDeployer.properties.clientId
+    staging: staging.outputs.githubClientId
+  },
+  deployProduction ? { production: production!.outputs.githubClientId } : {}
+)

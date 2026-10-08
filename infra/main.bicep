@@ -21,6 +21,9 @@ param stagingAllowedIp string
 @description('GitHub\'s OIDC subject prefix for this repository (immutable format: owner and repository ids).')
 param githubSubjectPrefix string = 'repo:mykolad@2202717/daily-machine-spirit@1406418170'
 
+@description('Whether to deploy production too. Off until launch: staging comes first, and an empty production app needn\'t be public.')
+param deployProduction bool = false
+
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   name: '${prefix}-rg'
   location: location
@@ -35,6 +38,7 @@ module resources 'resources.bicep' = {
     ownerPrincipalId: ownerPrincipalId
     stagingAllowedIp: stagingAllowedIp
     githubSubjectPrefix: githubSubjectPrefix
+    deployProduction: deployProduction
   }
 }
 

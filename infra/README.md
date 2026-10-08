@@ -4,6 +4,9 @@ Everything the site runs on in Azure is in Bicep: `main.bicep` creates the resou
 Central) and everything in it. This page covers the few things Bicep can't do: the first deployment, the secret values,
 and what lives outside Azure.
 
+Production is off until launch (`deployProduction`, false by default): staging comes first. The production names below
+are what it gets then.
+
 | Resource | Name | Notes |
 |---|---|---|
 | Resource group | `machinespirit-rg` | |
@@ -42,6 +45,9 @@ az deployment sub create --location swedencentral --name machinespirit --templat
 ```
 
 The Cosmos DB free tier can only be chosen when the account is created, and a subscription gets one free account.
+
+At launch, add `deployProduction=true` to the same command, and the launch PR makes `true` the default. Once production
+exists, a deployment without it leaves production alone: nothing is deleted, but nothing there is updated either.
 
 ## Later changes
 
