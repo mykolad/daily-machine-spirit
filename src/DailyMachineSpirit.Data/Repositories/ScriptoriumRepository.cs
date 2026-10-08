@@ -23,9 +23,11 @@ public interface IScriptoriumRepository
 
     /// <summary>
     /// <see cref="ScriptoriumRepository.ChangedMeanwhile"/> when another Scribe saved an order since it was read, or when
-    /// the <paramref name="decision"/>'s draft isn't waiting any more (burned or published meanwhile).
+    /// any of <paramref name="mustStillWait"/> isn't waiting any more (burned or published meanwhile): a move places
+    /// the drafts it passes as well as the one moved, and an order built on a draft that's gone would mislead.
     /// </summary>
-    Task<Either<Error, Unit>> SavePlacements(Placements placements, Option<ScribeDecision> decision, CancellationToken cancellationToken);
+    Task<Either<Error, Unit>> SavePlacements(
+        Placements placements, Option<ScribeDecision> decision, IReadOnlyCollection<Guid> mustStillWait, CancellationToken cancellationToken);
 
     /// <summary>
     /// Moves a draft from one state to another (burning, restoring), and saves <paramref name="placements"/> with it when
@@ -67,12 +69,13 @@ public class ScriptoriumRepository : IScriptoriumRepository
                 None: () => new Placements([], None)));
 
     public Task<Either<Error, Unit>> SavePlacements(
-        Placements placements, Option<ScribeDecision> decision, CancellationToken cancellationToken)
+        Placements placements, Option<ScribeDecision> decision, IReadOnlyCollection<Guid> mustStillWait, CancellationToken cancellationToken)
         => AttemptEither(async () =>
         {
             var batch = WithPlacements(container.CreateTransactionalBatch(SharedPartitionKey), placements);
+            batch = mustStillWait.Distinct().Aggregate(batch, StillWaiting);
             batch = decision.Match(
-                Some: made => StillWaiting(batch, made.DraftId).CreateItem(ScribeDecisionDocument.From(made)),
+                Some: made => batch.CreateItem(ScribeDecisionDocument.From(made)),
                 None: () => batch);
             return await Execute(batch, cancellationToken);
         });

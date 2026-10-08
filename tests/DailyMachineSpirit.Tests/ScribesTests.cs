@@ -125,6 +125,26 @@ public sealed class ScribesTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Reordering_WhenADraftItPassesIsBurnedMeanwhile_IsChangedMeanwhile_AndRecordsNothing()
+    {
+        var excellent = await testbed.AddDraft("Excellent", 0.95f);
+        var good = await testbed.AddDraft("Good", 0.7f);
+        await testbed.AddDraft("Fair", 0.4f);
+        // Humbling Excellent would place Good first. Right after this request reads the waiting drafts, another Scribe
+        // burns Good, which wasn't placed, so the order's ETag doesn't change: only Good's own state can tell.
+        var drafts = new InterruptedDrafts(testbed.Drafts,
+            async () => Ok(await testbed.Scribes().Burn(good.Id, "Burned meanwhile.", CancellationToken.None)));
+        var scribes = new Scribes(drafts, testbed.Rites, testbed.Scriptorium, testbed.Time);
+
+        var result = await scribes.Humble(excellent.Id, "", CancellationToken.None);
+
+        Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Failed(result));
+        var view = Ok(await testbed.Scribes().View(CancellationToken.None));
+        Assert.Equal(ScribeAction.Burn, Assert.Single(view.Decisions).Action);
+        Assert.DoesNotContain(view.Calendar, entry => entry.PlacedByScribes);
+    }
+
+    [Fact]
     public async Task ThePublisher_ReadsAConsistentCalendar_WhenADraftIsAnointedWhileItRuns()
     {
         await testbed.AddDraft("Excellent", 0.95f);
@@ -205,13 +225,13 @@ public sealed class ScribesTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task ExaltingTheFirst_OrHumblingTheLast_ChangesNothing_AndRecordsNothing()
+    public async Task ExaltingTheFirst_OrHumblingTheLast_ChangesNothing_RecordsNothing_AndSaysSo()
     {
         var first = await testbed.AddDraft("Excellent", 0.95f);
         var last = await testbed.AddDraft("Fair", 0.4f);
 
-        Ok(await testbed.Scribes().Exalt(first.Id, "", CancellationToken.None));
-        Ok(await testbed.Scribes().Humble(last.Id, "", CancellationToken.None));
+        Assert.Equal(Scribes.NothingToMove, Failed(await testbed.Scribes().Exalt(first.Id, "", CancellationToken.None)));
+        Assert.Equal(Scribes.NothingToMove, Failed(await testbed.Scribes().Humble(last.Id, "", CancellationToken.None)));
 
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
         Assert.Equal(["Excellent", "Fair"], view.Calendar.Select(entry => entry.Draft.Title));
@@ -350,7 +370,7 @@ public sealed class ScribesTests : IAsyncLifetime
         Ok(await testbed.Scribes().Anoint(good.Id, "", CancellationToken.None));
 
         // The second Scribe's change was based on the order before the first one's.
-        var second = await testbed.Scriptorium.SavePlacements(stale with { Order = [fair.Id] }, None, CancellationToken.None);
+        var second = await testbed.Scriptorium.SavePlacements(stale with { Order = [fair.Id] }, None, [], CancellationToken.None);
 
         Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Failed(second));
         Assert.Equal("Good", Ok(await testbed.Scribes().View(CancellationToken.None)).Calendar[0].Draft.Title);

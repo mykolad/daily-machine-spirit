@@ -172,6 +172,18 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ExaltingTheFirst_SaysNothingMoved_RatherThanExalted()
+    {
+        var first = await testbed.AddDraft("Excellent", 0.95f);
+        await testbed.AddDraft("Fair", 0.4f);
+
+        var response = await Function(enabled: true).Decide(Post(""), first.Id, "exalt", CancellationToken.None);
+
+        Assert.Equal("/scriptorium?done=unmoved", Assert.IsType<RedirectResult>(response.Result).Url);
+        Assert.Empty(Ok(await testbed.Scribes().View(CancellationToken.None)).Decisions);
+    }
+
+    [Fact]
     public async Task ANoteTooLong_SaysSo_AndChangesNothing()
     {
         var draft = await testbed.AddDraft("Kept", 0.5f);

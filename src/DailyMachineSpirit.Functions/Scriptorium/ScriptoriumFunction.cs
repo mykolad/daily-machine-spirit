@@ -43,6 +43,7 @@ public sealed class ScriptoriumFunction
         ["summon"] = "New rites are being summoned: look again in a few minutes.",
         ["augury"] = "The Augury orders every draft again.",
         ["changed"] = "Another Scribe changed the calendar meanwhile. Look again before deciding.",
+        ["unmoved"] = "It was already there, so nothing moved. Another Scribe may have moved it: look again.",
         ["note-too-long"] = "That note is too long, so nothing was changed. Shorten it and try again.",
     };
 
@@ -162,6 +163,8 @@ public sealed class ScriptoriumFunction
     {
         if (error == ScriptoriumRepository.ChangedMeanwhile)
             return new ScriptoriumResponse { Result = BackToPage("changed") };
+        if (error == Scribes.NothingToMove)
+            return new ScriptoriumResponse { Result = BackToPage("unmoved") };
         if (error == Scribes.NoteTooLong)
             return new ScriptoriumResponse { Result = BackToPage("note-too-long") };
         return new ScriptoriumResponse { Result = Failed(request, error) };

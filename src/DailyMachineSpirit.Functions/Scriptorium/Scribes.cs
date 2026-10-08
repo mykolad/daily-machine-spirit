@@ -35,6 +35,9 @@ public sealed class Scribes
 
     public static readonly Error NoteTooLong = Error.New($"A note can be at most {ScribeDecision.MaxNoteLength} characters.");
 
+    /// <summary>Exalting the first draft or humbling the last: a page shown before another Scribe moved it.</summary>
+    public static readonly Error NothingToMove = Error.New("The draft is already at that end of the calendar.");
+
     private readonly IDraftRepository drafts;
     private readonly IRiteRepository rites;
     private readonly IScriptoriumRepository scriptorium;
@@ -119,7 +122,7 @@ public sealed class Scribes
     /// <summary>Forgets the Scribes' order, so the Augury orders every draft.</summary>
     public Task<Either<Error, Unit>> LetTheAuguryDecide(CancellationToken cancellationToken)
         => scriptorium.GetPlacements(cancellationToken)
-            .BindAsync(placements => scriptorium.SavePlacements(placements with { Order = [] }, None, cancellationToken));
+            .BindAsync(placements => scriptorium.SavePlacements(placements with { Order = [] }, None, [], cancellationToken));
 
     private DateOnly Today => DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime);
 
@@ -128,12 +131,14 @@ public sealed class Scribes
         => Note(note).BindAsync(checkedNote => Calendar(cancellationToken)
             .BindAsync(calendar => calendar.Find(draftId).Match(
                 Some: found => reorder(calendar.Ordered.Select(draft => draft.Id).ToList(), found.Place - 1).Match(
+                    // Every draft in the moved stretch must still wait: it was read waiting, and the new order places it.
                     Some: moved => scriptorium.SavePlacements(
                         calendar.Placements with { Order = KeepingTheRest(moved, calendar) },
                         Decision(found.Draft, action, checkedNote, Some(found.Place), Some(calendar.AuguryPlace(found.Draft))),
+                        moved,
                         cancellationToken),
-                    // Already at the top (or bottom): nothing changes, so there's nothing to learn.
-                    None: () => Task.FromResult(Right<Error, Unit>(unit))),
+                    // Already at the top (or bottom): nothing changes, so there's nothing to learn, and the page says so.
+                    None: () => Task.FromResult(Left<Error, Unit>(NothingToMove))),
                 None: () => Task.FromResult(Left<Error, Unit>(ScriptoriumRepository.ChangedMeanwhile)))));
 
     // The reordered top of the calendar, then the drafts the Scribes placed below it, still in their order: moving one
