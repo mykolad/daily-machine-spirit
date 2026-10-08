@@ -2,6 +2,8 @@ using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using LanguageExt;
 using LanguageExt.Common;
+using Microsoft.Extensions.Logging.Abstractions;
+using static DailyMachineSpirit.Tests.Expect;
 using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Tests;
@@ -159,7 +161,7 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
     public async Task EveryCall_ReturnsACosmosFailureAsAnError_InsteadOfThrowing()
     {
         // A container that doesn't exist: Cosmos answers every call with 404.
-        var missing = new RiteRepository(cosmos.Container.Database.GetContainer("no-such-container"));
+        var missing = new RiteRepository(cosmos.Container.Database.GetContainer("no-such-container"), NullLogger<RiteRepository>.Instance);
         var date = new DateOnly(2026, 10, 7);
 
         Assert.True((await missing.GetByNumber(1, CancellationToken.None)).IsLeft);
@@ -175,7 +177,7 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
         => await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => Repository.GetNewest(1, new CancellationToken(canceled: true)));
 
-    private RiteRepository Repository => new(cosmos.Container);
+    private RiteRepository Repository => new(cosmos.Container, NullLogger<RiteRepository>.Instance);
 
     private static Rite MakeRite(DateOnly date, string title) => new()
     {
@@ -187,12 +189,6 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
         GeneratedByModel = "gpt-6-sol",
         GeneratedAtUtc = date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
     };
-
-    /// <summary>The result of a call expected to succeed; a test fails with the error otherwise.</summary>
-    private static T Ok<T>(Either<Error, T> result)
-        => result.Match(
-            Right: value => value,
-            Left: error => throw new Xunit.Sdk.XunitException($"Expected success, but: {error}"));
 
     private async Task<Rite> AddOrFail(Rite rite) => Ok(await Repository.Add(rite, CancellationToken.None));
 

@@ -18,6 +18,7 @@ design's word, and `Rite` in the code). Visitors react with **Blessed** or **Her
 
 ```
 src/DailyMachineSpirit.Functions  — the Functions app (HTTP and timer functions)
+  Generation/                     — the daily rite; Writing/ (prompt, writer), Chat/ (the models), Scoring/ (Jev)
 src/DailyMachineSpirit.Data       — Cosmos DB: entities, documents, repositories
 tests/DailyMachineSpirit.Tests    — xUnit tests (the repository tests run against the Cosmos DB emulator)
 tools/coverage.ps1                — tests + coverage report + the coverage gate (Build and Test runs it)
@@ -47,6 +48,10 @@ infra/                            — Bicep for all of Azure (main.bicep); infra
   converted to `Option` where the data enters (e.g. `RiteDocument.Similarity`). The JSON serializers set
   `RespectNullableAnnotations`, so a null arriving in a non-nullable property fails at the boundary instead of
   slipping in.
+- **One type per file**, so options, an interface and its implementation are separate files. Related files share a
+  folder (`Generation/Scoring/`), and the namespace follows the folder.
+- **Swappable services sit behind an interface** (`IChatClients`, `IRiteScorer`): the rest of the code never names the
+  vendor, and the vendor's settings (`JevOptions`) belong to its implementation.
 - **Member order:** constants and fields, constructor, then public members (in a test class: setup and teardown, then
   the tests), and private helpers last.
 - **One blank line between properties** (and between methods), never two in a row. Constants or fields that share one
@@ -86,6 +91,17 @@ infra/                            — Bicep for all of Azure (main.bicep); infra
   (`CosmosClients.Create`); the account's keys stay off. The account, databases, container, role assignments and the
   app's settings are all created by the Bicep in `infra/`, never by the app (its data-plane role can't create them). Settings: `Cosmos:Endpoint`, `Cosmos:Database`.
 
+- **The daily rite** (`Generation/`): the `DailyRite` timer runs at 00:00 UTC and publishes today's rite only if the
+  day has none, so a retry or a caught-up run never replaces one visitors have seen. Prayers and rituals alternate by
+  date (`DailyRitePublisher.KindFor`).
+  - `RiteWriter` asks `gpt-6-sol` for a `RiteDraft` (JSON schema output), up to 3 times, then `gpt-6-luna`
+    (`Generation:Models`). An answer that's empty, too long or uses a forbidden name is asked for again, never cut.
+  - The prompt (`RitePrompt`) lists the recent titles, so the model picks another subject.
+  - An `IRiteScorer` scores the saved rite for "More rites": `JevScorer` for now, swappable like the models
+    (`IChatClients`). Scoring failing (or `Jev:ApiKey` empty) still publishes the rite, just without scores.
+  - Settings: `AzureOpenAI:Endpoint` (models reached as the managed identity), `Jev:ApiKey` (a Key Vault reference in
+    Azure), and optionally `Generation:*` (`GenerationOptions`).
+
 ## Pull requests
 
 - **Every change to an open PR is a new commit on top.** Don't amend, squash or force-push commits that are already
@@ -122,7 +138,8 @@ func start
 ```
 
 For anything that reads data, set `Cosmos:Endpoint` and `Cosmos:Database` in `local.settings.json` (e.g. staging's
-database, as your `az login`; never production's). HTTP functions run without storage. Timer functions need `AzureWebJobsStorage`: run the Azurite emulator
+database, as your `az login`; never production's). HTTP functions run without storage. The timer also needs `AzureOpenAI:Endpoint` (staging's, with the Cognitive Services OpenAI User role for your
+`az login`); `Jev:ApiKey` can stay empty. Timer functions need `AzureWebJobsStorage`: run the Azurite emulator
 (`docker run -p 10000-10002:10000-10002 mcr.microsoft.com/azure-storage/azurite`).
 
 ## Build and Test
