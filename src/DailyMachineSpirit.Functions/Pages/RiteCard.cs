@@ -56,6 +56,10 @@ public static class RiteCard
             </div>
             </section>
             <div class="actions">
+            <div class="reactions" role="group" aria-label="Reactions" data-rite="{rite.Number}">
+            <button type="button" class="button reaction reaction-blessed" data-reaction="blessed" aria-pressed="false">{Svg.FlameIcon}<span>Blessed</span><span class="count">{Html.Count(rite.BlessedCount)}</span></button>
+            <button type="button" class="button reaction reaction-heresy" data-reaction="heresy" aria-pressed="false">{Svg.SkullIcon}<span>Heresy</span><span class="count">{Html.Count(rite.HeresyCount)}</span></button>
+            </div>
             <button type="button" class="button button-ghost" data-copy="link" data-url="{url}">{Svg.LinkIcon}Share link</button>
             {copyButton}
             </div>

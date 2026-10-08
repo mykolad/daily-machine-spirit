@@ -5,8 +5,8 @@ public static class Layout
 {
     private const string SiteName = "The Daily Machine Spirit";
 
-    // Without the script the seal can't be broken, so the truth simply shows.
-    private const string NoScriptCss = ".truth[hidden]{display:block}.seal{display:none}";
+    // Without the script the seal can't be broken, so the truth simply shows; reactions need it too.
+    private const string NoScriptCss = ".truth[hidden]{display:block}.seal,.reactions{display:none}";
 
     // Every page but Today, which has the masthead instead.
     private const string Brand = $"<a class=\"brand\" href=\"/\">{Svg.BrandCog}{SiteName}</a>";

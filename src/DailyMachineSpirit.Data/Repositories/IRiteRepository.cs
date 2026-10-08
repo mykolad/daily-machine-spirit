@@ -22,6 +22,15 @@ public interface IRiteRepository
     /// </summary>
     Task<Either<Error, Rite>> Add(Rite rite, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Moves one visitor's reaction from <paramref name="previous"/> to <paramref name="reaction"/> (either may be
+    /// None) and returns the counts after it, or None when there's no such rite. Reactions are anonymous: the visitor's
+    /// browser remembers its own and sends it as <paramref name="previous"/>, and nothing about the visitor is stored.
+    /// A count never drops below zero, whatever a browser claims.
+    /// </summary>
+    Task<Either<Error, Option<ReactionCounts>>> React(
+        int number, Option<Reaction> reaction, Option<Reaction> previous, CancellationToken cancellationToken);
+
     /// <summary>Replaces any older scores of the rite.</summary>
     Task<Either<Error, Unit>> SaveScores(DateOnly publishedOnUtc, RiteSimilarity similarity, CancellationToken cancellationToken);
 

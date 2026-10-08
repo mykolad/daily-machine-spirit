@@ -103,6 +103,20 @@ public class RiteRepository : IRiteRepository
             }
         });
 
+    public Task<Either<Error, Option<ReactionCounts>>> React(
+        int number, Option<Reaction> reaction, Option<Reaction> previous, CancellationToken cancellationToken)
+        => Attempt(async () =>
+        {
+            var found = (await Query<RiteDocument>(
+                new QueryDefinition("SELECT * FROM c WHERE c.type = @type AND c.number = @number")
+                    .WithParameter("@type", RiteDocument.RiteType)
+                    .WithParameter("@number", number),
+                cancellationToken)).HeadOrNone();
+            return await found.Match(
+                Some: async document => Some(await MoveReaction(document, reaction, previous, cancellationToken)),
+                None: () => Task.FromResult(Option<ReactionCounts>.None));
+        });
+
     public Task<Either<Error, Unit>> SaveScores(DateOnly publishedOnUtc, RiteSimilarity similarity, CancellationToken cancellationToken)
         => Attempt(async () =>
         {
@@ -154,6 +168,40 @@ public class RiteRepository : IRiteRepository
             return (0, None);
         }
     }
+
+    // Increments rather than read-modify-write, so concurrent reactions never overwrite each other. Taking back a
+    // reaction only applies while its count is above zero; if it's already zero (a browser claiming a reaction that was
+    // never counted), only the new reaction counts.
+    private async Task<ReactionCounts> MoveReaction(
+        RiteDocument document, Option<Reaction> reaction, Option<Reaction> previous, CancellationToken cancellationToken)
+    {
+        if (reaction == previous)
+            return new ReactionCounts(document.BlessedCount, document.HeresyCount);
+
+        var add = reaction.Map(r => PatchOperation.Increment($"/{CountField(r)}", 1)).ToList();
+        var takeBack = previous.Map(p => PatchOperation.Increment($"/{CountField(p)}", -1)).ToList();
+        try
+        {
+            return await PatchCounts(document.Id, [.. add, .. takeBack],
+                previous.Map(p => $"FROM c WHERE c.{CountField(p)} > 0"), cancellationToken);
+        }
+        catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.PreconditionFailed)
+        {
+            return add.Count > 0
+                ? await PatchCounts(document.Id, add, None, cancellationToken)
+                : new ReactionCounts(document.BlessedCount, document.HeresyCount);
+        }
+    }
+
+    private async Task<ReactionCounts> PatchCounts(
+        string id, IReadOnlyList<PatchOperation> operations, Option<string> filter, CancellationToken cancellationToken)
+    {
+        var options = new PatchItemRequestOptions { FilterPredicate = filter.IfNoneUnsafe((string?)null) };
+        var patched = (await container.PatchItemAsync<RiteDocument>(id, PartitionKey, operations, options, cancellationToken)).Resource;
+        return new ReactionCounts(patched.BlessedCount, patched.HeresyCount);
+    }
+
+    private static string CountField(Reaction reaction) => reaction == Reaction.Blessed ? "blessedCount" : "heresyCount";
 
     private async Task<List<T>> Query<T>(QueryDefinition query, CancellationToken cancellationToken)
     {

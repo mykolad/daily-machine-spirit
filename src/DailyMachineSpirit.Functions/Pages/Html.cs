@@ -48,5 +48,8 @@ public static class Html
     /// <summary>"9 Oct 2026".</summary>
     public static string ShortDate(DateOnly day) => day.ToString("d MMM yyyy", CultureInfo.InvariantCulture);
 
+    /// <summary>"2,310".</summary>
+    public static string Count(int count) => count.ToString("N0", CultureInfo.InvariantCulture);
+
     public static string IsoDate(DateOnly day) => day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 }

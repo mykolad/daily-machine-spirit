@@ -45,6 +45,7 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.Contains("""<section class="truth" id="truth-panel" aria-labelledby="truth-heading" hidden>""", html);
         Assert.Contains("Your test depends on <code>timing</code>.", html);
         Assert.Contains("Next litany in", html);
+        Assert.Contains("""<span>Blessed</span><span class="count">0</span>""", html);
         Assert.DoesNotContain("Litany of the Clean Cache", html);
         Assert.DoesNotContain("Copy text", html);
     }
