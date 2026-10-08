@@ -144,7 +144,7 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
         await Assert.ThrowsAnyAsync<Exception>(() => Function().Run(new TimerInfo(), CancellationToken.None));
     }
 
-    private RiteRepository Repository => new(cosmos.Container);
+    private RiteRepository Repository => new(cosmos.Container, NullLogger<RiteRepository>.Instance);
 
     private DailyRitePublisher Publisher()
     {

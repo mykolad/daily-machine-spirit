@@ -75,7 +75,13 @@ public sealed class RiteWriter
                         GeneratedAtUtc = time.GetUtcNow().UtcDateTime,
                     });
                 if (written.IsRight)
+                {
+                    // The model shows whether the fallback had to step in, even when the run succeeds.
+                    written.IfRight(rite => logger.LogInformation(
+                        "{Model} wrote the {Kind} \"{Title}\" on try {Attempt}, after {FailedTries} failed tries in all.",
+                        model, kind, rite.Title, attempt, failures.Count));
                     return written;
+                }
 
                 written.IfLeft(error =>
                 {

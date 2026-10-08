@@ -3,6 +3,7 @@ using DailyMachineSpirit.Data.Entities;
 using LanguageExt;
 using LanguageExt.Common;
 using Microsoft.Azure.Cosmos;
+using Microsoft.Extensions.Logging;
 using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Data.Repositories;
@@ -23,10 +24,12 @@ public class RiteRepository : IRiteRepository
 
     private static readonly PartitionKey PartitionKey = new(SharedPartition);
     private readonly Container container;
+    private readonly ILogger<RiteRepository> logger;
 
-    public RiteRepository(Container container)
+    public RiteRepository(Container container, ILogger<RiteRepository> logger)
     {
         this.container = container;
+        this.logger = logger;
     }
 
     public Task<Either<Error, Option<Rite>>> GetByNumber(int number, CancellationToken cancellationToken)
@@ -87,6 +90,8 @@ public class RiteRepository : IRiteRepository
                 if (!numberTaken || attempt == MaxSaveAttempts)
                     return Error.New(
                         $"Saving the rite for {rite.PublishedOnUtc:yyyy-MM-dd} failed: {response.StatusCode} (counter {counterStatus}, rite {riteStatus}). {response.ErrorMessage}");
+                logger.LogInformation("Number {Number} was taken while saving the rite for {Day}; trying the next one.",
+                    number, rite.PublishedOnUtc);
             }
         });
 

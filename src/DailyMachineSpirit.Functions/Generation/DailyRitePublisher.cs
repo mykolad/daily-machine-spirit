@@ -83,8 +83,16 @@ public sealed class DailyRitePublisher
         var scored = await scorer.Score(rite, cancellationToken)
             .BindAsync(similarity => similarity.Match(
                 Some: async scores => (await rites.SaveScores(rite.PublishedOnUtc, scores, cancellationToken))
-                    .Map(_ => rite with { Similarity = scores }),
-                None: () => Task.FromResult(Right<Error, Rite>(rite))));
+                    .Map(_ =>
+                    {
+                        logger.LogInformation("Rite NO. {Number} was scored by {ScoresGenerator}.", rite.Number, scores.ScoresGeneratorVersion);
+                        return rite with { Similarity = scores };
+                    }),
+                None: () =>
+                {
+                    logger.LogInformation("Rite NO. {Number} was published without scores: scoring is turned off.", rite.Number);
+                    return Task.FromResult(Right<Error, Rite>(rite));
+                }));
         return scored.IfLeft(error =>
         {
             logger.LogWarning(error.ToException(), "Rite NO. {Number} was published without scores: {Reason}", rite.Number, error.Message);
