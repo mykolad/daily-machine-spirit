@@ -40,6 +40,8 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Contains("not affiliated with or endorsed by Games Workshop", html);
         Assert.Equal("no-store", request.HttpContext.Response.Headers.CacheControl.ToString());
         Assert.Equal("noindex", request.HttpContext.Response.Headers["X-Robots-Tag"].ToString());
+        Assert.Equal("frame-ancestors 'none'", request.HttpContext.Response.Headers.ContentSecurityPolicy.ToString());
+        Assert.Equal("DENY", request.HttpContext.Response.Headers.XFrameOptions.ToString());
     }
 
     [Fact]

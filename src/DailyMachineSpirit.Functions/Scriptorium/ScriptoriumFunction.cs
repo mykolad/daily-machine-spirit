@@ -179,9 +179,14 @@ public sealed class ScriptoriumFunction
 
     private static IActionResult Html(HttpRequest request, string html, int status)
     {
-        // The Scribes' page is never cached (by Cloudflare or the browser) and never indexed.
-        request.HttpContext.Response.Headers.CacheControl = "no-store";
-        request.HttpContext.Response.Headers["X-Robots-Tag"] = "noindex";
+        // The Scribes' page is never cached (by Cloudflare or the browser) and never indexed. It's never shown inside
+        // another site's frame either, where disguised buttons could trick a Scribe into burning or reordering
+        // (clickjacking); X-Frame-Options covers browsers without frame-ancestors.
+        var headers = request.HttpContext.Response.Headers;
+        headers.CacheControl = "no-store";
+        headers["X-Robots-Tag"] = "noindex";
+        headers.ContentSecurityPolicy = "frame-ancestors 'none'";
+        headers.XFrameOptions = "DENY";
         return new ContentResult { Content = html, ContentType = "text/html; charset=utf-8", StatusCode = status };
     }
 }
