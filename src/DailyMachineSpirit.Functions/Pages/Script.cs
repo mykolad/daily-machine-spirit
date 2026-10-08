@@ -65,9 +65,10 @@ public static class Script
           const reactions = document.querySelector('.reactions');
           if (reactions) {
             const key = 'dms-reactions-v1';
-            // Where storage is blocked or full, the page itself remembers, so one reaction per rite holds while it's open.
-            let memory = {};
-            const remembered = () => { try { return JSON.parse(localStorage.getItem(key)) || memory; } catch { return memory; } };
+            // Read once, then the page's own copy is the truth: where storage is blocked or full, saving fails quietly but
+            // the page still remembers, so one reaction per rite holds while it's open.
+            let memory = (() => { try { return JSON.parse(localStorage.getItem(key)) || {}; } catch { return {}; } })();
+            const remembered = () => ({ ...memory });
             const remember = (all) => { memory = all; try { localStorage.setItem(key, JSON.stringify(all)); } catch { } };
             const rite = reactions.dataset.rite;
             const buttons = [...reactions.querySelectorAll('[data-reaction]')];
