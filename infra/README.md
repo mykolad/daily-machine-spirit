@@ -106,9 +106,6 @@ az keyvault secret set --vault-name machinespirit-kv-staging --name OtlpHeaders 
   --file $HOME\.machinespirit\otlp-headers.txt -o none
 ```
 
-`Test-Path $HOME\.machinespirit\otlp-headers.txt` says whether the file was written; don't print it. A leaked token is
-replaced by deleting it in the access policy, adding a new one, and repeating step 3.
-
 ## Deploying the app by hand
 
 Until the deploy workflows exist, publish a branch to staging from its checkout (Azure Functions Core Tools v4, signed
