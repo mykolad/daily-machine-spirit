@@ -74,7 +74,7 @@ Production's vault exists only from launch (`deployProduction`); set its secrets
 | Secret | Used for | The app reads it from |
 |---|---|---|
 | `JevApiKey` | scoring drafts: their quality for the Augury, their similarity for "More rites" | `Jev__ApiKey`, a Key Vault reference |
-| `OtlpHeaders` | telemetry to Grafana Cloud (this site's own access-policy token) | the telemetry PR |
+| `OtlpHeaders` | telemetry to Grafana Cloud (this site's own access-policy token) | `OTEL_EXPORTER_OTLP_HEADERS`, a Key Vault reference |
 
 ### Jev
 

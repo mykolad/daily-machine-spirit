@@ -23,6 +23,8 @@ var keyVaultSecretsOfficer = 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7'
 var appName = '${prefix}-app${nameSuffix}'
 var databaseName = '${prefix}${nameSuffix}'
 var deploymentContainer = 'deployments'
+// The Grafana Cloud stack's OTLP gateway (its region, not a secret).
+var otlpEndpoint = 'https://otlp-gateway-prod-eu-north-0.grafana.net/otlp'
 
 resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' existing = {
   name: cosmosAccountName
@@ -199,6 +201,24 @@ resource app 'Microsoft.Web/sites@2024-04-01' = {
         {
           name: 'Scriptorium__Enabled'
           value: scriptoriumEnabled ? 'true' : 'false'
+        }
+        // Telemetry to Grafana Cloud, read by both the Functions host and the app (Program.cs). The header carries the
+        // stack's token, from the vault (infra/README.md).
+        {
+          name: 'OTEL_EXPORTER_OTLP_ENDPOINT'
+          value: otlpEndpoint
+        }
+        {
+          name: 'OTEL_EXPORTER_OTLP_PROTOCOL'
+          value: 'http/protobuf'
+        }
+        {
+          name: 'OTEL_EXPORTER_OTLP_HEADERS'
+          value: '@Microsoft.KeyVault(VaultName=${vault.name};SecretName=OtlpHeaders)'
+        }
+        {
+          name: 'OTEL_RESOURCE_ATTRIBUTES'
+          value: 'deployment.environment.name=${environmentName}'
         }
       ]
     }

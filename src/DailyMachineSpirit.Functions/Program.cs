@@ -6,14 +6,29 @@ using DailyMachineSpirit.Functions.Generation.Scoring;
 using DailyMachineSpirit.Functions.Generation.Writing;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Functions.Worker.Builder;
+using Microsoft.Azure.Functions.Worker.OpenTelemetry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using OpenTelemetry;
+using OpenTelemetry.Trace;
 
 var builder = FunctionsApplication.CreateBuilder(args);
 
 // ASP.NET Core integration: HTTP functions take HttpRequest and return IActionResult.
 builder.ConfigureFunctionsWebApplication();
+
+// Logs and traces in OpenTelemetry form: the host sends its own (invocations, triggers; host.json's telemetryMode), this
+// adds the code's logs and its outgoing calls (the models, Jev, Cosmos DB). Exported only where OTEL_EXPORTER_OTLP_* is
+// set (Grafana Cloud, from infra/); a local run exports nothing.
+var telemetry = builder.Services.AddOpenTelemetry()
+    .UseFunctionsWorkerDefaults()
+    .WithTracing(tracing => tracing
+        .AddHttpClientInstrumentation()
+        .AddSource("Azure.Cosmos.Operation"))
+    .WithLogging();
+if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
+    telemetry.UseOtlpExporter();
 
 builder.Services.AddSingleton(TimeProvider.System);
 
