@@ -126,15 +126,15 @@ public static class Styles
         .state{display:flex;flex-direction:column;align-items:center;gap:16px;max-width:580px;padding:24px 0}
         .state h1,.state h2{margin:0;font-family:Cinzel,serif;font-size:clamp(26px,3.6vw,36px);line-height:1.15}
         .state h1{font-size:clamp(28px,4vw,42px);line-height:1.12}
-        .state-body{margin:0;font-family:'EB Garamond',serif;font-size:21px;line-height:1.5;color:#d7c9ad;text-wrap:balance}
+        .state-body{margin:0;font-family:'EB Garamond',serif;font-size:21px;line-height:1.5;color:#d7c9ad;text-wrap:balance;overflow-wrap:anywhere}
         .state-eyebrow{margin:0;font-family:'JetBrains Mono',monospace;font-size:14px;letter-spacing:.1em;color:#8cc4ae}
-        .state-code{font-family:'JetBrains Mono',monospace;font-size:14px;padding:8px 14px;border-radius:12px;background:#141c1f;border:1px solid #2e4248;color:#dbe6e8}
+        .state-code{max-width:100%;overflow-wrap:anywhere;font-family:'JetBrains Mono',monospace;font-size:14px;padding:8px 14px;border-radius:12px;background:#141c1f;border:1px solid #2e4248;color:#dbe6e8}
         .state-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:6px}
         .site-footer{margin-top:72px;padding-bottom:48px;display:flex;flex-direction:column;align-items:center;gap:12px;max-width:600px}
         .motto{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:16px;letter-spacing:.08em;color:#c9a25a}
         .disclaimer{margin:0;font-size:14px;line-height:1.6;color:#b6a98f}
-        .toast-region{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:40;pointer-events:none}
-        .toast{padding:12px 22px;border-radius:999px;background:#ede3cf;color:#100e0b;font-size:15px;font-weight:600;box-shadow:0 8px 28px rgba(0,0,0,.5);white-space:nowrap}
+        .toast-region{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:40;pointer-events:none;width:max-content;max-width:calc(100vw - 32px)}
+        .toast{padding:12px 22px;border-radius:24px;background:#ede3cf;color:#100e0b;font-size:15px;font-weight:600;line-height:1.4;text-align:center;box-shadow:0 8px 28px rgba(0,0,0,.5)}
         @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
         """;
 }
