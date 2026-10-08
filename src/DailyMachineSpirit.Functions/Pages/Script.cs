@@ -31,9 +31,11 @@ public static class Script
             clearTimeout(hideToast);
             hideToast = setTimeout(() => { toast.innerHTML = ''; }, 2600);
           };
+          // Whether the text reached the clipboard: the older fallback can fail quietly, and the toast must not lie.
           const copy = async (text) => {
             try {
               await navigator.clipboard.writeText(text);
+              return true;
             } catch {
               const area = document.createElement('textarea');
               area.value = text;
@@ -42,16 +44,19 @@ public static class Script
               area.style.left = '-9999px';
               document.body.appendChild(area);
               area.select();
-              document.execCommand('copy');
+              let copied = false;
+              try { copied = document.execCommand('copy'); } catch { copied = false; }
               area.remove();
+              return copied;
             }
           };
           document.querySelectorAll('[data-copy]').forEach((button) => {
             button.addEventListener('click', async () => {
               const url = new URL(button.dataset.url, location.origin).href;
               const isLink = button.dataset.copy === 'link';
-              await copy(isLink ? url : `${button.dataset.text}\n${url}`);
-              say(isLink ? 'Link copied to clipboard' : 'Text copied to clipboard');
+              const copied = await copy(isLink ? url : `${button.dataset.text}\n${url}`);
+              say(!copied ? 'Couldn’t copy. Your browser blocked the clipboard.'
+                : isLink ? 'Link copied to clipboard' : 'Text copied to clipboard');
             });
           });
 

@@ -62,18 +62,19 @@ public sealed class SitePages
     }
 
     /// <summary>
-    /// The first page starts below the newest rite, which Today shows; <c>?before=&lt;number&gt;</c> starts below that
-    /// number. One rite more than a page is read, to know whether there are older ones.
+    /// Pages by number, newest first: <c>?before=&lt;number&gt;</c> starts below that number. The first page leaves
+    /// out the newest rite, which Today shows: only the day's own rite is ever published, so the highest number is also
+    /// the newest date. One rite more than a page is read, to know whether there are older ones.
     /// </summary>
     [Function("Archive")]
     public async Task<IActionResult> Archive(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "archive")] HttpRequest request,
         CancellationToken cancellationToken)
     {
-        var page = await Before(request, cancellationToken)
-            .BindAsync(before => before.Match(
-                Some: number => rites.GetOlderThan(number, ArchivePage.PageSize + 1, cancellationToken),
-                None: () => Task.FromResult(Right<Error, List<Rite>>([]))));
+        var isFirstPage = !int.TryParse(request.Query["before"], out var before) || before < 1;
+        var page = isFirstPage
+            ? (await rites.GetOlderThan(int.MaxValue, ArchivePage.PageSize + 2, cancellationToken)).Map(found => found.Skip(1).ToList())
+            : await rites.GetOlderThan(before, ArchivePage.PageSize + 1, cancellationToken);
         return page.Match(
             Right: found =>
             {
@@ -82,14 +83,6 @@ public sealed class SitePages
                 return Page(request, StatusCodes.Status200OK, ArchivePage.Render(shown, olderThan));
             },
             Left: error => Failed(request, error));
-    }
-
-    // None when there are no rites at all, so the archive is empty.
-    private async Task<Either<Error, Option<int>>> Before(HttpRequest request, CancellationToken cancellationToken)
-    {
-        if (int.TryParse(request.Query["before"], out var before) && before > 0)
-            return Some(before);
-        return (await rites.GetNewest(1, cancellationToken)).Map(newest => newest.HeadOrNone().Map(rite => rite.Number));
     }
 
     private IActionResult Failed(HttpRequest request, Error error)

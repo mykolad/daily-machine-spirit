@@ -167,8 +167,11 @@ public sealed class SitePagesTests : IAsyncLifetime
         return (page.Status, page.Html);
     }
 
+    private static Task<(int Status, string Html, string CacheControl)> Read(Func<HttpContext, Task<IActionResult>> serve)
+        => Read(serve, "/", "");
+
     private static async Task<(int Status, string Html, string CacheControl)> Read(
-        Func<HttpContext, Task<IActionResult>> serve, string path = "/", string query = "")
+        Func<HttpContext, Task<IActionResult>> serve, string path, string query)
     {
         var context = new DefaultHttpContext();
         context.Request.Path = path;
