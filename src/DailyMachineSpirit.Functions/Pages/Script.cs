@@ -78,6 +78,12 @@ public static class Script
               b.querySelector('.count').textContent = shown[b.dataset.reaction].toLocaleString('en');
             });
             show(remembered()[rite] ?? null, counts());
+            // Another tab of this site reacted: take its memory too, so this tab doesn't count the same visitor twice.
+            window.addEventListener('storage', (event) => {
+              if (event.key !== key) return;
+              try { memory = JSON.parse(event.newValue) || {}; } catch { return; }
+              show(memory[rite] ?? null, counts());
+            });
             buttons.forEach((button) => button.addEventListener('click', async () => {
               if (reactions.getAttribute('aria-busy') === 'true') return;
               const all = remembered();

@@ -19,7 +19,7 @@ public static class Styles
         :root{color-scheme:dark}
         *,*::before,*::after{box-sizing:border-box}
         html,body{background:#100e0b;color:#ede3cf}
-        body{margin:0;font-family:Figtree,system-ui,sans-serif;font-size:16px;line-height:1.5}
+        body{margin:0;font-family:Figtree,system-ui,sans-serif;font-size:16px;line-height:1.5;overflow-wrap:break-word}
         :focus{outline:none}
         :focus-visible{outline:2px solid #f0b45a;outline-offset:4px}
         ::selection{background:rgba(201,162,90,.35)}
