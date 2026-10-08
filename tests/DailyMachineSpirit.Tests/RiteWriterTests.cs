@@ -89,6 +89,8 @@ public class RiteWriterTests
     [Theory]
     [InlineData(RiteKind.Ritual, "A Warhammer of Builds", "Text.", "Truth.")]
     [InlineData(RiteKind.Ritual, "Title", "Praise the adeptus of caching.", "Truth.")]
+    [InlineData(RiteKind.Ritual, "Litany of the Tyranids", "Text.", "Truth.")]
+    [InlineData(RiteKind.Prayer, "The Necron Rite", "Text.", "Truth.")]
     [InlineData(RiteKind.Ritual, "Title", "Call on the Omnissiah, then rebuild.", "Truth.")]
     [InlineData(RiteKind.Prayer, "Title", "O Omnissiah, hear me. O Omnissiah, hear me.", "Truth.")]
     [InlineData(RiteKind.Prayer, "Litany of the Omnissiah", "Text.", "Truth.")]
