@@ -29,9 +29,8 @@ public static class Layout
             <meta property="og:description" content="{Html.Encode(description)}">
             <meta property="og:type" content="website">
             <meta name="theme-color" content="#100e0b">
-            <link rel="preconnect" href="https://fonts.googleapis.com">
-            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-            <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500&family=Figtree:wght@400;600;700&display=swap">
+            <link rel="preload" href="/fonts/cinzel.woff2" as="font" type="font/woff2" crossorigin>
+            <link rel="preload" href="/fonts/eb-garamond.woff2" as="font" type="font/woff2" crossorigin>
             <style>{Styles.Css}</style>
             <noscript><style>{NoScriptCss}</style></noscript>
             </head>
