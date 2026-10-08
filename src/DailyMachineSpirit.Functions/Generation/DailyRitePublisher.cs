@@ -6,9 +6,6 @@ using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Functions.Generation;
 
-/// <summary>The day's rite, and whether this run published it (or found it already there).</summary>
-public sealed record PublishedRite(Rite Rite, bool IsNew);
-
 /// <summary>
 /// Publishes the top of the Liturgical Calendar as today's (UTC) rite, unless the day already has one: running it again
 /// (a retry, a missed run caught up) never replaces a rite visitors may have seen and reacted to.
