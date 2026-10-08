@@ -125,6 +125,28 @@ public sealed class ScribesTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Burning_ADraftAnointedWhileTheRequestRuns_BurnsIt_AndItsPlacementDoesNoHarm()
+    {
+        await testbed.AddDraft("Excellent", 0.95f);
+        var fair = await testbed.AddDraft("Fair", 0.4f);
+        // Fair isn't placed when this request reads the calendar; right after, another Scribe anoints it. The burn
+        // still goes through (both Scribes acted on what they saw), and Fair stays in the Scribes' order, burned.
+        var drafts = new InterruptedDrafts(testbed.Drafts,
+            async () => Ok(await testbed.Scribes().Anoint(fair.Id, "", CancellationToken.None)));
+        var scribes = new Scribes(drafts, testbed.Rites, testbed.Scriptorium, testbed.Time);
+
+        Ok(await scribes.Burn(fair.Id, "", CancellationToken.None));
+
+        var burned = Ok(await testbed.Scribes().View(CancellationToken.None));
+        Assert.Equal(["Excellent"], burned.Calendar.Select(entry => entry.Draft.Title));
+        Assert.Equal(["Fair"], burned.Ashes.Select(draft => draft.Title));
+        Ok(await testbed.Scribes().Restore(fair.Id, "", CancellationToken.None));
+        var restored = Ok(await testbed.Scribes().View(CancellationToken.None));
+        Assert.Equal(["Excellent", "Fair"], restored.Calendar.Select(entry => entry.Draft.Title));
+        Assert.False(restored.Calendar.Single(entry => entry.Draft.Id == fair.Id).PlacedByScribes);
+    }
+
+    [Fact]
     public async Task Reordering_WhenADraftItPassesIsBurnedMeanwhile_IsChangedMeanwhile_AndRecordsNothing()
     {
         var excellent = await testbed.AddDraft("Excellent", 0.95f);
