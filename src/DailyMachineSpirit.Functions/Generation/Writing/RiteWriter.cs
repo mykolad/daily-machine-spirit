@@ -63,7 +63,7 @@ public sealed class RiteWriter
                     await Task.Delay(TimeSpan.FromSeconds(settings.RetryDelaySeconds), time, cancellationToken);
 
                 var written = (await Ask(model, messages, cancellationToken))
-                    .Bind(Check)
+                    .Bind(answer => Check(answer, kind))
                     .Map(draft => new Rite
                     {
                         PublishedOnUtc = publishedOnUtc,
@@ -113,7 +113,7 @@ public sealed class RiteWriter
         }
     }
 
-    private static Either<Error, RiteDraft> Check(RiteDraft answer)
+    private static Either<Error, RiteDraft> Check(RiteDraft answer, RiteKind kind)
     {
         var draft = answer with
         {
@@ -133,8 +133,11 @@ public sealed class RiteWriter
         var forbidden = ForbiddenNames.Where(name => everything.Contains(name, StringComparison.OrdinalIgnoreCase)).ToList();
         if (forbidden.Count > 0)
             return Error.New($"The answer uses forbidden names: {string.Join(", ", forbidden)}.");
-        if (Occurrences(everything, Omnissiah) > 1)
-            return Error.New($"The answer names the {Omnissiah} more than once.");
+        // A prayer may call on the Omnissiah once; a heading, a Heretical Truth or a ritual never names it.
+        var allowedInText = kind == RiteKind.Prayer ? 1 : 0;
+        if (Occurrences(draft.Title, Omnissiah) + Occurrences(draft.HereticalTruth, Omnissiah) > 0
+            || Occurrences(draft.Text, Omnissiah) > allowedInText)
+            return Error.New($"The answer names the {Omnissiah} where it isn't allowed: only once, in a prayer's text.");
 
         return draft;
     }
