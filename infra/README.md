@@ -113,7 +113,7 @@ in with `az login`):
 
 ```powershell
 cd src/DailyMachineSpirit.Functions
-func azure functionapp publish machinespirit-app-staging
+func azure functionapp publish machinespirit-app-staging --dotnet-isolated
 ```
 
 Staging runs that branch until the next publish; `https://machinespirit-app-staging.azurewebsites.net/healthz` shows
