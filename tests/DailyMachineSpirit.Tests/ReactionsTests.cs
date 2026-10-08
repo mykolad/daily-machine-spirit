@@ -77,6 +77,16 @@ public sealed class ReactionsTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task React_ManyAtOnce_CountsEveryOne()
+    {
+        await AddRite();
+
+        await Task.WhenAll(Enumerable.Range(0, 12).Select(_ => React(Some(Reaction.Blessed), None)));
+
+        Assert.Equal(new ReactionCounts(12, 0), await React(None, None));
+    }
+
+    [Fact]
     public async Task React_ToARiteThatDoesNotExist_IsNone()
         => Assert.True(Ok(await Repository.React(7, Some(Reaction.Blessed), None, CancellationToken.None)).IsNone);
 
@@ -106,6 +116,8 @@ public sealed class ReactionsTests : IAsyncLifetime
 
     [Theory]
     [InlineData("""{"reaction":"amen"}""")]
+    [InlineData("""{"reaction":"blessed","unexpected":true}""")]
+    [InlineData("""{"reacton":"blessed"}""")]
     [InlineData("""{"reaction":1}""")]
     [InlineData("not json")]
     [InlineData("null")]

@@ -19,6 +19,8 @@ public sealed class ReactionsFunction
     private static readonly JsonSerializerOptions BodyOptions = new(JsonSerializerDefaults.Web)
     {
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false) },
+        // A misspelled field ("reacton") is a mistake to refuse, not a reaction of none.
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
     };
 
     private readonly IRiteRepository rites;

@@ -33,6 +33,12 @@ public class HtmlTests
     public void FirstLine_OfOneSentence_IsTheWholeText()
         => Assert.Equal("A single sentence without an end", Html.FirstLine("A single sentence without an end"));
 
+    [Theory]
+    [InlineData(0, "0")]
+    [InlineData(2310, "2,310")]
+    [InlineData(1204000, "1,204,000")]
+    public void Count_GroupsThousands(int count, string expected) => Assert.Equal(expected, Html.Count(count));
+
     [Fact]
     public void Dates_ReadAsTheDesignShowsThem()
     {
