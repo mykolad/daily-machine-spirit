@@ -37,6 +37,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Contains($"/scriptorium/drafts/{top:D}/anoint", html);
         Assert.DoesNotContain($"/scriptorium/drafts/{top:D}/exalt", html);
         Assert.Contains("“Spinners &lt;again&gt;.”", html);
+        Assert.Contains("not affiliated with or endorsed by Games Workshop", html);
         Assert.Equal("no-store", request.HttpContext.Response.Headers.CacheControl.ToString());
         Assert.Equal("noindex", request.HttpContext.Response.Headers["X-Robots-Tag"].ToString());
     }
@@ -75,6 +76,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var html = Html(await function.Page(Get(""), CancellationToken.None), 500);
 
         Assert.Contains("The Scriptorium is silent", html);
+        Assert.Contains("not affiliated with or endorsed by Games Workshop", html);
     }
 
     [Theory]
