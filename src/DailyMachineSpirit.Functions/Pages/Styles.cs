@@ -6,7 +6,16 @@ namespace DailyMachineSpirit.Functions.Pages;
 /// </summary>
 public static class Styles
 {
-    public const string Css = """
+    // The site's own copies of the fonts (FontsFunction): variable fonts, one file per family and style.
+    private const string FontFaces = """
+        @font-face{font-family:Cinzel;font-style:normal;font-weight:400 900;font-display:swap;src:url(/fonts/cinzel.woff2) format('woff2')}
+        @font-face{font-family:'EB Garamond';font-style:normal;font-weight:400 800;font-display:swap;src:url(/fonts/eb-garamond.woff2) format('woff2')}
+        @font-face{font-family:'EB Garamond';font-style:italic;font-weight:400 800;font-display:swap;src:url(/fonts/eb-garamond-italic.woff2) format('woff2')}
+        @font-face{font-family:Figtree;font-style:normal;font-weight:300 900;font-display:swap;src:url(/fonts/figtree.woff2) format('woff2')}
+        @font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:100 800;font-display:swap;src:url(/fonts/jetbrains-mono.woff2) format('woff2')}
+        """;
+
+    public const string Css = FontFaces + """
         :root{color-scheme:dark}
         *,*::before,*::after{box-sizing:border-box}
         html,body{background:#100e0b;color:#ede3cf}

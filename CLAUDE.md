@@ -99,7 +99,9 @@ infra/                            — Bicep for all of Azure (main.bicep); infra
   `deployment.environment.name`. There's no Application Insights, so the portal's log stream stays empty: look in Grafana.
 - **The pages** (`Pages/`) follow the design handoff (`design_handoff_daily_machine_spirit`, outside the repo; its
   README is the spec). They're rendered on the server as plain HTML with the CSS and a small script inlined, so a page
-  is one request and works without the script (the truth then simply shows).
+  is one request (plus the fonts, cached for a year) and works without the script (the truth then simply shows).
+  - The fonts are the site's own copies (`Pages/Fonts/`, Latin subsets, OFL), served at `/fonts/<name>.woff2`: a page
+    never makes the visitor's browser contact another site (Google Fonts would learn every visitor's address).
   - Routes: `/` (Today: the newest rite), `/archive` (`?before=<number>` for older pages), `/p/<number>`. A catch-all
     route takes `/` and answers every unknown address with the 404 page; more specific routes win over it.
   - Everything a model wrote goes through `Html.Encode` (`Html.WithInlineCode` for text with `backticks`).
