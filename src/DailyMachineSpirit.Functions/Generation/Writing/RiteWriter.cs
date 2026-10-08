@@ -1,12 +1,13 @@
 using System.Text.Json;
 using DailyMachineSpirit.Data.Entities;
+using DailyMachineSpirit.Functions.Generation.Chat;
 using LanguageExt;
 using LanguageExt.Common;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace DailyMachineSpirit.Functions.Generation;
+namespace DailyMachineSpirit.Functions.Generation.Writing;
 
 /// <summary>
 /// Asks the models for a rite, each up to <see cref="GenerationOptions.AttemptsPerModel"/> times, in

@@ -1,5 +1,7 @@
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
+using DailyMachineSpirit.Functions.Generation.Scoring;
+using DailyMachineSpirit.Functions.Generation.Writing;
 using LanguageExt;
 using LanguageExt.Common;
 using Microsoft.Extensions.Logging;
@@ -19,7 +21,7 @@ public sealed class DailyRitePublisher
 {
     private readonly IRiteRepository rites;
     private readonly RiteWriter writer;
-    private readonly JevScorer scorer;
+    private readonly IRiteScorer scorer;
     private readonly IOptions<GenerationOptions> options;
     private readonly TimeProvider time;
     private readonly ILogger<DailyRitePublisher> logger;
@@ -27,7 +29,7 @@ public sealed class DailyRitePublisher
     public DailyRitePublisher(
         IRiteRepository rites,
         RiteWriter writer,
-        JevScorer scorer,
+        IRiteScorer scorer,
         IOptions<GenerationOptions> options,
         TimeProvider time,
         ILogger<DailyRitePublisher> logger)

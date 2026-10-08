@@ -1,6 +1,6 @@
 using System.Net;
 using DailyMachineSpirit.Data.Entities;
-using DailyMachineSpirit.Functions.Generation;
+using DailyMachineSpirit.Functions.Generation.Scoring;
 using LanguageExt;
 using Microsoft.Extensions.Time.Testing;
 using static DailyMachineSpirit.Tests.Expect;

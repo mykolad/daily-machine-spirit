@@ -2,21 +2,7 @@ using Azure.AI.OpenAI;
 using Azure.Identity;
 using Microsoft.Extensions.AI;
 
-namespace DailyMachineSpirit.Functions.Generation;
-
-public class AzureOpenAIOptions
-{
-    public const string SectionName = "AzureOpenAI";
-
-    /// <summary>The AI Services account the models are deployed on, e.g. <c>https://&lt;account&gt;.openai.azure.com/</c>.</summary>
-    public string Endpoint { get; set; } = string.Empty;
-}
-
-public interface IChatClients
-{
-    /// <summary>A client for one model deployment, by its name (<see cref="GenerationOptions.Models"/>).</summary>
-    IChatClient For(string model);
-}
+namespace DailyMachineSpirit.Functions.Generation.Chat;
 
 /// <summary>
 /// Signs in with Entra ID (the app's managed identity in Azure, your <c>az login</c> locally): the account's keys stay
