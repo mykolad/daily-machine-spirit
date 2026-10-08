@@ -61,6 +61,14 @@ public class RiteRepository : IRiteRepository
                 .WithParameter("@type", RiteDocument.RiteType),
             cancellationToken)).Select(document => document.ToRite()).ToList());
 
+    public Task<Either<Error, List<Rite>>> GetOlderThan(int number, int count, CancellationToken cancellationToken)
+        => Attempt(async () => (await Query<RiteDocument>(
+            new QueryDefinition("SELECT TOP @count * FROM c WHERE c.type = @type AND c.number < @number ORDER BY c.number DESC")
+                .WithParameter("@count", count)
+                .WithParameter("@type", RiteDocument.RiteType)
+                .WithParameter("@number", number),
+            cancellationToken)).Select(document => document.ToRite()).ToList());
+
     public Task<Either<Error, Rite>> Add(Rite rite, CancellationToken cancellationToken)
         => AttemptEither(async () =>
         {

@@ -19,6 +19,7 @@ design's word, and `Rite` in the code). Visitors react with **Blessed** or **Her
 ```
 src/DailyMachineSpirit.Functions  — the Functions app (HTTP and timer functions)
   Generation/                     — the daily rite; Writing/ (prompt, writer), Chat/ (the models), Scoring/ (Jev)
+  Pages/                          — the public pages, rendered on the server (Today, the archive, a rite's page)
 src/DailyMachineSpirit.Data       — Cosmos DB: entities, documents, repositories
 tests/DailyMachineSpirit.Tests    — xUnit tests (the repository tests run against the Cosmos DB emulator)
 tools/coverage.ps1                — tests + coverage report + the coverage gate (Build and Test runs it)
@@ -95,6 +96,13 @@ infra/                            — Bicep for all of Azure (main.bicep); infra
   export logs and traces over OTLP wherever `OTEL_EXPORTER_OTLP_ENDPOINT` is set; `infra/` sets it, with the token's
   header from the vault. Each environment is its own service (the app's name), tagged with `deployment.environment.name`.
   There's no Application Insights, so the portal's log stream stays empty: look in Grafana.
+- **The pages** (`Pages/`) follow the design handoff (`design_handoff_daily_machine_spirit`, outside the repo; its
+  README is the spec). They're rendered on the server as plain HTML with the CSS and a small script inlined, so a page
+  is one request and works without the script (the truth then simply shows).
+  - Routes: `/` (Today: the newest rite), `/archive` (`?before=<number>` for older pages), `/p/<number>`. A catch-all
+    route takes `/` and answers every unknown address with the 404 page; more specific routes win over it.
+  - Everything a model wrote goes through `Html.Encode` (`Html.WithInlineCode` for text with `backticks`).
+  - Every focusable control sits on the dark background, never on the parchment, so the amber focus ring shows.
 - **The daily rite** (`Generation/`): the `DailyRite` timer runs at 00:00 UTC and publishes today's rite only if the
   day has none, so a retry or a caught-up run never replaces one visitors have seen. Prayers and rituals alternate by
   date (`DailyRitePublisher.KindFor`).

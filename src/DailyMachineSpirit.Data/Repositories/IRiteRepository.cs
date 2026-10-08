@@ -13,6 +13,9 @@ public interface IRiteRepository
 
     Task<Either<Error, List<Rite>>> GetNewest(int count, CancellationToken cancellationToken);
 
+    /// <summary>The rites numbered below <paramref name="number"/>, the newest first: a page of the archive.</summary>
+    Task<Either<Error, List<Rite>>> GetOlderThan(int number, int count, CancellationToken cancellationToken);
+
     /// <summary>
     /// The saved rite, with the next number; <see cref="RiteRepository.DayAlreadyHasRite"/> when that day already has one,
     /// so two generations for the same day can't both save.
