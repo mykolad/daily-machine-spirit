@@ -18,8 +18,8 @@ what really happens. Either kind is a **rite** (the design's word, and `Rite` in
 ## Solution layout
 
 ```
+src/DailyMachineSpirit.Functions  — the Functions app (HTTP, timer and queue functions)
   Generation/                     — the backlog and the daily rite: Writing/, Chat/ (the models), Scoring/ (Jev)
-  Generation/                     — the backlog and the daily rite; Writing/ (prompt, writer), Chat/ (the models), Scoring/ (Jev)
 src/DailyMachineSpirit.Data       — Cosmos DB: entities, documents, repositories
 tests/DailyMachineSpirit.Tests    — xUnit tests (the repository tests run against the Cosmos DB emulator)
 tools/coverage.ps1                — tests + coverage report + the coverage gate (Build and Test runs it)
@@ -111,7 +111,11 @@ infra/                            — Bicep for all of Azure (main.bicep); infra
   - **Refilling:** the `RefillBacklog` function keeps `Generation:BacklogSize` (20) drafts waiting. Each draft is of
     the kind there are fewer of, on a subject neither the recent rites nor the waiting drafts have. The timer asks for a
     refill after publishing, by a message on the `backlog-refills` queue: a full refill takes minutes, longer than a
-    request should wait. `host.json` takes one message at a time and tries a message 3 times, 10 minutes apart.
+    request should wait. `host.json` takes one message at a time and tries a message 3 times, 10 minutes apart. The
+    queue is declared in `infra/`. Instances can refill at once, but each counts the waiting drafts before every draft
+    it writes, so the backlog overshoots by at most one draft per refill running.
+  - **A new environment starts with an empty backlog,** so its first midnight writes a rite on the spot, unmoderated.
+    To have moderated rites from the first day (production), summon a refill before the first midnight.
   - **Writing:** `RiteWriter` asks `gpt-6-sol` for a `RiteContent` (JSON schema output), up to 3 times, then
     `gpt-6-luna` (`Generation:Models`). An answer that's empty, too long or uses a forbidden name is asked for again,
     never cut.
