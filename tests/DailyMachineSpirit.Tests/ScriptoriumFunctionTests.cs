@@ -1,5 +1,6 @@
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Functions.Scriptorium;
+using DailyMachineSpirit.Functions.Scriptorium.SignIn;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -73,7 +74,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     public async Task Page_WhenCosmosFails_SaysTheScriptoriumIsSilent()
     {
         var function = new ScriptoriumFunction(
-            testbed.ScribesWithoutCosmos(), Options.Create(new ScriptoriumOptions { Enabled = true }), NullLogger<ScriptoriumFunction>.Instance);
+            testbed.ScribesWithoutCosmos(), new NoSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), NullLogger<ScriptoriumFunction>.Instance);
 
         var html = Html(await function.Page(Get(""), CancellationToken.None), 500);
 
@@ -129,7 +130,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var burned = await testbed.AddDraft("Burned", 0.5f);
         await testbed.AddDraft("Still waiting", 0.5f);
         var scribes = new Scribes(new DraftsFailingAfterFirstRead(testbed.Drafts), testbed.Rites, testbed.Scriptorium, testbed.Time);
-        var function = new ScriptoriumFunction(scribes, Options.Create(new ScriptoriumOptions { Enabled = true }), NullLogger<ScriptoriumFunction>.Instance);
+        var function = new ScriptoriumFunction(scribes, new NoSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), NullLogger<ScriptoriumFunction>.Instance);
 
         var response = await function.Decide(Post(""), burned.Id, "burn", CancellationToken.None);
 
@@ -255,15 +256,34 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var function = Function(enabled: false);
 
         Assert.IsType<NotFoundResult>((await function.Decide(Post(""), draft.Id, "burn", CancellationToken.None)).Result);
-        Assert.IsType<NotFoundResult>(function.Summon(Post("")).Result);
+        Assert.IsType<NotFoundResult>((await function.Summon(Post(""), CancellationToken.None)).Result);
         Assert.IsType<NotFoundResult>(await function.LetTheAuguryDecide(Post(""), CancellationToken.None));
         Assert.Single(await testbed.Waiting());
     }
 
     [Fact]
-    public void Summon_AsksForARefill_AndGoesBackToThePage()
+    public async Task SomeoneWhoIsNotAScribe_IsForbidden_EverywhereInTheScriptorium_AndChangesNothing()
     {
-        var response = Function(enabled: true).Summon(Post(""));
+        var draft = await testbed.AddDraft("Kept", 0.5f);
+        var function = new ScriptoriumFunction(
+            testbed.Scribes(), new NobodySignsIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), NullLogger<ScriptoriumFunction>.Instance);
+
+        var page = await function.Page(Get(""), CancellationToken.None);
+        var decision = await function.Decide(Post(""), draft.Id, "burn", CancellationToken.None);
+        var summon = await function.Summon(Post(""), CancellationToken.None);
+        var augury = await function.LetTheAuguryDecide(Post(""), CancellationToken.None);
+
+        Assert.All([page, decision.Result, summon.Result, augury],
+            result => Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<StatusCodeResult>(result).StatusCode));
+        Assert.Null(summon.RefillReason);
+        Assert.Single(await testbed.Waiting());
+        Assert.Empty(Ok(await testbed.Scribes().View(CancellationToken.None)).Decisions);
+    }
+
+    [Fact]
+    public async Task Summon_AsksForARefill_AndGoesBackToThePage()
+    {
+        var response = await Function(enabled: true).Summon(Post(""), CancellationToken.None);
 
         Assert.Equal("/scriptorium?done=summon", Assert.IsType<RedirectResult>(response.Result).Url);
         Assert.Equal(ScriptoriumFunction.Summoned, response.RefillReason);
@@ -283,7 +303,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     }
 
     private ScriptoriumFunction Function(bool enabled)
-        => new(testbed.Scribes(), Options.Create(new ScriptoriumOptions { Enabled = enabled }), NullLogger<ScriptoriumFunction>.Instance);
+        => new(testbed.Scribes(), new NoSignIn(), Options.Create(new ScriptoriumOptions { Enabled = enabled }), NullLogger<ScriptoriumFunction>.Instance);
 
     private static HttpRequest Get(string done)
     {

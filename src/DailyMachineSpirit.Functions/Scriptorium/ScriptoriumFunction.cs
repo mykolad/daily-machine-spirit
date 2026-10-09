@@ -1,4 +1,5 @@
 using DailyMachineSpirit.Data.Repositories;
+using DailyMachineSpirit.Functions.Scriptorium.SignIn;
 using LanguageExt;
 using LanguageExt.Common;
 using Microsoft.AspNetCore.Http;
@@ -48,12 +49,15 @@ public sealed class ScriptoriumFunction
     };
 
     private readonly Scribes scribes;
+    private readonly IScribeSignIn signIn;
     private readonly IOptions<ScriptoriumOptions> options;
     private readonly ILogger<ScriptoriumFunction> logger;
 
-    public ScriptoriumFunction(Scribes scribes, IOptions<ScriptoriumOptions> options, ILogger<ScriptoriumFunction> logger)
+    public ScriptoriumFunction(
+        Scribes scribes, IScribeSignIn signIn, IOptions<ScriptoriumOptions> options, ILogger<ScriptoriumFunction> logger)
     {
         this.scribes = scribes;
+        this.signIn = signIn;
         this.options = options;
         this.logger = logger;
     }
@@ -64,6 +68,8 @@ public sealed class ScriptoriumFunction
     {
         if (!options.Value.Enabled)
             return new NotFoundResult();
+        if (!await signIn.IsScribe(request, cancellationToken))
+            return new StatusCodeResult(StatusCodes.Status403Forbidden);
 
         var status = Optional(request.Query["done"].ToString()).Bind(key => Outcomes.TryGetValue(key, out var text) ? Some(text) : None);
         return (await scribes.View(cancellationToken)).Match(
@@ -77,21 +83,21 @@ public sealed class ScriptoriumFunction
         Guid draftId,
         string action,
         CancellationToken cancellationToken)
-        => await Refusal(request).Match(
+        => await (await Refusal(request, cancellationToken)).Match(
             Some: refused => Task.FromResult(new ScriptoriumResponse { Result = refused }),
             None: () => Act(request, draftId, action, cancellationToken));
 
     [Function("ScriptoriumSummon")]
-    public ScriptoriumResponse Summon(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "scriptorium/summon")] HttpRequest request)
-        => Refusal(request).Match(
+    public async Task<ScriptoriumResponse> Summon(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "scriptorium/summon")] HttpRequest request, CancellationToken cancellationToken)
+        => (await Refusal(request, cancellationToken)).Match(
             Some: refused => new ScriptoriumResponse { Result = refused },
             None: () => new ScriptoriumResponse { Result = BackToPage("summon"), RefillReason = Summoned });
 
     [Function("ScriptoriumAugury")]
     public async Task<IActionResult> LetTheAuguryDecide(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "scriptorium/augury")] HttpRequest request, CancellationToken cancellationToken)
-        => await Refusal(request).Match(
+        => await (await Refusal(request, cancellationToken)).Match(
             Some: refused => Task.FromResult(refused),
             None: async () => Answer(request, "augury", await scribes.LetTheAuguryDecide(cancellationToken)).Result);
 
@@ -135,14 +141,17 @@ public sealed class ScriptoriumFunction
         }
     }
 
-    // Turned off, the Scriptorium doesn't exist. A form posted from another site (a forged request riding a Scribe's
-    // sign-in or address) is forbidden. Browsers say where a request comes from in Sec-Fetch-Site; ones too old for that
-    // still send Origin with a form post, which must then be this site. A request with neither is refused too.
-    private Option<IActionResult> Refusal(HttpRequest request)
+    // Turned off, the Scriptorium doesn't exist. Only a Scribe may act (IScribeSignIn), and a form posted from another
+    // site (a forged request riding a Scribe's sign-in or address) is forbidden. Browsers say where a request comes from
+    // in Sec-Fetch-Site; ones too old for that still send Origin with a form post, which must then be this site. A
+    // request with neither is refused too.
+    private async Task<Option<IActionResult>> Refusal(HttpRequest request, CancellationToken cancellationToken)
     {
         if (!options.Value.Enabled)
             return new NotFoundResult();
-        return IsFromThisSite(request) ? None : new StatusCodeResult(StatusCodes.Status403Forbidden);
+        if (!await signIn.IsScribe(request, cancellationToken) || !IsFromThisSite(request))
+            return new StatusCodeResult(StatusCodes.Status403Forbidden);
+        return None;
     }
 
     private static bool IsFromThisSite(HttpRequest request)

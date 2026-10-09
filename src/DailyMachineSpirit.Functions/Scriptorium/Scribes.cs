@@ -16,6 +16,12 @@ public class ScriptoriumOptions
     /// in with Cloudflare Access.
     /// </summary>
     public bool Enabled { get; set; }
+
+    /// <summary>
+    /// Lets everyone who reaches the Scriptorium in, with no sign-in: only for an app that admits its owner's address
+    /// alone (staging). Elsewhere the Scribes sign in with Cloudflare Access, and with neither, nobody gets in.
+    /// </summary>
+    public bool WithoutSignIn { get; set; }
 }
 
 /// <summary>A draft in the Liturgical Calendar, as the Scriptorium shows it.</summary>

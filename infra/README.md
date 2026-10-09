@@ -122,6 +122,13 @@ its commit.
 ## Outside Azure
 
 - **Cloudflare** (`dailymachinespirit.fyi`): the DNS records and the origin certificate, added with the custom domain.
+- **Cloudflare Access** guards production's Scriptorium. In Zero Trust → Access → Applications, add a self-hosted
+  application for `dailymachinespirit.fyi/scriptorium` with GitHub as the login method and a policy that allows the
+  Scribes' accounts. Its overview shows the **Application Audience (AUD) tag**; the team domain is in Settings → Custom
+  Pages (`<team>.cloudflareaccess.com`). Deploy with both (neither is secret), then turn the Scriptorium on:
+  `--parameters ... cloudflareAccessTeamDomain=<team>.cloudflareaccess.com cloudflareAccessAudience=<AUD tag>`, and
+  `scriptoriumEnabled: true` for production in `resources.bicep`. Until both are set, production's Scriptorium lets
+  nobody in, even if it's turned on.
 - **GitHub**: the environments `staging`, `production` and `infrastructure`, each with its identity's client id
   (`githubClientIds` in the deployment's outputs), added with the deploy workflows.
 
