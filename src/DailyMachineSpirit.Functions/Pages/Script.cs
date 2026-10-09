@@ -120,6 +120,52 @@ public static class Script
             }));
           }
 
+          // The archive loads older rites as the reader nears the end, by fetching the next page the "Load older rites"
+          // link points to and taking its rows. The link stays: a keyboard follows it here too, and focus moves to the
+          // first new rite. Without the script, it's an ordinary link to that page.
+          const rows = document.querySelector('.rows');
+          const more = document.querySelector('.archive-more');
+          if (rows && more) {
+            let loading = false;
+            const observer = new IntersectionObserver((entries) => {
+              const link = more.querySelector('a');
+              if (link && entries.some((entry) => entry.isIntersecting)) loadOlder(link, false);
+            }, { rootMargin: '200px' });
+            const loadOlder = async (link, moveFocus) => {
+              if (loading) return;
+              loading = true;
+              const status = document.createElement('div');
+              status.className = 'archive-loading';
+              status.setAttribute('role', 'status');
+              status.innerHTML = '<span class="sr-only">Loading older rites…</span><div class="skeleton-row" aria-hidden="true"></div><div class="skeleton-row" aria-hidden="true"></div>';
+              more.before(status);
+              try {
+                const response = await fetch(link.href);
+                if (!response.ok) throw new Error(String(response.status));
+                const page = new DOMParser().parseFromString(await response.text(), 'text/html');
+                const added = [...page.querySelectorAll('.rows > li')].map((row) => rows.appendChild(document.importNode(row, true)));
+                const next = page.querySelector('.archive-more');
+                more.replaceChildren(...(next ? [...next.childNodes].map((node) => document.importNode(node, true)) : []));
+                if (moveFocus && added.length > 0) added[0].querySelector('a').focus();
+              } catch {
+                say('Older rites couldn’t be loaded. Try again.');
+              } finally {
+                status.remove();
+                loading = false;
+                // Watched afresh, so a short page that still shows the end loads the next one too.
+                observer.unobserve(more);
+                observer.observe(more);
+              }
+            };
+            more.addEventListener('click', (event) => {
+              const link = event.target.closest('a');
+              if (!link) return;
+              event.preventDefault();
+              loadOlder(link, true);
+            });
+            observer.observe(more);
+          }
+
           const countdowns = document.querySelectorAll('[data-countdown]');
           const tick = () => {
             const now = new Date();
