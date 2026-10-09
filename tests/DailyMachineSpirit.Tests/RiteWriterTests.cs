@@ -54,6 +54,17 @@ public class RiteWriterTests
         Assert.Equal("Write today's prayer.", messages.Single(message => message.Role == ChatRole.User).Text);
     }
 
+    [Fact]
+    public async Task Write_DropsBackticksFromTheTitle_RatherThanAskAgain()
+    {
+        models.Answers(Sol, FakeChatClients.Answer("The Rite of `--force`", "Text.", "Truth."));
+
+        var rite = Ok(await Writer(retryDelaySeconds: 0).Write(Day, RiteKind.Ritual, [], CancellationToken.None));
+
+        Assert.Equal("The Rite of --force", rite.Title);
+        Assert.Single(models.Requests);
+    }
+
     [Theory]
     [InlineData("not json at all")]
     [InlineData("""{"title": "Only a title"}""")]
@@ -95,7 +106,9 @@ public class RiteWriterTests
     [InlineData(RiteKind.Prayer, "Title", "O Omnissiah, hear me. O Omnissiah, hear me.", "Truth.")]
     [InlineData(RiteKind.Prayer, "Litany of the Omnissiah", "Text.", "Truth.")]
     [InlineData(RiteKind.Prayer, "Title", "Text.", "The Omnissiah won't fix a race.")]
-    public async Task Write_AsksAgain_WhenTheAnswerUsesForbiddenNames(RiteKind kind, string title, string text, string hereticalTruth)
+    [InlineData(RiteKind.Ritual, "Title", "Lay sleep 5 upon the altar.", "Truth.")]
+    [InlineData(RiteKind.Prayer, "Title", "Text.", "Delete node_modules, then wait.")]
+    public async Task Write_AsksAgain_WhenTheAnswerBreaksTheRules(RiteKind kind, string title, string text, string hereticalTruth)
     {
         models.Answers(Sol, FakeChatClients.Answer(title, text, hereticalTruth), GoodAnswer);
 
