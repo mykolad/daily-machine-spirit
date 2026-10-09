@@ -69,11 +69,10 @@ public static class Script
             // the page still remembers, so one reaction per rite holds while it's open.
             let memory = (() => { try { return JSON.parse(localStorage.getItem(key)) || {}; } catch { return {}; } })();
             const remembered = () => ({ ...memory });
-            // Changes only this rite's entry, on top of whatever is stored right now: another tab may have saved its own
-            // reaction while this one's request was on its way.
+            // Changes only this rite's entry, on top of what's stored right now: another tab may have saved or taken back a
+            // reaction while this one's request was on its way. Only where storage can't be read is the page's copy the base.
             const remember = (number, reaction) => {
-              try { memory = { ...memory, ...JSON.parse(localStorage.getItem(key)) }; } catch { }
-              memory = { ...memory };
+              try { memory = JSON.parse(localStorage.getItem(key)) || {}; } catch { memory = { ...memory }; }
               if (reaction) memory[number] = reaction; else delete memory[number];
               try { localStorage.setItem(key, JSON.stringify(memory)); } catch { }
             };
