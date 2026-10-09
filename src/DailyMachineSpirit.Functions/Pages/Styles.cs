@@ -138,6 +138,8 @@ public static class Styles
         .row-first code{font-family:'JetBrains Mono',monospace;font-size:.8em}
         .row-counts{display:flex;gap:18px;margin-top:4px;font-size:14px;color:#b6a98f}
         .row-counts span{display:inline-flex;align-items:center;gap:6px}
+        .archive-loading{width:100%;display:flex;flex-direction:column;gap:12px;margin-top:12px}
+        .skeleton-row{height:118px;border-radius:20px;background:#1a1612}
         .archive-more{display:flex;justify-content:center;padding-top:28px}
         .archive-end{margin:0;font-family:'EB Garamond',serif;font-style:italic;font-size:19px;color:#b6a98f}
         .state{display:flex;flex-direction:column;align-items:center;gap:16px;max-width:580px;padding:24px 0}
