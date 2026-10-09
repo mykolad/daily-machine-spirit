@@ -49,7 +49,7 @@ public static partial class UnquotedCode
     [GeneratedRegex("""
         (?<![\w-])--[a-z][a-z0-9-]*
         | \b[a-z][a-z0-9]*_[a-z0-9_]+\b
-        | \b[\w-]+\.(?:json|ya?ml|toml|lock|env|js|ts|cs|py|sh|ini|config|xml)\b
+        | \b(?!(?:node|next|vue|react|express)\.js\b)[\w-]+\.(?:json|ya?ml|toml|lock|env|js|ts|cs|py|sh|ini|config|xml)\b
         | (?<![\w.])\.(?:env|gitignore|npmrc|bashrc)\b
         | \bsleep\s+\d+
         | \brm\s+-\w+

@@ -34,6 +34,7 @@ public class UnquotedCodeTests
     [InlineData("Push thy commits, pull thy blessings, and git thee to the altar.")]
     [InlineData("The npm registry remembers; docker keeps its images.")]
     [InlineData("The npm cache is stale, and Docker Compose reads the configuration.")]
+    [InlineData("Node.js keeps its module cache; Next.js keeps another.")]
     public void Find_LeavesProseAndBacktickedCodeAlone(string text)
         => Assert.True(UnquotedCode.Find(text).IsNone);
 }
