@@ -110,7 +110,8 @@ infra/                            — Bicep for all of Azure (main.bicep); infra
   day has none, so a retry or a caught-up run never replaces one visitors have seen. Prayers and rituals alternate by
   date (`DailyRitePublisher.KindFor`).
   - `RiteWriter` asks `gpt-6-sol` for a `RiteDraft` (JSON schema output), up to 3 times, then `gpt-6-luna`
-    (`Generation:Models`). An answer that's empty, too long or uses a forbidden name is asked for again, never cut.
+    (`Generation:Models`). An answer that's empty, too long, uses a forbidden name or writes code outside backticks
+    (`UnquotedCode`) is asked for again, never cut.
   - The prompt (`RitePrompt`) lists the recent titles, so the model picks another subject.
   - An `IRiteScorer` scores the saved rite for "More rites": `JevScorer` for now, swappable like the models
     (`IChatClients`). Scoring failing (or `Jev:ApiKey` empty) still publishes the rite, just without scores.
