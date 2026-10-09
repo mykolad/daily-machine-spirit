@@ -69,7 +69,14 @@ public static class Script
             // the page still remembers, so one reaction per rite holds while it's open.
             let memory = (() => { try { return JSON.parse(localStorage.getItem(key)) || {}; } catch { return {}; } })();
             const remembered = () => ({ ...memory });
-            const remember = (all) => { memory = all; try { localStorage.setItem(key, JSON.stringify(all)); } catch { } };
+            // Changes only this rite's entry, on top of whatever is stored right now: another tab may have saved its own
+            // reaction while this one's request was on its way.
+            const remember = (number, reaction) => {
+              try { memory = { ...memory, ...JSON.parse(localStorage.getItem(key)) }; } catch { }
+              memory = { ...memory };
+              if (reaction) memory[number] = reaction; else delete memory[number];
+              try { localStorage.setItem(key, JSON.stringify(memory)); } catch { }
+            };
             const rite = reactions.dataset.rite;
             const buttons = [...reactions.querySelectorAll('[data-reaction]')];
             const counts = () => Object.fromEntries(buttons.map((b) => [b.dataset.reaction, Number(b.querySelector('.count').textContent.replace(/,/g, ''))]));
@@ -86,8 +93,7 @@ public static class Script
             });
             buttons.forEach((button) => button.addEventListener('click', async () => {
               if (reactions.getAttribute('aria-busy') === 'true') return;
-              const all = remembered();
-              const previous = all[rite] ?? null;
+              const previous = remembered()[rite] ?? null;
               const reaction = previous === button.dataset.reaction ? null : button.dataset.reaction;
               const before = counts();
               const hoped = { ...before };
@@ -103,8 +109,7 @@ public static class Script
                 });
                 if (!response.ok) throw new Error(String(response.status));
                 // Saved: from here on the reaction counts, even if the answer can't be read.
-                if (reaction) all[rite] = reaction; else delete all[rite];
-                remember(all);
+                remember(rite, reaction);
                 show(reaction, await response.json().catch(() => hoped));
               } catch {
                 show(previous, before);
