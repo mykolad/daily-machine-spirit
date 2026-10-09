@@ -29,12 +29,25 @@ public sealed class CosmosMetricsHandler : RequestHandler
     public override async Task<ResponseMessage> SendAsync(RequestMessage request, CancellationToken cancellationToken)
     {
         var started = Stopwatch.GetTimestamp();
-        var response = await base.SendAsync(request, cancellationToken);
-        var tags = new TagList { { "operation", Operation(request) }, { "status_code", (int)response.StatusCode } };
-        RequestCharge.Record(response.Headers.RequestCharge, tags);
-        Duration.Record(Stopwatch.GetElapsedTime(started).TotalSeconds, tags);
-        return response;
+        try
+        {
+            var response = await base.SendAsync(request, cancellationToken);
+            var tags = Tags(request, ((int)response.StatusCode).ToString());
+            RequestCharge.Record(response.Headers.RequestCharge, tags);
+            Duration.Record(Stopwatch.GetElapsedTime(started).TotalSeconds, tags);
+            return response;
+        }
+        // No response at all (the network, signing in, a timeout, cancellation): an outage is when this matters most.
+        catch (Exception ex)
+        {
+            Duration.Record(Stopwatch.GetElapsedTime(started).TotalSeconds,
+                Tags(request, ex is OperationCanceledException ? "canceled" : "failed"));
+            throw;
+        }
     }
+
+    private static TagList Tags(RequestMessage request, string statusCode)
+        => new() { { "operation", Operation(request) }, { "status_code", statusCode } };
 
     // From the method and the SDK's own headers: the request's address names the document, too many values for a tag.
     private static string Operation(RequestMessage request)

@@ -15,7 +15,7 @@ Export, without "Export for sharing externally") back over this file, so the rep
 | Metric (as Prometheus names it) | Tags | What it measures |
 |---|---|---|
 | `dms_invocation_duration_seconds` | `function`, `outcome` | each function invocation; `outcome` is the HTTP status code, or `ok`/`failed` |
-| `dms_cosmos_request_charge`, `dms_cosmos_duration_seconds` | `operation`, `status_code` | each Cosmos DB request (`CosmosMetricsHandler`) |
+| `dms_cosmos_request_charge`, `dms_cosmos_duration_seconds` | `operation`, `status_code` | each Cosmos DB request (`CosmosMetricsHandler`); `status_code` is `failed` or `canceled` when no response came |
 | `dms_generation_answers_total` | `model`, `outcome` | the models' answers: `accepted`, `refused` (broke a rule), `failed` |
 | `dms_rites_published_total` | `kind`, `model` | rites published |
 | `dms_scoring_runs_total` | `outcome` | scoring for More rites: `scored`, `failed`, `off` |

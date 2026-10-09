@@ -131,7 +131,7 @@
     {
       "type": "timeseries",
       "title": "Cosmos DB requests that didn't succeed",
-      "description": "404 is a rite that isn't there (expected now and then); 429 is throttling the SDK gave up retrying.",
+      "description": "404 is a rite that isn't there (expected now and then); 429 is throttling the SDK gave up retrying; failed means no response at all.",
       "id": 9,
       "gridPos": { "x": 0, "y": 26, "w": 12, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "${prometheus}" },
@@ -164,7 +164,7 @@
     {
       "type": "bargauge",
       "title": "Model answers",
-      "description": "Each answer the models gave when asked for a rite: accepted, refused (it broke a rule: see the logs for which) or failed (no usable answer). Counted per instance, which a nightly run starts and soon stops, hence max_over_time.",
+      "description": "Each answer the models gave when asked for a rite: accepted, refused (it broke a rule: see the logs for which) or failed (no usable answer).",
       "id": 12,
       "gridPos": { "x": 0, "y": 35, "w": 8, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "${prometheus}" },
@@ -174,7 +174,7 @@
         {
           "refId": "A",
           "instant": true,
-          "expr": "sum by (model, outcome) (max_over_time(dms_generation_answers_total{job=\"$service\"}[$__range]))",
+          "expr": "sum by (model, outcome) (increase(dms_generation_answers_total{job=\"$service\"}[$__range]))",
           "legendFormat": "{{model}} {{outcome}}"
         }
       ]
@@ -192,7 +192,7 @@
         {
           "refId": "A",
           "instant": true,
-          "expr": "sum by (model, kind) (max_over_time(dms_rites_published_total{job=\"$service\"}[$__range]))",
+          "expr": "sum by (model, kind) (increase(dms_rites_published_total{job=\"$service\"}[$__range]))",
           "legendFormat": "{{kind}} by {{model}}"
         }
       ]
@@ -210,13 +210,13 @@
         {
           "refId": "A",
           "instant": true,
-          "expr": "sum by (outcome) (max_over_time(dms_scoring_runs_total{job=\"$service\"}[$__range]))",
+          "expr": "sum by (outcome) (increase(dms_scoring_runs_total{job=\"$service\"}[$__range]))",
           "legendFormat": "scoring {{outcome}}"
         },
         {
           "refId": "B",
           "instant": true,
-          "expr": "sum by (outcome) (max_over_time(dms_invocation_duration_seconds_count{job=\"$service\", function=\"DailyRite\"}[$__range]))",
+          "expr": "sum by (outcome) (increase(dms_invocation_duration_seconds_count{job=\"$service\", function=\"DailyRite\"}[$__range]))",
           "legendFormat": "run {{outcome}}"
         }
       ]
@@ -244,8 +244,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (dotnet_gc_heap_generation) (rate(dotnet_gc_collections_total{job=\"$service\"}[$__rate_interval]))",
-          "legendFormat": "{{dotnet_gc_heap_generation}}"
+          "expr": "sum by (gc_heap_generation) (rate(dotnet_gc_collections_total{job=\"$service\"}[$__rate_interval]))",
+          "legendFormat": "{{gc_heap_generation}}"
         }
       ]
     },
@@ -264,9 +264,21 @@
     { "type": "row", "title": "Logs", "collapsed": false, "gridPos": { "x": 0, "y": 52, "w": 24, "h": 1 }, "id": 19, "panels": [] },
     {
       "type": "logs",
+      "title": "The nightly rite",
+      "description": "Every step of writing, publishing and scoring the rite: which model answered, what it got wrong, and what was published.",
+      "id": 22,
+      "gridPos": { "x": 0, "y": 53, "w": 24, "h": 8 },
+      "datasource": { "type": "loki", "uid": "${loki}" },
+      "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending", "enableLogDetails": true },
+      "targets": [
+        { "refId": "A", "expr": "{service_name=\"$service\"} | scope_name=~\"DailyMachineSpirit\\.Functions\\.(Generation\\..*|DailyRiteFunction)\"" }
+      ]
+    },
+    {
+      "type": "logs",
       "title": "Warnings and errors",
       "id": 20,
-      "gridPos": { "x": 0, "y": 53, "w": 24, "h": 10 },
+      "gridPos": { "x": 0, "y": 61, "w": 24, "h": 10 },
       "datasource": { "type": "loki", "uid": "${loki}" },
       "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending", "enableLogDetails": true },
       "targets": [
@@ -277,7 +289,7 @@
       "type": "logs",
       "title": "All logs",
       "id": 21,
-      "gridPos": { "x": 0, "y": 63, "w": 24, "h": 10 },
+      "gridPos": { "x": 0, "y": 71, "w": 24, "h": 10 },
       "datasource": { "type": "loki", "uid": "${loki}" },
       "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending", "enableLogDetails": true },
       "targets": [ { "refId": "A", "expr": "{service_name=\"$service\"}" } ]
