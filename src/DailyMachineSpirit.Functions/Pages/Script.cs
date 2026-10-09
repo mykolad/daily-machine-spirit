@@ -127,18 +127,28 @@ public static class Script
           const more = document.querySelector('.archive-more');
           if (rows && more) {
             let loading = false;
+            // A keyboard user who follows the link while scrolling already started a load still gets focus moved.
+            let focusWhenLoaded = false;
+            // Announcements go to a live region that's on the page from the start: one inserted already filled in
+            // isn't reliably read out.
+            const announcer = document.createElement('div');
+            announcer.className = 'sr-only';
+            announcer.setAttribute('role', 'status');
+            rows.after(announcer);
             const observer = new IntersectionObserver((entries) => {
               const link = more.querySelector('a');
               if (link && entries.some((entry) => entry.isIntersecting)) loadOlder(link, false);
             }, { rootMargin: '200px' });
             const loadOlder = async (link, moveFocus) => {
+              focusWhenLoaded ||= moveFocus;
               if (loading) return;
               loading = true;
-              const status = document.createElement('div');
-              status.className = 'archive-loading';
-              status.setAttribute('role', 'status');
-              status.innerHTML = '<span class="sr-only">Loading older rites…</span><div class="skeleton-row" aria-hidden="true"></div><div class="skeleton-row" aria-hidden="true"></div>';
-              more.before(status);
+              const placeholders = document.createElement('div');
+              placeholders.className = 'archive-loading';
+              placeholders.setAttribute('aria-hidden', 'true');
+              placeholders.innerHTML = '<div class="skeleton-row"></div><div class="skeleton-row"></div>';
+              more.before(placeholders);
+              announcer.textContent = 'Loading older rites…';
               try {
                 const response = await fetch(link.href);
                 if (!response.ok) throw new Error(String(response.status));
@@ -146,15 +156,19 @@ public static class Script
                 const added = [...page.querySelectorAll('.rows > li')].map((row) => rows.appendChild(document.importNode(row, true)));
                 const next = page.querySelector('.archive-more');
                 more.replaceChildren(...(next ? [...next.childNodes].map((node) => document.importNode(node, true)) : []));
-                if (moveFocus && added.length > 0) added[0].querySelector('a').focus();
-              } catch {
-                say('Older rites couldn’t be loaded. Try again.');
-              } finally {
-                status.remove();
-                loading = false;
-                // Watched afresh, so a short page that still shows the end loads the next one too.
+                announcer.textContent = `${added.length} older rites loaded.`;
+                if (focusWhenLoaded && added.length > 0) added[0].querySelector('a').focus();
+                // Watched afresh, so a short page that still shows the end loads the next one too. Only after a
+                // load that worked: after a failure the link stays for the reader to try again, not a loop.
                 observer.unobserve(more);
                 observer.observe(more);
+              } catch {
+                announcer.textContent = '';
+                say('Older rites couldn’t be loaded. Try again.');
+              } finally {
+                placeholders.remove();
+                loading = false;
+                focusWhenLoaded = false;
               }
             };
             more.addEventListener('click', (event) => {
