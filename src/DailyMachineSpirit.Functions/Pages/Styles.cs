@@ -98,6 +98,14 @@ public static class Styles
         .button-primary:active{background:#a8843f}
         .button-outline{border-color:rgba(237,227,207,.22);color:#ede3cf}
         .button-outline:hover{background:rgba(237,227,207,.08);border-color:rgba(237,227,207,.4);color:#ede3cf}
+        .reactions{display:flex;flex-wrap:wrap;justify-content:center;gap:12px}
+        .reaction{gap:10px;padding:10px 20px;border-color:rgba(237,227,207,.22);color:#ede3cf}
+        .reaction:hover{border-color:#c9a25a;color:#ede3cf}
+        .reaction .count{font-variant-numeric:tabular-nums}
+        .reaction[aria-pressed=true] svg{fill:currentColor}
+        .reaction-blessed[aria-pressed=true]{background:#3a2f1a;border-color:#c9a25a;color:#f2e1bd}
+        .reaction-heresy[aria-pressed=true]{background:#3b1814;border-color:#d0604d;color:#f6cfc6}
+        .reactions[aria-busy=true] .reaction{cursor:progress}
         .button-ghost{padding:10px 16px;color:#d9b874}
         .button-ghost:hover{background:rgba(201,162,90,.12);color:#f0d59a}
         .countdown{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:48px}
@@ -121,6 +129,8 @@ public static class Styles
         .row-title{font-family:Cinzel,serif;font-weight:700;font-size:21px;line-height:1.2}
         .row-first{font-family:'EB Garamond',serif;font-size:18px;line-height:1.45;color:#cdbd9e;text-wrap:pretty}
         .row-first code{font-family:'JetBrains Mono',monospace;font-size:.8em}
+        .row-counts{display:flex;gap:18px;margin-top:4px;font-size:14px;color:#b6a98f}
+        .row-counts span{display:inline-flex;align-items:center;gap:6px}
         .archive-more{display:flex;justify-content:center;padding-top:28px}
         .archive-end{margin:0;font-family:'EB Garamond',serif;font-style:italic;font-size:19px;color:#b6a98f}
         .state{display:flex;flex-direction:column;align-items:center;gap:16px;max-width:580px;padding:24px 0}

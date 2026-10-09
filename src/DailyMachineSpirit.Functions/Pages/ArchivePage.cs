@@ -20,7 +20,7 @@ public static class ArchivePage
             rows.Append($"""
                 <li><a class="row" href="{Paths.Rite(rite.Number)}">
                 <span class="row-meta"><time class="row-date" datetime="{Html.IsoDate(rite.PublishedOnUtc)}">{Html.ShortDate(rite.PublishedOnUtc)}</time><span class="kind">{(rite.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL")}</span></span>
-                <span class="row-main"><span class="row-title">{Html.Encode(rite.Title)}</span><span class="row-first">{Html.WithInlineCode(Html.FirstLine(rite.Text))}</span></span>
+                <span class="row-main"><span class="row-title">{Html.Encode(rite.Title)}</span><span class="row-first">{Html.WithInlineCode(Html.FirstLine(rite.Text))}</span><span class="row-counts"><span>{Svg.SmallFlameIcon}{Html.Count(rite.BlessedCount)} Blessed</span><span>{Svg.SmallSkullIcon}{Html.Count(rite.HeresyCount)} Heresy</span></span></span>
                 </a></li>
                 """);
         var more = olderThan.Match(

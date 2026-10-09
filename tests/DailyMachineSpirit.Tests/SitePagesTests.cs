@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using static DailyMachineSpirit.Tests.Expect;
+using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Tests;
 
@@ -45,6 +46,7 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.Contains("""<section class="truth" id="truth-panel" aria-labelledby="truth-heading" hidden>""", html);
         Assert.Contains("Your test depends on <code>timing</code>.", html);
         Assert.Contains("Next litany in", html);
+        Assert.Contains("""<span>Blessed</span><span class="count">0</span>""", html);
         Assert.DoesNotContain("Litany of the Clean Cache", html);
         Assert.DoesNotContain("Copy text", html);
     }
@@ -102,6 +104,20 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.Contains("""href="/archive?before=3">Load older rites""", first);
         Assert.Equal(["Rite 2", "Rite 1"], Titles(second));
         Assert.Contains("The archive ends here.", second);
+    }
+
+    [Fact]
+    public async Task Archive_ShowsEachRitesReactions()
+    {
+        await Add(Day.AddDays(-1), "Litany of the Clean Cache");
+        await Add(Day, "The Rite of Re-Run");
+        foreach (var reaction in new[] { Reaction.Blessed, Reaction.Blessed, Reaction.Blessed, Reaction.Heresy })
+            Ok(await Repository.React(1, Some(reaction), None, CancellationToken.None));
+
+        var (_, html) = await Archive("");
+
+        Assert.Contains("3 Blessed", html);
+        Assert.Contains("1 Heresy", html);
     }
 
     [Fact]

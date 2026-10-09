@@ -46,6 +46,19 @@ public static class Svg
     public const string AwakeSkull =
         """<svg viewBox="0 0 96 96" width="96" height="96" fill="none" aria-hidden="true"><path d="M20 46a28 28 0 0 1 56 0" stroke="#c9a25a" stroke-width="4"></path><path d="M48 22c-14 0-24 10-24 23 0 8 4 13 9 16v9a3 3 0 0 0 3 3h24a3 3 0 0 0 3-3v-9c5-3 9-8 9-16 0-13-10-23-24-23z" fill="#e9dcbc"></path><circle cx="39" cy="47" r="5.5" fill="#100e0b"></circle><circle cx="57" cy="47" r="5.5" fill="#100e0b"></circle><path d="M48 54l-3 5h6z" fill="#100e0b"></path><path d="M42 66v6M48 66v6M54 66v6" stroke="#100e0b" stroke-width="2"></path><rect x="14" y="42" width="10" height="18" rx="5" fill="#c9a25a"></rect><rect x="72" y="42" width="10" height="18" rx="5" fill="#c9a25a"></rect><path d="M19 60c0 10 8 16 20 16" stroke="#c9a25a" stroke-width="3" stroke-linecap="round"></path><circle cx="41" cy="76" r="3" fill="#c9a25a"></circle></svg>""";
 
+    // Blessed and Heresy: outlined, and filled by the stylesheet when pressed, so the state isn't colour alone.
+    public const string FlameIcon =
+        """<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>""";
+
+    public const string SkullIcon =
+        """<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 22a1 1 0 0 0 1-1v-1a2 2 0 0 0 1.56-3.25 8 8 0 1 0-11.12 0A2 2 0 0 0 8 20v1a1 1 0 0 0 1 1z"></path><circle cx="9" cy="12" r="1"></circle><circle cx="15" cy="12" r="1"></circle><path d="m12.5 17-.5-1-.5 1h1z"></path></svg>""";
+
+    public const string SmallFlameIcon =
+        """<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>""";
+
+    public const string SmallSkullIcon =
+        """<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 22a1 1 0 0 0 1-1v-1a2 2 0 0 0 1.56-3.25 8 8 0 1 0-11.12 0A2 2 0 0 0 8 20v1a1 1 0 0 0 1 1z"></path><circle cx="9" cy="12" r="1"></circle><circle cx="15" cy="12" r="1"></circle></svg>""";
+
     public const string LinkIcon =
         """<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>""";
 

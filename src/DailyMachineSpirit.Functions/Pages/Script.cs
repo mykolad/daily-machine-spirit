@@ -60,6 +60,65 @@ public static class Script
             });
           });
 
+          // Blessed or Heresy, one per rite: this browser remembers its own reaction (and nothing else) and sends it
+          // back as "previous", so the server can move it without knowing who reacted.
+          const reactions = document.querySelector('.reactions');
+          if (reactions) {
+            const key = 'dms-reactions-v1';
+            // Read once, then the page's own copy is the truth: where storage is blocked or full, saving fails quietly but
+            // the page still remembers, so one reaction per rite holds while it's open.
+            let memory = (() => { try { return JSON.parse(localStorage.getItem(key)) || {}; } catch { return {}; } })();
+            const remembered = () => ({ ...memory });
+            // Changes only this rite's entry, on top of what's stored right now: another tab may have saved or taken back a
+            // reaction while this one's request was on its way. Only where storage can't be read is the page's copy the base.
+            const remember = (number, reaction) => {
+              try { memory = JSON.parse(localStorage.getItem(key)) || {}; } catch { memory = { ...memory }; }
+              if (reaction) memory[number] = reaction; else delete memory[number];
+              try { localStorage.setItem(key, JSON.stringify(memory)); } catch { }
+            };
+            const rite = reactions.dataset.rite;
+            const buttons = [...reactions.querySelectorAll('[data-reaction]')];
+            const counts = () => Object.fromEntries(buttons.map((b) => [b.dataset.reaction, Number(b.querySelector('.count').textContent.replace(/,/g, ''))]));
+            const show = (mine, shown) => buttons.forEach((b) => {
+              b.setAttribute('aria-pressed', String(b.dataset.reaction === mine));
+              b.querySelector('.count').textContent = shown[b.dataset.reaction].toLocaleString('en');
+            });
+            show(remembered()[rite] ?? null, counts());
+            // Another tab of this site reacted: take its memory too, so this tab doesn't count the same visitor twice.
+            window.addEventListener('storage', (event) => {
+              if (event.key !== key) return;
+              try { memory = JSON.parse(event.newValue) || {}; } catch { return; }
+              show(memory[rite] ?? null, counts());
+            });
+            buttons.forEach((button) => button.addEventListener('click', async () => {
+              if (reactions.getAttribute('aria-busy') === 'true') return;
+              const previous = remembered()[rite] ?? null;
+              const reaction = previous === button.dataset.reaction ? null : button.dataset.reaction;
+              const before = counts();
+              const hoped = { ...before };
+              if (previous) hoped[previous] = Math.max(0, hoped[previous] - 1);
+              if (reaction) hoped[reaction] += 1;
+              show(reaction, hoped);
+              reactions.setAttribute('aria-busy', 'true');
+              try {
+                const response = await fetch(`/api/rites/${rite}/reaction`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ reaction, previous }),
+                });
+                if (!response.ok) throw new Error(String(response.status));
+                // Saved: from here on the reaction counts, even if the answer can't be read.
+                remember(rite, reaction);
+                show(reaction, await response.json().catch(() => hoped));
+              } catch {
+                show(previous, before);
+                say('Your reaction wasn’t recorded. Try again.');
+              } finally {
+                reactions.removeAttribute('aria-busy');
+              }
+            }));
+          }
+
           const countdowns = document.querySelectorAll('[data-countdown]');
           const tick = () => {
             const now = new Date();
