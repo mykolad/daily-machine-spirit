@@ -27,6 +27,7 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
     private readonly FakeTimeProvider time = new(new DateTimeOffset(2026, 10, 7, 0, 0, 5, TimeSpan.Zero));
     private readonly FakeChatClients models = new();
     private FakeJev jev = FakeJev.AnsweringBuildsAndRepetition();
+    private string jevApiKey = FakeJev.ApiKey;
     private readonly MetricsProbe probe = new();
 
     public Task InitializeAsync() => cosmos.InitializeAsync();
@@ -94,6 +95,19 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
 
         Assert.Equal([$"kind={DailyRitePublisher.KindFor(Today).ToString().ToLowerInvariant()} model={Sol}"], MetricsProbe.Tags(published, "kind", "model"));
         Assert.Equal(["outcome=scored"], MetricsProbe.Tags(scoring, "outcome"));
+    }
+
+    [Fact]
+    public async Task PublishToday_WithScoringOff_PublishesWithoutScores_AndCountsItAsOff()
+    {
+        jevApiKey = string.Empty;
+        using var scoring = probe.Collect<long>("dms.scoring.runs");
+        models.Answers(Sol, GoodAnswer);
+
+        Ok(await Publisher().PublishToday(CancellationToken.None));
+
+        Assert.True((await SavedOn(Today)).Similarity.IsNone);
+        Assert.Equal(["outcome=off"], MetricsProbe.Tags(scoring, "outcome"));
     }
 
     [Fact]
@@ -173,7 +187,7 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
         return new DailyRitePublisher(
             Repository,
             new RiteWriter(models, options, time, probe.Metrics, NullLogger<RiteWriter>.Instance),
-            jev.Scorer(time, FakeJev.ApiKey),
+            jev.Scorer(time, jevApiKey),
             options,
             time,
             probe.Metrics,
