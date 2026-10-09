@@ -48,13 +48,15 @@ if (!profiles[profile]) throw new Error(`Unknown PROFILE "${profile}": use ${Obj
 
 export const options = {
   scenarios: { [profile]: profiles[profile] },
-  // Read only for "cold": the first request after scaling to zero is the point there, not something to hold to a limit.
-  thresholds: profile === 'cold' ? {} : {
+  // Every page must answer as it should. "cold" isn't held to the latency limits: its slow first request is the point.
+  thresholds: {
     http_req_failed: ['rate<0.01'],
-    'http_req_duration{page:today}': ['p(95)<500'],
-    'http_req_duration{page:rite}': ['p(95)<500'],
-    'http_req_duration{page:archive}': ['p(95)<500'],
     checks: ['rate>0.99'],
+    ...(profile === 'cold' ? {} : {
+      'http_req_duration{page:today}': ['p(95)<500'],
+      'http_req_duration{page:rite}': ['p(95)<500'],
+      'http_req_duration{page:archive}': ['p(95)<500'],
+    }),
   },
   summaryTrendStats: ['avg', 'med', 'p(90)', 'p(95)', 'p(99)', 'max'],
 };
