@@ -17,6 +17,11 @@ public class UnquotedCodeTests
     [InlineData("Run npm install thrice.", "npm install")]
     [InlineData("Invoke docker restart at dawn.", "docker restart")]
     [InlineData("Murmur dotnet clean before the build.", "dotnet clean")]
+    // Only half in backticks: part of it would still show as prose.
+    [InlineData("Lay `sleep` 5 upon the altar.", "sleep 5")]
+    [InlineData("Lay sleep `5` upon the altar.", "sleep 5")]
+    [InlineData("Then `git push` --force, and pray.", "--force")]
+    [InlineData("An unclosed ` quote hides not node_modules.", "node_modules")]
     public void Find_CatchesCodeWrittenAsWords(string text, string code)
         => Assert.Equal(Some(code), UnquotedCode.Find(text));
 
@@ -28,6 +33,7 @@ public class UnquotedCodeTests
     [InlineData("Fixed sleeps delay the test; wait for a readiness signal, e.g. a health check.")]
     [InlineData("Push thy commits, pull thy blessings, and git thee to the altar.")]
     [InlineData("The npm registry remembers; docker keeps its images.")]
+    [InlineData("The npm cache is stale, and Docker Compose reads the configuration.")]
     public void Find_LeavesProseAndBacktickedCodeAlone(string text)
         => Assert.True(UnquotedCode.Find(text).IsNone);
 }

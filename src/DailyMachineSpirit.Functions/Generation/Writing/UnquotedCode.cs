@@ -1,6 +1,6 @@
+using System.Text;
 using System.Text.RegularExpressions;
 using LanguageExt;
-using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Functions.Generation.Writing;
 
@@ -14,13 +14,37 @@ public static partial class UnquotedCode
     /// <summary>The first piece of code outside backticks, if any.</summary>
     public static Option<string> Find(string text)
     {
-        var outside = Backticked().Replace(text, " ");
-        var found = Code().Match(outside);
-        return found.Success ? Some(found.Value.Trim()) : None;
+        // Matched with the backticks taken out, so code only half in backticks (`sleep` 5) is still found whole; it
+        // counts as quoted only when all of it is inside one pair.
+        var plain = new StringBuilder(text.Length);
+        var spanOf = new List<int>(text.Length);
+        var spans = 0;
+        var inside = false;
+        foreach (var character in text)
+        {
+            if (character == '`')
+            {
+                inside = !inside;
+                spans += inside ? 1 : 0;
+                continue;
+            }
+            plain.Append(character);
+            spanOf.Add(inside ? spans : 0);
+        }
+        // A backtick that's never closed shows as a backtick, not as code.
+        if (inside)
+            for (var at = spanOf.Count - 1; at >= 0 && spanOf[at] == spans; at--)
+                spanOf[at] = 0;
+
+        return Code().Matches(plain.ToString())
+            .Where(found => !InOneSpan(spanOf, found))
+            .Select(found => found.Value)
+            .HeadOrNone();
     }
 
-    [GeneratedRegex("`[^`]*`")]
-    private static partial Regex Backticked();
+    private static bool InOneSpan(List<int> spanOf, Match found)
+        => spanOf[found.Index] != 0
+           && Enumerable.Range(found.Index, found.Length).All(at => spanOf[at] == spanOf[found.Index]);
 
     [GeneratedRegex("""
         (?<![\w-])--[a-z][a-z0-9-]*
@@ -29,9 +53,9 @@ public static partial class UnquotedCode
         | (?<![\w.])\.(?:env|gitignore|npmrc|bashrc)\b
         | \bsleep\s+\d+
         | \brm\s+-\w+
-        | \b(?:npm|yarn|pnpm)\s+(?:install|i|ci|run|cache|update)\b
+        | \b(?:npm|yarn|pnpm)\s+(?:install|i|ci|run|update)\b
         | \bgit\s+(?:push|pull|reset|rebase|commit|clean|stash|checkout|merge)\b
-        | \b(?:docker|kubectl)\s+(?:run|restart|rm|delete|apply|build|compose)\b
+        | \b(?:docker|kubectl)\s+(?:run|restart|rm|delete|apply|build)\b
         | \bdotnet\s+(?:clean|build|restore|test|run)\b
         | \bsudo\s+\w+
         """, RegexOptions.IgnorePatternWhitespace | RegexOptions.IgnoreCase)]
