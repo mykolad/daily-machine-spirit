@@ -103,7 +103,7 @@ infra/                            — Bicep for all of Azure (main.bicep); infra
   - The fonts are the site's own copies (`Pages/Fonts/`, Latin subsets, OFL), served at `/fonts/<name>.woff2`: a page
     never makes the visitor's browser contact another site (Google Fonts would learn every visitor's address).
   - Routes: `/` (Today: the newest rite), `/archive` (`?before=<number>` for older pages, which the archive also
-    loads in place as the reader nears the end), `/p/<number>`. A catch-all
+    loads in place as the reader nears the end), `/r/<number>`. A catch-all
     route takes `/` and answers every unknown address with the 404 page; more specific routes win over it.
   - Everything a model wrote goes through `Html.Encode` (`Html.WithInlineCode` for text with `backticks`).
   - Every focusable control sits on the dark background, never on the parchment, so the amber focus ring shows.

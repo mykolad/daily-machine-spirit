@@ -12,7 +12,7 @@ namespace DailyMachineSpirit.Functions.Pages;
 
 /// <summary>
 /// The public pages, rendered on the server: Today (<c>/</c>), the archive (<c>/archive</c>) and a rite's own page
-/// (<c>/p/&lt;number&gt;</c>). Any other address gets the 404 page.
+/// (<c>/r/&lt;number&gt;</c>). Any other address gets the 404 page.
 /// </summary>
 public sealed class SitePages
 {
@@ -47,7 +47,7 @@ public sealed class SitePages
 
     [Function("Rite")]
     public async Task<IActionResult> Rite(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "p/{id}")] HttpRequest request,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "r/{id}")] HttpRequest request,
         string id,
         CancellationToken cancellationToken)
     {
