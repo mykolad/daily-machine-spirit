@@ -122,7 +122,8 @@ public sealed class RiteWriter
     {
         var draft = answer with
         {
-            Title = answer.Title.Trim(),
+            // A heading shows no code formatting: a stray backtick is dropped rather than asked about again.
+            Title = answer.Title.Replace("`", "").Trim(),
             Text = answer.Text.Trim(),
             HereticalTruth = answer.HereticalTruth.Trim(),
         };
@@ -144,7 +145,11 @@ public sealed class RiteWriter
             || Occurrences(draft.Text, Omnissiah) > allowedInText)
             return Error.New($"The answer names the {Omnissiah} where it isn't allowed: only once, in a prayer's text.");
 
-        return draft;
+        // The pages show `backticked` words as code: a command written as plain words would read as prose.
+        return new[] { draft.Text, draft.HereticalTruth }.Select(UnquotedCode.Find).Somes().HeadOrNone()
+            .Match<Either<Error, RiteDraft>>(
+                Some: code => Error.New($"The answer has code outside backticks: {code}."),
+                None: () => draft);
     }
 
     private static int Occurrences(string text, string word)

@@ -32,13 +32,6 @@ public class RiteRepository : IRiteRepository
         this.logger = logger;
     }
 
-    public Task<Either<Error, Option<Rite>>> GetByNumber(int number, CancellationToken cancellationToken)
-        => Attempt(async () => (await Query<RiteDocument>(
-            new QueryDefinition("SELECT * FROM c WHERE c.type = @type AND c.number = @number")
-                .WithParameter("@type", RiteDocument.RiteType)
-                .WithParameter("@number", number),
-            cancellationToken)).HeadOrNone().Map(document => document.ToRite()));
-
     public Task<Either<Error, Option<Rite>>> GetPublishedOn(DateOnly utcDate, CancellationToken cancellationToken)
         => Attempt(async () =>
         {
@@ -59,6 +52,23 @@ public class RiteRepository : IRiteRepository
             new QueryDefinition("SELECT TOP @count * FROM c WHERE c.type = @type ORDER BY c.publishedOnUtc DESC")
                 .WithParameter("@count", count)
                 .WithParameter("@type", RiteDocument.RiteType),
+            cancellationToken)).Select(document => document.ToRite()).ToList());
+
+    public Task<Either<Error, List<Rite>>> GetByNumbers(IReadOnlyCollection<int> numbers, CancellationToken cancellationToken)
+        => Attempt(async () => numbers.Count == 0
+            ? []
+            : (await Query<RiteDocument>(
+                new QueryDefinition("SELECT * FROM c WHERE c.type = @type AND ARRAY_CONTAINS(@numbers, c.number)")
+                    .WithParameter("@type", RiteDocument.RiteType)
+                    .WithParameter("@numbers", numbers),
+                cancellationToken)).Select(document => document.ToRite()).ToList());
+
+    public Task<Either<Error, List<Rite>>> GetOlderThan(int number, int count, CancellationToken cancellationToken)
+        => Attempt(async () => (await Query<RiteDocument>(
+            new QueryDefinition("SELECT TOP @count * FROM c WHERE c.type = @type AND c.number < @number ORDER BY c.number DESC")
+                .WithParameter("@count", count)
+                .WithParameter("@type", RiteDocument.RiteType)
+                .WithParameter("@number", number),
             cancellationToken)).Select(document => document.ToRite()).ToList());
 
     public Task<Either<Error, Rite>> Add(Rite rite, CancellationToken cancellationToken)
@@ -93,6 +103,20 @@ public class RiteRepository : IRiteRepository
                 logger.LogInformation("Number {Number} was taken while saving the rite for {Day}; trying the next one.",
                     number, rite.PublishedOnUtc);
             }
+        });
+
+    public Task<Either<Error, Option<ReactionCounts>>> React(
+        int number, Option<Reaction> reaction, Option<Reaction> previous, CancellationToken cancellationToken)
+        => Attempt(async () =>
+        {
+            var found = (await Query<RiteDocument>(
+                new QueryDefinition("SELECT * FROM c WHERE c.type = @type AND c.number = @number")
+                    .WithParameter("@type", RiteDocument.RiteType)
+                    .WithParameter("@number", number),
+                cancellationToken)).HeadOrNone();
+            return await found.Match(
+                Some: async document => Some(await MoveReaction(document, reaction, previous, cancellationToken)),
+                None: () => Task.FromResult(Option<ReactionCounts>.None));
         });
 
     public Task<Either<Error, Unit>> SaveScores(DateOnly publishedOnUtc, RiteSimilarity similarity, CancellationToken cancellationToken)
@@ -146,6 +170,42 @@ public class RiteRepository : IRiteRepository
             return (0, None);
         }
     }
+
+    // Increments rather than read-modify-write, so concurrent reactions never overwrite each other. Taking back a
+    // reaction only applies while its count is above zero; if it's already zero (a browser claiming a reaction that was
+    // never counted), only the new reaction counts.
+    private async Task<ReactionCounts> MoveReaction(
+        RiteDocument document, Option<Reaction> reaction, Option<Reaction> previous, CancellationToken cancellationToken)
+    {
+        if (reaction == previous)
+            return new ReactionCounts(document.BlessedCount, document.HeresyCount);
+
+        var add = reaction.Map(r => PatchOperation.Increment($"/{CountField(r)}", 1)).ToList();
+        var takeBack = previous.Map(p => PatchOperation.Increment($"/{CountField(p)}", -1)).ToList();
+        try
+        {
+            return await PatchCounts(document.Id, [.. add, .. takeBack],
+                previous.Map(p => $"FROM c WHERE c.{CountField(p)} > 0"), cancellationToken);
+        }
+        catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.PreconditionFailed)
+        {
+            if (add.Count > 0)
+                return await PatchCounts(document.Id, add, None, cancellationToken);
+            // Nothing to change, but the counts may have moved since the query: answer what's stored now.
+            var current = (await container.ReadItemAsync<RiteDocument>(document.Id, PartitionKey, cancellationToken: cancellationToken)).Resource;
+            return new ReactionCounts(current.BlessedCount, current.HeresyCount);
+        }
+    }
+
+    private async Task<ReactionCounts> PatchCounts(
+        string id, IReadOnlyList<PatchOperation> operations, Option<string> filter, CancellationToken cancellationToken)
+    {
+        var options = new PatchItemRequestOptions { FilterPredicate = filter.IfNoneUnsafe((string?)null) };
+        var patched = (await container.PatchItemAsync<RiteDocument>(id, PartitionKey, operations, options, cancellationToken)).Resource;
+        return new ReactionCounts(patched.BlessedCount, patched.HeresyCount);
+    }
+
+    private static string CountField(Reaction reaction) => reaction == Reaction.Blessed ? "blessedCount" : "heresyCount";
 
     private async Task<List<T>> Query<T>(QueryDefinition query, CancellationToken cancellationToken)
     {
