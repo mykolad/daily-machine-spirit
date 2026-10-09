@@ -144,7 +144,11 @@ public sealed class RiteWriter
             || Occurrences(draft.Text, Omnissiah) > allowedInText)
             return Error.New($"The answer names the {Omnissiah} where it isn't allowed: only once, in a prayer's text.");
 
-        return draft;
+        // The pages show `backticked` words as code: a command written as plain words would read as prose.
+        return new[] { draft.Text, draft.HereticalTruth }.Select(UnquotedCode.Find).Somes().HeadOrNone()
+            .Match<Either<Error, RiteDraft>>(
+                Some: code => Error.New($"The answer has code outside backticks: {code}."),
+                None: () => draft);
     }
 
     private static int Occurrences(string text, string word)
