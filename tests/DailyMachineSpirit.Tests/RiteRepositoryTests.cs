@@ -1,7 +1,9 @@
+using DailyMachineSpirit.Data;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using LanguageExt;
 using LanguageExt.Common;
+using Microsoft.Extensions.Diagnostics.Metrics.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
 using static DailyMachineSpirit.Tests.Expect;
 using static LanguageExt.Prelude;
@@ -155,6 +157,27 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
         await AddOrFail(MakeRite(new DateOnly(2026, 10, 7), "Unscored"));
 
         Assert.Empty(Ok(await Repository.GetScoresByRiteNumber("jev/v1", CancellationToken.None)));
+    }
+
+    [Fact]
+    public async Task EveryRequest_IsMeasured_ByOperationAndStatusCode()
+    {
+        // The meter is shared with tests running alongside, so this looks for its own requests among theirs.
+        using var charges = new MetricCollector<double>(null, CosmosMetricsHandler.MeterName, "dms.cosmos.request_charge");
+        var date = new DateOnly(2026, 10, 7);
+
+        await AddOrFail(MakeRite(date, "Measured"));
+        Ok(await Repository.GetPublishedOn(date, CancellationToken.None));
+        Ok(await Repository.GetPublishedOn(new DateOnly(2026, 1, 1), CancellationToken.None));
+        Ok(await Repository.GetNewest(1, CancellationToken.None));
+
+        var measured = charges.GetMeasurementSnapshot()
+            .Select(measurement => (Operation: $"{measurement.Tags["operation"]} {measurement.Tags["status_code"]}", Charge: measurement.Value))
+            .ToList();
+        Assert.Contains(measured, request => request is { Operation: "read 200", Charge: > 0 });
+        Assert.Contains(measured, request => request.Operation == "batch 200");
+        Assert.Contains(measured, request => request.Operation == "read 404");
+        Assert.Contains(measured, request => request.Operation == "query 200");
     }
 
     [Fact]

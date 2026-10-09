@@ -2,6 +2,7 @@ using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Generation.Scoring;
 using DailyMachineSpirit.Functions.Generation.Writing;
+using DailyMachineSpirit.Functions.Telemetry;
 using LanguageExt;
 using LanguageExt.Common;
 using Microsoft.Extensions.Logging;
@@ -21,6 +22,7 @@ public sealed class DailyRitePublisher
     private readonly IRiteScorer scorer;
     private readonly IOptions<GenerationOptions> options;
     private readonly TimeProvider time;
+    private readonly SiteMetrics metrics;
     private readonly ILogger<DailyRitePublisher> logger;
 
     public DailyRitePublisher(
@@ -29,6 +31,7 @@ public sealed class DailyRitePublisher
         IRiteScorer scorer,
         IOptions<GenerationOptions> options,
         TimeProvider time,
+        SiteMetrics metrics,
         ILogger<DailyRitePublisher> logger)
     {
         this.rites = rites;
@@ -36,6 +39,7 @@ public sealed class DailyRitePublisher
         this.scorer = scorer;
         this.options = options;
         this.time = time;
+        this.metrics = metrics;
         this.logger = logger;
     }
 
@@ -60,7 +64,11 @@ public sealed class DailyRitePublisher
     {
         var saved = await rites.Add(rite, cancellationToken);
         return await saved.MatchAsync(
-            RightAsync: async added => Right<Error, PublishedRite>(new PublishedRite(await WithScores(added, cancellationToken), IsNew: true)),
+            RightAsync: async added =>
+            {
+                metrics.Published(added);
+                return Right<Error, PublishedRite>(new PublishedRite(await WithScores(added, cancellationToken), IsNew: true));
+            },
             LeftAsync: error => error == RiteRepository.DayAlreadyHasRite
                 ? PublishedMeanwhile(rite.PublishedOnUtc, cancellationToken)
                 : Task.FromResult(Left<Error, PublishedRite>(error)));
@@ -83,16 +91,19 @@ public sealed class DailyRitePublisher
                     .Map(_ =>
                     {
                         logger.LogInformation("Rite NO. {Number} was scored by {ScoresGenerator}.", rite.Number, scores.ScoresGeneratorVersion);
+                        metrics.Scoring("scored");
                         return rite with { Similarity = scores };
                     }),
                 None: () =>
                 {
                     logger.LogInformation("Rite NO. {Number} was published without scores: scoring is turned off.", rite.Number);
+                    metrics.Scoring("off");
                     return Task.FromResult(Right<Error, Rite>(rite));
                 }));
         return scored.IfLeft(error =>
         {
             logger.LogWarning(error.ToException(), "Rite NO. {Number} was published without scores: {Reason}", rite.Number, error.Message);
+            metrics.Scoring("failed");
             return rite;
         });
     }

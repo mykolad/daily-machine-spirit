@@ -29,6 +29,7 @@ public static class CosmosClients
         ApplicationName = "DailyMachineSpirit",
         // A span per operation (the "Azure.Cosmos.Operation" source) for the app's telemetry; the SDK leaves it off.
         CosmosClientTelemetryOptions = new CosmosClientTelemetryOptions { DisableDistributedTracing = false },
+        CustomHandlers = { new CosmosMetricsHandler() },
         // System.Text.Json, like the rest of the app, rather than the SDK's default Newtonsoft.Json.
         UseSystemTextJsonSerializerWithOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
         {

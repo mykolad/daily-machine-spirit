@@ -24,6 +24,7 @@ src/DailyMachineSpirit.Data       — Cosmos DB: entities, documents, repositori
 tests/DailyMachineSpirit.Tests    — xUnit tests (the repository tests run against the Cosmos DB emulator)
 tools/coverage.ps1                — tests + coverage report + the coverage gate (Build and Test runs it)
 infra/                            — Bicep for all of Azure (main.bicep); infra/README.md covers what Bicep can't do
+observability/                    — the Grafana dashboard, and what the app's metrics measure
 ```
 
 ## Code style rules
@@ -92,11 +93,13 @@ infra/                            — Bicep for all of Azure (main.bicep); infra
   (`CosmosClients.Create`); the account's keys stay off. The account, databases, container, role assignments and the
   app's settings are all created by the Bicep in `infra/`, never by the app (its data-plane role can't create them). Settings: `Cosmos:Endpoint`, `Cosmos:Database`.
 
-- **Telemetry: OpenTelemetry to Grafana Cloud.** The app (`Program.cs`) exports its logs and traces over OTLP wherever
-  `OTEL_EXPORTER_OTLP_ENDPOINT` is set; `infra/` sets it, with the token's header from the vault. The Functions host
-  doesn't export (no `telemetryMode` in `host.json`): its request spans carry visitors' user agents. So a failure the
-  host alone would see must be logged by the code. Each environment is its own service (the app's name), tagged with
+- **Telemetry: OpenTelemetry to Grafana Cloud.** The app (`Program.cs`) exports its logs, traces and metrics over OTLP
+  wherever `OTEL_EXPORTER_OTLP_ENDPOINT` is set; `infra/` sets it, with the token's header from the vault. The Functions
+  host doesn't export (no `telemetryMode` in `host.json`): its request spans carry visitors' user agents. So a failure
+  the host alone would see must be logged by the code. Each environment is its own service (the app's name), tagged with
   `deployment.environment.name`. There's no Application Insights, so the portal's log stream stays empty: look in Grafana.
+  The site's own metrics (`SiteMetrics`, `CosmosMetricsHandler`) are listed in `observability/README.md`, next to the
+  dashboard; their tags never describe a visitor.
 - **The pages** (`Pages/`) follow the design handoff (`design_handoff_daily_machine_spirit`, outside the repo; its
   README is the spec). They're rendered on the server as plain HTML with the CSS and a small script inlined, so a page
   is one request (plus the fonts, cached for a year) and works without the script (the truth then simply shows).
