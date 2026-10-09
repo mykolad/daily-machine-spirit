@@ -31,7 +31,7 @@ public static class RitePrompt
         sb.AppendLine($"- Text: one to three sentences, at most {TextLength} characters, in solemn liturgical language (thee, thy, O Machine Spirit).");
         sb.AppendLine($"- Heretical Truth: one or two sentences, at most {HereticalTruthLength} characters, in plain modern English.");
         sb.AppendLine("- Every command (with its arguments), flag, file or folder name and setting goes in `backticks`, in the text");
-        sb.AppendLine("  and in the Heretical Truth alike: `sleep 5`, `rm -rf node_modules`, `--no-verify`, `.env`. Never in the title.");
+        sb.AppendLine("  and in the Heretical Truth alike: `sleep 5`, `rm -rf node_modules`, `--no-verify`, `.env`. The title has no code and no backticks.");
         sb.AppendLine("- Everything must be original. Never quote or paraphrase Games Workshop or Warhammer 40,000 text, and don't use");
         sb.AppendLine("  their names (no Adeptus Mechanicus, no Imperium, no Space Marines).");
         sb.AppendLine(kind == RiteKind.Prayer

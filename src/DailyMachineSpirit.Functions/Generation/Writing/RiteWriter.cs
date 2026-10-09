@@ -122,7 +122,8 @@ public sealed class RiteWriter
     {
         var draft = answer with
         {
-            Title = answer.Title.Trim(),
+            // A heading shows no code formatting: a stray backtick is dropped rather than asked about again.
+            Title = answer.Title.Replace("`", "").Trim(),
             Text = answer.Text.Trim(),
             HereticalTruth = answer.HereticalTruth.Trim(),
         };
@@ -143,10 +144,6 @@ public sealed class RiteWriter
         if (Occurrences(draft.Title, Omnissiah) + Occurrences(draft.HereticalTruth, Omnissiah) > 0
             || Occurrences(draft.Text, Omnissiah) > allowedInText)
             return Error.New($"The answer names the {Omnissiah} where it isn't allowed: only once, in a prayer's text.");
-
-        // A title is a heading, which shows no code at all: neither backticks nor code written as words.
-        if (draft.Title.Contains('`') || UnquotedCode.Find(draft.Title).IsSome)
-            return Error.New("The answer's title has code in it.");
 
         // The pages show `backticked` words as code: a command written as plain words would read as prose.
         return new[] { draft.Text, draft.HereticalTruth }.Select(UnquotedCode.Find).Somes().HeadOrNone()
