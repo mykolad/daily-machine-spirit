@@ -7,7 +7,7 @@ public static class Paths
 
     public const string Archive = "/archive";
 
-    public static string Rite(int number) => $"/p/{number}";
+    public static string Rite(int number) => $"/r/{number}";
 
     public static string ArchiveBefore(int number) => $"{Archive}?before={number}";
 }
