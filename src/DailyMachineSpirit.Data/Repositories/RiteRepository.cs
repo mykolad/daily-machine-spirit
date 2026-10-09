@@ -32,13 +32,6 @@ public class RiteRepository : IRiteRepository
         this.logger = logger;
     }
 
-    public Task<Either<Error, Option<Rite>>> GetByNumber(int number, CancellationToken cancellationToken)
-        => Attempt(async () => (await Query<RiteDocument>(
-            new QueryDefinition("SELECT * FROM c WHERE c.type = @type AND c.number = @number")
-                .WithParameter("@type", RiteDocument.RiteType)
-                .WithParameter("@number", number),
-            cancellationToken)).HeadOrNone().Map(document => document.ToRite()));
-
     public Task<Either<Error, Option<Rite>>> GetPublishedOn(DateOnly utcDate, CancellationToken cancellationToken)
         => Attempt(async () =>
         {
