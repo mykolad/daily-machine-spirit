@@ -142,6 +142,9 @@ public static class Script
               focusWhenLoaded ||= moveFocus;
               if (loading) return;
               loading = true;
+              // Not watched while loading: the placeholders push the link away, and taking them out after a failure
+              // would bring it back into view and start the same failing load again.
+              observer.unobserve(more);
               const placeholders = document.createElement('div');
               placeholders.className = 'archive-loading';
               placeholders.setAttribute('aria-hidden', 'true');
@@ -154,12 +157,13 @@ public static class Script
                 const page = new DOMParser().parseFromString(await response.text(), 'text/html');
                 const added = [...page.querySelectorAll('.rows > li')].map((row) => rows.appendChild(document.importNode(row, true)));
                 const next = page.querySelector('.archive-more');
+                // A keyboard user may have tabbed onto the link while scrolling loaded: replacing it mustn't drop focus.
+                focusWhenLoaded ||= more.contains(document.activeElement);
                 more.replaceChildren(...(next ? [...next.childNodes].map((node) => document.importNode(node, true)) : []));
-                announcer.textContent = `${added.length} older rites loaded.`;
+                announcer.textContent = `${added.length} older ${added.length === 1 ? 'rite' : 'rites'} loaded.`;
                 if (focusWhenLoaded && added.length > 0) added[0].querySelector('a').focus();
-                // Watched afresh, so a short page that still shows the end loads the next one too. Only after a
-                // load that worked: after a failure the link stays for the reader to try again, not a loop.
-                observer.unobserve(more);
+                // Watched again, so a short page that still shows the end loads the next one too. Only after a load
+                // that worked: after a failure the link stays for the reader to try again, not a loop.
                 observer.observe(more);
               } catch {
                 announcer.textContent = '';
@@ -172,7 +176,8 @@ public static class Script
             };
             more.addEventListener('click', (event) => {
               const link = event.target.closest('a');
-              if (!link) return;
+              // Ctrl, Cmd, Shift or a middle click: the browser opens the page in a new tab or window, as it should.
+              if (!link || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
               event.preventDefault();
               loadOlder(link, true);
             });
