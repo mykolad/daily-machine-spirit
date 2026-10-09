@@ -144,6 +144,10 @@ public sealed class RiteWriter
             || Occurrences(draft.Text, Omnissiah) > allowedInText)
             return Error.New($"The answer names the {Omnissiah} where it isn't allowed: only once, in a prayer's text.");
 
+        // A title is a heading, which shows no code at all: neither backticks nor code written as words.
+        if (draft.Title.Contains('`') || UnquotedCode.Find(draft.Title).IsSome)
+            return Error.New("The answer's title has code in it.");
+
         // The pages show `backticked` words as code: a command written as plain words would read as prose.
         return new[] { draft.Text, draft.HereticalTruth }.Select(UnquotedCode.Find).Somes().HeadOrNone()
             .Match<Either<Error, RiteDraft>>(

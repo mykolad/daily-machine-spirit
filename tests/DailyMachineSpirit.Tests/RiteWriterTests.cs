@@ -97,6 +97,8 @@ public class RiteWriterTests
     [InlineData(RiteKind.Prayer, "Title", "Text.", "The Omnissiah won't fix a race.")]
     [InlineData(RiteKind.Ritual, "Title", "Lay sleep 5 upon the altar.", "Truth.")]
     [InlineData(RiteKind.Prayer, "Title", "Text.", "Delete node_modules, then wait.")]
+    [InlineData(RiteKind.Ritual, "The npm install Litany", "Text.", "Truth.")]
+    [InlineData(RiteKind.Prayer, "The Rite of `--force`", "Text.", "Truth.")]
     public async Task Write_AsksAgain_WhenTheAnswerBreaksTheRules(RiteKind kind, string title, string text, string hereticalTruth)
     {
         models.Answers(Sol, FakeChatClients.Answer(title, text, hereticalTruth), GoodAnswer);
