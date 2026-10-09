@@ -12,12 +12,16 @@ param stagingAllowedIp string
 param githubSubjectPrefix string = 'repo:mykolad@2202717/daily-machine-spirit@1406418170'
 // Off until launch (see main.bicep). Leaving it off later doesn't delete production, but stops updating it.
 param deployProduction bool = false
-// The Cloudflare Access application guarding production's Scriptorium (infra/README.md); empty until launch.
-param cloudflareAccessTeamDomain string = ''
-param cloudflareAccessAudience string = ''
 
 var roles = {
   cognitiveServicesOpenAiUser: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
+}
+
+// The Cloudflare Access application guarding production's Scriptorium, filled in at launch (infra/README.md). Neither
+// value is secret, and keeping them here, not in parameters, means no deployment can drop them by leaving one out.
+var productionAccess = {
+  teamDomain: ''
+  audience: ''
 }
 
 // The models. Keys are off: the apps and the owner call them with Entra ID.
@@ -177,8 +181,8 @@ module production 'modules/environment.bicep' = if (deployProduction) {
     // On once Cloudflare Access guards the Scriptorium.
     scriptoriumEnabled: false
     scriptoriumWithoutSignIn: false
-    cloudflareAccessTeamDomain: cloudflareAccessTeamDomain
-    cloudflareAccessAudience: cloudflareAccessAudience
+    cloudflareAccessTeamDomain: productionAccess.teamDomain
+    cloudflareAccessAudience: productionAccess.audience
   }
 }
 

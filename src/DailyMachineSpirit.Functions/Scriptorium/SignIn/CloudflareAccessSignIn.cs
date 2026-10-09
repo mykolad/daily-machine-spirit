@@ -12,8 +12,8 @@ namespace DailyMachineSpirit.Functions.Scriptorium.SignIn;
 /// <summary>
 /// A Scribe is whoever Cloudflare Access signed in: every request it lets through carries a token signed by the team
 /// (<see cref="TokenHeader"/>). The app checks the token too, so a request sent straight to the app's own address,
-/// around Cloudflare, gets nowhere. The team's signing keys are fetched and kept for an hour, and fetched again at once
-/// when a token names a key they don't have (Access rotates them).
+/// around Cloudflare, gets nowhere. The team's signing keys are fetched and kept for an hour, and fetched again early
+/// when a token names a key they don't have (Access rotates them), at most every five minutes.
 /// </summary>
 public sealed class CloudflareAccessSignIn : IScribeSignIn
 {
@@ -21,6 +21,9 @@ public sealed class CloudflareAccessSignIn : IScribeSignIn
     public const string HttpClientName = "cloudflare-access";
 
     private static readonly TimeSpan KeysKeptFor = TimeSpan.FromHours(1);
+    // A token naming an unknown key fetches the keys again, but at most this often: the app's address is public, and
+    // forged tokens with made-up key ids mustn't turn into a stream of fetches that keeps the Scribes waiting.
+    private static readonly TimeSpan RefreshAtMostEvery = TimeSpan.FromMinutes(5);
 
     private readonly IHttpClientFactory httpClients;
     private readonly IOptions<CloudflareAccessOptions> options;
@@ -85,7 +88,8 @@ public sealed class CloudflareAccessSignIn : IScribeSignIn
         try
         {
             var now = time.GetUtcNow();
-            return await keys.Filter(fetched => !refresh && now - fetched.FetchedAt < KeysKeptFor).Match(
+            // Waiting requests that also missed the key find it fetched by the first, so they share one refresh.
+            return await keys.Filter(fetched => now - fetched.FetchedAt < (refresh ? RefreshAtMostEvery : KeysKeptFor)).Match(
                 Some: fetched => Task.FromResult(Right<Error, JsonWebKeySet>(fetched.Keys)),
                 None: () => Fetch(now, cancellationToken));
         }

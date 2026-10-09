@@ -68,12 +68,27 @@ public class CloudflareAccessSignInTests
     }
 
     [Fact]
-    public async Task AfterTheTeamRotatesItsKey_TheNewKeysAreFetchedAtOnce()
+    public async Task AfterTheTeamRotatesItsKey_TheNewKeysAreFetchedBeforeTheHourIsOut()
     {
         Assert.True(await IsScribe(team.ValidToken()));
         team.RotateKey();
+        time.Advance(TimeSpan.FromMinutes(6));
 
         Assert.True(await IsScribe(team.ValidToken()));
+        Assert.Equal(2, team.KeyFetches);
+    }
+
+    [Fact]
+    public async Task ForgedTokens_CantMakeTheKeysBeFetchedAgainAndAgain()
+    {
+        Assert.True(await IsScribe(team.ValidToken()));
+
+        for (var i = 0; i < 10; i++)
+            Assert.False(await IsScribe(FakeAccessTeam.ForgedToken()));
+
+        Assert.Equal(1, team.KeyFetches);
+        time.Advance(TimeSpan.FromMinutes(6));
+        Assert.False(await IsScribe(FakeAccessTeam.ForgedToken()));
         Assert.Equal(2, team.KeyFetches);
     }
 

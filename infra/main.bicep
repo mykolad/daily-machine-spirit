@@ -24,10 +24,6 @@ param githubSubjectPrefix string = 'repo:mykolad@2202717/daily-machine-spirit@14
 @description('Whether to deploy production too. Off until launch: staging comes first, and an empty production app needn\'t be public.')
 param deployProduction bool = false
 
-@description('The Cloudflare Access team domain and application AUD tag guarding production\'s Scriptorium; empty until launch.')
-param cloudflareAccessTeamDomain string = ''
-param cloudflareAccessAudience string = ''
-
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   name: '${prefix}-rg'
   location: location
@@ -43,8 +39,6 @@ module resources 'resources.bicep' = {
     stagingAllowedIp: stagingAllowedIp
     githubSubjectPrefix: githubSubjectPrefix
     deployProduction: deployProduction
-    cloudflareAccessTeamDomain: cloudflareAccessTeamDomain
-    cloudflareAccessAudience: cloudflareAccessAudience
   }
 }
 
