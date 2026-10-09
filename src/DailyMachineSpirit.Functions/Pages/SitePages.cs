@@ -27,7 +27,7 @@ public sealed class SitePages
         this.logger = logger;
     }
 
-    // The catch-all route also takes "/": more specific routes (healthz, archive, p/…) win over it.
+    // The catch-all route also takes "/": more specific routes (healthz, archive, r/…) win over it.
     [Function("Today")]
     public async Task<IActionResult> Today(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "{*path}")] HttpRequest request,
