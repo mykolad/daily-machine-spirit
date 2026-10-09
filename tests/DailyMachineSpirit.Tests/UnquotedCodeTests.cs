@@ -22,6 +22,9 @@ public class UnquotedCodeTests
     [InlineData("Lay sleep `5` upon the altar.", "sleep 5")]
     [InlineData("Then `git push` --force, and pray.", "--force")]
     [InlineData("An unclosed ` quote hides not node_modules.", "node_modules")]
+    // A product's name is prose, but not as a file in a path or after another name.
+    [InlineData("Offer src/node.js upon the altar.", "node.js")]
+    [InlineData("Offer bundle.node.js upon the altar.", "node.js")]
     public void Find_CatchesCodeWrittenAsWords(string text, string code)
         => Assert.Equal(Some(code), UnquotedCode.Find(text));
 
@@ -34,6 +37,8 @@ public class UnquotedCodeTests
     [InlineData("Push thy commits, pull thy blessings, and git thee to the altar.")]
     [InlineData("The npm registry remembers; docker keeps its images.")]
     [InlineData("The npm cache is stale, and Docker Compose reads the configuration.")]
+    [InlineData("Node.js keeps its module cache; Next.js keeps another.")]
+    [InlineData("Vue.js, React.js and Express.js each keep theirs.")]
     public void Find_LeavesProseAndBacktickedCodeAlone(string text)
         => Assert.True(UnquotedCode.Find(text).IsNone);
 }
