@@ -22,6 +22,7 @@ src/DailyMachineSpirit.Functions  — the Functions app (HTTP and timer function
   Pages/                          — the public pages, rendered on the server (Today, the archive, a rite's page)
 src/DailyMachineSpirit.Data       — Cosmos DB: entities, documents, repositories
 tests/DailyMachineSpirit.Tests    — xUnit tests (the repository tests run against the Cosmos DB emulator)
+tests/load                        — k6 load tests of the public pages, run by hand against staging (its README)
 tools/coverage.ps1                — tests + coverage report + the coverage gate (Build and Test runs it)
 infra/                            — Bicep for all of Azure (main.bicep); infra/README.md covers what Bicep can't do
 ```
