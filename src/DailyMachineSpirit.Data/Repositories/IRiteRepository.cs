@@ -7,8 +7,6 @@ namespace DailyMachineSpirit.Data.Repositories;
 /// <summary>Every call returns its failure as an <see cref="Error"/> (Cosmos down, throttled, unreadable data), never throws one.</summary>
 public interface IRiteRepository
 {
-    Task<Either<Error, Option<Rite>>> GetByNumber(int number, CancellationToken cancellationToken);
-
     Task<Either<Error, Option<Rite>>> GetPublishedOn(DateOnly utcDate, CancellationToken cancellationToken);
 
     Task<Either<Error, List<Rite>>> GetNewest(int count, CancellationToken cancellationToken);

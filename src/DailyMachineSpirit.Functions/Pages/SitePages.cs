@@ -54,7 +54,7 @@ public sealed class SitePages
         if (!int.TryParse(id, out var number) || number < 1)
             return Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(id));
 
-        var found = await rites.GetByNumber(number, cancellationToken);
+        var found = (await rites.GetByNumbers([number], cancellationToken)).Map(matches => matches.HeadOrNone());
         return await found.Match<Task<IActionResult>>(
             Right: rite => rite.Match<Task<IActionResult>>(
                 Some: async shown => Page(request, StatusCodes.Status200OK, RitePage.Render(shown, await MoreRites(shown, cancellationToken))),

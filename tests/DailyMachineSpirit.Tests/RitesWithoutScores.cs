@@ -15,9 +15,6 @@ public sealed class RitesWithoutScores : IRiteRepository
         this.rites = rites;
     }
 
-    public Task<Either<Error, Option<Rite>>> GetByNumber(int number, CancellationToken cancellationToken)
-        => rites.GetByNumber(number, cancellationToken);
-
     public Task<Either<Error, Option<Rite>>> GetPublishedOn(DateOnly utcDate, CancellationToken cancellationToken)
         => rites.GetPublishedOn(utcDate, cancellationToken);
 
