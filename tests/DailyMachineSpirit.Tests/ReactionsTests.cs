@@ -98,7 +98,7 @@ public sealed class ReactionsTests : IAsyncLifetime
         await React(Some(Reaction.Blessed), None);
         await React(Some(Reaction.Heresy), None);
 
-        var rite = Ok(await Repository.GetByNumber(1, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("No rite."));
+        var rite = Ok(await Repository.GetByNumbers([1], CancellationToken.None)).HeadOrNone().IfNone(() => throw new Xunit.Sdk.XunitException("No rite."));
 
         Assert.Equal((2, 1), (rite.BlessedCount, rite.HeresyCount));
     }

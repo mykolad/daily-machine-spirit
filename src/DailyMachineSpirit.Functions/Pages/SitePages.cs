@@ -54,11 +54,12 @@ public sealed class SitePages
         if (!int.TryParse(id, out var number) || number < 1)
             return Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(id));
 
-        return (await rites.GetByNumber(number, cancellationToken)).Match(
-            Right: found => found.Match(
-                Some: rite => Page(request, StatusCodes.Status200OK, RitePage.Render(rite)),
-                None: () => Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(id))),
-            Left: error => Failed(request, error));
+        var found = (await rites.GetByNumbers([number], cancellationToken)).Map(matches => matches.HeadOrNone());
+        return await found.Match<Task<IActionResult>>(
+            Right: rite => rite.Match<Task<IActionResult>>(
+                Some: async shown => Page(request, StatusCodes.Status200OK, RitePage.Render(shown, await MoreRites(shown, cancellationToken))),
+                None: () => Task.FromResult<IActionResult>(Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(id)))),
+            Left: error => Task.FromResult(Failed(request, error)));
     }
 
     /// <summary>
@@ -83,6 +84,31 @@ public sealed class SitePages
                 return Page(request, StatusCodes.Status200OK, ArchivePage.Render(shown, olderThan));
             },
             Left: error => Failed(request, error));
+    }
+
+    // The rites closest to this one by their scores, topped up with the newest others when there aren't enough scored
+    // ones (a rite Jev couldn't score, or a young site). A nicety: if it fails, the page simply goes without.
+    private async Task<List<Rite>> MoreRites(Rite rite, CancellationToken cancellationToken)
+    {
+        var related = await rite.Similarity.Match(
+                Some: similarity => rites.GetScoresByRiteNumber(similarity.ScoresGeneratorVersion, cancellationToken)
+                    .MapAsync(scores => RelatedRites.Closest(rite.Number, similarity.Scores, scores)),
+                None: () => Task.FromResult(Right<Error, List<int>>([])))
+            .BindAsync(async closest => closest.Count >= RelatedRites.Shown
+                ? Right<Error, List<int>>(closest)
+                : (await rites.GetNewest(RelatedRites.Shown + 1, cancellationToken)).Map(newest => closest
+                    .Concat(newest.Select(other => other.Number).Where(other => other != rite.Number && !closest.Contains(other)))
+                    .Take(RelatedRites.Shown)
+                    .ToList()))
+            .BindAsync(numbers => rites.GetByNumbers(numbers, cancellationToken)
+                .MapAsync(found => numbers.SelectMany(n => found.Where(other => other.Number == n)).ToList()));
+        return related.Match(
+            Right: shown => shown,
+            Left: error =>
+            {
+                logger.LogWarning(error.ToException(), "Rite NO. {Number} is shown without More rites: {Reason}", rite.Number, error.Message);
+                return [];
+            });
     }
 
     private IActionResult Failed(HttpRequest request, Error error)

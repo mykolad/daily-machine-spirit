@@ -23,7 +23,7 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
 
         var saved = await AddOrFail(MakeRite(date, "The Rite of Re-Run"));
 
-        var byNumber = Ok(await Repository.GetByNumber(saved.Number, CancellationToken.None));
+        var byNumber = Ok(await Repository.GetByNumbers([saved.Number], CancellationToken.None)).HeadOrNone();
         var byDay = Ok(await Repository.GetPublishedOn(date, CancellationToken.None));
         Assert.Equal(Some("The Rite of Re-Run"), byNumber.Map(rite => rite.Title));
         Assert.Equal(Some(RiteKind.Ritual), byNumber.Map(rite => rite.Kind));
@@ -66,9 +66,9 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task GetByNumber_AndGetPublishedOn_FindNothingWhenMissing()
+    public async Task GetByNumbers_AndGetPublishedOn_FindNothingWhenMissing()
     {
-        Assert.Equal(Option<Rite>.None, Ok(await Repository.GetByNumber(42, CancellationToken.None)));
+        Assert.Empty(Ok(await Repository.GetByNumbers([42], CancellationToken.None)));
         Assert.Equal(Option<Rite>.None, Ok(await Repository.GetPublishedOn(new DateOnly(2026, 1, 1), CancellationToken.None)));
     }
 
@@ -164,10 +164,10 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
         var missing = new RiteRepository(cosmos.Container.Database.GetContainer("no-such-container"), NullLogger<RiteRepository>.Instance);
         var date = new DateOnly(2026, 10, 7);
 
-        Assert.True((await missing.GetByNumber(1, CancellationToken.None)).IsLeft);
         Assert.True((await missing.GetPublishedOn(date, CancellationToken.None)).IsLeft);
         Assert.True((await missing.GetNewest(1, CancellationToken.None)).IsLeft);
         Assert.True((await missing.GetOlderThan(5, 6, CancellationToken.None)).IsLeft);
+        Assert.True((await missing.GetByNumbers([1, 2], CancellationToken.None)).IsLeft);
         Assert.True((await missing.React(1, Some(Reaction.Blessed), None, CancellationToken.None)).IsLeft);
         Assert.True((await missing.Add(MakeRite(date, "Lost"), CancellationToken.None)).IsLeft);
         Assert.True((await missing.SaveScores(date, new RiteSimilarity(), CancellationToken.None)).IsLeft);

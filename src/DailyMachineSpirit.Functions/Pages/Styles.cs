@@ -116,6 +116,13 @@ public static class Styles
         .candle ellipse{transform-box:fill-box;transform-origin:50% 100%;animation:flicker 2.4s ease-in-out infinite}
         .candle-late ellipse{animation-duration:3.1s;animation-delay:.7s}
         @keyframes flicker{0%,100%{transform:scaleY(1)}40%{transform:scaleY(.86) skewX(3deg)}70%{transform:scaleY(1.05) skewX(-2deg)}}
+        .more{width:100%;margin-top:72px;display:flex;flex-direction:column;align-items:center;gap:20px}
+        .more h2{margin:0;font-family:Cinzel,serif;font-size:26px}
+        .more-list{width:100%;list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;text-align:left}
+        .more-list li{display:flex}
+        .more-card{flex:1;display:flex;flex-direction:column;gap:10px;padding:22px;border-radius:20px;background:#1a1612;border:1px solid rgba(237,227,207,.1);color:#ede3cf;text-decoration:none}
+        .more-card:hover{background:#231e18;border-color:#c9a25a;color:#ede3cf}
+        .more-title{font-family:Cinzel,serif;font-weight:700;font-size:19px;line-height:1.2}
         .archive-title{margin:0 0 10px;font-family:Cinzel,serif;font-size:clamp(30px,4.4vw,46px);line-height:1.1}
         .archive-subtitle{margin:0 0 14px;font-family:'EB Garamond',serif;font-style:italic;font-size:21px;color:#cdbd9e}
         .archive-divider{margin-bottom:32px}

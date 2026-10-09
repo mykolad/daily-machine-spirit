@@ -106,6 +106,8 @@ infra/                            — Bicep for all of Azure (main.bicep); infra
     route takes `/` and answers every unknown address with the 404 page; more specific routes win over it.
   - Everything a model wrote goes through `Html.Encode` (`Html.WithInlineCode` for text with `backticks`).
   - Every focusable control sits on the dark background, never on the parchment, so the amber focus ring shows.
+  - **More rites** (a rite's own page): the three rites whose similarity scores are closest (cosine, `RelatedRites`),
+    topped up with the newest others when there aren't enough scored ones. If it fails, the page goes without it.
 - **Reactions** (Blessed / Heresy, `Api/ReactionsFunction`, `POST /api/rites/{number}/reaction`) are anonymous: the
   browser keeps its own reaction (`localStorage`, `dms-reactions-v1`) and sends it back as `previous`, and the server
   only moves the counts (`RiteRepository.React`, Cosmos increments, never below zero). Nothing about a visitor is

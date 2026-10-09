@@ -7,11 +7,12 @@ namespace DailyMachineSpirit.Data.Repositories;
 /// <summary>Every call returns its failure as an <see cref="Error"/> (Cosmos down, throttled, unreadable data), never throws one.</summary>
 public interface IRiteRepository
 {
-    Task<Either<Error, Option<Rite>>> GetByNumber(int number, CancellationToken cancellationToken);
-
     Task<Either<Error, Option<Rite>>> GetPublishedOn(DateOnly utcDate, CancellationToken cancellationToken);
 
     Task<Either<Error, List<Rite>>> GetNewest(int count, CancellationToken cancellationToken);
+
+    /// <summary>The rites with these numbers, in no particular order; numbers without a rite are left out.</summary>
+    Task<Either<Error, List<Rite>>> GetByNumbers(IReadOnlyCollection<int> numbers, CancellationToken cancellationToken);
 
     /// <summary>The rites numbered below <paramref name="number"/>, the newest first: a page of the archive.</summary>
     Task<Either<Error, List<Rite>>> GetOlderThan(int number, int count, CancellationToken cancellationToken);
