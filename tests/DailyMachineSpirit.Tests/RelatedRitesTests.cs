@@ -20,7 +20,7 @@ public class RelatedRitesTests
     }
 
     [Fact]
-    public void Closest_SkipsScoresOfAnotherShape_AndEmptyOnes()
+    public void Closest_SkipsScoresOfAnotherShape_AndRanksEmptyOnesLast()
     {
         var scores = new Dictionary<int, float[]>
         {
