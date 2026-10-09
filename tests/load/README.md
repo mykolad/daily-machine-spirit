@@ -15,7 +15,7 @@ k6 run -e PROFILE=smoke tests/load/site.js
 | `smoke` | one visitor for a minute | checking the script and the site after a change |
 | `load` | up to 10 requests a second, held for 5 minutes | a busy day, sped up: latency where it should be fine |
 | `stress` | climbs to 200 requests a second over 8 minutes | finding the ceiling: where Cosmos DB's 400 RU/s or the 10 instances give out |
-| `cold` | one request per page, once | the first request after the app has scaled to zero (leave it idle for half an hour first) |
+| `cold` | Today once, then Today, the archive and a rite page again | the first request after the app has scaled to zero (leave it idle for half an hour first, and touch nothing on it), against the same pages warm |
 
 `BASE_URL` points it elsewhere (staging by default). Never at production: there, Cloudflare stands in front, and its
 rate limits would be what's tested.

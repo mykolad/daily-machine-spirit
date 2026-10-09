@@ -59,15 +59,19 @@ export const options = {
   summaryTrendStats: ['avg', 'med', 'p(90)', 'p(95)', 'p(99)', 'max'],
 };
 
-// The rites the archive lists, so the test reads real rite pages and real older archive pages.
+// Today names its own rite in its share link (data-url); the archive links to the older ones.
+const riteNumbers = (...bodies) =>
+  [...new Set([...bodies.join('').matchAll(/(?:href|data-url)="\/r\/(\d+)"/g)].map((match) => Number(match[1])))].sort((a, b) => b - a);
+
+// The rites the archive lists, so the test reads real rite pages and real older archive pages. Not for "cold": any
+// request here would wake the app before the one that's measured.
 export function setup() {
+  if (profile === 'cold') return { rites: [] };
   const archive = http.get(`${baseUrl}/archive`, { tags: { page: 'setup' } });
   const today = http.get(`${baseUrl}/`, { tags: { page: 'setup' } });
   if (archive.status !== 200 || today.status !== 200)
     throw new Error(`The site isn't answering: /archive ${archive.status}, / ${today.status}.`);
-  // Today names its own rite in its share link (data-url); the archive links to the older ones.
-  const numbers = [...`${today.body}${archive.body}`.matchAll(/(?:href|data-url)="\/r\/(\d+)"/g)].map((match) => Number(match[1]));
-  return { rites: [...new Set(numbers)].sort((a, b) => b - a) };
+  return { rites: riteNumbers(today.body, archive.body) };
 }
 
 const pick = (items) => items[Math.floor(Math.random() * items.length)];
@@ -81,9 +85,11 @@ const get = (path, page, expected) => {
 // One visitor's request, weighted roughly as visits would be: mostly Today, then rite pages (shared links), the
 // archive, and the odd wrong address. The fonts are cached by browsers for a year, so they barely show up.
 export default function (data) {
+  // Only the first request meets a cold app; the rest show the same pages once it's awake, for comparison.
   if (profile === 'cold') {
-    for (const [path, page, expected] of [['/', 'today', 200], ['/archive', 'archive', 200], [`/r/${data.rites[0] ?? 1}`, 'rite', 200], ['/healthz', 'health', 200]])
-      group(page, () => get(path, page, expected));
+    const today = group('cold', () => get('/', 'cold', 200));
+    for (const [path, page] of [['/', 'today'], ['/archive', 'archive'], [`/r/${riteNumbers(today.body)[0] ?? 1}`, 'rite']])
+      group('warm', () => get(path, page, 200));
     return;
   }
 
