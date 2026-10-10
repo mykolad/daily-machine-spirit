@@ -1,0 +1,298 @@
+{
+  "title": "The Daily Machine Spirit",
+  "uid": "daily-machine-spirit",
+  "description": "Traffic, Cosmos DB, the nightly rite, .NET and logs, from the app's OpenTelemetry export (observability/README.md).",
+  "tags": ["daily-machine-spirit"],
+  "timezone": "utc",
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "time": { "from": "now-24h", "to": "now" },
+  "templating": {
+    "list": [
+      { "name": "prometheus", "label": "Metrics", "type": "datasource", "query": "prometheus", "hide": 0 },
+      { "name": "loki", "label": "Logs", "type": "datasource", "query": "loki", "hide": 0 },
+      {
+        "name": "service",
+        "label": "Environment",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${prometheus}" },
+        "query": { "query": "label_values(dms_invocation_duration_seconds_count, job)", "refId": "service" },
+        "definition": "label_values(dms_invocation_duration_seconds_count, job)",
+        "refresh": 2,
+        "sort": 1,
+        "hide": 0
+      }
+    ]
+  },
+  "panels": [
+    { "type": "row", "title": "Traffic", "collapsed": false, "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 }, "id": 1, "panels": [] },
+    {
+      "type": "timeseries",
+      "title": "Requests per second",
+      "description": "Every HTTP invocation, by function (Today, Rite, Archive, React, Fonts, Health).",
+      "id": 2,
+      "gridPos": { "x": 0, "y": 1, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "${prometheus}" },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (function) (rate(dms_invocation_duration_seconds_count{job=\"$service\", function!=\"DailyRite\"}[$__rate_interval]))",
+          "legendFormat": "{{function}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Latency, 95th percentile",
+      "description": "Inside the app, from invocation to result: a cold start's wait for the worker isn't in it.",
+      "id": 3,
+      "gridPos": { "x": 12, "y": 1, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "${prometheus}" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le, function) (rate(dms_invocation_duration_seconds_bucket{job=\"$service\", function!=\"DailyRite\"}[$__rate_interval])))",
+          "legendFormat": "{{function}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Responses by status",
+      "description": "HTTP status codes the functions returned; \"failed\" is an invocation that threw.",
+      "id": 4,
+      "gridPos": { "x": 0, "y": 9, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "${prometheus}" },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (outcome) (rate(dms_invocation_duration_seconds_count{job=\"$service\", function!=\"DailyRite\"}[$__rate_interval]))",
+          "legendFormat": "{{outcome}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Instances",
+      "description": "Instances exporting telemetry. Flex Consumption scales out to at most 10, and to none when idle; a stopped instance lingers here for a few minutes.",
+      "id": 5,
+      "gridPos": { "x": 12, "y": 9, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "${prometheus}" },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "count(count by (instance) (target_info{job=\"$service\"}))", "legendFormat": "instances" }
+      ]
+    },
+    { "type": "row", "title": "Cosmos DB", "collapsed": false, "gridPos": { "x": 0, "y": 17, "w": 24, "h": 1 }, "id": 6, "panels": [] },
+    {
+      "type": "timeseries",
+      "title": "Request units per second",
+      "description": "Against the database's 400 RU/s: past it, Cosmos DB throttles (429) and the SDK retries.",
+      "id": 7,
+      "gridPos": { "x": 0, "y": 18, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "${prometheus}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "stacking": { "mode": "normal" }, "fillOpacity": 20, "thresholdsStyle": { "mode": "line" } },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 400 } ] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (operation) (rate(dms_cosmos_request_charge_sum{job=\"$service\"}[$__rate_interval]))",
+          "legendFormat": "{{operation}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Cosmos DB latency, 95th percentile",
+      "description": "The SDK's retries included, so throttling shows here as slowness.",
+      "id": 8,
+      "gridPos": { "x": 12, "y": 18, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "${prometheus}" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le, operation) (rate(dms_cosmos_duration_seconds_bucket{job=\"$service\"}[$__rate_interval])))",
+          "legendFormat": "{{operation}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Cosmos DB requests that didn't succeed",
+      "description": "404 is a rite that isn't there (expected now and then); 429 is throttling the SDK gave up retrying; failed means no response at all.",
+      "id": 9,
+      "gridPos": { "x": 0, "y": 26, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "${prometheus}" },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (operation, status_code) (rate(dms_cosmos_duration_seconds_count{job=\"$service\", status_code!~\"2..\"}[$__rate_interval]))",
+          "legendFormat": "{{operation}} {{status_code}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Outgoing calls, 95th percentile",
+      "description": "HTTP calls the app makes: the models and Jev (Cosmos DB has its own panels).",
+      "id": 10,
+      "gridPos": { "x": 12, "y": 26, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "${prometheus}" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le, server_address) (rate(http_client_request_duration_seconds_bucket{job=\"$service\"}[$__rate_interval])))",
+          "legendFormat": "{{server_address}}"
+        }
+      ]
+    },
+    { "type": "row", "title": "The daily rite", "collapsed": false, "gridPos": { "x": 0, "y": 34, "w": 24, "h": 1 }, "id": 11, "panels": [] },
+    {
+      "type": "bargauge",
+      "title": "Model answers",
+      "description": "Each answer the models gave when asked for a rite: accepted, refused (it broke a rule: see the logs for which) or failed (no usable answer).",
+      "id": 12,
+      "gridPos": { "x": 0, "y": 35, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "${prometheus}" },
+      "options": { "orientation": "horizontal", "displayMode": "basic", "reduceOptions": { "calcs": ["lastNotNull"], "values": false } },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "instant": true,
+          "expr": "sum by (model, outcome) (increase(dms_generation_answers_total{job=\"$service\"}[$__range]))",
+          "legendFormat": "{{model}} {{outcome}}"
+        }
+      ]
+    },
+    {
+      "type": "bargauge",
+      "title": "Rites published",
+      "description": "By model: Luna here means Sol failed that night.",
+      "id": 13,
+      "gridPos": { "x": 8, "y": 35, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "${prometheus}" },
+      "options": { "orientation": "horizontal", "displayMode": "basic", "reduceOptions": { "calcs": ["lastNotNull"], "values": false } },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "instant": true,
+          "expr": "sum by (model, kind) (increase(dms_rites_published_total{job=\"$service\"}[$__range]))",
+          "legendFormat": "{{kind}} by {{model}}"
+        }
+      ]
+    },
+    {
+      "type": "bargauge",
+      "title": "Scoring and nightly runs",
+      "description": "Scoring for More rites (scored, failed, off), and the DailyRite timer's runs (ok, failed).",
+      "id": 14,
+      "gridPos": { "x": 16, "y": 35, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "${prometheus}" },
+      "options": { "orientation": "horizontal", "displayMode": "basic", "reduceOptions": { "calcs": ["lastNotNull"], "values": false } },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "instant": true,
+          "expr": "sum by (outcome) (increase(dms_scoring_runs_total{job=\"$service\"}[$__range]))",
+          "legendFormat": "scoring {{outcome}}"
+        },
+        {
+          "refId": "B",
+          "instant": true,
+          "expr": "sum by (outcome) (increase(dms_invocation_duration_seconds_count{job=\"$service\", function=\"DailyRite\"}[$__range]))",
+          "legendFormat": "run {{outcome}}"
+        }
+      ]
+    },
+    { "type": "row", "title": ".NET", "collapsed": false, "gridPos": { "x": 0, "y": 43, "w": 24, "h": 1 }, "id": 15, "panels": [] },
+    {
+      "type": "timeseries",
+      "title": "Memory (working set)",
+      "description": "Per instance, against its 512 MB.",
+      "id": 16,
+      "gridPos": { "x": 0, "y": 44, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "${prometheus}" },
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum by (instance) (dotnet_process_memory_working_set_bytes{job=\"$service\"})", "legendFormat": "{{instance}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Garbage collections per second",
+      "id": 17,
+      "gridPos": { "x": 8, "y": 44, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "${prometheus}" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (gc_heap_generation) (rate(dotnet_gc_collections_total{job=\"$service\"}[$__rate_interval]))",
+          "legendFormat": "{{gc_heap_generation}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Thread pool queue",
+      "description": "Work waiting for a thread: anything but brief spikes means blocking or too little capacity.",
+      "id": 18,
+      "gridPos": { "x": 16, "y": 44, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "${prometheus}" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum by (instance) (dotnet_thread_pool_queue_length{job=\"$service\"})", "legendFormat": "{{instance}}" }
+      ]
+    },
+    { "type": "row", "title": "Logs", "collapsed": false, "gridPos": { "x": 0, "y": 52, "w": 24, "h": 1 }, "id": 19, "panels": [] },
+    {
+      "type": "logs",
+      "title": "The nightly rite",
+      "description": "Every step of writing, publishing and scoring the rite: which model answered, what it got wrong, and what was published.",
+      "id": 22,
+      "gridPos": { "x": 0, "y": 53, "w": 24, "h": 8 },
+      "datasource": { "type": "loki", "uid": "${loki}" },
+      "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending", "enableLogDetails": true },
+      "targets": [
+        { "refId": "A", "expr": "{service_name=\"$service\"} | scope_name=~\"DailyMachineSpirit\\.Functions\\.(Generation\\..*|DailyRiteFunction)\"" }
+      ]
+    },
+    {
+      "type": "logs",
+      "title": "Warnings and errors",
+      "id": 20,
+      "gridPos": { "x": 0, "y": 61, "w": 24, "h": 10 },
+      "datasource": { "type": "loki", "uid": "${loki}" },
+      "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending", "enableLogDetails": true },
+      "targets": [
+        { "refId": "A", "expr": "{service_name=\"$service\"} | detected_level=~\"warn|error|critical|fatal\"" }
+      ]
+    },
+    {
+      "type": "logs",
+      "title": "All logs",
+      "id": 21,
+      "gridPos": { "x": 0, "y": 71, "w": 24, "h": 10 },
+      "datasource": { "type": "loki", "uid": "${loki}" },
+      "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending", "enableLogDetails": true },
+      "targets": [ { "refId": "A", "expr": "{service_name=\"$service\"}" } ]
+    }
+  ]
+}

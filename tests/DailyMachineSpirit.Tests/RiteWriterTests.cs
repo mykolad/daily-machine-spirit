@@ -9,7 +9,7 @@ using static DailyMachineSpirit.Tests.Expect;
 
 namespace DailyMachineSpirit.Tests;
 
-public class RiteWriterTests
+public sealed class RiteWriterTests : IDisposable
 {
     private const string Sol = "gpt-6-sol";
     private const string Luna = "gpt-6-luna";
@@ -20,6 +20,9 @@ public class RiteWriterTests
 
     private readonly FakeTimeProvider time = new(new DateTimeOffset(2026, 10, 7, 0, 0, 5, TimeSpan.Zero));
     private readonly FakeChatClients models = new();
+    private readonly MetricsProbe probe = new();
+
+    public void Dispose() => probe.Dispose();
 
     [Fact]
     public async Task Write_TakesTheFirstModelsAnswer()
@@ -139,6 +142,21 @@ public class RiteWriterTests
     }
 
     [Fact]
+    public async Task Write_CountsEveryAnswer_ByModelAndOutcome()
+    {
+        using var answers = probe.Collect<long>("dms.generation.answers");
+        models.Fails(Sol, 1)
+            .Answers(Sol, FakeChatClients.Answer("A Warhammer of Builds", "Text.", "Truth."), "not json at all")
+            .Answers(Luna, GoodAnswer);
+
+        Ok(await Writer(retryDelaySeconds: 0).Write(Day, RiteKind.Ritual, [], CancellationToken.None));
+
+        Assert.Equal(
+            [$"model={Sol} outcome=failed", $"model={Sol} outcome=refused", $"model={Sol} outcome=failed", $"model={Luna} outcome=accepted"],
+            MetricsProbe.Tags(answers, "model", "outcome"));
+    }
+
+    [Fact]
     public async Task Write_WhenEveryModelFails_ReturnsAnError()
     {
         models.Fails(Sol, 3).Fails(Luna, 3);
@@ -174,6 +192,6 @@ public class RiteWriterTests
     }
 
     private RiteWriter Writer(int retryDelaySeconds)
-        => new(models, Options.Create(new GenerationOptions { RetryDelaySeconds = retryDelaySeconds }), time, NullLogger<RiteWriter>.Instance);
+        => new(models, Options.Create(new GenerationOptions { RetryDelaySeconds = retryDelaySeconds }), time, probe.Metrics, NullLogger<RiteWriter>.Instance);
 
 }
