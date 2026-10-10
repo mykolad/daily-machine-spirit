@@ -1,7 +1,9 @@
+using DailyMachineSpirit.Data;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using LanguageExt;
 using LanguageExt.Common;
+using Microsoft.Extensions.Diagnostics.Metrics.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
 using static DailyMachineSpirit.Tests.Expect;
 using static LanguageExt.Prelude;
@@ -23,7 +25,7 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
 
         var saved = await AddOrFail(MakeRite(date, "The Rite of Re-Run"));
 
-        var byNumber = Ok(await Repository.GetByNumber(saved.Number, CancellationToken.None));
+        var byNumber = Ok(await Repository.GetByNumbers([saved.Number], CancellationToken.None)).HeadOrNone();
         var byDay = Ok(await Repository.GetPublishedOn(date, CancellationToken.None));
         Assert.Equal(Some("The Rite of Re-Run"), byNumber.Map(rite => rite.Title));
         Assert.Equal(Some(RiteKind.Ritual), byNumber.Map(rite => rite.Kind));
@@ -66,9 +68,9 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task GetByNumber_AndGetPublishedOn_FindNothingWhenMissing()
+    public async Task GetByNumbers_AndGetPublishedOn_FindNothingWhenMissing()
     {
-        Assert.Equal(Option<Rite>.None, Ok(await Repository.GetByNumber(42, CancellationToken.None)));
+        Assert.Empty(Ok(await Repository.GetByNumbers([42], CancellationToken.None)));
         Assert.Equal(Option<Rite>.None, Ok(await Repository.GetPublishedOn(new DateOnly(2026, 1, 1), CancellationToken.None)));
     }
 
@@ -158,15 +160,38 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task EveryRequest_IsMeasured_ByOperationAndStatusCode()
+    {
+        // The meter is shared with tests running alongside, so this looks for its own requests among theirs.
+        using var charges = new MetricCollector<double>(null, CosmosMetricsHandler.MeterName, "dms.cosmos.request_charge");
+        var date = new DateOnly(2026, 10, 7);
+
+        await AddOrFail(MakeRite(date, "Measured"));
+        Ok(await Repository.GetPublishedOn(date, CancellationToken.None));
+        Ok(await Repository.GetPublishedOn(new DateOnly(2026, 1, 1), CancellationToken.None));
+        Ok(await Repository.GetNewest(1, CancellationToken.None));
+
+        var measured = charges.GetMeasurementSnapshot()
+            .Select(measurement => (Operation: $"{measurement.Tags["operation"]} {measurement.Tags["status_code"]}", Charge: measurement.Value))
+            .ToList();
+        Assert.Contains(measured, request => request is { Operation: "read 200", Charge: > 0 });
+        Assert.Contains(measured, request => request.Operation == "batch 200");
+        Assert.Contains(measured, request => request.Operation == "read 404");
+        Assert.Contains(measured, request => request.Operation == "query 200");
+    }
+
+    [Fact]
     public async Task EveryCall_ReturnsACosmosFailureAsAnError_InsteadOfThrowing()
     {
         // A container that doesn't exist: Cosmos answers every call with 404.
         var missing = new RiteRepository(cosmos.Container.Database.GetContainer("no-such-container"), NullLogger<RiteRepository>.Instance);
         var date = new DateOnly(2026, 10, 7);
 
-        Assert.True((await missing.GetByNumber(1, CancellationToken.None)).IsLeft);
         Assert.True((await missing.GetPublishedOn(date, CancellationToken.None)).IsLeft);
         Assert.True((await missing.GetNewest(1, CancellationToken.None)).IsLeft);
+        Assert.True((await missing.GetOlderThan(5, 6, CancellationToken.None)).IsLeft);
+        Assert.True((await missing.GetByNumbers([1, 2], CancellationToken.None)).IsLeft);
+        Assert.True((await missing.React(1, Some(Reaction.Blessed), None, CancellationToken.None)).IsLeft);
         Assert.True((await missing.Add(MakeRite(date, "Lost"), CancellationToken.None)).IsLeft);
         Assert.True((await missing.SaveScores(date, new RiteSimilarity(), CancellationToken.None)).IsLeft);
         Assert.True((await missing.GetScoresByRiteNumber("jev/v1", CancellationToken.None)).IsLeft);

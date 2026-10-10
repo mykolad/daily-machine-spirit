@@ -1,5 +1,6 @@
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
+using DailyMachineSpirit.Functions.Telemetry;
 using LanguageExt;
 using LanguageExt.Common;
 using static LanguageExt.Prelude;
@@ -16,13 +17,16 @@ public sealed class DailyRitePublisher
     private readonly IDraftRepository drafts;
     private readonly BacklogRefiller refiller;
     private readonly TimeProvider time;
+    private readonly SiteMetrics metrics;
 
-    public DailyRitePublisher(IRiteRepository rites, IDraftRepository drafts, BacklogRefiller refiller, TimeProvider time)
+    public DailyRitePublisher(
+        IRiteRepository rites, IDraftRepository drafts, BacklogRefiller refiller, TimeProvider time, SiteMetrics metrics)
     {
         this.rites = rites;
         this.drafts = drafts;
         this.refiller = refiller;
         this.time = time;
+        this.metrics = metrics;
     }
 
     public async Task<Either<Error, PublishedRite>> PublishToday(CancellationToken cancellationToken)
@@ -39,7 +43,11 @@ public sealed class DailyRitePublisher
         var published = await NextDraft(cancellationToken)
             .BindAsync(draft => rites.Publish(draft.Id, today, cancellationToken));
         return await published.MatchAsync(
-            RightAsync: rite => Task.FromResult(Right<Error, PublishedRite>(new PublishedRite(rite, IsNew: true))),
+            RightAsync: rite =>
+            {
+                metrics.Published(rite);
+                return Task.FromResult(Right<Error, PublishedRite>(new PublishedRite(rite, IsNew: true)));
+            },
             // Another run may have got there first: publishing the day's rite or this same draft, or publishing the last
             // waiting draft while this run's fallback failed to write. Whatever failed, today's rite, if it exists now,
             // stands.

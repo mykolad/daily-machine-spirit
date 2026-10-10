@@ -9,7 +9,7 @@ using static DailyMachineSpirit.Tests.Expect;
 
 namespace DailyMachineSpirit.Tests;
 
-public class RiteWriterTests
+public sealed class RiteWriterTests : IDisposable
 {
     private const string Sol = "gpt-6-sol";
     private const string Luna = "gpt-6-luna";
@@ -19,6 +19,9 @@ public class RiteWriterTests
 
     private readonly FakeTimeProvider time = new(new DateTimeOffset(2026, 10, 7, 0, 0, 5, TimeSpan.Zero));
     private readonly FakeChatClients models = new();
+    private readonly MetricsProbe probe = new();
+
+    public void Dispose() => probe.Dispose();
 
     [Fact]
     public async Task Write_TakesTheFirstModelsAnswer()
@@ -51,6 +54,17 @@ public class RiteWriterTests
         Assert.Contains("* The Rite of Re-Run", instructions);
         Assert.Contains("Never quote or paraphrase Games Workshop", instructions);
         Assert.Equal("Write a prayer.", messages.Single(message => message.Role == ChatRole.User).Text);
+    }
+
+    [Fact]
+    public async Task Write_DropsBackticksFromTheTitle_RatherThanAskAgain()
+    {
+        models.Answers(Sol, FakeChatClients.Answer("The Rite of `--force`", "Text.", "Truth."));
+
+        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, [], CancellationToken.None));
+
+        Assert.Equal("The Rite of --force", draft.Title);
+        Assert.Single(models.Requests);
     }
 
     [Theory]
@@ -94,7 +108,9 @@ public class RiteWriterTests
     [InlineData(RiteKind.Prayer, "Title", "O Omnissiah, hear me. O Omnissiah, hear me.", "Truth.")]
     [InlineData(RiteKind.Prayer, "Litany of the Omnissiah", "Text.", "Truth.")]
     [InlineData(RiteKind.Prayer, "Title", "Text.", "The Omnissiah won't fix a race.")]
-    public async Task Write_AsksAgain_WhenTheAnswerUsesForbiddenNames(RiteKind kind, string title, string text, string hereticalTruth)
+    [InlineData(RiteKind.Ritual, "Title", "Lay sleep 5 upon the altar.", "Truth.")]
+    [InlineData(RiteKind.Prayer, "Title", "Text.", "Delete node_modules, then wait.")]
+    public async Task Write_AsksAgain_WhenTheAnswerBreaksTheRules(RiteKind kind, string title, string text, string hereticalTruth)
     {
         models.Answers(Sol, FakeChatClients.Answer(title, text, hereticalTruth), GoodAnswer);
 
@@ -122,6 +138,21 @@ public class RiteWriterTests
 
         Assert.Equal(Luna, draft.GeneratedByModel);
         Assert.Equal([Sol, Sol, Sol, Luna], models.Requests.Select(request => request.Model));
+    }
+
+    [Fact]
+    public async Task Write_CountsEveryAnswer_ByModelAndOutcome()
+    {
+        using var answers = probe.Collect<long>("dms.generation.answers");
+        models.Fails(Sol, 1)
+            .Answers(Sol, FakeChatClients.Answer("A Warhammer of Builds", "Text.", "Truth."), "not json at all")
+            .Answers(Luna, GoodAnswer);
+
+        Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, [], CancellationToken.None));
+
+        Assert.Equal(
+            [$"model={Sol} outcome=failed", $"model={Sol} outcome=refused", $"model={Sol} outcome=failed", $"model={Luna} outcome=accepted"],
+            MetricsProbe.Tags(answers, "model", "outcome"));
     }
 
     [Fact]
@@ -160,6 +191,6 @@ public class RiteWriterTests
     }
 
     private RiteWriter Writer(int retryDelaySeconds)
-        => new(models, Options.Create(new GenerationOptions { RetryDelaySeconds = retryDelaySeconds }), time, NullLogger<RiteWriter>.Instance);
+        => new(models, Options.Create(new GenerationOptions { RetryDelaySeconds = retryDelaySeconds }), time, probe.Metrics, NullLogger<RiteWriter>.Instance);
 
 }

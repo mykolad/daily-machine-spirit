@@ -1,0 +1,23 @@
+name: Deploy Master
+
+# Every merge to master that passes Build and Test goes to staging: the same commit that was tested. Production joins
+# at launch, after staging.
+on:
+  workflow_run:
+    workflows: [Build and Test]
+    types: [completed]
+    branches: [master]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  staging:
+    name: staging
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: staging
+      app-name: machinespirit-app-staging
+      ref: ${{ github.event.workflow_run.head_sha }}
