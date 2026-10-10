@@ -4,6 +4,7 @@ using DailyMachineSpirit.Functions.Generation;
 using DailyMachineSpirit.Functions.Generation.Chat;
 using DailyMachineSpirit.Functions.Generation.Scoring;
 using DailyMachineSpirit.Functions.Generation.Writing;
+using DailyMachineSpirit.Functions.Scriptorium;
 using DailyMachineSpirit.Functions.Telemetry;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Functions.Worker.Builder;
@@ -53,6 +54,7 @@ builder.Services.AddSingleton(services =>
     services.GetRequiredService<CosmosClient>().GetContainer(cosmos.Database, RiteRepository.ContainerName));
 builder.Services.AddSingleton<IRiteRepository, RiteRepository>();
 builder.Services.AddSingleton<IDraftRepository, DraftRepository>();
+builder.Services.AddSingleton<IScriptoriumRepository, ScriptoriumRepository>();
 
 // The daily rite and the backlog. Created only when the timer or a refill runs, so HTTP functions start without the generation settings.
 builder.Services.Configure<GenerationOptions>(builder.Configuration.GetSection(GenerationOptions.SectionName));
@@ -63,5 +65,9 @@ builder.Services.AddHttpClient<IRiteScorer, JevScorer>(http => http.Timeout = Ti
 builder.Services.AddTransient<RiteWriter>();
 builder.Services.AddTransient<BacklogRefiller>();
 builder.Services.AddTransient<DailyRitePublisher>();
+
+// The Scriptorium: the Scribes' page.
+builder.Services.Configure<ScriptoriumOptions>(builder.Configuration.GetSection(ScriptoriumOptions.SectionName));
+builder.Services.AddTransient<Scribes>();
 
 builder.Build().Run();

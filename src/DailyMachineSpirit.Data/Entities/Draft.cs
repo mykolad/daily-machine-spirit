@@ -31,6 +31,8 @@ public sealed record Draft
 
     public Option<DateOnly> PublishedOnUtc { get; init; }
 
+    public Option<DateTime> BurnedAtUtc { get; init; }
+
     public Rite ToRite(DateOnly publishedOnUtc) => new()
     {
         PublishedOnUtc = publishedOnUtc,
@@ -48,6 +50,8 @@ public enum DraftState
 {
     Waiting,
     Published,
+    /// <summary>Consigned to the flames by a Scribe: hidden, never deleted, and can be restored.</summary>
+    Burned,
 }
 
 /// <summary>How good a judge thinks a draft is: the Augury publishes the better ones first.</summary>

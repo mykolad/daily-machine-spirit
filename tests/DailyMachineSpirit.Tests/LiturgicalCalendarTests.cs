@@ -16,7 +16,7 @@ public class LiturgicalCalendarTests
         var weak = MakeDraft("Weak", RiteKind.Prayer, 0.2f, AboutCaches);
         var strong = MakeDraft("Strong", RiteKind.Prayer, 0.9f, AboutBuilds);
 
-        var ordered = LiturgicalCalendar.Order([weak, strong], []);
+        var ordered = LiturgicalCalendar.Order([weak, strong], [], []);
 
         Assert.Equal(["Strong", "Weak"], Titles(ordered));
     }
@@ -28,7 +28,7 @@ public class LiturgicalCalendarTests
         var anotherCache = MakeDraft("Another cache", RiteKind.Prayer, 0.9f, AboutCaches);
         var aBuild = MakeDraft("A build", RiteKind.Prayer, 0.7f, AboutBuilds);
 
-        var ordered = LiturgicalCalendar.Order([anotherCache, aBuild], [yesterday]);
+        var ordered = LiturgicalCalendar.Order([anotherCache, aBuild], [yesterday], []);
 
         Assert.Equal(["A build", "Another cache"], Titles(ordered));
     }
@@ -40,7 +40,7 @@ public class LiturgicalCalendarTests
         var cacheTwo = MakeDraft("Cache two", RiteKind.Prayer, 0.85f, AboutCaches);
         var build = MakeDraft("Build", RiteKind.Prayer, 0.6f, AboutBuilds);
 
-        var ordered = LiturgicalCalendar.Order([cacheOne, cacheTwo, build], []);
+        var ordered = LiturgicalCalendar.Order([cacheOne, cacheTwo, build], [], []);
 
         Assert.Equal(["Cache one", "Build", "Cache two"], Titles(ordered));
     }
@@ -52,7 +52,7 @@ public class LiturgicalCalendarTests
         var prayer = MakeDraft("Prayer", RiteKind.Prayer, 0.75f, AboutCaches);
         var ritual = MakeDraft("Ritual", RiteKind.Ritual, 0.7f, AboutCaches);
 
-        var ordered = LiturgicalCalendar.Order([prayer, ritual], [yesterday]);
+        var ordered = LiturgicalCalendar.Order([prayer, ritual], [yesterday], []);
 
         Assert.Equal("Ritual", ordered[0].Title);
     }
@@ -68,7 +68,7 @@ public class LiturgicalCalendarTests
         var olderUnjudged = newerUnjudged with { Id = Guid.NewGuid(), Title = "Older, unjudged", GeneratedAtUtc = newerUnjudged.GeneratedAtUtc.AddDays(-1) };
         var weak = MakeDraft("Weak but judged", RiteKind.Prayer, 0.1f, AboutBuilds);
 
-        var ordered = LiturgicalCalendar.Order([newerUnjudged, olderUnjudged, weak], []);
+        var ordered = LiturgicalCalendar.Order([newerUnjudged, olderUnjudged, weak], [], []);
 
         Assert.Equal(["Weak but judged", "Older, unjudged", "Newer, unjudged"], Titles(ordered));
     }
@@ -83,7 +83,7 @@ public class LiturgicalCalendarTests
         var anotherCache = MakeDraft("Another cache", RiteKind.Prayer, 0.9f, AboutCaches);
         var aBuild = MakeDraft("A build", RiteKind.Prayer, 0.7f, AboutBuilds);
 
-        var ordered = LiturgicalCalendar.Order([anotherCache, aBuild], [yesterday]);
+        var ordered = LiturgicalCalendar.Order([anotherCache, aBuild], [yesterday], []);
 
         Assert.Equal(["Another cache", "A build"], Titles(ordered));
     }
@@ -101,9 +101,45 @@ public class LiturgicalCalendarTests
             Augury = new Augury { Quality = 0.3f, JudgedBy = "jev-1.13.0/quality-q1", JudgedAtUtc = judgedEarlier.AddDays(1) },
         };
 
-        var ordered = LiturgicalCalendar.Order([oldJudge, newJudge], []);
+        var ordered = LiturgicalCalendar.Order([oldJudge, newJudge], [], []);
 
         Assert.Equal(["New judge, low score", "Old judge, high score"], Titles(ordered));
+    }
+
+    [Fact]
+    public void Order_PutsTheScribesDraftsFirst_InTheirOrder_SkippingOnesNoLongerWaiting()
+    {
+        var weak = MakeDraft("Weak", RiteKind.Prayer, 0.2f, AboutCaches);
+        var fair = MakeDraft("Fair", RiteKind.Ritual, 0.4f, AboutBuilds);
+        var strong = MakeDraft("Strong", RiteKind.Prayer, 0.9f, AboutBuilds);
+
+        var ordered = LiturgicalCalendar.Order([weak, fair, strong], [], [fair.Id, Guid.NewGuid(), weak.Id]);
+
+        Assert.Equal(["Fair", "Weak", "Strong"], Titles(ordered));
+    }
+
+    [Fact]
+    public void Order_LetsADraftLikeAPinnedOneWait()
+    {
+        var pinned = MakeDraft("Pinned cache", RiteKind.Prayer, 0.5f, AboutCaches);
+        var anotherCache = MakeDraft("Another cache", RiteKind.Prayer, 0.9f, AboutCaches);
+        var aBuild = MakeDraft("A build", RiteKind.Prayer, 0.7f, AboutBuilds);
+
+        var ordered = LiturgicalCalendar.Order([pinned, anotherCache, aBuild], [], [pinned.Id]);
+
+        Assert.Equal(["Pinned cache", "A build", "Another cache"], Titles(ordered));
+    }
+
+    [Fact]
+    public void Order_AlternatesKinds_FromThePinnedDraft()
+    {
+        var pinned = MakeDraft("Pinned prayer", RiteKind.Prayer, 0.5f, AboutBuilds);
+        var prayer = MakeDraft("Prayer", RiteKind.Prayer, 0.75f, AboutCaches);
+        var ritual = MakeDraft("Ritual", RiteKind.Ritual, 0.7f, AboutCaches);
+
+        var ordered = LiturgicalCalendar.Order([pinned, prayer, ritual], [], [pinned.Id]);
+
+        Assert.Equal(["Pinned prayer", "Ritual", "Prayer"], Titles(ordered));
     }
 
     private static string[] Titles(List<Draft> ordered) => ordered.Select(draft => draft.Title).ToArray();

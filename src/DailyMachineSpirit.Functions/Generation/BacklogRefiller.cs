@@ -16,6 +16,7 @@ public sealed class BacklogRefiller
 {
     private readonly IDraftRepository drafts;
     private readonly IRiteRepository rites;
+    private readonly IScriptoriumRepository scriptorium;
     private readonly RiteWriter writer;
     private readonly IRiteScorer scorer;
     private readonly IOptions<GenerationOptions> options;
@@ -25,6 +26,7 @@ public sealed class BacklogRefiller
     public BacklogRefiller(
         IDraftRepository drafts,
         IRiteRepository rites,
+        IScriptoriumRepository scriptorium,
         RiteWriter writer,
         IRiteScorer scorer,
         IOptions<GenerationOptions> options,
@@ -33,6 +35,7 @@ public sealed class BacklogRefiller
     {
         this.drafts = drafts;
         this.rites = rites;
+        this.scriptorium = scriptorium;
         this.writer = writer;
         this.scorer = scorer;
         this.options = options;
@@ -60,15 +63,17 @@ public sealed class BacklogRefiller
     }
 
     /// <summary>
-    /// Writes, scores and saves one draft, of the kind the backlog has fewer of, on a subject neither the recent rites nor
-    /// the <paramref name="waiting"/> drafts have.
+    /// Writes, scores and saves one draft, of the kind the backlog has fewer of, on a subject none of the recent rites,
+    /// the <paramref name="waiting"/> drafts or the recently burned ones have: the burned ones teach the model what the
+    /// Scribes didn't want.
     /// </summary>
     public Task<Either<Error, Draft>> AddDraft(IReadOnlyList<Draft> waiting, CancellationToken cancellationToken)
         => rites.GetNewest(options.Value.RecentRitesInPrompt, cancellationToken)
-            .BindAsync(recent => writer.Write(
-                KindToWrite(waiting),
-                [.. recent.Select(rite => rite.Title), .. waiting.Select(draft => draft.Title)],
-                cancellationToken))
+            .BindAsync(recent => scriptorium.GetBurned(options.Value.RecentRitesInPrompt, cancellationToken)
+                .BindAsync(burned => writer.Write(
+                    KindToWrite(waiting),
+                    [.. recent.Select(rite => rite.Title), .. waiting.Select(draft => draft.Title), .. burned.Select(draft => draft.Title)],
+                    cancellationToken)))
             .BindAsync(async draft => Right<Error, Draft>(await Scored(draft, cancellationToken)))
             .BindAsync(draft => drafts.Add(draft, cancellationToken));
 

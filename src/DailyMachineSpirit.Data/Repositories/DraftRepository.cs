@@ -12,6 +12,9 @@ public interface IDraftRepository
 {
     Task<Either<Error, Draft>> Add(Draft draft, CancellationToken cancellationToken);
 
+    /// <summary>The draft, whatever its state; None when there's no such draft.</summary>
+    Task<Either<Error, Option<Draft>>> Get(Guid draftId, CancellationToken cancellationToken);
+
     /// <summary>The drafts that can still be published, in no particular order (the Augury orders them).</summary>
     Task<Either<Error, List<Draft>>> GetWaiting(CancellationToken cancellationToken);
 }
@@ -31,6 +34,10 @@ public class DraftRepository : IDraftRepository
             await container.CreateItemAsync(DraftDocument.From(draft), SharedPartitionKey, cancellationToken: cancellationToken);
             return draft;
         });
+
+    public Task<Either<Error, Option<Draft>>> Get(Guid draftId, CancellationToken cancellationToken)
+        => Attempt(async () => (await container.ReadOrNone<DraftDocument>(DraftDocument.IdFor(draftId), cancellationToken))
+            .Map(found => found.Document.ToDraft()));
 
     public Task<Either<Error, List<Draft>>> GetWaiting(CancellationToken cancellationToken)
         => Attempt(async () => (await container.Query<DraftDocument>(

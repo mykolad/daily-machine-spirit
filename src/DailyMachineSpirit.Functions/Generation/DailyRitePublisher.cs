@@ -15,15 +15,22 @@ public sealed class DailyRitePublisher
 {
     private readonly IRiteRepository rites;
     private readonly IDraftRepository drafts;
+    private readonly IScriptoriumRepository scriptorium;
     private readonly BacklogRefiller refiller;
     private readonly TimeProvider time;
     private readonly SiteMetrics metrics;
 
     public DailyRitePublisher(
-        IRiteRepository rites, IDraftRepository drafts, BacklogRefiller refiller, TimeProvider time, SiteMetrics metrics)
+        IRiteRepository rites,
+        IDraftRepository drafts,
+        IScriptoriumRepository scriptorium,
+        BacklogRefiller refiller,
+        TimeProvider time,
+        SiteMetrics metrics)
     {
         this.rites = rites;
         this.drafts = drafts;
+        this.scriptorium = scriptorium;
         this.refiller = refiller;
         this.time = time;
         this.metrics = metrics;
@@ -64,10 +71,13 @@ public sealed class DailyRitePublisher
                     .BindAsync(_ => TopOfTheCalendar(cancellationToken))
                     .BindAsync(again => again.ToEither(Error.New("The backlog is still empty after writing a draft.")))));
 
+    // The Scribes' order is read before the waiting drafts, so every draft it places is among them, as in the Scriptorium:
+    // a draft that arrives and is anointed in between is simply not in this snapshot, rather than placed but unknown.
     private Task<Either<Error, Option<Draft>>> TopOfTheCalendar(CancellationToken cancellationToken)
-        => drafts.GetWaiting(cancellationToken)
-            .BindAsync(waiting => rites.GetNewest(LiturgicalCalendar.ResemblanceWindow, cancellationToken)
-                .MapAsync(recent => Task.FromResult(LiturgicalCalendar.Order(waiting, recent).HeadOrNone())));
+        => scriptorium.GetPlacements(cancellationToken)
+            .BindAsync(placements => drafts.GetWaiting(cancellationToken)
+                .BindAsync(waiting => rites.GetNewest(LiturgicalCalendar.ResemblanceWindow, cancellationToken)
+                    .MapAsync(recent => Task.FromResult(LiturgicalCalendar.Order(waiting, recent, placements.Order).HeadOrNone()))));
 
     // Theirs stands, and this run's draft (if another) keeps waiting. When the day has no rite after all, or it can't be
     // read, the original error stands, and the retry chooses again.

@@ -7,7 +7,7 @@ namespace DailyMachineSpirit.Functions.Pages;
 public static class Styles
 {
     // The site's own copies of the fonts (FontsFunction): variable fonts, one file per family and style.
-    private const string FontFaces = """
+    public const string FontFaces = """
         @font-face{font-family:Cinzel;font-style:normal;font-weight:400 900;font-display:swap;src:url(/fonts/cinzel.woff2) format('woff2')}
         @font-face{font-family:'EB Garamond';font-style:normal;font-weight:400 800;font-display:swap;src:url(/fonts/eb-garamond.woff2) format('woff2')}
         @font-face{font-family:'EB Garamond';font-style:italic;font-weight:400 800;font-display:swap;src:url(/fonts/eb-garamond-italic.woff2) format('woff2')}

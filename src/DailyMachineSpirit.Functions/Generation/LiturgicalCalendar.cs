@@ -4,10 +4,10 @@ using LanguageExt;
 namespace DailyMachineSpirit.Functions.Generation;
 
 /// <summary>
-/// The Augury's order of the waiting drafts: the first is published next. Better drafts go first, but a draft much like
-/// the rites just before it waits, and prayers and rituals take turns where the qualities allow, so the days vary.
-/// Drafts without a quality (Jev off or failing) follow, oldest first, and so do drafts an older judge scored: a quality
-/// is only comparable with the same judge's.
+/// The order the waiting drafts are published in, first next. The drafts the Scribes placed come first, in their order.
+/// The Augury orders the rest: better drafts first, but a draft much like the rites just before it waits, and prayers
+/// and rituals take turns where the qualities allow, so the days vary. Drafts without a quality (Jev off or failing)
+/// follow, oldest first, and so do drafts an older judge scored: a quality is only comparable with the same judge's.
 /// </summary>
 public static class LiturgicalCalendar
 {
@@ -20,19 +20,26 @@ public static class LiturgicalCalendar
     private const float SameKindPenalty = 0.1f;
 
     /// <param name="recent">Published rites, newest first (only the first <see cref="ResemblanceWindow"/> count).</param>
-    public static List<Draft> Order(IReadOnlyList<Draft> waiting, IReadOnlyList<Rite> recent)
+    /// <param name="placed">The Scribes' order; drafts in it that aren't waiting any more are skipped.</param>
+    public static List<Draft> Order(IReadOnlyList<Draft> waiting, IReadOnlyList<Rite> recent, IReadOnlyList<Guid> placed)
     {
+        var waitingById = waiting.ToDictionary(draft => draft.Id);
+        var ordered = placed.Distinct().Where(waitingById.ContainsKey).Select(id => waitingById[id]).ToList();
+        var placedIds = ordered.Select(draft => draft.Id).ToHashSet();
+        var unplaced = waiting.Where(draft => !placedIds.Contains(draft.Id)).ToList();
+
         // Oldest first: each pick joins the end, as the rite before the next one.
-        var before = recent.Take(ResemblanceWindow).Reverse().Select(rite => (rite.Kind, rite.Similarity)).ToList();
+        var before = recent.Take(ResemblanceWindow).Reverse().Select(rite => (rite.Kind, rite.Similarity))
+            .Concat(ordered.Select(draft => (draft.Kind, draft.Similarity)))
+            .ToList();
         // The judge that scored most recently: after a new Jev model or quality question, drafts it hasn't judged yet
         // wait behind the ones it has.
         var judge = waiting.SelectMany(draft => draft.Augury).OrderByDescending(augury => augury.JudgedAtUtc)
             .Select(augury => augury.JudgedBy).HeadOrNone();
         bool IsJudged(Draft draft) => draft.Augury.Exists(augury => judge.Exists(newest => newest == augury.JudgedBy));
         // A fixed order to start from, so equal values always resolve the same way.
-        var judged = waiting.Where(IsJudged).OrderBy(draft => draft.GeneratedAtUtc).ThenBy(draft => draft.Id).ToList();
+        var judged = unplaced.Where(IsJudged).OrderBy(draft => draft.GeneratedAtUtc).ThenBy(draft => draft.Id).ToList();
 
-        var ordered = new List<Draft>();
         while (judged.Count > 0)
         {
             // The sort is stable, so of equal values the earlier draft wins.
@@ -42,7 +49,7 @@ public static class LiturgicalCalendar
             before.Add((next.Kind, next.Similarity));
         }
 
-        ordered.AddRange(waiting.Where(draft => !IsJudged(draft)).OrderBy(draft => draft.GeneratedAtUtc).ThenBy(draft => draft.Id));
+        ordered.AddRange(unplaced.Where(draft => !IsJudged(draft)).OrderBy(draft => draft.GeneratedAtUtc).ThenBy(draft => draft.Id));
         return ordered;
     }
 
