@@ -178,7 +178,7 @@ public sealed class ScribesTests : IAsyncLifetime
             Ok(await testbed.Scribes().Anoint(arrived.Id, "", CancellationToken.None));
         });
         var publisher = new DailyMachineSpirit.Functions.Generation.DailyRitePublisher(
-            testbed.Rites, drafts, testbed.Scriptorium, testbed.Refiller(), testbed.Time);
+            testbed.Rites, drafts, testbed.Scriptorium, testbed.Refiller(), testbed.Time, testbed.Probe.Metrics);
 
         var published = Ok(await publisher.PublishToday(CancellationToken.None));
 

@@ -106,18 +106,24 @@ az keyvault secret set --vault-name machinespirit-kv-staging --name OtlpHeaders 
   --file $HOME\.machinespirit\otlp-headers.txt -o none
 ```
 
-## Deploying the app by hand
+The dashboard is in `observability/` (its README says how to import it).
 
-Until the deploy workflows exist, publish a branch to staging from its checkout (Azure Functions Core Tools v4, signed
-in with `az login`):
+## Deploying the app
+
+GitHub Actions deploys the app (`.github/workflows/`), signed in as the environment's GitHub identity:
+
+- **Deploy Master**: after every merge to `master` that passes Build and Test, that commit goes to staging.
+- **Deploy Branch to Staging**: Actions → Deploy Branch to Staging → Run workflow, with a branch name, to try a PR
+  on staging before merging. Staging keeps it until the next deployment.
+
+`https://machinespirit-app-staging.azurewebsites.net/healthz` shows the deployed commit (only from your address).
+
+By hand, from a checkout (Azure Functions Core Tools v4, signed in with `az login`):
 
 ```powershell
 cd src/DailyMachineSpirit.Functions
 func azure functionapp publish machinespirit-app-staging --dotnet-isolated
 ```
-
-Staging runs that branch until the next publish; `https://machinespirit-app-staging.azurewebsites.net/healthz` shows
-its commit.
 
 ## Outside Azure
 
@@ -128,8 +134,9 @@ its commit.
   Pages (`<team>.cloudflareaccess.com`). Put both in `productionAccess` in `resources.bicep` (neither is secret, and
   there every deployment keeps them), set `scriptoriumEnabled: true` for production there, and deploy. Until both are
   set, production's Scriptorium lets nobody in, even if it's turned on.
-- **GitHub**: the environments `staging`, `production` and `infrastructure`, each with its identity's client id
-  (`githubClientIds` in the deployment's outputs), added with the deploy workflows.
+- **GitHub**: one environment per deploy identity, holding its ids as variables (`AZURE_CLIENT_ID` from
+  `githubClientIds` in the deployment's outputs, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`). `staging` exists;
+  `production` and `infrastructure` come with their workflows.
 
 ## Deleting it
 

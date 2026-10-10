@@ -20,10 +20,13 @@ what really happens. Either kind is a **rite** (the design's word, and `Rite` in
 ```
 src/DailyMachineSpirit.Functions  — the Functions app (HTTP, timer and queue functions)
   Generation/                     — the backlog and the daily rite: Writing/, Chat/ (the models), Scoring/ (Jev)
+  Pages/                          — the public pages, rendered on the server (Today, the archive, a rite's page)
 src/DailyMachineSpirit.Data       — Cosmos DB: entities, documents, repositories
 tests/DailyMachineSpirit.Tests    — xUnit tests (the repository tests run against the Cosmos DB emulator)
+tests/load                        — k6 load tests of the public pages, run by hand against staging (its README)
 tools/coverage.ps1                — tests + coverage report + the coverage gate (Build and Test runs it)
 infra/                            — Bicep for all of Azure (main.bicep); infra/README.md covers what Bicep can't do
+observability/                    — the Grafana dashboard, and what the app's metrics measure
 ```
 
 ## Code style rules
@@ -91,11 +94,30 @@ infra/                            — Bicep for all of Azure (main.bicep); infra
 - **Entra ID only** for Cosmos DB: the app's managed identity in Azure, your `az login` locally
   (`CosmosClients.Create`); the account's keys stay off. The account, databases, container, role assignments and the
   app's settings are all created by the Bicep in `infra/`, never by the app (its data-plane role can't create them). Settings: `Cosmos:Endpoint`, `Cosmos:Database`.
-- **Telemetry: OpenTelemetry to Grafana Cloud.** The app (`Program.cs`) exports its logs and traces over OTLP wherever
-  `OTEL_EXPORTER_OTLP_ENDPOINT` is set; `infra/` sets it, with the token's header from the vault. The Functions host
-  doesn't export (no `telemetryMode` in `host.json`): its request spans carry visitors' user agents. So a failure the
-  host alone would see must be logged by the code. Each environment is its own service (the app's name), tagged with
+- **Telemetry: OpenTelemetry to Grafana Cloud.** The app (`Program.cs`) exports its logs, traces and metrics over OTLP
+  wherever `OTEL_EXPORTER_OTLP_ENDPOINT` is set; `infra/` sets it, with the token's header from the vault. The Functions
+  host doesn't export (no `telemetryMode` in `host.json`): its request spans carry visitors' user agents. So a failure
+  the host alone would see must be logged by the code. Each environment is its own service (the app's name), tagged with
   `deployment.environment.name`. There's no Application Insights, so the portal's log stream stays empty: look in Grafana.
+  The site's own metrics (`SiteMetrics`, `CosmosMetricsHandler`) are listed in `observability/README.md`, next to the
+  dashboard; their tags never describe a visitor.
+- **The pages** (`Pages/`) follow the design handoff (`design_handoff_daily_machine_spirit`, outside the repo; its
+  README is the spec). They're rendered on the server as plain HTML with the CSS and a small script inlined, so a page
+  is one request (plus the fonts, cached for a year) and works without the script (the truth then simply shows).
+  - The fonts are the site's own copies (`Pages/Fonts/`, Latin subsets, OFL), served at `/fonts/<name>.woff2`: a page
+    never makes the visitor's browser contact another site (Google Fonts would learn every visitor's address).
+  - Routes: `/` (Today: the newest rite), `/archive` (`?before=<number>` for older pages, which the archive also
+    loads in place as the reader nears the end), `/r/<number>`. A catch-all
+    route takes `/` and answers every unknown address with the 404 page; more specific routes win over it.
+  - Everything a model wrote goes through `Html.Encode` (`Html.WithInlineCode` for text with `backticks`).
+  - Every focusable control sits on the dark background, never on the parchment, so the amber focus ring shows.
+  - **More rites** (a rite's own page): the three rites whose similarity scores are closest (cosine, `RelatedRites`),
+    topped up with the newest others when there aren't enough scored ones. If it fails, the page goes without it.
+- **Reactions** (Blessed / Heresy, `Api/ReactionsFunction`, `POST /api/rites/{number}/reaction`) are anonymous: the
+  browser keeps its own reaction (`localStorage`, `dms-reactions-v1`) and sends it back as `previous`, and the server
+  only moves the counts (`RiteRepository.React`, Cosmos increments, never below zero). Nothing about a visitor is
+  stored, so a visitor who clears their storage can react again; the rate limit belongs at Cloudflare. The API takes
+  JSON only, so another site's form can't post to it.
 - **The backlog and the daily rite** (`Generation/`). Rites are written ahead as **drafts** (`Draft`, documents of
   type `draft` next to the rites), so moderators, the Scribes of the Scriptorium, can choose what's published.
   - **Publishing:** the `DailyRite` timer runs at 00:00 UTC and publishes the top of the **Liturgical Calendar**, unless
@@ -117,8 +139,8 @@ infra/                            — Bicep for all of Azure (main.bicep); infra
   - **A new environment starts with an empty backlog,** so its first midnight writes a rite on the spot, unmoderated.
     To have moderated rites from the first day (production), summon a refill before the first midnight.
   - **Writing:** `RiteWriter` asks `gpt-6-sol` for a `RiteContent` (JSON schema output), up to 3 times, then
-    `gpt-6-luna` (`Generation:Models`). An answer that's empty, too long or uses a forbidden name is asked for again,
-    never cut.
+    `gpt-6-luna` (`Generation:Models`). An answer that's empty, too long, uses a forbidden name or writes code outside
+    backticks (`UnquotedCode`) is asked for again, never cut.
   - **Scoring:** an `IRiteScorer` scores each draft (`JevScorer` for now, swappable like the models): its similarity
     scores for "More rites" and its quality for the Augury, in one request. A draft that can't be scored still joins the
     backlog, without scores.
@@ -193,3 +215,12 @@ database, as your `az login`; never production's). HTTP functions run without st
 and on pushes to `master`: restore, Release build, a Bicep lint and build of `infra/` (any warning fails it), then
 `tools/coverage.ps1 -NoBuild` (the same gate as a local run), with the Cosmos DB emulator as a service container for the
 repository tests.
+
+## Deploying
+
+- **Deploy Master** (`deploy-master.yml`): when Build and Test passes on a push to `master`, the same commit is deployed
+  to staging. Production joins at launch.
+- **Deploy Branch to Staging** (`deploy-branch-to-staging.yml`): run by hand with a branch name, to try a PR on staging.
+- Both call `deploy.yml`, which publishes the app and deploys it as the GitHub environment's identity (OIDC: the
+  environment's `AZURE_*` variables hold ids, not secrets). One deployment per environment at a time.
+- Staging admits only the owner's address, so the workflow can't call `/healthz`; check it from your machine.

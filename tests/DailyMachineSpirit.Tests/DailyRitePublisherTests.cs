@@ -31,6 +31,18 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task PublishToday_CountsThePublishedRite_OnlyOnce()
+    {
+        using var published = testbed.Probe.Collect<long>("dms.rites.published");
+        await testbed.AddDraft("Excellent", 0.95f);
+
+        Ok(await testbed.Publisher().PublishToday(CancellationToken.None));
+        Ok(await testbed.Publisher().PublishToday(CancellationToken.None));
+
+        Assert.Equal([$"kind=prayer model={Sol}"], MetricsProbe.Tags(published, "kind", "model"));
+    }
+
+    [Fact]
     public async Task PublishToday_WhenTodayHasItsRite_KeepsIt_AndTheBacklogIsUntouched()
     {
         await testbed.AddRite(Today, "Already here");

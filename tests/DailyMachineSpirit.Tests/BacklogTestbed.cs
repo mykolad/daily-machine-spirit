@@ -30,6 +30,11 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public int BacklogSize { get; set; } = 3;
 
+    /// <summary>Empty turns scoring off, as an empty <c>Jev:ApiKey</c> does.</summary>
+    public string JevApiKey { get; set; } = FakeJev.ApiKey;
+
+    public MetricsProbe Probe { get; } = new();
+
     public RiteRepository Rites => new(cosmos.Container, NullLogger<RiteRepository>.Instance);
 
     public DraftRepository Drafts => new(cosmos.Container);
@@ -41,7 +46,11 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public Task InitializeAsync() => cosmos.InitializeAsync();
 
-    public Task DisposeAsync() => cosmos.DisposeAsync();
+    public Task DisposeAsync()
+    {
+        Probe.Dispose();
+        return cosmos.DisposeAsync();
+    }
 
     public BacklogRefiller Refiller()
     {
@@ -50,13 +59,14 @@ public sealed class BacklogTestbed : IAsyncLifetime
             Drafts,
             Rites,
             Scriptorium,
-            new RiteWriter(Models, options, Time, NullLogger<RiteWriter>.Instance),
-            Jev.Scorer(Time, FakeJev.ApiKey),
+            new RiteWriter(Models, options, Time, Probe.Metrics, NullLogger<RiteWriter>.Instance),
+            Jev.Scorer(Time, JevApiKey),
             options,
+            Probe.Metrics,
             NullLogger<BacklogRefiller>.Instance);
     }
 
-    public DailyRitePublisher Publisher() => new(Rites, Drafts, Scriptorium, Refiller(), Time);
+    public DailyRitePublisher Publisher() => new(Rites, Drafts, Scriptorium, Refiller(), Time, Probe.Metrics);
 
     public Scribes Scribes() => new(Drafts, Rites, Scriptorium, Time);
 

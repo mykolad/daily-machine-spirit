@@ -1,0 +1,25 @@
+name: Deploy Branch to Staging
+
+# Tries a PR's branch on staging before it's merged (Actions → Deploy Branch to Staging → Run workflow). Staging keeps
+# it until the next deployment; the next merge to master puts master back.
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Branch to deploy
+        type: string
+        required: true
+        default: master
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  staging:
+    name: staging
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: staging
+      app-name: machinespirit-app-staging
+      ref: ${{ inputs.branch }}
