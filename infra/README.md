@@ -106,6 +106,8 @@ az keyvault secret set --vault-name machinespirit-kv-staging --name OtlpHeaders 
   --file $HOME\.machinespirit\otlp-headers.txt -o none
 ```
 
+The dashboard is in `observability/` (its README says how to import it).
+
 ## Deploying the app
 
 GitHub Actions deploys the app (`.github/workflows/`), signed in as the environment's GitHub identity:

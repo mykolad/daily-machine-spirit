@@ -1,6 +1,7 @@
 using System.Text.Json;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Functions.Generation.Chat;
+using DailyMachineSpirit.Functions.Telemetry;
 using LanguageExt;
 using LanguageExt.Common;
 using Microsoft.Extensions.AI;
@@ -38,13 +39,16 @@ public sealed class RiteWriter
     private readonly IChatClients chatClients;
     private readonly IOptions<GenerationOptions> options;
     private readonly TimeProvider time;
+    private readonly SiteMetrics metrics;
     private readonly ILogger<RiteWriter> logger;
 
-    public RiteWriter(IChatClients chatClients, IOptions<GenerationOptions> options, TimeProvider time, ILogger<RiteWriter> logger)
+    public RiteWriter(
+        IChatClients chatClients, IOptions<GenerationOptions> options, TimeProvider time, SiteMetrics metrics, ILogger<RiteWriter> logger)
     {
         this.chatClients = chatClients;
         this.options = options;
         this.time = time;
+        this.metrics = metrics;
         this.logger = logger;
     }
 
@@ -67,8 +71,9 @@ public sealed class RiteWriter
                 if (failures.Count > 0)
                     await Task.Delay(TimeSpan.FromSeconds(settings.RetryDelaySeconds), time, cancellationToken);
 
-                var written = (await Ask(model, messages, cancellationToken))
-                    .Bind(answer => Check(answer, kind))
+                var answer = await Ask(model, messages, cancellationToken);
+                var written = answer
+                    .Bind(draft => Check(draft, kind))
                     .Map(draft => new Rite
                     {
                         PublishedOnUtc = publishedOnUtc,
@@ -79,6 +84,7 @@ public sealed class RiteWriter
                         GeneratedByModel = model,
                         GeneratedAtUtc = time.GetUtcNow().UtcDateTime,
                     });
+                metrics.Answer(model, answer.IsLeft ? "failed" : written.IsLeft ? "refused" : "accepted");
                 if (written.IsRight)
                 {
                     // The model shows whether the fallback had to step in, even when the run succeeds.

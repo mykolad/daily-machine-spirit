@@ -27,10 +27,16 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
     private readonly FakeTimeProvider time = new(new DateTimeOffset(2026, 10, 7, 0, 0, 5, TimeSpan.Zero));
     private readonly FakeChatClients models = new();
     private FakeJev jev = FakeJev.AnsweringBuildsAndRepetition();
+    private string jevApiKey = FakeJev.ApiKey;
+    private readonly MetricsProbe probe = new();
 
     public Task InitializeAsync() => cosmos.InitializeAsync();
 
-    public Task DisposeAsync() => cosmos.DisposeAsync();
+    public Task DisposeAsync()
+    {
+        probe.Dispose();
+        return cosmos.DisposeAsync();
+    }
 
     [Fact]
     public async Task PublishToday_WritesSavesAndScoresTodaysRite()
@@ -78,15 +84,44 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task PublishToday_CountsThePublishedRite_AndItsScoring()
+    {
+        using var published = probe.Collect<long>("dms.rites.published");
+        using var scoring = probe.Collect<long>("dms.scoring.runs");
+        models.Answers(Sol, GoodAnswer);
+
+        Ok(await Publisher().PublishToday(CancellationToken.None));
+        Ok(await Publisher().PublishToday(CancellationToken.None));
+
+        Assert.Equal([$"kind={DailyRitePublisher.KindFor(Today).ToString().ToLowerInvariant()} model={Sol}"], MetricsProbe.Tags(published, "kind", "model"));
+        Assert.Equal(["outcome=scored"], MetricsProbe.Tags(scoring, "outcome"));
+    }
+
+    [Fact]
+    public async Task PublishToday_WithScoringOff_PublishesWithoutScores_AndCountsItAsOff()
+    {
+        jevApiKey = string.Empty;
+        using var scoring = probe.Collect<long>("dms.scoring.runs");
+        models.Answers(Sol, GoodAnswer);
+
+        Ok(await Publisher().PublishToday(CancellationToken.None));
+
+        Assert.True((await SavedOn(Today)).Similarity.IsNone);
+        Assert.Equal(["outcome=off"], MetricsProbe.Tags(scoring, "outcome"));
+    }
+
+    [Fact]
     public async Task PublishToday_WhenScoringFails_StillPublishes_WithoutScores()
     {
         jev = new FakeJev(HttpStatusCode.PaymentRequired, """{"error": "Out of credits."}""");
         models.Answers(Sol, GoodAnswer);
+        using var scoring = probe.Collect<long>("dms.scoring.runs");
 
         var published = Ok(await Publisher().PublishToday(CancellationToken.None));
 
         Assert.True(published.IsNew);
         Assert.True((await SavedOn(Today)).Similarity.IsNone);
+        Assert.Equal(["outcome=failed"], MetricsProbe.Tags(scoring, "outcome"));
     }
 
     [Fact]
@@ -151,10 +186,11 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
         var options = Options.Create(new GenerationOptions { RetryDelaySeconds = 0 });
         return new DailyRitePublisher(
             Repository,
-            new RiteWriter(models, options, time, NullLogger<RiteWriter>.Instance),
-            jev.Scorer(time, FakeJev.ApiKey),
+            new RiteWriter(models, options, time, probe.Metrics, NullLogger<RiteWriter>.Instance),
+            jev.Scorer(time, jevApiKey),
             options,
             time,
+            probe.Metrics,
             NullLogger<DailyRitePublisher>.Instance);
     }
 
