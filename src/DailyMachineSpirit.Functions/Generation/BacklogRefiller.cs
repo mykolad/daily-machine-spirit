@@ -2,6 +2,7 @@ using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Generation.Scoring;
 using DailyMachineSpirit.Functions.Generation.Writing;
+using DailyMachineSpirit.Functions.Telemetry;
 using LanguageExt;
 using LanguageExt.Common;
 using Microsoft.Extensions.Logging;
@@ -19,6 +20,7 @@ public sealed class BacklogRefiller
     private readonly RiteWriter writer;
     private readonly IRiteScorer scorer;
     private readonly IOptions<GenerationOptions> options;
+    private readonly SiteMetrics metrics;
     private readonly ILogger<BacklogRefiller> logger;
 
     public BacklogRefiller(
@@ -28,6 +30,7 @@ public sealed class BacklogRefiller
         RiteWriter writer,
         IRiteScorer scorer,
         IOptions<GenerationOptions> options,
+        SiteMetrics metrics,
         ILogger<BacklogRefiller> logger)
     {
         this.drafts = drafts;
@@ -36,6 +39,7 @@ public sealed class BacklogRefiller
         this.writer = writer;
         this.scorer = scorer;
         this.options = options;
+        this.metrics = metrics;
         this.logger = logger;
     }
 
@@ -85,13 +89,22 @@ public sealed class BacklogRefiller
             Right: scored =>
             {
                 scored.Similarity.Match(
-                    Some: scores => logger.LogInformation("Draft {Title} was scored by {ScoresGenerator}.", draft.Title, scores.ScoresGeneratorVersion),
-                    None: () => logger.LogInformation("Draft {Title} joins the backlog without scores: scoring is turned off.", draft.Title));
+                    Some: scores =>
+                    {
+                        logger.LogInformation("Draft {Title} was scored by {ScoresGenerator}.", draft.Title, scores.ScoresGeneratorVersion);
+                        metrics.Scoring("scored");
+                    },
+                    None: () =>
+                    {
+                        logger.LogInformation("Draft {Title} joins the backlog without scores: scoring is turned off.", draft.Title);
+                        metrics.Scoring("off");
+                    });
                 return scored;
             },
             Left: error =>
             {
                 logger.LogWarning(error.ToException(), "Draft {Title} joins the backlog without scores: {Reason}", draft.Title, error.Message);
+                metrics.Scoring("failed");
                 return draft;
             });
 }

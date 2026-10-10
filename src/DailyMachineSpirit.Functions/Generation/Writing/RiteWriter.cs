@@ -1,6 +1,7 @@
 using System.Text.Json;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Functions.Generation.Chat;
+using DailyMachineSpirit.Functions.Telemetry;
 using LanguageExt;
 using LanguageExt.Common;
 using Microsoft.Extensions.AI;
@@ -38,13 +39,16 @@ public sealed class RiteWriter
     private readonly IChatClients chatClients;
     private readonly IOptions<GenerationOptions> options;
     private readonly TimeProvider time;
+    private readonly SiteMetrics metrics;
     private readonly ILogger<RiteWriter> logger;
 
-    public RiteWriter(IChatClients chatClients, IOptions<GenerationOptions> options, TimeProvider time, ILogger<RiteWriter> logger)
+    public RiteWriter(
+        IChatClients chatClients, IOptions<GenerationOptions> options, TimeProvider time, SiteMetrics metrics, ILogger<RiteWriter> logger)
     {
         this.chatClients = chatClients;
         this.options = options;
         this.time = time;
+        this.metrics = metrics;
         this.logger = logger;
     }
 
@@ -67,8 +71,9 @@ public sealed class RiteWriter
                 if (failures.Count > 0)
                     await Task.Delay(TimeSpan.FromSeconds(settings.RetryDelaySeconds), time, cancellationToken);
 
-                var written = (await Ask(model, messages, cancellationToken))
-                    .Bind(answer => Check(answer, kind))
+                var answer = await Ask(model, messages, cancellationToken);
+                var written = answer
+                    .Bind(content => Check(content, kind))
                     .Map(content => new Draft
                     {
                         Id = Guid.NewGuid(),
@@ -80,6 +85,7 @@ public sealed class RiteWriter
                         GeneratedByModel = model,
                         GeneratedAtUtc = time.GetUtcNow().UtcDateTime,
                     });
+                metrics.Answer(model, answer.IsLeft ? "failed" : written.IsLeft ? "refused" : "accepted");
                 if (written.IsRight)
                 {
                     // The model shows whether the fallback had to step in, even when the run succeeds.
@@ -123,7 +129,8 @@ public sealed class RiteWriter
     {
         var content = answer with
         {
-            Title = answer.Title.Trim(),
+            // A heading shows no code formatting: a stray backtick is dropped rather than asked about again.
+            Title = answer.Title.Replace("`", "").Trim(),
             Text = answer.Text.Trim(),
             HereticalTruth = answer.HereticalTruth.Trim(),
         };
@@ -145,7 +152,11 @@ public sealed class RiteWriter
             || Occurrences(content.Text, Omnissiah) > allowedInText)
             return Error.New($"The answer names the {Omnissiah} where it isn't allowed: only once, in a prayer's text.");
 
-        return content;
+        // The pages show `backticked` words as code: a command written as plain words would read as prose.
+        return new[] { content.Text, content.HereticalTruth }.Select(UnquotedCode.Find).Somes().HeadOrNone()
+            .Match<Either<Error, RiteContent>>(
+                Some: code => Error.New($"The answer has code outside backticks: {code}."),
+                None: () => content);
     }
 
     private static int Occurrences(string text, string word)

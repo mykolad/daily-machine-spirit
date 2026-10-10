@@ -78,12 +78,40 @@ public sealed class BacklogRefillerTests : IAsyncLifetime
         testbed.BacklogSize = 1;
         testbed.Jev = new FakeJev(HttpStatusCode.PaymentRequired, """{"error": "Out of credits."}""");
         testbed.Models.Answers(Sol, Answer("Unscored"));
+        using var scoring = testbed.Probe.Collect<long>("dms.scoring.runs");
 
         Ok(await testbed.Refiller().Refill(CancellationToken.None));
 
         var draft = Assert.Single(await testbed.Waiting());
         Assert.True(draft.Augury.IsNone);
         Assert.True(draft.Similarity.IsNone);
+        Assert.Equal(["outcome=failed"], MetricsProbe.Tags(scoring, "outcome"));
+    }
+
+    [Fact]
+    public async Task Refill_WithScoringOff_AddsTheDrafts_WithoutScores()
+    {
+        testbed.BacklogSize = 1;
+        testbed.JevApiKey = string.Empty;
+        testbed.Models.Answers(Sol, Answer("Unscored"));
+        using var scoring = testbed.Probe.Collect<long>("dms.scoring.runs");
+
+        Ok(await testbed.Refiller().Refill(CancellationToken.None));
+
+        Assert.True(Assert.Single(await testbed.Waiting()).Augury.IsNone);
+        Assert.Equal(["outcome=off"], MetricsProbe.Tags(scoring, "outcome"));
+    }
+
+    [Fact]
+    public async Task Refill_CountsEachDraftsScoring()
+    {
+        testbed.BacklogSize = 2;
+        testbed.Models.Answers(Sol, Answer("First"), Answer("Second"));
+        using var scoring = testbed.Probe.Collect<long>("dms.scoring.runs");
+
+        Ok(await testbed.Refiller().Refill(CancellationToken.None));
+
+        Assert.Equal(["outcome=scored", "outcome=scored"], MetricsProbe.Tags(scoring, "outcome"));
     }
 
     [Fact]
