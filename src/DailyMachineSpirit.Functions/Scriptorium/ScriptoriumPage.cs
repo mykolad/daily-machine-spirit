@@ -224,10 +224,7 @@ public static partial class ScriptoriumPage
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <meta name="robots" content="noindex">
             <title>{Encode(title)} · The Daily Machine Spirit</title>
-            <link rel="preconnect" href="https://fonts.googleapis.com">
-            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-            <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=EB+Garamond:ital@0;1&family=Figtree:wght@400;600&family=JetBrains+Mono&display=swap">
-            <style>{Styles}</style>
+            <style>{Pages.Styles.FontFaces}{Styles}</style>
             </head>
             <body>
             <a class="skip" href="#main">Skip to content</a>

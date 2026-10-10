@@ -57,6 +57,15 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Page_UsesTheSitesOwnFonts_AndContactsNoOtherSite()
+    {
+        var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+
+        Assert.Contains("url(/fonts/cinzel.woff2)", html);
+        Assert.DoesNotContain("https://", html);
+    }
+
+    [Fact]
     public async Task Page_SaysWhatTheLastActionDid()
     {
         var html = Html(await Function(enabled: true).Page(Get("burn"), CancellationToken.None), 200);
