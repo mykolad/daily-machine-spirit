@@ -13,12 +13,15 @@ namespace DailyMachineSpirit.Functions.Scriptorium.SignIn;
 /// A Scribe is whoever Cloudflare Access signed in: every request it lets through carries a token signed by the team
 /// (<see cref="TokenHeader"/>). The app checks the token too, so a request sent straight to the app's own address,
 /// around Cloudflare, gets nowhere. The team's signing keys are fetched and kept for an hour, and fetched again early
-/// when a token names a key they don't have (Access rotates them), at most every five minutes.
+/// when a token names a key they don't have (Access rotates them), at most every five minutes. A failed fetch waits as
+/// long before the next.
 /// </summary>
 public sealed class CloudflareAccessSignIn : IScribeSignIn
 {
     public const string TokenHeader = "Cf-Access-Jwt-Assertion";
     public const string HttpClientName = "cloudflare-access";
+
+    public static readonly Error KeysUnavailable = Error.New("Access's signing keys couldn't be fetched lately; the next try waits a few minutes.");
 
     private static readonly TimeSpan KeysKeptFor = TimeSpan.FromHours(1);
     // A token naming an unknown key fetches the keys again, but at most this often: the app's address is public, and
@@ -31,6 +34,7 @@ public sealed class CloudflareAccessSignIn : IScribeSignIn
     private readonly ILogger<CloudflareAccessSignIn> logger;
     private readonly SemaphoreSlim fetching = new(1, 1);
     private Option<(JsonWebKeySet Keys, DateTimeOffset FetchedAt)> keys = None;
+    private Option<DateTimeOffset> lastFailure = None;
 
     public CloudflareAccessSignIn(
         IHttpClientFactory httpClients, IOptions<CloudflareAccessOptions> options, TimeProvider time, ILogger<CloudflareAccessSignIn> logger)
@@ -89,9 +93,16 @@ public sealed class CloudflareAccessSignIn : IScribeSignIn
         {
             var now = time.GetUtcNow();
             // Waiting requests that also missed the key find it fetched by the first, so they share one refresh.
-            return await keys.Filter(fetched => now - fetched.FetchedAt < (refresh ? RefreshAtMostEvery : KeysKeptFor)).Match(
+            var fresh = keys.Filter(fetched => now - fetched.FetchedAt < (refresh ? RefreshAtMostEvery : KeysKeptFor));
+            // After a failed fetch, the next waits as long as a refresh would: during an Access outage, each request
+            // starting its own fetch would keep the Scribes waiting behind them. Keys still within their hour still serve.
+            var coolingDown = lastFailure.Filter(failed => now - failed < RefreshAtMostEvery).IsSome;
+            return await fresh.Match(
                 Some: fetched => Task.FromResult(Right<Error, JsonWebKeySet>(fetched.Keys)),
-                None: () => Fetch(now, cancellationToken));
+                None: () => coolingDown
+                    ? Task.FromResult(keys.Filter(fetched => now - fetched.FetchedAt < KeysKeptFor).Map(fetched => fetched.Keys)
+                        .ToEither(KeysUnavailable))
+                    : Fetch(now, cancellationToken));
         }
         finally
         {
@@ -107,11 +118,13 @@ public sealed class CloudflareAccessSignIn : IScribeSignIn
             var json = await httpClients.CreateClient(HttpClientName).GetStringAsync(url, cancellationToken);
             var fetchedKeys = new JsonWebKeySet(json);
             keys = Some((fetchedKeys, now));
+            lastFailure = None;
             return fetchedKeys;
         }
         // An outage or an answer that isn't a key set: nobody is let in. Only the caller's cancellation throws.
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
+            lastFailure = Some(now);
             return Error.New(ex);
         }
     }

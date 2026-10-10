@@ -100,6 +100,35 @@ public class CloudflareAccessSignInTests
         Assert.False(await IsScribe(team.ValidToken()));
     }
 
+    [Fact]
+    public async Task WhenTheKeysCantBeFetched_TheNextTryWaitsAFewMinutes()
+    {
+        team.KeysStatus = HttpStatusCode.ServiceUnavailable;
+
+        for (var i = 0; i < 10; i++)
+            Assert.False(await IsScribe(team.ValidToken()));
+
+        Assert.Equal(1, team.KeyFetches);
+        team.KeysStatus = HttpStatusCode.OK;
+        time.Advance(TimeSpan.FromMinutes(6));
+        Assert.True(await IsScribe(team.ValidToken()));
+        Assert.Equal(2, team.KeyFetches);
+    }
+
+    [Fact]
+    public async Task WhenARefreshFails_TheKeysAlreadyFetchedStillServe_AndForgedTokensWait()
+    {
+        Assert.True(await IsScribe(team.ValidToken()));
+        team.KeysStatus = HttpStatusCode.ServiceUnavailable;
+        time.Advance(TimeSpan.FromMinutes(6));
+
+        Assert.False(await IsScribe(FakeAccessTeam.ForgedToken()));
+        Assert.True(await IsScribe(team.ValidToken()));
+        Assert.False(await IsScribe(FakeAccessTeam.ForgedToken()));
+
+        Assert.Equal(2, team.KeyFetches);
+    }
+
     private Task<bool> IsScribe(string token)
     {
         var request = new DefaultHttpContext().Request;
