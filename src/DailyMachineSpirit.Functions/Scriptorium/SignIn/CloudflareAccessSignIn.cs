@@ -1,3 +1,4 @@
+using DailyMachineSpirit.Functions.Telemetry;
 using LanguageExt;
 using LanguageExt.Common;
 using Microsoft.AspNetCore.Http;
@@ -31,17 +32,23 @@ public sealed class CloudflareAccessSignIn : IScribeSignIn
     private readonly IHttpClientFactory httpClients;
     private readonly IOptions<CloudflareAccessOptions> options;
     private readonly TimeProvider time;
+    private readonly SiteMetrics metrics;
     private readonly ILogger<CloudflareAccessSignIn> logger;
     private readonly SemaphoreSlim fetching = new(1, 1);
     private Option<(JsonWebKeySet Keys, DateTimeOffset FetchedAt)> keys = None;
     private Option<DateTimeOffset> lastFailure = None;
 
     public CloudflareAccessSignIn(
-        IHttpClientFactory httpClients, IOptions<CloudflareAccessOptions> options, TimeProvider time, ILogger<CloudflareAccessSignIn> logger)
+        IHttpClientFactory httpClients,
+        IOptions<CloudflareAccessOptions> options,
+        TimeProvider time,
+        SiteMetrics metrics,
+        ILogger<CloudflareAccessSignIn> logger)
     {
         this.httpClients = httpClients;
         this.options = options;
         this.time = time;
+        this.metrics = metrics;
         this.logger = logger;
     }
 
@@ -55,19 +62,14 @@ public sealed class CloudflareAccessSignIn : IScribeSignIn
             .BindAsync(result => result.Exception is SecurityTokenSignatureKeyNotFoundException
                 ? Keys(refresh: true, cancellationToken).MapAsync(fresh => Check(token, fresh))
                 : Task.FromResult(Right<Error, TokenValidationResult>(result)));
-        return checkedToken.Match(
-            Right: result =>
-            {
-                // The reason only: never the token, which would let anyone who reads the logs act as that Scribe.
-                if (!result.IsValid)
-                    logger.LogWarning("A Scriptorium request's Access token was refused: {Reason}", result.Exception?.GetType().Name);
-                return result.IsValid;
-            },
-            Left: error =>
-            {
-                logger.LogError(error.ToException(), "Access's signing keys couldn't be fetched, so nobody is let in: {Reason}", error.Message);
-                return false;
-            });
+        // Refusals are counted, not logged: the app's address is public, so anyone can send tokens, and a log line for
+        // each would let them flood the logs. The reason is the check that failed, never the token itself.
+        var isScribe = checkedToken.Match(Right: result => result.IsValid, Left: _ => false);
+        if (!isScribe)
+            metrics.ScribeRefused(checkedToken.Match(
+                Right: result => result.Exception?.GetType().Name ?? "invalid",
+                Left: _ => "keys-unavailable"));
+        return isScribe;
     }
 
     private Task<TokenValidationResult> Check(string token, JsonWebKeySet signingKeys)
@@ -121,9 +123,11 @@ public sealed class CloudflareAccessSignIn : IScribeSignIn
             lastFailure = None;
             return fetchedKeys;
         }
-        // An outage or an answer that isn't a key set: nobody is let in. Only the caller's cancellation throws.
+        // An outage or an answer that isn't a key set: nobody is let in. Only the caller's cancellation throws. Logged
+        // here, once per failed fetch, rather than for every request refused during the wait before the next.
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
+            logger.LogError(ex, "Access's signing keys couldn't be fetched, so nobody is let in for a few minutes: {Reason}", ex.Message);
             lastFailure = Some(now);
             return Error.New(ex);
         }

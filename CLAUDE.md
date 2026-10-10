@@ -165,8 +165,11 @@ observability/                    — the Grafana dashboard, and what the app's 
     - **Cloudflare Access** (`CloudflareAccess:TeamDomain` and `:Audience` set, production): every request must carry
       Access's signed token (`Cf-Access-Jwt-Assertion`), checked against the team's keys, issuer and the application's
       audience, so going around Cloudflare to the app's own address gets nowhere. The keys are kept for an hour and
-      fetched again when a token names a new one.
-    - **No sign-in** (`Scriptorium:WithoutSignIn`, staging only): its IP rule already admits its owner alone.
+      fetched again when a token names a new one. Refusals are counted (`dms.scriptorium.refusals`, by reason), not
+      logged: anyone can send a token to the public address. A failed key fetch is logged once, and the next waits
+      five minutes.
+    - **No sign-in** (`Scriptorium:WithoutSignIn`): staging, whose IP rule already admits its owner alone, and a local
+      run (`local.settings.example.json` sets it).
     - **Neither:** nobody gets in, even with the Scriptorium on.
 
 ## Pull requests

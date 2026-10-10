@@ -7,10 +7,11 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace DailyMachineSpirit.Tests;
 
-public class CloudflareAccessSignInTests
+public sealed class CloudflareAccessSignInTests : IDisposable
 {
     private readonly FakeAccessTeam team = new();
     private readonly FakeTimeProvider time = new(DateTimeOffset.UtcNow);
+    private readonly MetricsProbe probe = new();
     private readonly CloudflareAccessSignIn signIn;
 
     public CloudflareAccessSignInTests()
@@ -19,8 +20,11 @@ public class CloudflareAccessSignInTests
             team,
             Options.Create(new CloudflareAccessOptions { TeamDomain = FakeAccessTeam.Domain, Audience = FakeAccessTeam.Audience }),
             time,
+            probe.Metrics,
             NullLogger<CloudflareAccessSignIn>.Instance);
     }
+
+    public void Dispose() => probe.Dispose();
 
     [Fact]
     public async Task ATokenFromTheTeam_ForThisApplication_IsAScribe()
@@ -98,6 +102,22 @@ public class CloudflareAccessSignInTests
         team.KeysStatus = HttpStatusCode.ServiceUnavailable;
 
         Assert.False(await IsScribe(team.ValidToken()));
+    }
+
+    [Fact]
+    public async Task Refusals_AreCounted_ByReason()
+    {
+        using var refusals = probe.Collect<long>("dms.scriptorium.refusals");
+
+        Assert.True(await IsScribe(team.ValidToken()));
+        Assert.False(await IsScribe(team.Token($"https://{FakeAccessTeam.Domain}", "another-aud-tag", DateTime.UtcNow.AddHours(1))));
+        team.KeysStatus = HttpStatusCode.ServiceUnavailable;
+        time.Advance(TimeSpan.FromMinutes(61));
+        Assert.False(await IsScribe(team.ValidToken()));
+
+        Assert.Equal(
+            ["reason=SecurityTokenInvalidAudienceException", "reason=keys-unavailable"],
+            MetricsProbe.Tags(refusals, "reason"));
     }
 
     [Fact]

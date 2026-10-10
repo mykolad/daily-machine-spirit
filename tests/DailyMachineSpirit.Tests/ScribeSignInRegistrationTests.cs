@@ -1,4 +1,5 @@
 using DailyMachineSpirit.Functions.Scriptorium.SignIn;
+using DailyMachineSpirit.Functions.Telemetry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -26,7 +27,9 @@ public class ScribeSignInRegistrationTests
         var services = new ServiceCollection()
             .AddSingleton(TimeProvider.System)
             .AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance)
-            .AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+            .AddSingleton(typeof(ILogger<>), typeof(NullLogger<>))
+            .AddMetrics()
+            .AddSingleton<SiteMetrics>();
 
         var signIn = services.AddScribeSignIn(configuration).BuildServiceProvider().GetRequiredService<IScribeSignIn>();
 
