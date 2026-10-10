@@ -5,6 +5,7 @@ using DailyMachineSpirit.Functions.Generation.Chat;
 using DailyMachineSpirit.Functions.Generation.Scoring;
 using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Scriptorium;
+using DailyMachineSpirit.Functions.Scriptorium.SignIn;
 using DailyMachineSpirit.Functions.Telemetry;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Functions.Worker.Builder;
@@ -69,5 +70,6 @@ builder.Services.AddTransient<DailyRitePublisher>();
 // The Scriptorium: the Scribes' page.
 builder.Services.Configure<ScriptoriumOptions>(builder.Configuration.GetSection(ScriptoriumOptions.SectionName));
 builder.Services.AddTransient<Scribes>();
+builder.Services.AddScribeSignIn(builder.Configuration);
 
 builder.Build().Run();

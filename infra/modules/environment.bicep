@@ -18,6 +18,11 @@ param ownerPrincipalId string
 param githubSubjectPrefix string
 @description('Whether the app serves the Scriptorium, the moderators\' page. Only where the page is already restricted: staging\'s IP rule, or Cloudflare Access in production.')
 param scriptoriumEnabled bool
+@description('Lets whoever reaches the Scriptorium in without a sign-in: only where the app admits its owner\'s address alone (staging).')
+param scriptoriumWithoutSignIn bool
+@description('The Cloudflare Access team and application guarding the Scriptorium (CloudflareAccessOptions); empty until set up.')
+param cloudflareAccessTeamDomain string
+param cloudflareAccessAudience string
 
 var keyVaultSecretsOfficer = 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7'
 var appName = '${prefix}-app${nameSuffix}'
@@ -212,6 +217,18 @@ resource app 'Microsoft.Web/sites@2024-04-01' = {
         {
           name: 'Scriptorium__Enabled'
           value: scriptoriumEnabled ? 'true' : 'false'
+        }
+        {
+          name: 'Scriptorium__WithoutSignIn'
+          value: scriptoriumWithoutSignIn ? 'true' : 'false'
+        }
+        {
+          name: 'CloudflareAccess__TeamDomain'
+          value: cloudflareAccessTeamDomain
+        }
+        {
+          name: 'CloudflareAccess__Audience'
+          value: cloudflareAccessAudience
         }
         // Telemetry to Grafana Cloud, read by both the Functions host and the app (Program.cs). The header carries the
         // stack's token, from the vault (infra/README.md).

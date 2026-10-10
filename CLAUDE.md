@@ -160,8 +160,17 @@ observability/                    — the Grafana dashboard, and what the app's 
     Summon.
   - **The page:** plain HTML forms, no script. Each action posts and redirects back with what happened. It's never
     cached or indexed, and forms posted from another site are refused (`Sec-Fetch-Site`).
-  - **Access:** `Scriptorium:Enabled` is off by default. Staging turns it on, since only its owner's address can reach
-    it. Production turns it on only behind Cloudflare Access.
+  - **Access:** `Scriptorium:Enabled` is off by default. Who counts as a Scribe is an `IScribeSignIn`
+    (`Scriptorium/SignIn/`), chosen to fail closed (`AddScribeSignIn`):
+    - **Cloudflare Access** (`CloudflareAccess:TeamDomain` and `:Audience` set, production): every request must carry
+      Access's signed token (`Cf-Access-Jwt-Assertion`), checked against the team's keys, issuer and the application's
+      audience, so going around Cloudflare to the app's own address gets nowhere. The keys are kept for an hour and
+      fetched again when a token names a new one. Refusals are counted (`dms.scriptorium.refusals`, by reason), not
+      logged: anyone can send a token to the public address. A failed key fetch is logged once, and the next waits
+      five minutes.
+    - **No sign-in** (`Scriptorium:WithoutSignIn`): staging, whose IP rule already admits its owner alone, and a local
+      run (`local.settings.example.json` sets it).
+    - **Neither:** nobody gets in, even with the Scriptorium on.
 
 ## Pull requests
 

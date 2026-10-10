@@ -17,6 +17,13 @@ var roles = {
   cognitiveServicesOpenAiUser: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
 }
 
+// The Cloudflare Access application guarding production's Scriptorium, filled in at launch (infra/README.md). Neither
+// value is secret, and keeping them here, not in parameters, means no deployment can drop them by leaving one out.
+var productionAccess = {
+  teamDomain: ''
+  audience: ''
+}
+
 // The models. Keys are off: the apps and the owner call them with Entra ID.
 resource ai 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   name: '${prefix}-ai'
@@ -152,6 +159,9 @@ module staging 'modules/environment.bicep' = {
     ownerPrincipalId: ownerPrincipalId
     githubSubjectPrefix: githubSubjectPrefix
     scriptoriumEnabled: true
+    scriptoriumWithoutSignIn: true
+    cloudflareAccessTeamDomain: ''
+    cloudflareAccessAudience: ''
   }
 }
 
@@ -170,6 +180,9 @@ module production 'modules/environment.bicep' = if (deployProduction) {
     githubSubjectPrefix: githubSubjectPrefix
     // On once Cloudflare Access guards the Scriptorium.
     scriptoriumEnabled: false
+    scriptoriumWithoutSignIn: false
+    cloudflareAccessTeamDomain: productionAccess.teamDomain
+    cloudflareAccessAudience: productionAccess.audience
   }
 }
 

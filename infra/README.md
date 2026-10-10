@@ -128,6 +128,12 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
 ## Outside Azure
 
 - **Cloudflare** (`dailymachinespirit.fyi`): the DNS records and the origin certificate, added with the custom domain.
+- **Cloudflare Access** guards production's Scriptorium. In Zero Trust → Access → Applications, add a self-hosted
+  application for `dailymachinespirit.fyi/scriptorium` with GitHub as the login method and a policy that allows the
+  Scribes' accounts. Its overview shows the **Application Audience (AUD) tag**; the team domain is in Settings → Custom
+  Pages (`<team>.cloudflareaccess.com`). Put both in `productionAccess` in `resources.bicep` (neither is secret, and
+  there every deployment keeps them), set `scriptoriumEnabled: true` for production there, and deploy. Until both are
+  set, production's Scriptorium lets nobody in, even if it's turned on.
 - **GitHub**: one environment per deploy identity, holding its ids as variables (`AZURE_CLIENT_ID` from
   `githubClientIds` in the deployment's outputs, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`). `staging` exists;
   `production` and `infrastructure` come with their workflows.
