@@ -24,6 +24,13 @@ public interface IRiteRepository
     Task<Either<Error, Rite>> Add(Rite rite, CancellationToken cancellationToken);
 
     /// <summary>
+    /// Publishes a waiting draft as that day's rite, with the next number, and marks the draft published, all together.
+    /// <see cref="RiteRepository.DayAlreadyHasRite"/> when the day has a rite; <see cref="RiteRepository.DraftNotWaiting"/>
+    /// when the draft was published (or changed) meanwhile.
+    /// </summary>
+    Task<Either<Error, Rite>> Publish(Guid draftId, DateOnly publishedOnUtc, CancellationToken cancellationToken);
+
+    /// <summary>
     /// Moves one visitor's reaction from <paramref name="previous"/> to <paramref name="reaction"/> (either may be
     /// None) and returns the counts after it, or None when there's no such rite. Reactions are anonymous: the visitor's
     /// browser remembers its own and sends it as <paramref name="previous"/>, and nothing about the visitor is stored.

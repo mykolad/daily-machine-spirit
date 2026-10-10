@@ -3,9 +3,10 @@
 ## Project
 
 A satirical website: AI and vibe coding turn software engineers into tech-priests who recite rituals and prompts
-instead of understanding their tools. Every day at 00:00 UTC an LLM writes one **prayer** or **ritual** to the Machine
-Spirit, plus a **Heretical Truth**: one or two plain sentences on what really happens. Either kind is a **rite** (the
-design's word, and `Rite` in the code). Visitors react with **Blessed** or **Heresy**.
+instead of understanding their tools. Every day at 00:00 UTC it publishes one **prayer** or **ritual** to the Machine
+Spirit, written ahead by an LLM and chosen by moderators, plus a **Heretical Truth**: one or two plain sentences on
+what really happens. Either kind is a **rite** (the design's word, and `Rite` in the code). Visitors react with
+**Blessed** or **Heresy**.
 
 - Tagline: *In the grim darkness of the far future, no one reads the code.* Footer: *Knowledge is lost. The rituals
   remain.*
@@ -17,8 +18,8 @@ design's word, and `Rite` in the code). Visitors react with **Blessed** or **Her
 ## Solution layout
 
 ```
-src/DailyMachineSpirit.Functions  — the Functions app (HTTP and timer functions)
-  Generation/                     — the daily rite; Writing/ (prompt, writer), Chat/ (the models), Scoring/ (Jev)
+src/DailyMachineSpirit.Functions  — the Functions app (HTTP, timer and queue functions)
+  Generation/                     — the backlog and the daily rite: Writing/, Chat/ (the models), Scoring/ (Jev)
   Pages/                          — the public pages, rendered on the server (Today, the archive, a rite's page)
 src/DailyMachineSpirit.Data       — Cosmos DB: entities, documents, repositories
 tests/DailyMachineSpirit.Tests    — xUnit tests (the repository tests run against the Cosmos DB emulator)
@@ -93,7 +94,6 @@ observability/                    — the Grafana dashboard, and what the app's 
 - **Entra ID only** for Cosmos DB: the app's managed identity in Azure, your `az login` locally
   (`CosmosClients.Create`); the account's keys stay off. The account, databases, container, role assignments and the
   app's settings are all created by the Bicep in `infra/`, never by the app (its data-plane role can't create them). Settings: `Cosmos:Endpoint`, `Cosmos:Database`.
-
 - **Telemetry: OpenTelemetry to Grafana Cloud.** The app (`Program.cs`) exports its logs, traces and metrics over OTLP
   wherever `OTEL_EXPORTER_OTLP_ENDPOINT` is set; `infra/` sets it, with the token's header from the vault. The Functions
   host doesn't export (no `telemetryMode` in `host.json`): its request spans carry visitors' user agents. So a failure
@@ -118,17 +118,34 @@ observability/                    — the Grafana dashboard, and what the app's 
   only moves the counts (`RiteRepository.React`, Cosmos increments, never below zero). Nothing about a visitor is
   stored, so a visitor who clears their storage can react again; the rate limit belongs at Cloudflare. The API takes
   JSON only, so another site's form can't post to it.
-- **The daily rite** (`Generation/`): the `DailyRite` timer runs at 00:00 UTC and publishes today's rite only if the
-  day has none, so a retry or a caught-up run never replaces one visitors have seen. Prayers and rituals alternate by
-  date (`DailyRitePublisher.KindFor`).
-  - `RiteWriter` asks `gpt-6-sol` for a `RiteDraft` (JSON schema output), up to 3 times, then `gpt-6-luna`
-    (`Generation:Models`). An answer that's empty, too long, uses a forbidden name or writes code outside backticks
-    (`UnquotedCode`) is asked for again, never cut.
-  - The prompt (`RitePrompt`) lists the recent titles, so the model picks another subject.
-  - An `IRiteScorer` scores the saved rite for "More rites": `JevScorer` for now, swappable like the models
-    (`IChatClients`). Scoring failing (or `Jev:ApiKey` empty) still publishes the rite, just without scores.
-  - Settings: `AzureOpenAI:Endpoint` (models reached as the managed identity), `Jev:ApiKey` (a Key Vault reference in
-    Azure), and optionally `Generation:*` (`GenerationOptions`).
+- **The backlog and the daily rite** (`Generation/`). Rites are written ahead as **drafts** (`Draft`, documents of
+  type `draft` next to the rites), so moderators, the Scribes of the Scriptorium, can choose what's published.
+  - **Publishing:** the `DailyRite` timer runs at 00:00 UTC and publishes the top of the **Liturgical Calendar**, unless
+    the day already has its rite, so a retry or a caught-up run never replaces one visitors have seen.
+    `RiteRepository.Publish` takes the number, saves the rite and marks the draft published in one batch, using the
+    draft's ETag, so a draft is never published twice. An empty backlog never skips a day: a draft is written on the
+    spot.
+  - **The Augury** (`LiturgicalCalendar`) orders the waiting drafts:
+    - Better drafts go first. The quality comes from Jev's quality question, a first pick that #10 tests blind.
+    - A draft much like the week's rites before it waits.
+    - Prayers and rituals take turns when their qualities are close.
+    - Drafts without a quality (Jev off or failing) go last.
+  - **Refilling:** the `RefillBacklog` function keeps `Generation:BacklogSize` (20) drafts waiting. Each draft is of
+    the kind there are fewer of, on a subject neither the recent rites nor the waiting drafts have. The timer asks for a
+    refill after publishing, by a message on the `backlog-refills` queue: a full refill takes minutes, longer than a
+    request should wait. `host.json` takes one message at a time and tries a message 3 times, 10 minutes apart. The
+    queue is declared in `infra/`. Instances can refill at once, but each counts the waiting drafts before every draft
+    it writes, so the backlog overshoots by at most one draft per refill running.
+  - **A new environment starts with an empty backlog,** so its first midnight writes a rite on the spot, unmoderated.
+    To have moderated rites from the first day (production), summon a refill before the first midnight.
+  - **Writing:** `RiteWriter` asks `gpt-6-sol` for a `RiteContent` (JSON schema output), up to 3 times, then
+    `gpt-6-luna` (`Generation:Models`). An answer that's empty, too long, uses a forbidden name or writes code outside
+    backticks (`UnquotedCode`) is asked for again, never cut.
+  - **Scoring:** an `IRiteScorer` scores each draft (`JevScorer` for now, swappable like the models): its similarity
+    scores for "More rites" and its quality for the Augury, in one request. A draft that can't be scored still joins the
+    backlog, without scores.
+  - **Settings:** `AzureOpenAI:Endpoint` (the models are reached as the managed identity), `Jev:ApiKey` (a Key Vault
+    reference in Azure; empty turns Jev off), and optionally `Generation:*` (`GenerationOptions`).
 
 ## Pull requests
 

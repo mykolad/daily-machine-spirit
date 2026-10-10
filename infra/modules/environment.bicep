@@ -116,6 +116,17 @@ resource deployments 'Microsoft.Storage/storageAccounts/blobServices/containers@
   name: deploymentContainer
 }
 
+resource queues 'Microsoft.Storage/storageAccounts/queueServices@2024-01-01' = {
+  parent: storage
+  name: 'default'
+}
+
+// Asks for drafts to be written (RefillBacklogFunction.QueueName): after each publishing, and when the Scribes summon.
+resource backlogRefills 'Microsoft.Storage/storageAccounts/queueServices/queues@2024-01-01' = {
+  parent: queues
+  name: 'backlog-refills'
+}
+
 resource plan 'Microsoft.Web/serverfarms@2024-04-01' = {
   name: '${prefix}-plan${nameSuffix}'
   location: location

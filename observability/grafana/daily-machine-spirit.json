@@ -1,7 +1,7 @@
 {
   "title": "The Daily Machine Spirit",
   "uid": "daily-machine-spirit",
-  "description": "Traffic, Cosmos DB, the nightly rite, .NET and logs, from the app's OpenTelemetry export (observability/README.md).",
+  "description": "Traffic, Cosmos DB, the daily rite and the backlog, .NET and logs, from the app's OpenTelemetry export (observability/README.md).",
   "tags": ["daily-machine-spirit"],
   "timezone": "utc",
   "editable": true,
@@ -160,7 +160,7 @@
         }
       ]
     },
-    { "type": "row", "title": "The daily rite", "collapsed": false, "gridPos": { "x": 0, "y": 34, "w": 24, "h": 1 }, "id": 11, "panels": [] },
+    { "type": "row", "title": "The daily rite and the backlog", "collapsed": false, "gridPos": { "x": 0, "y": 34, "w": 24, "h": 1 }, "id": 11, "panels": [] },
     {
       "type": "bargauge",
       "title": "Model answers",
@@ -199,8 +199,8 @@
     },
     {
       "type": "bargauge",
-      "title": "Scoring and nightly runs",
-      "description": "Scoring for More rites (scored, failed, off), and the DailyRite timer's runs (ok, failed).",
+      "title": "Scoring and runs",
+      "description": "Scoring each new draft (scored, failed, off), and the runs of the DailyRite timer and the RefillBacklog queue function (ok, failed). A failed refill is tried again, up to 3 times.",
       "id": 14,
       "gridPos": { "x": 16, "y": 35, "w": 8, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "${prometheus}" },
@@ -216,8 +216,8 @@
         {
           "refId": "B",
           "instant": true,
-          "expr": "sum by (outcome) (increase(dms_invocation_duration_seconds_count{job=\"$service\", function=\"DailyRite\"}[$__range]))",
-          "legendFormat": "run {{outcome}}"
+          "expr": "sum by (function, outcome) (increase(dms_invocation_duration_seconds_count{job=\"$service\", function=~\"DailyRite|RefillBacklog\"}[$__range]))",
+          "legendFormat": "{{function}} {{outcome}}"
         }
       ]
     },
@@ -264,14 +264,14 @@
     { "type": "row", "title": "Logs", "collapsed": false, "gridPos": { "x": 0, "y": 52, "w": 24, "h": 1 }, "id": 19, "panels": [] },
     {
       "type": "logs",
-      "title": "The nightly rite",
-      "description": "Every step of writing, publishing and scoring the rite: which model answered, what it got wrong, and what was published.",
+      "title": "The daily rite and the backlog",
+      "description": "Every step of writing and scoring drafts and publishing the day's rite: which model answered, what it got wrong, and what was published.",
       "id": 22,
       "gridPos": { "x": 0, "y": 53, "w": 24, "h": 8 },
       "datasource": { "type": "loki", "uid": "${loki}" },
       "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending", "enableLogDetails": true },
       "targets": [
-        { "refId": "A", "expr": "{service_name=\"$service\"} | scope_name=~\"DailyMachineSpirit\\.Functions\\.(Generation\\..*|DailyRiteFunction)\"" }
+        { "refId": "A", "expr": "{service_name=\"$service\"} | scope_name=~\"DailyMachineSpirit\\.Functions\\.(Generation\\..*|DailyRiteFunction|RefillBacklogFunction)\"" }
       ]
     },
     {

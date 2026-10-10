@@ -30,7 +30,7 @@ public sealed class SiteMetrics
             "The models' answers when asked for a rite: accepted, refused (it broke a rule) or failed (no usable answer).");
         published = meter.CreateCounter<long>("dms.rites.published", "{rite}", "Rites published, by kind and model.");
         scoring = meter.CreateCounter<long>("dms.scoring.runs", "{run}",
-            "Scoring a new rite for More rites: scored, failed or off.");
+            "Scoring a new draft (for the Augury and More rites): scored, failed or off.");
     }
 
     public void Invocation(string function, string outcome, TimeSpan duration)

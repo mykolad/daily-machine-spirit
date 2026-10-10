@@ -29,6 +29,9 @@ public sealed class RitesWithoutScores : IRiteRepository
 
     public Task<Either<Error, Rite>> Add(Rite rite, CancellationToken cancellationToken) => rites.Add(rite, cancellationToken);
 
+    public Task<Either<Error, Rite>> Publish(Guid draftId, DateOnly publishedOnUtc, CancellationToken cancellationToken)
+        => rites.Publish(draftId, publishedOnUtc, cancellationToken);
+
     public Task<Either<Error, Option<ReactionCounts>>> React(
         int number, Option<Reaction> reaction, Option<Reaction> previous, CancellationToken cancellationToken)
         => rites.React(number, reaction, previous, cancellationToken);

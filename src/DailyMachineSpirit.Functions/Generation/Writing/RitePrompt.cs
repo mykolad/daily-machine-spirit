@@ -10,7 +10,7 @@ public static class RitePrompt
     public const int TextLength = 400;
     public const int HereticalTruthLength = 250;
 
-    public static string Instructions(RiteKind kind, IReadOnlyList<string> recentTitles)
+    public static string Instructions(RiteKind kind, IReadOnlyList<string> titlesToAvoid)
     {
         var sb = new StringBuilder();
         sb.AppendLine("You write for The Daily Machine Spirit, a satirical website. Its joke: AI and vibe coding are turning");
@@ -39,10 +39,10 @@ public static class RitePrompt
             : "- Don't name \"the Omnissiah\".");
         sb.AppendLine("- Family-friendly. No real people or companies mocked by name.");
 
-        if (recentTitles.Count > 0)
+        if (titlesToAvoid.Count > 0)
         {
-            sb.AppendLine("- The most recent rites are below: pick a different subject and title.");
-            foreach (var title in recentTitles)
+            sb.AppendLine("- These rites exist already: pick a different subject and title.");
+            foreach (var title in titlesToAvoid)
                 sb.AppendLine($"  * {title}");
         }
 
@@ -50,5 +50,5 @@ public static class RitePrompt
     }
 
     public static string Request(RiteKind kind)
-        => kind == RiteKind.Prayer ? "Write today's prayer." : "Write today's ritual.";
+        => kind == RiteKind.Prayer ? "Write a prayer." : "Write a ritual.";
 }
