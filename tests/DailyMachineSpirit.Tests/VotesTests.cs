@@ -81,12 +81,16 @@ public sealed class VotesTests : IAsyncLifetime
     {
         await AddRite();
 
-        await Task.WhenAll(Enumerable.Range(0, 6).Select(tab => Vote(Reader, Some(tab % 2 == 0 ? Reaction.Blessed : Reaction.Heresy))));
+        for (var round = 0; round < 5; round++)
+        {
+            var answers = await Task.WhenAll(Vote(Reader, Some(Reaction.Blessed)), Vote(Reader, Some(Reaction.Heresy)));
 
-        var counts = await Vote("someone-else", None);
-        var stored = Ok(await Repository.GetVotes(Reader, [1], CancellationToken.None))[1];
-        Assert.Equal(1, counts.Blessed + counts.Heresy);
-        Assert.Equal(stored == Reaction.Blessed ? new ReactionCounts(1, 0) : new ReactionCounts(0, 1), counts);
+            // Each answer is one consistent state: the reader's vote counted once, on the side it asked for.
+            Assert.Equal([new ReactionCounts(1, 0), new ReactionCounts(0, 1)], answers);
+            var counts = await Vote("someone-else", None);
+            var stored = Ok(await Repository.GetVotes(Reader, [1], CancellationToken.None))[1];
+            Assert.Equal(stored == Reaction.Blessed ? new ReactionCounts(1, 0) : new ReactionCounts(0, 1), counts);
+        }
     }
 
     [Fact]
