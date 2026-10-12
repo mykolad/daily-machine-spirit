@@ -23,7 +23,7 @@ public class JevJudgeTests
     private readonly FakeTimeProvider time = new(new DateTimeOffset(2026, 10, 7, 0, 1, 0, TimeSpan.Zero));
 
     [Fact]
-    public async Task Score_GivesTheTopicsThenTheActs_InQuestionOrder()
+    public async Task Judge_GivesTheTopicsThenTheActs_InQuestionOrder()
     {
         var jev = FakeJev.AnsweringBuildsAndRepetition();
 
@@ -41,7 +41,7 @@ public class JevJudgeTests
     }
 
     [Fact]
-    public async Task Score_JudgesTheQuality_AsTheProbabilitiesWeightedAverage()
+    public async Task Judge_JudgesTheQuality_AsTheProbabilitiesWeightedAverage()
     {
         var jev = FakeJev.AnsweringBuildsAndRepetition();
 
@@ -56,7 +56,7 @@ public class JevJudgeTests
     }
 
     [Fact]
-    public async Task Score_SendsTheDraftAndTheKey()
+    public async Task Judge_SendsTheDraftAndTheKey()
     {
         var jev = FakeJev.AnsweringBuildsAndRepetition();
 
@@ -74,7 +74,7 @@ public class JevJudgeTests
     }
 
     [Fact]
-    public async Task Score_WithoutAKey_IsOff_AndAsksNothing()
+    public async Task Judge_WithoutAKey_IsOff_AndAsksNothing()
     {
         var jev = FakeJev.AnsweringBuildsAndRepetition();
 
@@ -88,7 +88,7 @@ public class JevJudgeTests
     [InlineData(HttpStatusCode.PaymentRequired, """{"error": "Out of credits."}""", "Jev answered 402")]
     [InlineData(HttpStatusCode.OK, """{"answers": {}}""", "no probabilities")]
     [InlineData(HttpStatusCode.OK, "<html>", "")]
-    public async Task Score_WhenJevCantAnswer_ReturnsAnError(HttpStatusCode status, string body, string expected)
+    public async Task Judge_WhenJevCantAnswer_ReturnsAnError(HttpStatusCode status, string body, string expected)
     {
         var jev = new FakeJev(status, body);
 
@@ -98,7 +98,7 @@ public class JevJudgeTests
     }
 
     [Fact]
-    public async Task Score_WhenCancelled_Throws()
+    public async Task Judge_WhenCancelled_Throws()
     {
         var jev = FakeJev.AnsweringBuildsAndRepetition();
 

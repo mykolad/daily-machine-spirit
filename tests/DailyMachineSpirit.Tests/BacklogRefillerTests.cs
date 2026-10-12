@@ -17,7 +17,7 @@ public sealed class BacklogRefillerTests : IAsyncLifetime
     public Task DisposeAsync() => testbed.DisposeAsync();
 
     [Fact]
-    public async Task Refill_WritesScoredDrafts_UntilTheBacklogIsFull()
+    public async Task Refill_WritesJudgedDrafts_UntilTheBacklogIsFull()
     {
         await testbed.AddDraft("Already waiting", 0.5f);
         testbed.Models.Answers(Sol, Answer("Second"), Answer("Third"));

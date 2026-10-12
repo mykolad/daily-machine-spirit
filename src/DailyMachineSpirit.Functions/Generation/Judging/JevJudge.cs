@@ -9,7 +9,7 @@ using Microsoft.Extensions.Options;
 namespace DailyMachineSpirit.Functions.Generation.Judging;
 
 /// <summary>
-/// Scores drafts with Jev's decide API (jevtypesafeai.com), for "More rites" and the Augury, in one request: only the
+/// Judges drafts with Jev's decide API (jevtypesafeai.com), for "More rites" and the Augury, in one request: only the
 /// draft's own text goes there, never anything about visitors. The key is a header, never logged.
 /// </summary>
 public sealed class JevJudge : IRiteJudge
