@@ -26,9 +26,13 @@ public static class Html
         for (var i = 0; i < parts.Length; i++)
         {
             if (i % 2 == 1 && i <= lastCode)
+            {
                 html.Append("<code>").Append(Encode(parts[i])).Append("</code>");
+            }
             else
+            {
                 html.Append(i % 2 == 1 ? "`" : string.Empty).Append(Encode(parts[i]));
+            }
         }
         return html.ToString();
     }
@@ -37,8 +41,13 @@ public static class Html
     public static string FirstLine(string text)
     {
         for (var i = 40; i < text.Length; i++)
+        {
             if (text[i - 1] is '.' or '!' or '?' && (i == text.Length || char.IsWhiteSpace(text[i])))
+            {
                 return text[..i];
+            }
+        }
+
         return text;
     }
 

@@ -69,7 +69,9 @@ public sealed class RiteWriter
             {
                 // A pause before asking again: an overloaded or throttled model often answers a little later.
                 if (failures.Count > 0)
+                {
                     await Task.Delay(TimeSpan.FromSeconds(settings.RetryDelaySeconds), time, cancellationToken);
+                }
 
                 var answer = await Ask(model, messages, cancellationToken);
                 var written = answer
@@ -135,22 +137,31 @@ public sealed class RiteWriter
             HereticalTruth = answer.HereticalTruth.Trim(),
         };
         if (content.Title.Length == 0 || content.Text.Length == 0 || content.HereticalTruth.Length == 0)
+        {
             return Error.New("The answer has an empty field.");
+        }
+
         if (content.Title.Length > Rite.MaxTitleLength
             || content.Text.Length > Rite.MaxTextLength
             || content.HereticalTruth.Length > Rite.MaxHereticalTruthLength)
+        {
             return Error.New(
                 $"The answer is too long: title {content.Title.Length}, text {content.Text.Length}, heretical truth {content.HereticalTruth.Length} characters.");
+        }
 
         var everything = $"{content.Title}\n{content.Text}\n{content.HereticalTruth}";
         var forbidden = ForbiddenNames.Where(name => everything.Contains(name, StringComparison.OrdinalIgnoreCase)).ToList();
         if (forbidden.Count > 0)
+        {
             return Error.New($"The answer uses forbidden names: {string.Join(", ", forbidden)}.");
+        }
         // A prayer may call on the Omnissiah once; a heading, a Heretical Truth or a ritual never names it.
         var allowedInText = kind == RiteKind.Prayer ? 1 : 0;
         if (Occurrences(content.Title, Omnissiah) + Occurrences(content.HereticalTruth, Omnissiah) > 0
             || Occurrences(content.Text, Omnissiah) > allowedInText)
+        {
             return Error.New($"The answer names the {Omnissiah} where it isn't allowed: only once, in a prayer's text.");
+        }
 
         // The pages show `backticked` words as code: a command written as plain words would read as prose.
         return new[] { content.Text, content.HereticalTruth }.Select(UnquotedCode.Find).Somes().HeadOrNone()
@@ -164,7 +175,10 @@ public sealed class RiteWriter
         var count = 0;
         for (var at = text.IndexOf(word, StringComparison.OrdinalIgnoreCase); at >= 0;
              at = text.IndexOf(word, at + word.Length, StringComparison.OrdinalIgnoreCase))
+        {
             count++;
+        }
+
         return count;
     }
 

@@ -43,7 +43,9 @@ public static class RitePrompt
         {
             sb.AppendLine("- These rites exist already: pick a different subject and title.");
             foreach (var title in titlesToAvoid)
+            {
                 sb.AppendLine($"  * {title}");
+            }
         }
 
         return sb.ToString();

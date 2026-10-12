@@ -26,9 +26,15 @@ public sealed class FakeChatClients : IChatClients
     public FakeChatClients Then(string model, IEnumerable<Func<Task<string>>> next)
     {
         if (!answers.TryGetValue(model, out var queue))
+        {
             answers[model] = queue = new Queue<Func<Task<string>>>();
+        }
+
         foreach (var answer in next)
+        {
             queue.Enqueue(answer);
+        }
+
         return this;
     }
 
@@ -42,7 +48,10 @@ public sealed class FakeChatClients : IChatClients
             cancellationToken.ThrowIfCancellationRequested();
             owner.Requests.Add((model, messages.ToList()));
             if (!owner.answers.TryGetValue(model, out var queue) || queue.Count == 0)
+            {
                 throw new InvalidOperationException($"The test gave {model} no answer for request {owner.Requests.Count}.");
+            }
+
             return new ChatResponse(new ChatMessage(ChatRole.Assistant, await queue.Dequeue()()));
         }
 

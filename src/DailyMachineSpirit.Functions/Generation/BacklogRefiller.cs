@@ -56,9 +56,14 @@ public sealed class BacklogRefiller
                     ? Right<Error, bool>(false)
                     : (await AddDraft(waiting, cancellationToken)).Map(_ => true));
             if (wroteOne.IsLeft)
+            {
                 return wroteOne.Map(_ => written);
+            }
+
             if (!wroteOne.IfLeft(false))
+            {
                 return written;
+            }
         }
     }
 

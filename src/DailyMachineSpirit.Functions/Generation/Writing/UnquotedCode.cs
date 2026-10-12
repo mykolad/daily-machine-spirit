@@ -33,8 +33,12 @@ public static partial class UnquotedCode
         }
         // A backtick that's never closed shows as a backtick, not as code.
         if (inside)
+        {
             for (var at = spanOf.Count - 1; at >= 0 && spanOf[at] == spans; at--)
+            {
                 spanOf[at] = 0;
+            }
+        }
 
         return Code().Matches(plain.ToString())
             .Where(found => !InOneSpan(spanOf, found))
