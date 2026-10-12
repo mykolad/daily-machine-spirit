@@ -77,6 +77,18 @@ public class GitHubSignInTests
         Assert.Single(github.Requests);
     }
 
+    [Fact]
+    public async Task AccountFor_WhenTheTokenCarriesAScope_RevokesItUnused_AndRefuses()
+    {
+        github.TokenAnswer = (HttpStatusCode.OK, $$"""{"access_token":"{{FakeGitHub.Token}}","token_type":"bearer","scope":"repo,user:email"}""");
+
+        var error = Failed(await Accounts().AccountFor("the-code", CancellationToken.None));
+
+        Assert.Contains("repo,user:email", error.Message);
+        Assert.DoesNotContain(github.Requests, request => request.Url == GitHubSignIn.UserUrl);
+        Assert.Contains(github.Requests, request => request.Method == HttpMethod.Delete);
+    }
+
     [Theory]
     [InlineData(HttpStatusCode.Unauthorized, """{"message":"Bad credentials"}""")]
     [InlineData(HttpStatusCode.OK, """{"login":"octocat"}""")]
