@@ -166,6 +166,7 @@ module staging 'modules/environment.bicep' = {
     aiAccountName: ai.name
     ownerPrincipalId: ownerPrincipalId
     githubSubjectPrefix: githubSubjectPrefix
+    publishesDaily: true
     scriptoriumEnabled: true
     scriptoriumWithoutSignIn: true
     cloudflareAccessTeamDomain: ''
@@ -189,6 +190,9 @@ module production 'modules/environment.bicep' = if (deployProduction) {
     aiAccountName: ai.name
     ownerPrincipalId: ownerPrincipalId
     githubSubjectPrefix: githubSubjectPrefix
+    // Off until launch (#35): no rite is published before readers can reach the site and a Scribe can choose it. The
+    // Scriptorium can still summon drafts, so the backlog is ready on launch day.
+    publishesDaily: false
     // On once Cloudflare Access guards the Scriptorium.
     scriptoriumEnabled: false
     scriptoriumWithoutSignIn: false
