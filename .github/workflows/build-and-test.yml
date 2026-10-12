@@ -116,7 +116,7 @@ jobs:
       - name: Package the app
         if: ${{ github.event_name != 'pull_request' }}
         run: |
-          dotnet publish src/DailyMachineSpirit.Functions -c Release --no-restore -o package/publish
+          dotnet publish src/DailyMachineSpirit.Functions -c Release --no-build -o package/publish
           echo "${{ steps.version.outputs.version }}" > package/version.txt
 
       - name: Upload the package
