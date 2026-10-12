@@ -100,7 +100,8 @@ public sealed class BacklogRefiller
                 judged.Similarity.Match(
                     Some: scores =>
                     {
-                        logger.LogInformation("Draft {Title} was judged by {ScoresGenerator}.", draft.Writing.Title, scores.ScoresGeneratorVersion);
+                        logger.LogInformation("Draft {Title} was judged by {Judge}, its scores made by {ScoresGenerator}.",
+                            draft.Writing.Title, judged.Augury.Map(augury => augury.JudgedBy).IfNone("no quality judge"), scores.ScoresGeneratorVersion);
                         metrics.Judging("judged");
                     },
                     None: () =>
