@@ -1,0 +1,88 @@
+using DailyMachineSpirit.Functions.Voters;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
+using static LanguageExt.Prelude;
+
+namespace DailyMachineSpirit.Tests;
+
+public class VoterSessionTests
+{
+    private static readonly VoterOptions Secrets = WithSecrets("key-secret", "session-secret");
+
+    private readonly FakeTimeProvider time = new(new DateTimeOffset(2026, 10, 12, 20, 0, 0, TimeSpan.Zero));
+
+    [Fact]
+    public void VoterKeyFor_IsTheSameForAnAccount_AndDiffersBetweenAccounts()
+    {
+        var session = Session(Secrets);
+
+        Assert.Equal(session.VoterKeyFor(583231), session.VoterKeyFor(583231));
+        Assert.NotEqual(session.VoterKeyFor(583231), session.VoterKeyFor(583232));
+        Assert.Matches("^[0-9a-f]{64}$", session.VoterKeyFor(583231));
+    }
+
+    [Fact]
+    public void VoterKeyFor_DependsOnTheKeySecret_SoItCantBeWorkedOutFromTheId()
+        => Assert.NotEqual(Session(Secrets).VoterKeyFor(583231), Session(WithSecrets("another", "session-secret")).VoterKeyFor(583231));
+
+    [Fact]
+    public void Read_GivesBackTheVoterKey_OfACookieItIssued()
+    {
+        var session = Session(Secrets);
+        var key = session.VoterKeyFor(583231);
+
+        Assert.Equal(Some(key), session.Read(session.Issue(key)));
+    }
+
+    [Fact]
+    public void Read_RefusesACookie_ForAnotherKey()
+    {
+        var session = Session(Secrets);
+        var issued = session.Issue(session.VoterKeyFor(583231)).Split('.');
+
+        Assert.Equal(None, session.Read($"{session.VoterKeyFor(1)}.{issued[1]}.{issued[2]}"));
+    }
+
+    [Fact]
+    public void Read_RefusesACookie_SignedWithAnotherSecret()
+    {
+        var other = Session(WithSecrets("key-secret", "another"));
+
+        Assert.Equal(None, Session(Secrets).Read(other.Issue(other.VoterKeyFor(583231))));
+    }
+
+    [Fact]
+    public void Read_RefusesACookie_OnceItHasExpired()
+    {
+        var session = Session(Secrets);
+        var cookie = session.Issue(session.VoterKeyFor(583231));
+
+        time.Advance(VoterSession.Lasts);
+
+        Assert.Equal(None, session.Read(cookie));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("not-a-cookie")]
+    [InlineData("abc.123.sig")]
+    [InlineData("a.b.c.d")]
+    public void Read_RefusesAnythingElse(string cookie) => Assert.Equal(None, Session(Secrets).Read(cookie));
+
+    [Fact]
+    public void SignedIn_ReadsTheCookie_OnlyWhileTheSecretsAreSet()
+    {
+        var session = Session(Secrets);
+        var request = new DefaultHttpContext().Request;
+        request.Headers.Cookie = $"{VoterSession.CookieName}={session.Issue(session.VoterKeyFor(583231))}";
+
+        Assert.True(session.SignedIn(request).IsSome);
+        Assert.True(Session(WithSecrets("key-secret", "@Microsoft.KeyVault(VaultName=v;SecretName=s)")).SignedIn(request).IsNone);
+    }
+
+    private VoterSession Session(VoterOptions secrets) => new(Options.Create(secrets), time);
+
+    private static VoterOptions WithSecrets(string keySecret, string sessionSecret)
+        => new() { KeySecret = keySecret, SessionSecret = sessionSecret };
+}

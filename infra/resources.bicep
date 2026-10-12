@@ -24,6 +24,13 @@ var productionAccess = {
   audience: ''
 }
 
+// The GitHub OAuth apps readers sign in with to vote, one per environment, since each has its own callback URL
+// (infra/README.md). A client id isn't secret; the client secrets are in the vaults.
+var signInGitHubClientIds = {
+  staging: ''
+  production: ''
+}
+
 // The models. Keys are off: the apps and the owner call them with Entra ID.
 resource ai 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   name: '${prefix}-ai'
@@ -163,6 +170,8 @@ module staging 'modules/environment.bicep' = {
     scriptoriumWithoutSignIn: true
     cloudflareAccessTeamDomain: ''
     cloudflareAccessAudience: ''
+    signInGitHubClientId: signInGitHubClientIds.staging
+    signInCallbackUrl: 'https://${prefix}-app-staging.azurewebsites.net/auth/github/callback'
   }
 }
 
@@ -185,6 +194,8 @@ module production 'modules/environment.bicep' = if (deployProduction) {
     scriptoriumWithoutSignIn: false
     cloudflareAccessTeamDomain: productionAccess.teamDomain
     cloudflareAccessAudience: productionAccess.audience
+    signInGitHubClientId: signInGitHubClientIds.production
+    signInCallbackUrl: 'https://dailymachinespirit.fyi/auth/github/callback'
   }
 }
 

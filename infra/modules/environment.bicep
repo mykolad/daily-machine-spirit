@@ -25,6 +25,10 @@ param scriptoriumWithoutSignIn bool
 @description('The Cloudflare Access team and application guarding the Scriptorium (CloudflareAccessOptions); empty until set up.')
 param cloudflareAccessTeamDomain string
 param cloudflareAccessAudience string
+@description('The GitHub OAuth app readers sign in with to vote (GitHubOptions); empty until it exists. Not the deploy identity.')
+param signInGitHubClientId string
+@description('Where GitHub sends readers back after signing in: exactly the OAuth app\'s callback URL.')
+param signInCallbackUrl string
 
 var keyVaultSecretsOfficer = 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7'
 var appName = '${prefix}-app${nameSuffix}'
@@ -242,6 +246,28 @@ resource app 'Microsoft.Web/sites@2024-04-01' = {
         {
           name: 'CloudflareAccess__Audience'
           value: cloudflareAccessAudience
+        }
+        // Readers' sign-in with GitHub, to vote. Until the app and the three secrets exist (infra/README.md), the sign-in
+        // pages don't either.
+        {
+          name: 'GitHub__ClientId'
+          value: signInGitHubClientId
+        }
+        {
+          name: 'GitHub__ClientSecret'
+          value: '@Microsoft.KeyVault(VaultName=${vault.name};SecretName=GitHubClientSecret)'
+        }
+        {
+          name: 'GitHub__CallbackUrl'
+          value: signInCallbackUrl
+        }
+        {
+          name: 'Voters__KeySecret'
+          value: '@Microsoft.KeyVault(VaultName=${vault.name};SecretName=VoterKeySecret)'
+        }
+        {
+          name: 'Voters__SessionSecret'
+          value: '@Microsoft.KeyVault(VaultName=${vault.name};SecretName=VoterSessionSecret)'
         }
         // Telemetry to Grafana Cloud, read by both the Functions host and the app (Program.cs). The header carries the
         // stack's token, from the vault (infra/README.md).

@@ -7,6 +7,7 @@ using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Scriptorium;
 using DailyMachineSpirit.Functions.Scriptorium.SignIn;
 using DailyMachineSpirit.Functions.Telemetry;
+using DailyMachineSpirit.Functions.Voters;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Azure.Functions.Worker.OpenTelemetry;
@@ -73,5 +74,11 @@ builder.Services.AddTransient<DailyRitePublisher>();
 builder.Services.Configure<ScriptoriumOptions>(builder.Configuration.GetSection(ScriptoriumOptions.SectionName));
 builder.Services.AddTransient<Scribes>();
 builder.Services.AddScribeSignIn(builder.Configuration);
+
+// Readers sign in with GitHub to vote; separate from the Scriptorium's sign-in.
+builder.Services.Configure<GitHubOptions>(builder.Configuration.GetSection(GitHubOptions.SectionName));
+builder.Services.Configure<VoterOptions>(builder.Configuration.GetSection(VoterOptions.SectionName));
+builder.Services.AddHttpClient<IGitHubAccounts, GitHubAccounts>(http => http.Timeout = TimeSpan.FromSeconds(10));
+builder.Services.AddSingleton<VoterSession>();
 
 builder.Build().Run();

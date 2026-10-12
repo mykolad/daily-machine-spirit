@@ -75,6 +75,9 @@ Production's vault exists only from launch (`deployProduction`); set its secrets
 |---|---|---|
 | `JevApiKey` | judging drafts: their quality for the Augury, their similarity for "More rites" | `Jev__ApiKey`, a Key Vault reference |
 | `OtlpHeaders` | telemetry to Grafana Cloud (this site's own access-policy token) | `OTEL_EXPORTER_OTLP_HEADERS`, a Key Vault reference |
+| `GitHubClientSecret` | readers signing in with GitHub to vote: the OAuth app's client secret | `GitHub__ClientSecret`, a Key Vault reference |
+| `VoterKeySecret` | keying each account's votes. Set once: a new value makes every account a new voter | `Voters__KeySecret`, a Key Vault reference |
+| `VoterSessionSecret` | signing the sign-in cookie. A new value only signs everyone out | `Voters__SessionSecret`, a Key Vault reference |
 
 ### Jev
 
@@ -107,6 +110,37 @@ az keyvault secret set --vault-name machinespirit-kv-staging --name OtlpHeaders 
 ```
 
 The dashboard is in `observability/` (its README says how to import it).
+
+### Readers' sign-in with GitHub
+
+Readers sign in with GitHub to vote. Each environment has its own GitHub OAuth app, because an app has one callback URL.
+Until the app and all three secrets are set, the sign-in pages answer 404 and nobody is signed in.
+
+1. On GitHub, **Settings → Developer settings → OAuth Apps → New OAuth App**, under the account that should own it:
+   - Homepage URL: `https://machinespirit-app-staging.azurewebsites.net` (production: `https://dailymachinespirit.fyi`)
+   - Authorization callback URL: `https://machinespirit-app-staging.azurewebsites.net/auth/github/callback`
+     (production: `https://dailymachinespirit.fyi/auth/github/callback`). It must match `signInCallbackUrl` in
+     `resources.bicep` exactly.
+   - No device flow. The app asks for no scopes: its token only reads the account's id, and is revoked at once.
+2. Put the **Client ID** in `signInGitHubClientIds` in `resources.bicep` (it isn't secret) and deploy the infrastructure.
+3. **Generate a new client secret**, save it to `$HOME\.machinespirit\github-client-secret.txt`, and set it with the
+   two random secrets:
+
+```powershell
+foreach ($name in 'voter-key', 'voter-session') {
+  $bytes = [byte[]]::new(32); [Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+  Set-Content -Path "$HOME\.machinespirit\$name.txt" -Value ([Convert]::ToBase64String($bytes)) -NoNewline
+}
+az keyvault secret set --vault-name machinespirit-kv-staging --name GitHubClientSecret `
+  --file $HOME\.machinespirit\github-client-secret.txt -o none
+az keyvault secret set --vault-name machinespirit-kv-staging --name VoterKeySecret `
+  --file $HOME\.machinespirit\voter-key.txt -o none
+az keyvault secret set --vault-name machinespirit-kv-staging --name VoterSessionSecret `
+  --file $HOME\.machinespirit\voter-session.txt -o none
+az functionapp restart -g machinespirit-rg -n machinespirit-app-staging
+```
+
+Keep `voter-key.txt`: it's what makes an account the same voter, and a new one would let every account vote again.
 
 ## Deploying the app
 

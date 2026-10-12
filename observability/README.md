@@ -20,6 +20,7 @@ Export, without "Export for sharing externally") back over this file, so the rep
 | `dms_rites_published_total` | `kind`, `model` | rites published |
 | `dms_judging_runs_total` | `outcome` | judging each new draft (its quality for the Augury, its scores for More rites): `judged`, `failed`, `off` |
 | `dms_scriptorium_refusals_total` | `reason` | Scriptorium requests whose Access token was refused: the check that failed (`SecurityTokenExpiredException`, ...), or `keys-unavailable` |
+| `dms_signins_total` | `outcome` | readers signing in with GitHub to vote: `signed-in`, `declined` (on GitHub), `refused` (a callback not started in that browser), `failed` (GitHub didn't answer) |
 | `http_client_*`, `dotnet_*` | | .NET's own: outgoing HTTP calls, memory, garbage collection, the thread pool |
 
 No tag says anything about a visitor. The Functions host exports nothing: its request telemetry would carry user agents.
