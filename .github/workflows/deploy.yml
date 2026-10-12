@@ -85,12 +85,14 @@ jobs:
             --action Allow --ip-address "$ip/32" --priority 200 -o none
 
       - name: Smoke tests
+        id: smoke
         run: tools/smoke-test.sh "$BASE_URL" "$VERSION"
 
-      # The newest master that passed its own smoke tests: Deploy Master succeeds only then. Its package is kept 90 days.
+      # Only when the app failed its smoke tests, not when they couldn't run. The newest master that passed its own smoke
+      # tests: Deploy Master succeeds only then. Its package is kept 90 days.
       - name: Find the last good package
         id: last-good
-        if: ${{ failure() && steps.deploy.outcome == 'success' }}
+        if: ${{ failure() && steps.smoke.outcome == 'failure' }}
         run: |
           run=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow deploy-master.yml --branch master --status success \
             --limit 1 --json databaseId --jq '.[0].databaseId // empty')
@@ -129,19 +131,30 @@ jobs:
             az functionapp config access-restriction remove -g "$RESOURCE_GROUP" -n "$APP" --rule-name smoke-tests -o none
           fi
 
+      # Says what happened to the app, which isn't always what failed: a failed sign-in never reached it, and a failed
+      # clean-up comes after tests that passed.
       - name: Summary
         if: ${{ always() }}
         env:
           OUTCOME: ${{ job.status }}
+          DEPLOYED: ${{ steps.deploy.outcome }}
+          SMOKE: ${{ steps.smoke.outcome }}
           LAST_GOOD: ${{ steps.last-good.outputs.version }}
           ROLLBACK: ${{ steps.rollback-checked.outcome }}
         run: |
           if [ "$OUTCOME" = success ]; then
-            echo "Deployed \`$VERSION\` to $APP; the smoke tests passed." >> "$GITHUB_STEP_SUMMARY"
+            message="Deployed \`$VERSION\` to $APP; the smoke tests passed."
+          elif [ "$DEPLOYED" != success ]; then
+            message="\`$VERSION\` wasn't deployed to $APP: the run failed before or while deploying it."
+          elif [ "$SMOKE" = success ]; then
+            message="Deployed \`$VERSION\` to $APP and the smoke tests passed, but a later step failed: see the run."
+          elif [ "$SMOKE" != failure ]; then
+            message="Deployed \`$VERSION\` to $APP, but the smoke tests couldn't run, so it wasn't rolled back: see the run."
           elif [ "$ROLLBACK" = success ]; then
-            echo "\`$VERSION\` failed on $APP, which was rolled back to \`$LAST_GOOD\`." >> "$GITHUB_STEP_SUMMARY"
+            message="\`$VERSION\` failed its smoke tests on $APP, which was rolled back to \`$LAST_GOOD\`."
           elif [ -n "$LAST_GOOD" ]; then
-            echo "\`$VERSION\` failed on $APP, and so did rolling back to \`$LAST_GOOD\`: check the app." >> "$GITHUB_STEP_SUMMARY"
+            message="\`$VERSION\` failed its smoke tests on $APP, and so did rolling back to \`$LAST_GOOD\`: check the app."
           else
-            echo "\`$VERSION\` failed on $APP, and it wasn't rolled back." >> "$GITHUB_STEP_SUMMARY"
+            message="\`$VERSION\` failed its smoke tests on $APP, and it wasn't rolled back: see the run."
           fi
+          echo "$message" >> "$GITHUB_STEP_SUMMARY"
