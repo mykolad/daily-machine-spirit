@@ -100,36 +100,48 @@ public static partial class ScriptoriumPage
             <form method="post" action="/scriptorium/summon"><button class="primary">{ScriptoriumIcons.Summon}Summon New Rites</button></form>
             """);
         if (view.Calendar.Any(entry => entry.PlacedByScribes))
+        {
             html.Append($"""<form method="post" action="/scriptorium/augury"><button class="outline">{ScriptoriumIcons.Augury}Let the Augury Decide</button></form>""");
+        }
         html.Append("</div></div>");
 
         if (view.Calendar.Count == 0)
+        {
             html.Append("<p>No rite waits. Summon new rites, or the Machine Spirit writes tonight's on the spot.</p>");
+        }
         else
         {
             html.Append($"<p>{view.Calendar.Count} unconsecrated {(view.Calendar.Count == 1 ? "rite waits" : "rites wait")}. The Scribes' order comes first; the Augury orders the rest.</p>");
             html.Append("""<ol class="calendar">""");
             for (var index = 0; index < view.Calendar.Count; index++)
+            {
                 CalendarEntry(html, view.Calendar[index], place: index + 1, isLast: index == view.Calendar.Count - 1, view.Today);
+            }
             html.Append("</ol>");
         }
         html.Append("</section>");
 
         html.Append("""<section aria-labelledby="ashes-heading"><h2 id="ashes-heading">The Ashes</h2>""");
         if (view.Ashes.Count == 0)
+        {
             html.Append("<p>Nothing has been consigned to the flames.</p>");
+        }
         else
         {
             html.Append("""<ul class="calendar">""");
             foreach (var draft in view.Ashes)
+            {
                 Ash(html, draft);
+            }
             html.Append("</ul>");
         }
         html.Append("</section>");
 
         html.Append("""<section aria-labelledby="judgments-heading"><h2 id="judgments-heading">Recent judgments</h2>""");
         if (view.Decisions.Count == 0)
+        {
             html.Append("<p>The Scribes have not judged yet.</p>");
+        }
         else
         {
             html.Append("""<ul class="judgments">""");
@@ -169,7 +181,9 @@ public static partial class ScriptoriumPage
         html.Append($"""<p class="kicker"><time datetime="{entry.PublishesOnUtc:yyyy-MM-dd}">{Date(entry.PublishesOnUtc)}</time> · {Kind(draft.Kind)}</p>""");
         // Today's own rite is only still due when the midnight run failed; its retry publishes it.
         if (place == 1)
+        {
             html.Append($"""<p class="next">{(entry.PublishesOnUtc > today ? "Publishes at 00:00 UTC" : "Publishes next")}</p>""");
+        }
         RiteBody(html, draft, id);
 
         // The Augury's own place for a draft only says something where the Scribes put it elsewhere.
@@ -182,9 +196,13 @@ public static partial class ScriptoriumPage
 
         var reorder = new List<string>();
         if (place > 1)
+        {
             reorder.Add(Button(id, draft.Title, "exalt", ScriptoriumIcons.Exalt, "Exalt", "secondary"));
+        }
         if (!isLast)
+        {
             reorder.Add(Button(id, draft.Title, "humble", ScriptoriumIcons.Humble, "Humble", "secondary"));
+        }
         DecisionForm(html, id,
         [
             // Anointing the first is useful too: it keeps it first, ahead of a better draft a refill may bring.

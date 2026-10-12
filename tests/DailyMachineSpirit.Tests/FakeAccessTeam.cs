@@ -54,7 +54,9 @@ public sealed class FakeAccessTeam : HttpMessageHandler, IHttpClientFactory
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (request.RequestUri?.ToString() != $"https://{Domain}/cdn-cgi/access/certs")
+        {
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+        }
         KeyFetches++;
         var parameters = key.Rsa.ExportParameters(includePrivateParameters: false);
         var jwks = $$"""

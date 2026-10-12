@@ -51,9 +51,13 @@ public sealed class ScriptoriumFunction
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "scriptorium")] HttpRequest request, CancellationToken cancellationToken)
     {
         if (!options.Value.Enabled)
+        {
             return new NotFoundResult();
+        }
         if (!await signIn.IsScribe(request, cancellationToken))
+        {
             return new StatusCodeResult(StatusCodes.Status403Forbidden);
+        }
 
         var outcome = Optional(request.Query["done"].ToString()).Filter(done => done.Length > 0);
         var rite = Optional(request.Query["rite"].ToString()).Bind(text => Guid.TryParse(text, out var id) ? Some(id) : None);
@@ -90,7 +94,9 @@ public sealed class ScriptoriumFunction
     {
         var form = await ReadForm(request, cancellationToken);
         if (form.IsNone)
+        {
             return new ScriptoriumResponse { Result = new BadRequestResult() };
+        }
         var note = form.Map(fields => fields["note"].ToString()).IfNone(string.Empty);
         return action switch
         {
@@ -115,7 +121,9 @@ public sealed class ScriptoriumFunction
     private static async Task<Option<IFormCollection>> ReadForm(HttpRequest request, CancellationToken cancellationToken)
     {
         if (!request.HasFormContentType)
+        {
             return None;
+        }
         try
         {
             return Some(await request.ReadFormAsync(cancellationToken));
@@ -133,9 +141,13 @@ public sealed class ScriptoriumFunction
     private async Task<Option<IActionResult>> Refusal(HttpRequest request, CancellationToken cancellationToken)
     {
         if (!options.Value.Enabled)
+        {
             return new NotFoundResult();
+        }
         if (!await signIn.IsScribe(request, cancellationToken) || !IsFromThisSite(request))
+        {
             return new StatusCodeResult(StatusCodes.Status403Forbidden);
+        }
         return None;
     }
 
@@ -143,7 +155,9 @@ public sealed class ScriptoriumFunction
     {
         var fetchSite = request.Headers["Sec-Fetch-Site"].ToString();
         if (fetchSite.Length > 0)
+        {
             return fetchSite == "same-origin";
+        }
         return Uri.TryCreate(request.Headers.Origin.ToString(), UriKind.Absolute, out var origin)
             && string.Equals(origin.Authority, request.Host.Value, StringComparison.OrdinalIgnoreCase);
     }
@@ -156,11 +170,17 @@ public sealed class ScriptoriumFunction
     private ScriptoriumResponse Failure(HttpRequest request, Error error, Option<Guid> draftId)
     {
         if (error == ScriptoriumRepository.ChangedMeanwhile)
+        {
             return new ScriptoriumResponse { Result = Back("changed", draftId) };
+        }
         if (error == Scribes.NothingToMove)
+        {
             return new ScriptoriumResponse { Result = Back("unmoved", draftId) };
+        }
         if (error == Scribes.NoteTooLong)
+        {
             return new ScriptoriumResponse { Result = Back("note-too-long", draftId) };
+        }
         return new ScriptoriumResponse { Result = Failed(request, error) };
     }
 
