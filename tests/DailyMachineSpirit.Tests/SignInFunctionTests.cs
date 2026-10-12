@@ -156,7 +156,7 @@ public sealed class SignInFunctionTests : IDisposable
         var google = new FakeSignInProvider("google", true, Right<Error, string>(AccountId));
         var (state, stateCookie) = StartSignIn("/");
 
-        var result = await Function([github, google], Voters("key-secret"))
+        var result = await Function([github, google], Voters("key-secret-of-at-least-32-characters"))
             .Callback(Get("/auth/google/callback", $"?code=the-code&state={state}", stateCookie), "google", CancellationToken.None);
 
         Assert.IsType<BadRequestResult>(result);
@@ -172,7 +172,7 @@ public sealed class SignInFunctionTests : IDisposable
     }
 
     [Theory]
-    [InlineData(false, "key-secret")]
+    [InlineData(false, "key-secret-of-at-least-32-characters")]
     [InlineData(true, "")]
     [InlineData(true, "@Microsoft.KeyVault(VaultName=v;SecretName=VoterKeySecret)")]
     public async Task WithoutTheSettings_NobodySignsIn(bool providerIsConfigured, string keySecret)
@@ -253,17 +253,17 @@ public sealed class SignInFunctionTests : IDisposable
         return (state, $"{SignInFunction.StateCookieName}={SetCookie(request, SignInFunction.StateCookieName).Value}");
     }
 
-    private SignInFunction Function() => Function([github], Voters("key-secret"));
+    private SignInFunction Function() => Function([github], Voters("key-secret-of-at-least-32-characters"));
 
-    private SignInFunction Function(FakeSignInProvider provider) => Function([provider], Voters("key-secret"));
+    private SignInFunction Function(FakeSignInProvider provider) => Function([provider], Voters("key-secret-of-at-least-32-characters"));
 
     private SignInFunction Function(IEnumerable<ISignInProvider> providers, VoterOptions voters)
         => new(providers, new VoterSession(Options.Create(voters), time), Options.Create(voters), probe.Metrics,
             NullLogger<SignInFunction>.Instance);
 
-    private VoterSession Session() => new(Options.Create(Voters("key-secret")), time);
+    private VoterSession Session() => new(Options.Create(Voters("key-secret-of-at-least-32-characters")), time);
 
-    private static VoterOptions Voters(string keySecret) => new() { KeySecret = keySecret, SessionSecret = "session-secret" };
+    private static VoterOptions Voters(string keySecret) => new() { KeySecret = keySecret, SessionSecret = "session-secret-of-at-least-32-characters" };
 
     private static HttpRequest Get(string path, string query, string cookie)
     {

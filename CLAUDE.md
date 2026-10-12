@@ -143,9 +143,10 @@ observability/                    — the Grafana dashboard, and what the app's 
     (`Voters:SessionSecret`). A state cookie ties the provider's answer to the browser and the provider that started,
     and the return path must be a path on this site.
   - **Separate from the Scriptorium:** signing in here makes nobody a Scribe.
-  - **Settings:** `Voters:KeySecret` and `:SessionSecret`, and each provider's own (`GitHub:ClientId`, `:ClientSecret`,
-    `:CallbackUrl`). A provider not set up has no sign-in pages (404), and without the voters' secrets nobody signs
-    in. Sign-ins are counted (`dms.signins`, by provider and outcome).
+  - **Settings:** `Voters:KeySecret` and `:SessionSecret` (32 characters at least, or they count as unset), and each
+    provider's own (`GitHub:ClientId`, `:ClientSecret`, `:CallbackUrl`). A provider not set up has no sign-in pages
+    (404), and without the voters' secrets nobody signs in. Sign-ins are counted (`dms.signins`, by provider and
+    outcome).
 - **The backlog and the daily rite** (`Generation/`). Rites are written ahead as **drafts** (`Draft`, documents of
   type `draft` next to the rites), so moderators, the Scribes of the Scriptorium, can choose what's published.
   - **Publishing:** the `DailyRite` timer runs at 00:00 UTC and publishes the top of the **Liturgical Calendar**, unless
