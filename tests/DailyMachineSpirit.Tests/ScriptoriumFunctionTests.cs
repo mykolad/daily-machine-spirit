@@ -382,6 +382,8 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     [Theory]
     [InlineData("")]
     [InlineData("https://elsewhere.example")]
+    // This site's name over plain HTTP is another origin, which anyone on the reader's network can put a page on.
+    [InlineData("http://dailymachinespirit.fyi")]
     public async Task AFormWithoutFetchMetadata_IsForbidden_UnlessItsOriginIsThisSite(string origin)
     {
         var draft = await testbed.AddDraft("Kept", 0.5f);

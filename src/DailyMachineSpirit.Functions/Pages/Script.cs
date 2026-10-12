@@ -76,19 +76,24 @@ public static class Script
               b.setAttribute('aria-pressed', String(b.dataset.reaction === vote));
               b.querySelector('.count').textContent = shown[b.dataset.reaction].toLocaleString('en');
             });
-            let reader = { available: false, signedIn: false, vote: null };
+            let reader = { available: false, signedIn: false, vote: null, voteLoaded: false };
             const showReader = () => statuses.forEach((s) => { s.hidden = !reader.available || s.dataset.signedIn !== String(reader.signedIn); });
+            // The signed-in reader's own vote. Until it has loaded, the page doesn't know whether a click sets a vote or
+            // takes one back, so voting waits for it.
+            const loadVote = async () => {
+              try {
+                const votes = await fetch(`/api/votes?rites=${rite}`);
+                // Signed out meanwhile (another tab, or the sign-in ran out): offer the sign-in again.
+                if (votes.status === 401) reader.signedIn = false;
+                else if (votes.ok) reader = { ...reader, vote: (await votes.json())[rite] ?? null, voteLoaded: true };
+              } catch { }
+            };
             // Until this answers, a click waits for it rather than guessing who's reading.
             const known = (async () => {
               try {
                 const me = await (await fetch('/api/me')).json();
-                reader = { available: me.signInAvailable === true, signedIn: me.signedIn === true, vote: null };
-                if (reader.signedIn) {
-                  const votes = await fetch(`/api/votes?rites=${rite}`);
-                  // Signed out meanwhile (another tab, or the sign-in ran out): offer the sign-in again.
-                  if (votes.status === 401) reader.signedIn = false;
-                  else if (votes.ok) reader.vote = (await votes.json())[rite] ?? null;
-                }
+                reader = { available: me.signInAvailable === true, signedIn: me.signedIn === true, vote: null, voteLoaded: false };
+                if (reader.signedIn) await loadVote();
               } catch { }
               showReader();
               show(reader.vote, counts());
@@ -98,6 +103,19 @@ public static class Script
               if (!reader.available) { say('Voting isn’t open yet.'); return; }
               if (!reader.signedIn) { location.assign(signInLink.href); return; }
               if (reactions.getAttribute('aria-busy') === 'true') return;
+              if (!reader.voteLoaded) {
+                // The vote didn't load with the page. Load it now, and show it rather than act on it: the reader clicked
+                // without seeing it, so the click could mean the opposite.
+                reactions.setAttribute('aria-busy', 'true');
+                await loadVote();
+                reactions.removeAttribute('aria-busy');
+                showReader();
+                if (!reader.signedIn) { say('Sign in with GitHub again to vote.'); return; }
+                if (!reader.voteLoaded) { say('Your vote couldn’t be loaded. Try again.'); return; }
+                show(reader.vote, counts());
+                say(reader.vote ? 'Your vote is shown. Click again to change it.' : 'You haven’t voted yet. Click again to vote.');
+                return;
+              }
               const previous = reader.vote;
               const vote = previous === button.dataset.reaction ? null : button.dataset.reaction;
               const before = counts();
