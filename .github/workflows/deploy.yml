@@ -126,6 +126,7 @@ jobs:
           echo "version=$(cat last-good/version.txt)" >> "$GITHUB_OUTPUT"
 
       - name: Roll back
+        id: rollback
         if: ${{ failure() && steps.last-good.outcome == 'success' }}
         uses: Azure/functions-action@v1
         with:
@@ -135,7 +136,7 @@ jobs:
 
       - name: Smoke tests after the rollback
         id: rollback-checked
-        if: ${{ failure() && steps.last-good.outcome == 'success' }}
+        if: ${{ failure() && steps.rollback.outcome == 'success' }}
         env:
           LAST_GOOD: ${{ steps.last-good.outputs.version }}
           SMOKE_TEST_BASE_URL: ${{ inputs.base-url }}
@@ -165,6 +166,7 @@ jobs:
           DEPLOYED: ${{ steps.deploy.outcome }}
           SMOKE: ${{ steps.smoke.outcome }}
           LAST_GOOD: ${{ steps.last-good.outputs.version }}
+          REDEPLOYED: ${{ steps.rollback.outcome }}
           ROLLBACK: ${{ steps.rollback-checked.outcome }}
         run: |
           if [ "$OUTCOME" = success ]; then
@@ -177,8 +179,10 @@ jobs:
             message="Deployed \`$VERSION\` to $APP, but the smoke tests couldn't run, so it wasn't rolled back: see the run."
           elif [ "$ROLLBACK" = success ]; then
             message="\`$VERSION\` failed its smoke tests on $APP, which was rolled back to \`$LAST_GOOD\`."
+          elif [ "$REDEPLOYED" = failure ]; then
+            message="\`$VERSION\` failed its smoke tests on $APP, and deploying \`$LAST_GOOD\` back failed too: check the app."
           elif [ -n "$LAST_GOOD" ]; then
-            message="\`$VERSION\` failed its smoke tests on $APP, and so did rolling back to \`$LAST_GOOD\`: check the app."
+            message="\`$VERSION\` failed its smoke tests on $APP, and so did \`$LAST_GOOD\` after rolling back to it: check the app."
           else
             message="\`$VERSION\` failed its smoke tests on $APP, and it wasn't rolled back: see the run."
           fi
