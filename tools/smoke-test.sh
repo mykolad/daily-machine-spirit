@@ -11,10 +11,12 @@ fail() {
   exit 1
 }
 
-# The app restarts after a deploy and may start cold: give the new version a few minutes to answer.
+# The app restarts after a deploy and may start cold: give the new version three minutes to answer, by the clock,
+# however long each try takes.
 health=""
-for _ in $(seq 1 36); do
-  health=$(curl -s -m 20 "$base/healthz" || true)
+deadline=$((SECONDS + 180))
+while (( SECONDS < deadline )); do
+  health=$(curl -s -m 15 "$base/healthz" || true)
   [[ $health == *"\"version\":\"$version\""* ]] && break
   sleep 5
 done
@@ -35,11 +37,12 @@ check() {
 }
 
 check / 200 "<title>The Daily Machine Spirit</title>"
+# The rite Today shows, if there's one yet (a new environment has none until its first midnight). Not from the
+# archive, which leaves out today's.
+rite=$(grep -oE 'data-rite="[0-9]+"' "$page" | head -n 1 | grep -oE '[0-9]+' || true)
 check /archive 200 "<title>The Archive · The Daily Machine Spirit</title>"
-# The newest rite in the archive, if there's one yet (a new environment has none until its first midnight).
-rite=$(grep -oE 'href="/r/[0-9]+"' "$page" | head -n 1 | grep -oE '/r/[0-9]+' || true)
 if [[ -n $rite ]]; then
-  check "$rite" 200 " · The Daily Machine Spirit</title>"
+  check "/r/$rite" 200 " · The Daily Machine Spirit</title>"
 else
   echo "skipped: no rite published yet"
 fi

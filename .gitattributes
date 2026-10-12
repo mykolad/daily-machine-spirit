@@ -1,0 +1,2 @@
+# Shell scripts run on Linux runners, and bash chokes on carriage returns, so they keep LF even on Windows.
+*.sh text eol=lf
