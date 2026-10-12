@@ -54,18 +54,23 @@ public class LiturgicalCalendarTests
 
         var ordered = LiturgicalCalendar.Order([prayer, ritual], [yesterday], []);
 
-        Assert.Equal("Ritual", ordered[0].Title);
+        Assert.Equal("Ritual", ordered[0].Writing.Title);
     }
 
     [Fact]
     public void Order_PutsDraftsWithoutAQualityLast_OldestFirst()
     {
-        var newerUnjudged = MakeDraft("Newer, unjudged", RiteKind.Prayer, 0f, AboutCaches) with
+        var newer = MakeDraft("Newer, unjudged", RiteKind.Prayer, 0f, AboutCaches);
+        var newerUnjudged = newer with
         {
             Augury = Option<Augury>.None,
-            GeneratedAtUtc = new DateTime(2026, 10, 7, 0, 0, 0, DateTimeKind.Utc),
+            Writing = newer.Writing with { GeneratedAtUtc = new DateTime(2026, 10, 7, 0, 0, 0, DateTimeKind.Utc) },
         };
-        var olderUnjudged = newerUnjudged with { Id = Guid.NewGuid(), Title = "Older, unjudged", GeneratedAtUtc = newerUnjudged.GeneratedAtUtc.AddDays(-1) };
+        var olderUnjudged = newerUnjudged with
+        {
+            Id = Guid.NewGuid(),
+            Writing = newerUnjudged.Writing with { Title = "Older, unjudged", GeneratedAtUtc = newerUnjudged.Writing.GeneratedAtUtc.AddDays(-1) },
+        };
         var weak = MakeDraft("Weak but judged", RiteKind.Prayer, 0.1f, AboutBuilds);
 
         var ordered = LiturgicalCalendar.Order([newerUnjudged, olderUnjudged, weak], [], []);
@@ -142,22 +147,28 @@ public class LiturgicalCalendarTests
         Assert.Equal(["Pinned prayer", "Ritual", "Prayer"], Titles(ordered));
     }
 
-    private static string[] Titles(List<Draft> ordered) => ordered.Select(draft => draft.Title).ToArray();
+    private static string[] Titles(List<Draft> ordered) => ordered.Select(draft => draft.Writing.Title).ToArray();
 
     private static Draft MakeDraft(string title, RiteKind kind, float quality, float[] scores) => new()
     {
         Id = Guid.NewGuid(),
-        Kind = kind,
-        Title = title,
-        GeneratedAtUtc = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc),
+        Writing = new RiteWriting
+        {
+            Kind = kind,
+            Title = title,
+            GeneratedAtUtc = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc),
+        },
         Similarity = new RiteSimilarity { ScoresGeneratorVersion = "jev/q1", Scores = scores },
         Augury = new Augury { Quality = quality, JudgedBy = "jev/quality-q1" },
     };
 
     private static Rite MakeRite(RiteKind kind, float[] scores) => new()
     {
-        Kind = kind,
-        Title = "Published",
+        Writing = new RiteWriting
+        {
+            Kind = kind,
+            Title = "Published",
+        },
         Similarity = new RiteSimilarity { ScoresGeneratorVersion = "jev/q1", Scores = scores },
     };
 }

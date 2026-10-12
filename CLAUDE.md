@@ -93,6 +93,8 @@ observability/                    — the Grafana dashboard, and what the app's 
     limits, and a batch needs one partition.
   - `Rite.Similarity` holds the scores for "More rites", whatever method produced them (Jev, to begin with); scores
     from different `ScoresGeneratorVersion`s aren't comparable.
+  - A draft and the rite it becomes hold the same `RiteWriting`: what the model wrote, and which model, when. The
+    documents stay flat; only their mappers know about it.
   - Timestamps are written as UTC ("Z") and read back as UTC.
 - **Entra ID only** for Cosmos DB: the app's managed identity in Azure, your `az login` locally
   (`CosmosClients.Create`); the account's keys stay off. The account, databases, container, role assignments and the

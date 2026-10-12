@@ -26,9 +26,9 @@ public sealed class BacklogRefillerTests : IAsyncLifetime
 
         Assert.Equal(2, written);
         var waiting = await testbed.Waiting();
-        Assert.Equal(["Already waiting", "Second", "Third"], waiting.Select(draft => draft.Title).Order());
+        Assert.Equal(["Already waiting", "Second", "Third"], waiting.Select(draft => draft.Writing.Title).Order());
         Assert.All(waiting, draft => Assert.True(draft.Augury.IsSome));
-        Assert.All(waiting.Where(draft => draft.Title != "Already waiting"), draft => Assert.True(draft.Similarity.IsSome));
+        Assert.All(waiting.Where(draft => draft.Writing.Title != "Already waiting"), draft => Assert.True(draft.Similarity.IsSome));
     }
 
     [Fact]
@@ -56,7 +56,7 @@ public sealed class BacklogRefillerTests : IAsyncLifetime
 
         var instructions = testbed.Models.Requests.Single().Messages.Single(message => message.Role == ChatRole.System).Text;
         Assert.Contains("Write one RITUAL", instructions);
-        Assert.Equal(RiteKind.Ritual, (await testbed.Waiting()).Single(draft => draft.Title == "Second").Kind);
+        Assert.Equal(RiteKind.Ritual, (await testbed.Waiting()).Single(draft => draft.Writing.Title == "Second").Writing.Kind);
     }
 
     [Fact]
@@ -124,7 +124,7 @@ public sealed class BacklogRefillerTests : IAsyncLifetime
         var error = Failed(await testbed.Refiller().Refill(CancellationToken.None));
 
         Assert.Contains("No model wrote", error.Message);
-        Assert.Equal("Written", Assert.Single(await testbed.Waiting()).Title);
+        Assert.Equal("Written", Assert.Single(await testbed.Waiting()).Writing.Title);
     }
 
     [Fact]
@@ -135,7 +135,7 @@ public sealed class BacklogRefillerTests : IAsyncLifetime
 
         await Function().Run(RefillBacklogFunction.AfterPublishing, CancellationToken.None);
 
-        Assert.Equal("Summoned", Assert.Single(await testbed.Waiting()).Title);
+        Assert.Equal("Summoned", Assert.Single(await testbed.Waiting()).Writing.Title);
     }
 
     [Fact]

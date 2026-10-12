@@ -27,7 +27,7 @@ public sealed class ScribesTests : IAsyncLifetime
 
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
 
-        Assert.Equal(["Excellent", "Fair"], view.Calendar.Select(entry => entry.Draft.Title));
+        Assert.Equal(["Excellent", "Fair"], view.Calendar.Select(entry => entry.Draft.Writing.Title));
         // Today's rite isn't out yet, so the first goes out tonight... which is today's.
         Assert.Equal([Today, Today.AddDays(1)], view.Calendar.Select(entry => entry.PublishesOnUtc));
         Assert.Equal([1, 2], view.Calendar.Select(entry => entry.AuguryPlace));
@@ -57,7 +57,7 @@ public sealed class ScribesTests : IAsyncLifetime
         Ok(await testbed.Scribes().Anoint(fair.Id, "  The Heretical Truth names the real fix.  ", CancellationToken.None));
 
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
-        Assert.Equal(["Fair", "Excellent", "Good"], view.Calendar.Select(entry => entry.Draft.Title));
+        Assert.Equal(["Fair", "Excellent", "Good"], view.Calendar.Select(entry => entry.Draft.Writing.Title));
         // The ones it jumped over keep their order, now as the Scribes'.
         Assert.All(view.Calendar, entry => Assert.True(entry.PlacedByScribes));
         var decision = Assert.Single(view.Decisions);
@@ -80,7 +80,7 @@ public sealed class ScribesTests : IAsyncLifetime
         await testbed.AddDraft("Better, from a refill", 0.95f);
 
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
-        Assert.Equal(["The Augury's pick", "Better, from a refill"], view.Calendar.Select(entry => entry.Draft.Title));
+        Assert.Equal(["The Augury's pick", "Better, from a refill"], view.Calendar.Select(entry => entry.Draft.Writing.Title));
         Assert.Equal(Some("Yes, this one."), Assert.Single(view.Decisions).Note);
     }
 
@@ -121,7 +121,7 @@ public sealed class ScribesTests : IAsyncLifetime
         Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Failed(result));
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
         Assert.Equal(ScribeAction.Burn, Assert.Single(view.Decisions).Action);
-        Assert.Equal(["Excellent"], view.Calendar.Select(entry => entry.Draft.Title));
+        Assert.Equal(["Excellent"], view.Calendar.Select(entry => entry.Draft.Writing.Title));
     }
 
     [Fact]
@@ -138,11 +138,11 @@ public sealed class ScribesTests : IAsyncLifetime
         Ok(await scribes.Burn(fair.Id, "", CancellationToken.None));
 
         var burned = Ok(await testbed.Scribes().View(CancellationToken.None));
-        Assert.Equal(["Excellent"], burned.Calendar.Select(entry => entry.Draft.Title));
-        Assert.Equal(["Fair"], burned.Ashes.Select(draft => draft.Title));
+        Assert.Equal(["Excellent"], burned.Calendar.Select(entry => entry.Draft.Writing.Title));
+        Assert.Equal(["Fair"], burned.Ashes.Select(draft => draft.Writing.Title));
         Ok(await testbed.Scribes().Restore(fair.Id, "", CancellationToken.None));
         var restored = Ok(await testbed.Scribes().View(CancellationToken.None));
-        Assert.Equal(["Excellent", "Fair"], restored.Calendar.Select(entry => entry.Draft.Title));
+        Assert.Equal(["Excellent", "Fair"], restored.Calendar.Select(entry => entry.Draft.Writing.Title));
         Assert.False(restored.Calendar.Single(entry => entry.Draft.Id == fair.Id).PlacedByScribes);
     }
 
@@ -184,7 +184,7 @@ public sealed class ScribesTests : IAsyncLifetime
 
         // The anointing came after the publisher read the order: it publishes from what it read, and the anointed draft
         // is next.
-        Assert.Equal("Excellent", published.Rite.Title);
+        Assert.Equal("Excellent", published.Rite.Writing.Title);
         Assert.Equal(anointedMeanwhile, Ok(await testbed.Scribes().View(CancellationToken.None)).Calendar[0].Draft.Id);
     }
 
@@ -197,8 +197,8 @@ public sealed class ScribesTests : IAsyncLifetime
 
         var published = Ok(await testbed.Publisher().PublishToday(CancellationToken.None));
 
-        Assert.Equal("Fair", published.Rite.Title);
-        Assert.Equal("Excellent", Assert.Single(Ok(await testbed.Scribes().View(CancellationToken.None)).Calendar).Draft.Title);
+        Assert.Equal("Fair", published.Rite.Writing.Title);
+        Assert.Equal("Excellent", Assert.Single(Ok(await testbed.Scribes().View(CancellationToken.None)).Calendar).Draft.Writing.Title);
     }
 
     [Fact]
@@ -211,7 +211,7 @@ public sealed class ScribesTests : IAsyncLifetime
         Ok(await testbed.Scribes().Exalt(fair.Id, "", CancellationToken.None));
 
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
-        Assert.Equal(["Excellent", "Fair", "Good"], view.Calendar.Select(entry => entry.Draft.Title));
+        Assert.Equal(["Excellent", "Fair", "Good"], view.Calendar.Select(entry => entry.Draft.Writing.Title));
         Assert.Equal(None, Assert.Single(view.Decisions).Note);
     }
 
@@ -225,7 +225,7 @@ public sealed class ScribesTests : IAsyncLifetime
         Ok(await testbed.Scribes().Humble(excellent.Id, "Too close to last week's.", CancellationToken.None));
 
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
-        Assert.Equal(["Good", "Excellent", "Fair"], view.Calendar.Select(entry => entry.Draft.Title));
+        Assert.Equal(["Good", "Excellent", "Fair"], view.Calendar.Select(entry => entry.Draft.Writing.Title));
         Assert.Equal(ScribeAction.Humble, Assert.Single(view.Decisions).Action);
     }
 
@@ -243,7 +243,7 @@ public sealed class ScribesTests : IAsyncLifetime
         Ok(await testbed.Scribes().Exalt(w.Id, "", CancellationToken.None));
 
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
-        Assert.Equal(["W", "Z", "Y", "X"], view.Calendar.Select(entry => entry.Draft.Title));
+        Assert.Equal(["W", "Z", "Y", "X"], view.Calendar.Select(entry => entry.Draft.Writing.Title));
     }
 
     [Fact]
@@ -256,7 +256,7 @@ public sealed class ScribesTests : IAsyncLifetime
         Assert.Equal(Scribes.NothingToMove, Failed(await testbed.Scribes().Humble(last.Id, "", CancellationToken.None)));
 
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
-        Assert.Equal(["Excellent", "Fair"], view.Calendar.Select(entry => entry.Draft.Title));
+        Assert.Equal(["Excellent", "Fair"], view.Calendar.Select(entry => entry.Draft.Writing.Title));
         Assert.Empty(view.Decisions);
     }
 
@@ -270,7 +270,7 @@ public sealed class ScribesTests : IAsyncLifetime
 
         Assert.Equal(1, waiting);
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
-        Assert.Equal(["Fair"], view.Calendar.Select(entry => entry.Draft.Title));
+        Assert.Equal(["Fair"], view.Calendar.Select(entry => entry.Draft.Writing.Title));
         var ash = Assert.Single(view.Ashes);
         Assert.Equal(DraftState.Burned, ash.State);
         Assert.Equal(Some(testbed.Time.GetUtcNow().UtcDateTime), ash.BurnedAtUtc);
@@ -290,7 +290,7 @@ public sealed class ScribesTests : IAsyncLifetime
         Ok(await testbed.Scribes().Restore(draft.Id, "Funnier than I thought.", CancellationToken.None));
 
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
-        Assert.Equal("Second chance", Assert.Single(view.Calendar).Draft.Title);
+        Assert.Equal("Second chance", Assert.Single(view.Calendar).Draft.Writing.Title);
         Assert.True(view.Calendar[0].Draft.BurnedAtUtc.IsNone);
         Assert.Empty(view.Ashes);
         var restored = view.Decisions[0];
@@ -310,9 +310,9 @@ public sealed class ScribesTests : IAsyncLifetime
         Ok(await testbed.Scribes().Restore(fair.Id, "", CancellationToken.None));
 
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
-        Assert.Equal(["Excellent", "Fair"], view.Calendar.Select(entry => entry.Draft.Title));
+        Assert.Equal(["Excellent", "Fair"], view.Calendar.Select(entry => entry.Draft.Writing.Title));
         // "Excellent" stays where the anointing put it; only the restored draft lost its place.
-        Assert.False(view.Calendar.Single(entry => entry.Draft.Title == "Fair").PlacedByScribes);
+        Assert.False(view.Calendar.Single(entry => entry.Draft.Writing.Title == "Fair").PlacedByScribes);
     }
 
     [Fact]
@@ -330,7 +330,7 @@ public sealed class ScribesTests : IAsyncLifetime
 
         Ok(await testbed.Scribes().Restore(first.Id, "", CancellationToken.None));
 
-        Assert.Equal("Burned first", Assert.Single(await testbed.Waiting()).Title);
+        Assert.Equal("Burned first", Assert.Single(await testbed.Waiting()).Writing.Title);
     }
 
     [Fact]
@@ -357,7 +357,7 @@ public sealed class ScribesTests : IAsyncLifetime
         Ok(await testbed.Scribes().LetTheAuguryDecide(CancellationToken.None));
 
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
-        Assert.Equal(["Excellent", "Fair"], view.Calendar.Select(entry => entry.Draft.Title));
+        Assert.Equal(["Excellent", "Fair"], view.Calendar.Select(entry => entry.Draft.Writing.Title));
         Assert.All(view.Calendar, entry => Assert.False(entry.PlacedByScribes));
     }
 
@@ -395,7 +395,7 @@ public sealed class ScribesTests : IAsyncLifetime
         var second = await testbed.Scriptorium.SavePlacements(stale with { Order = [fair.Id] }, None, [], CancellationToken.None);
 
         Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Failed(second));
-        Assert.Equal("Good", Ok(await testbed.Scribes().View(CancellationToken.None)).Calendar[0].Draft.Title);
+        Assert.Equal("Good", Ok(await testbed.Scribes().View(CancellationToken.None)).Calendar[0].Draft.Writing.Title);
     }
 
     [Fact]

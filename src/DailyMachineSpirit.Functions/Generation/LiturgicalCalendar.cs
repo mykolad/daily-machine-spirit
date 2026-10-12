@@ -29,8 +29,8 @@ public static class LiturgicalCalendar
         var unplaced = waiting.Where(draft => !placedIds.Contains(draft.Id)).ToList();
 
         // Oldest first: each pick joins the end, as the rite before the next one.
-        var before = recent.Take(ResemblanceWindow).Reverse().Select(rite => (rite.Kind, rite.Similarity))
-            .Concat(ordered.Select(draft => (draft.Kind, draft.Similarity)))
+        var before = recent.Take(ResemblanceWindow).Reverse().Select(rite => (rite.Writing.Kind, rite.Similarity))
+            .Concat(ordered.Select(draft => (draft.Writing.Kind, draft.Similarity)))
             .ToList();
         // The most recent judge: after a new Jev model or quality question, drafts it hasn't judged yet
         // wait behind the ones it has.
@@ -38,7 +38,7 @@ public static class LiturgicalCalendar
             .Select(augury => augury.JudgedBy).HeadOrNone();
         bool IsJudged(Draft draft) => draft.Augury.Exists(augury => judge.Exists(newest => newest == augury.JudgedBy));
         // A fixed order to start from, so equal values always resolve the same way.
-        var judged = unplaced.Where(IsJudged).OrderBy(draft => draft.GeneratedAtUtc).ThenBy(draft => draft.Id).ToList();
+        var judged = unplaced.Where(IsJudged).OrderBy(draft => draft.Writing.GeneratedAtUtc).ThenBy(draft => draft.Id).ToList();
 
         while (judged.Count > 0)
         {
@@ -46,10 +46,10 @@ public static class LiturgicalCalendar
             var next = judged.OrderByDescending(draft => Value(draft, before)).First();
             judged.Remove(next);
             ordered.Add(next);
-            before.Add((next.Kind, next.Similarity));
+            before.Add((next.Writing.Kind, next.Similarity));
         }
 
-        ordered.AddRange(unplaced.Where(draft => !IsJudged(draft)).OrderBy(draft => draft.GeneratedAtUtc).ThenBy(draft => draft.Id));
+        ordered.AddRange(unplaced.Where(draft => !IsJudged(draft)).OrderBy(draft => draft.Writing.GeneratedAtUtc).ThenBy(draft => draft.Id));
         return ordered;
     }
 
@@ -60,7 +60,7 @@ public static class LiturgicalCalendar
             .Select(rite => Resemblance(draft.Similarity, rite.Similarity))
             .DefaultIfEmpty(0f)
             .Max();
-        var sameKind = before.Count > 0 && before[^1].Kind == draft.Kind ? SameKindPenalty : 0f;
+        var sameKind = before.Count > 0 && before[^1].Kind == draft.Writing.Kind ? SameKindPenalty : 0f;
         return quality - ResemblancePenalty * resemblance - sameKind;
     }
 

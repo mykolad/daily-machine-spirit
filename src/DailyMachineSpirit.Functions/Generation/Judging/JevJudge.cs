@@ -44,7 +44,7 @@ public sealed class JevJudge : IRiteJudge
                 Content = JsonContent.Create(new
                 {
                     model = jev.Model,
-                    state = $"{draft.Title}\n\n{draft.Text}\n\nWhat really happens: {draft.HereticalTruth}",
+                    state = $"{draft.Writing.Title}\n\n{draft.Writing.Text}\n\nWhat really happens: {draft.Writing.HereticalTruth}",
                     questions = new Dictionary<string, object>
                     {
                         ["topic"] = Question("Which software habit or practice is this satirical rite about?", JevQuestions.Topics),

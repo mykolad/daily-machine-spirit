@@ -77,13 +77,17 @@ public sealed class BacklogRefiller
             .BindAsync(recent => scriptorium.GetBurned(options.Value.RecentRitesInPrompt, cancellationToken)
                 .BindAsync(burned => writer.Write(
                     KindToWrite(waiting),
-                    [.. recent.Select(rite => rite.Title), .. waiting.Select(draft => draft.Title), .. burned.Select(draft => draft.Title)],
+                    [
+                        .. recent.Select(rite => rite.Writing.Title),
+                        .. waiting.Select(draft => draft.Writing.Title),
+                        .. burned.Select(draft => draft.Writing.Title),
+                    ],
                     cancellationToken)))
             .BindAsync(async draft => Right<Error, Draft>(await Judged(draft, cancellationToken)))
             .BindAsync(draft => drafts.Add(draft, cancellationToken));
 
     private static RiteKind KindToWrite(IReadOnlyList<Draft> waiting)
-        => waiting.Count(draft => draft.Kind == RiteKind.Prayer) <= waiting.Count(draft => draft.Kind == RiteKind.Ritual)
+        => waiting.Count(draft => draft.Writing.Kind == RiteKind.Prayer) <= waiting.Count(draft => draft.Writing.Kind == RiteKind.Ritual)
             ? RiteKind.Prayer
             : RiteKind.Ritual;
 
@@ -97,19 +101,19 @@ public sealed class BacklogRefiller
                     Some: scores =>
                     {
                         logger.LogInformation("Draft {Title} was judged by {Judge}, its scores made by {ScoresGenerator}.",
-                            draft.Title, judged.Augury.Map(augury => augury.JudgedBy).IfNone("no quality judge"), scores.ScoresGeneratorVersion);
+                            draft.Writing.Title, judged.Augury.Map(augury => augury.JudgedBy).IfNone("no quality judge"), scores.ScoresGeneratorVersion);
                         metrics.Judging("judged");
                     },
                     None: () =>
                     {
-                        logger.LogInformation("Draft {Title} joins the backlog without scores: judging is turned off.", draft.Title);
+                        logger.LogInformation("Draft {Title} joins the backlog without scores: judging is turned off.", draft.Writing.Title);
                         metrics.Judging("off");
                     });
                 return judged;
             },
             Left: error =>
             {
-                logger.LogWarning(error.ToException(), "Draft {Title} joins the backlog without scores: {Reason}", draft.Title, error.Message);
+                logger.LogWarning(error.ToException(), "Draft {Title} joins the backlog without scores: {Reason}", draft.Writing.Title, error.Message);
                 metrics.Judging("failed");
                 return draft;
             });

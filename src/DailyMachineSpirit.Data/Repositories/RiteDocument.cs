@@ -46,12 +46,12 @@ internal sealed record RiteDocument
         Id = IdFor(rite.PublishedOnUtc),
         Number = number,
         PublishedOnUtc = rite.PublishedOnUtc,
-        Kind = rite.Kind,
-        Title = rite.Title,
-        Text = rite.Text,
-        HereticalTruth = rite.HereticalTruth,
-        GeneratedByModel = rite.GeneratedByModel,
-        GeneratedAtUtc = Utc.From(rite.GeneratedAtUtc),
+        Kind = rite.Writing.Kind,
+        Title = rite.Writing.Title,
+        Text = rite.Writing.Text,
+        HereticalTruth = rite.Writing.HereticalTruth,
+        GeneratedByModel = rite.Writing.GeneratedByModel,
+        GeneratedAtUtc = Utc.From(rite.Writing.GeneratedAtUtc),
         BlessedCount = rite.BlessedCount,
         HeresyCount = rite.HeresyCount,
         Similarity = rite.Similarity.Map(Utc.From).OrNull(),
@@ -61,49 +61,17 @@ internal sealed record RiteDocument
     {
         Number = Number,
         PublishedOnUtc = PublishedOnUtc,
-        Kind = Kind,
-        Title = Title,
-        Text = Text,
-        HereticalTruth = HereticalTruth,
-        GeneratedByModel = GeneratedByModel,
-        GeneratedAtUtc = GeneratedAtUtc,
+        Writing = new RiteWriting
+        {
+            Kind = Kind,
+            Title = Title,
+            Text = Text,
+            HereticalTruth = HereticalTruth,
+            GeneratedByModel = GeneratedByModel,
+            GeneratedAtUtc = GeneratedAtUtc,
+        },
         BlessedCount = BlessedCount,
         HeresyCount = HeresyCount,
         Similarity = Optional(Similarity),
     };
-}
-
-/// <summary>The last rite number given out. Cosmos has no auto-increment, so this document hands them out.</summary>
-internal sealed record NumberCounterDocument
-{
-    public const string CounterId = "rite-number";
-
-    public string Id { get; init; } = CounterId;
-
-    public string Partition { get; init; } = CosmosCalls.SharedPartition;
-
-    public string Type { get; init; } = "counter";
-
-    public int LastNumber { get; init; }
-}
-
-internal static class Utc
-{
-    // A UTC time is written with its "Z" and read back as UTC; a local time would be read back as local.
-    public static DateTime From(DateTime value) => value.Kind switch
-    {
-        DateTimeKind.Local => value.ToUniversalTime(),
-        DateTimeKind.Unspecified => DateTime.SpecifyKind(value, DateTimeKind.Utc),
-        _ => value,
-    };
-
-    public static RiteSimilarity From(RiteSimilarity similarity) => similarity with { CreatedAtUtc = From(similarity.CreatedAtUtc) };
-}
-
-internal static class OptionExtensions
-{
-    /// <summary>For the JSON documents only, which store a missing value as null.</summary>
-    public static T? OrNull<T>(this Option<T> option) where T : class => option.MatchUnsafe(value => value, () => null);
-
-    public static T? OrNullable<T>(this Option<T> option) where T : struct => option.MatchUnsafe(value => (T?)value, () => null);
 }

@@ -261,11 +261,14 @@ public sealed class SitePagesTests : IAsyncLifetime
         => Ok(await Repository.Add(new Rite
         {
             PublishedOnUtc = day,
-            Kind = RiteKind.Ritual,
-            Title = title,
-            Text = "Press Re-run thrice, intoning `it passed locally`, for the Machine Spirit rewards the persistent.",
-            HereticalTruth = "Your test depends on `timing`.",
-            GeneratedByModel = "gpt-6-sol",
-            GeneratedAtUtc = day.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
+            Writing = new RiteWriting
+            {
+                Kind = RiteKind.Ritual,
+                Title = title,
+                Text = "Press Re-run thrice, intoning `it passed locally`, for the Machine Spirit rewards the persistent.",
+                HereticalTruth = "Your test depends on `timing`.",
+                GeneratedByModel = "gpt-6-sol",
+                GeneratedAtUtc = day.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
+            },
         }, CancellationToken.None));
 }

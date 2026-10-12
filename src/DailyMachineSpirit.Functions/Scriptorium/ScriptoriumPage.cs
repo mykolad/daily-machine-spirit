@@ -178,7 +178,7 @@ public static partial class ScriptoriumPage
         var draft = entry.Draft;
         var id = draft.Id.ToString("D");
         html.Append($"""<li><article class="rite" id="rite-{id}" aria-labelledby="title-{id}">""");
-        html.Append($"""<p class="kicker"><time datetime="{entry.PublishesOnUtc:yyyy-MM-dd}">{Date(entry.PublishesOnUtc)}</time> · {Kind(draft.Kind)}</p>""");
+        html.Append($"""<p class="kicker"><time datetime="{entry.PublishesOnUtc:yyyy-MM-dd}">{Date(entry.PublishesOnUtc)}</time> · {Kind(draft.Writing.Kind)}</p>""");
         // Today's own rite is only still due when the midnight run failed; its retry publishes it.
         if (place == 1)
         {
@@ -192,23 +192,23 @@ public static partial class ScriptoriumPage
                 : $"The Augury: {judged.Quality:P0}")
             .IfNone("Not yet judged by the Augury");
         var placedBy = entry.PlacedByScribes ? """<span class="placed">Placed by the Scribes</span> · """ : string.Empty;
-        html.Append($"""<p class="meta">{placedBy}{Encode(augury)} · written by <span class="nowrap">{Encode(draft.GeneratedByModel)}</span></p>""");
+        html.Append($"""<p class="meta">{placedBy}{Encode(augury)} · written by <span class="nowrap">{Encode(draft.Writing.GeneratedByModel)}</span></p>""");
 
         var reorder = new List<string>();
         if (place > 1)
         {
-            reorder.Add(Button(id, draft.Title, "exalt", ScriptoriumIcons.Exalt, "Exalt", "secondary"));
+            reorder.Add(Button(id, draft.Writing.Title, "exalt", ScriptoriumIcons.Exalt, "Exalt", "secondary"));
         }
         if (!isLast)
         {
-            reorder.Add(Button(id, draft.Title, "humble", ScriptoriumIcons.Humble, "Humble", "secondary"));
+            reorder.Add(Button(id, draft.Writing.Title, "humble", ScriptoriumIcons.Humble, "Humble", "secondary"));
         }
         DecisionForm(html, id,
         [
             // Anointing the first is useful too: it keeps it first, ahead of a better draft a refill may bring.
-            Button(id, draft.Title, "anoint", ScriptoriumIcons.Anoint, "Anoint", "primary"),
+            Button(id, draft.Writing.Title, "anoint", ScriptoriumIcons.Anoint, "Anoint", "primary"),
             .. reorder.Count == 0 ? [] : new[] { $"""<span class="pair" role="group" aria-label="Reorder">{string.Concat(reorder)}</span>""" },
-            Button(id, draft.Title, "burn", ScriptoriumIcons.Burn, "Consign to the Flames", "danger burn"),
+            Button(id, draft.Writing.Title, "burn", ScriptoriumIcons.Burn, "Consign to the Flames", "danger burn"),
         ]);
         html.Append("</article></li>");
     }
@@ -217,19 +217,19 @@ public static partial class ScriptoriumPage
     {
         var id = draft.Id.ToString("D");
         html.Append($"""<li><article class="rite ash" id="rite-{id}" aria-labelledby="title-{id}">""");
-        html.Append($"""<p class="kicker">{Kind(draft.Kind)}""");
+        html.Append($"""<p class="kicker">{Kind(draft.Writing.Kind)}""");
         draft.BurnedAtUtc.IfSome(burned => html.Append($" · burned {Date(DateOnly.FromDateTime(burned))}"));
         html.Append("</p>");
         RiteBody(html, draft, id);
-        DecisionForm(html, id, [Button(id, draft.Title, "restore", ScriptoriumIcons.Restore, "Restore from the Ashes", "secondary")]);
+        DecisionForm(html, id, [Button(id, draft.Writing.Title, "restore", ScriptoriumIcons.Restore, "Restore from the Ashes", "secondary")]);
         html.Append("</article></li>");
     }
 
     private static void RiteBody(StringBuilder html, Draft draft, string id)
     {
-        html.Append($"""<h3 id="title-{id}">{WithCode(draft.Title)}</h3>""");
-        html.Append($"""<p class="text">{WithCode(draft.Text)}</p>""");
-        html.Append($"""<p class="truth"><span class="truth-label">Heretical Truth</span> {WithCode(draft.HereticalTruth)}</p>""");
+        html.Append($"""<h3 id="title-{id}">{WithCode(draft.Writing.Title)}</h3>""");
+        html.Append($"""<p class="text">{WithCode(draft.Writing.Text)}</p>""");
+        html.Append($"""<p class="truth"><span class="truth-label">Heretical Truth</span> {WithCode(draft.Writing.HereticalTruth)}</p>""");
     }
 
     // One form per draft, so its note goes with whichever button is pressed. The note is folded away: twenty open boxes
@@ -288,7 +288,7 @@ public static partial class ScriptoriumPage
     {
         var entry = rite.Bind(id => view.Calendar.Where(waiting => waiting.Draft.Id == id).HeadOrNone());
         var ash = rite.Bind(id => view.Ashes.Where(burned => burned.Id == id).HeadOrNone());
-        var title = (entry.Map(waiting => waiting.Draft) | ash).Map(draft => $"“{WithCode(draft.Title)}”");
+        var title = (entry.Map(waiting => waiting.Draft) | ash).Map(draft => $"“{WithCode(draft.Writing.Title)}”");
         var date = entry.Map(waiting => Date(waiting.PublishesOnUtc));
         string Named(string done) => title.Map(name => $"{done} {name}").IfNone(done);
         var restore = ash.Map(burned => $""" <a href="#rite-{burned.Id:D}">Restore it from the Ashes</a>.""").IfNone(string.Empty);
