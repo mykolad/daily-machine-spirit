@@ -187,6 +187,7 @@ public sealed class VotesTests : IAsyncLifetime
     [InlineData("""{"vote":"blessed","unexpected":true}""")]
     [InlineData("""{"vot":"blessed"}""")]
     [InlineData("""{"vote":1}""")]
+    [InlineData("{}")]
     [InlineData("not json")]
     [InlineData("null")]
     public async Task Post_WithABodyThatIsNotAVote_IsABadRequest(string json)

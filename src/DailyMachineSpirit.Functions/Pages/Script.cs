@@ -85,7 +85,9 @@ public static class Script
                 reader = { available: me.signInAvailable === true, signedIn: me.signedIn === true, vote: null };
                 if (reader.signedIn) {
                   const votes = await fetch(`/api/votes?rites=${rite}`);
-                  if (votes.ok) reader.vote = (await votes.json())[rite] ?? null;
+                  // Signed out meanwhile (another tab, or the sign-in ran out): offer the sign-in again.
+                  if (votes.status === 401) reader.signedIn = false;
+                  else if (votes.ok) reader.vote = (await votes.json())[rite] ?? null;
                 }
               } catch { }
               showReader();
