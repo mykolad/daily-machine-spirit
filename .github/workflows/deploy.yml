@@ -44,10 +44,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: ${{ inputs.environment }}
-    # One deployment per environment at a time; a newer one waits rather than cancelling one half done.
+    # One deployment per environment at a time, in the order they arrive. A newer one waits rather than cancelling one
+    # half done, and the queue keeps every waiting deployment: by default GitHub keeps only the newest, so a branch
+    # deployment could knock out a merge's.
     concurrency:
       group: deploy-${{ inputs.environment }}
       cancel-in-progress: false
+      queue: max
 
     steps:
       - name: Download the package
