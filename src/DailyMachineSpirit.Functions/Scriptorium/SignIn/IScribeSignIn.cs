@@ -4,8 +4,8 @@ namespace DailyMachineSpirit.Functions.Scriptorium.SignIn;
 
 /// <summary>
 /// Whether a request to the Scriptorium comes from a Scribe. Production signs the Scribes in with Cloudflare Access
-/// (<see cref="CloudflareAccessSignIn"/>); staging relies on its IP rule (<see cref="NoSignIn"/>); an app with neither
-/// set up admits nobody (<see cref="NobodySignsIn"/>).
+/// (<see cref="CloudflareAccessSignIn"/>); staging relies on its IP rule (<see cref="EveryoneIsScribeSignIn"/>); an app with neither
+/// set up admits nobody (<see cref="NobodyIsScribeSignIn"/>).
 /// </summary>
 public interface IScribeSignIn
 {

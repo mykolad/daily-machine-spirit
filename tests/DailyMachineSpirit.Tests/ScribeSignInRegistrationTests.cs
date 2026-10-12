@@ -12,10 +12,10 @@ public class ScribeSignInRegistrationTests
     [Theory]
     [InlineData("scribes.cloudflareaccess.com", "aud", false, typeof(CloudflareAccessSignIn))]
     [InlineData("scribes.cloudflareaccess.com", "aud", true, typeof(CloudflareAccessSignIn))]
-    [InlineData("", "", true, typeof(NoSignIn))]
-    [InlineData("", "", false, typeof(NobodySignsIn))]
+    [InlineData("", "", true, typeof(EveryoneIsScribeSignIn))]
+    [InlineData("", "", false, typeof(NobodyIsScribeSignIn))]
     // Half set up is not set up: nobody gets in.
-    [InlineData("scribes.cloudflareaccess.com", "", false, typeof(NobodySignsIn))]
+    [InlineData("scribes.cloudflareaccess.com", "", false, typeof(NobodyIsScribeSignIn))]
     public void TheSignIn_FollowsTheSettings_AndFailsClosed(string teamDomain, string audience, bool withoutSignIn, Type expected)
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
