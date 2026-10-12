@@ -12,6 +12,13 @@ permissions:
   id-token: write
   actions: read
 
+# One merge at a time, from build to smoke tests, so an older commit's build finishing late can't deploy over a newer
+# one. A run in progress is never cancelled; of the merges waiting behind it, only the newest runs (it includes the
+# others).
+concurrency:
+  group: deploy-master
+  cancel-in-progress: false
+
 jobs:
   build-and-test:
     name: build-and-test
