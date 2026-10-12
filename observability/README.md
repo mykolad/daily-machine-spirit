@@ -19,6 +19,7 @@ Export, without "Export for sharing externally") back over this file, so the rep
 | `dms_generation_answers_total` | `model`, `outcome` | the models' answers: `accepted`, `refused` (broke a rule), `failed` |
 | `dms_rites_published_total` | `kind`, `model` | rites published |
 | `dms_scoring_runs_total` | `outcome` | scoring each new draft (for the Augury and More rites): `scored`, `failed`, `off` |
+| `dms_scriptorium_refusals_total` | `reason` | Scriptorium requests whose Access token was refused: the check that failed (`SecurityTokenExpiredException`, ...), or `keys-unavailable` |
 | `http_client_*`, `dotnet_*` | | .NET's own: outgoing HTTP calls, memory, garbage collection, the thread pool |
 
 No tag says anything about a visitor. The Functions host exports nothing: its request telemetry would carry user agents.
