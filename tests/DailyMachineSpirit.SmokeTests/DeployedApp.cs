@@ -19,14 +19,14 @@ public sealed class DeployedApp : IAsyncLifetime
     private static readonly TimeSpan HealthTimeout = TimeSpan.FromSeconds(15);
     // An access rule just added for the runner (staging) takes a moment to reach every front end. Until then a request
     // is refused (403) or gets no answer at all, so it's tried again a few times.
-    private const int Tries = 4;
+    private const int Tries = 3;
     private static readonly TimeSpan BetweenTries = TimeSpan.FromSeconds(5);
 
     private readonly HttpClient http;
 
     public DeployedApp()
     {
-        http = new HttpClient { BaseAddress = new Uri(Required(BaseUrlVariable)), Timeout = TimeSpan.FromSeconds(30) };
+        http = new HttpClient { BaseAddress = new Uri(Required(BaseUrlVariable)), Timeout = TimeSpan.FromSeconds(20) };
         Version = Required(VersionVariable);
     }
 
@@ -38,11 +38,12 @@ public sealed class DeployedApp : IAsyncLifetime
     {
         var waited = Stopwatch.StartNew();
         var lastAnswer = "no answer";
-        while (waited.Elapsed < NewVersionDeadline)
+        for (var remaining = NewVersionDeadline; remaining > TimeSpan.Zero; remaining = NewVersionDeadline - waited.Elapsed)
         {
             try
             {
-                using var timeout = new CancellationTokenSource(HealthTimeout);
+                // Never past the deadline: a version that answers after it doesn't count.
+                using var timeout = new CancellationTokenSource(Min(HealthTimeout, remaining));
                 var health = JsonSerializer.Deserialize<JsonElement>(await http.GetStringAsync("/healthz", timeout.Token));
                 if (health.TryGetProperty("version", out var version) && version.GetString() == Version)
                 {
@@ -86,6 +87,8 @@ public sealed class DeployedApp : IAsyncLifetime
         http.Dispose();
         return Task.CompletedTask;
     }
+
+    private static TimeSpan Min(TimeSpan first, TimeSpan second) => first < second ? first : second;
 
     private static string Required(string variable) =>
         Environment.GetEnvironmentVariable(variable) is { Length: > 0 } value

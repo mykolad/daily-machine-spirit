@@ -42,7 +42,10 @@ jobs:
   deploy:
     name: deploy
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Above the worst case, so the rollback and the clean-up of the runner's rule always get their turn: two deploys, the
+    # three-minute wait for the access rule, and two smoke test runs of up to ten minutes each (DeployedApp's waits and
+    # retries) come to about 36 minutes.
+    timeout-minutes: 45
     environment: ${{ inputs.environment }}
     # One deployment per environment at a time, in the order they arrive. A newer one waits rather than cancelling one
     # half done, and the queue keeps every waiting deployment: by default GitHub keeps only the newest, so a branch

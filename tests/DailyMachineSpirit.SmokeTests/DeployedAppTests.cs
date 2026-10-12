@@ -8,6 +8,7 @@ namespace DailyMachineSpirit.SmokeTests;
 public sealed partial class DeployedAppTests
 {
     private const string SiteName = "The Daily Machine Spirit";
+    private const string NoRiteYet = "The Machine Spirit slumbers.";
 
     private readonly DeployedApp app;
     private readonly ITestOutputHelper output;
@@ -37,10 +38,13 @@ public sealed partial class DeployedAppTests
     [Fact]
     public async Task TodaysRite_HasItsOwnPage()
     {
-        var rite = TodaysRite().Match((await app.Get("/")).Text);
+        var today = (await app.Get("/")).Text;
+        var rite = TodaysRite().Match(today);
         if (!rite.Success)
         {
-            // A new environment has no rite until its first midnight.
+            // A new environment has no rite until its first midnight, and Today says so. Without that message, a missing
+            // rite is a broken page, not an empty environment.
+            Assert.True(today.Contains(NoRiteYet, StringComparison.Ordinal), $"Today shows neither a rite nor \"{NoRiteYet}\"");
             output.WriteLine("No rite published yet, so there's no rite page to check.");
             return;
         }
