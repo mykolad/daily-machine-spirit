@@ -52,7 +52,7 @@ public sealed class RiteWriter
         this.logger = logger;
     }
 
-    /// <summary>A new draft of the kind, on a subject none of <paramref name="titlesToAvoid"/> has; not scored or saved yet.</summary>
+    /// <summary>A new draft of the kind, on a subject none of <paramref name="titlesToAvoid"/> has; not judged or saved yet.</summary>
     public async Task<Either<Error, Draft>> Write(RiteKind kind, IReadOnlyList<string> titlesToAvoid, CancellationToken cancellationToken)
     {
         var settings = options.Value;

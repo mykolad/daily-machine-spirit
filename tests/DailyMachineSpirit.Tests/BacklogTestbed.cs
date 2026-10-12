@@ -30,7 +30,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public int BacklogSize { get; set; } = 3;
 
-    /// <summary>Empty turns scoring off, as an empty <c>Jev:ApiKey</c> does.</summary>
+    /// <summary>Empty turns judging off, as an empty <c>Jev:ApiKey</c> does.</summary>
     public string JevApiKey { get; set; } = FakeJev.ApiKey;
 
     public MetricsProbe Probe { get; } = new();
@@ -60,7 +60,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
             Rites,
             Scriptorium,
             new RiteWriter(Models, options, Time, Probe.Metrics, NullLogger<RiteWriter>.Instance),
-            Jev.Scorer(Time, JevApiKey),
+            Jev.NewJudge(Time, JevApiKey),
             options,
             Probe.Metrics,
             NullLogger<BacklogRefiller>.Instance);

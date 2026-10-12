@@ -6,19 +6,19 @@ using LanguageExt;
 using LanguageExt.Common;
 using Microsoft.Extensions.Options;
 
-namespace DailyMachineSpirit.Functions.Generation.Scoring;
+namespace DailyMachineSpirit.Functions.Generation.Judging;
 
 /// <summary>
 /// Scores drafts with Jev's decide API (jevtypesafeai.com), for "More rites" and the Augury, in one request: only the
 /// draft's own text goes there, never anything about visitors. The key is a header, never logged.
 /// </summary>
-public sealed class JevScorer : IRiteScorer
+public sealed class JevJudge : IRiteJudge
 {
     private readonly HttpClient http;
     private readonly IOptions<JevOptions> options;
     private readonly TimeProvider time;
 
-    public JevScorer(HttpClient http, IOptions<JevOptions> options, TimeProvider time)
+    public JevJudge(HttpClient http, IOptions<JevOptions> options, TimeProvider time)
     {
         this.http = http;
         this.options = options;
@@ -29,7 +29,7 @@ public sealed class JevScorer : IRiteScorer
     /// The draft with its similarity scores (the topic probabilities, then the act probabilities) and its quality; the
     /// draft as it was while Jev is off.
     /// </summary>
-    public async Task<Either<Error, Draft>> Score(Draft draft, CancellationToken cancellationToken)
+    public async Task<Either<Error, Draft>> Judge(Draft draft, CancellationToken cancellationToken)
     {
         var jev = options.Value;
         if (!jev.Enabled)

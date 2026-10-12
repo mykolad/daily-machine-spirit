@@ -1,4 +1,4 @@
-namespace DailyMachineSpirit.Functions.Generation.Scoring;
+namespace DailyMachineSpirit.Functions.Generation.Judging;
 
 /// <summary>
 /// The questions Jev answers about each draft. Which software habit it's about, and what it asks its believers to do,

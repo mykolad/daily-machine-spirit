@@ -19,7 +19,7 @@ what really happens. Either kind is a **rite** (the design's word, and `Rite` in
 
 ```
 src/DailyMachineSpirit.Functions  — the Functions app (HTTP, timer and queue functions)
-  Generation/                     — the backlog and the daily rite: Writing/, Chat/ (the models), Scoring/ (Jev)
+  Generation/                     — the backlog and the daily rite: Writing/, Chat/ (the models), Judging/ (Jev)
   Pages/                          — the public pages, rendered on the server (Today, the archive, a rite's page)
 src/DailyMachineSpirit.Data       — Cosmos DB: entities, documents, repositories
 tests/DailyMachineSpirit.Tests    — xUnit tests (the repository tests run against the Cosmos DB emulator)
@@ -56,8 +56,8 @@ observability/                    — the Grafana dashboard, and what the app's 
   `RespectNullableAnnotations`, so a null arriving in a non-nullable property fails at the boundary instead of
   slipping in.
 - **One type per file**, so options, an interface and its implementation are separate files. Related files share a
-  folder (`Generation/Scoring/`), and the namespace follows the folder.
-- **Swappable services sit behind an interface** (`IChatClients`, `IRiteScorer`): the rest of the code never names the
+  folder (`Generation/Judging/`), and the namespace follows the folder.
+- **Swappable services sit behind an interface** (`IChatClients`, `IRiteJudge`): the rest of the code never names the
   vendor, and the vendor's settings (`JevOptions`) belong to its implementation.
 - **Member order:** constants and fields, constructor, then public members (in a test class: setup and teardown, then
   the tests), and private helpers last.
@@ -144,9 +144,9 @@ observability/                    — the Grafana dashboard, and what the app's 
   - **Writing:** `RiteWriter` asks `gpt-6-sol` for a `RiteContent` (JSON schema output), up to 3 times, then
     `gpt-6-luna` (`Generation:Models`). An answer that's empty, too long, uses a forbidden name or writes code outside
     backticks (`UnquotedCode`) is asked for again, never cut.
-  - **Scoring:** an `IRiteScorer` scores each draft (`JevScorer` for now, swappable like the models): its similarity
-    scores for "More rites" and its quality for the Augury, in one request. A draft that can't be scored still joins the
-    backlog, without scores.
+  - **Judging:** an `IRiteJudge` judges each draft (`JevJudge` for now, swappable like the models): its similarity
+    scores for "More rites" and its quality for the Augury, in one request. A draft that can't be judged still joins
+    the backlog, without scores. "Scores" are always the similarity scores, never the quality.
   - **Settings:** `AzureOpenAI:Endpoint` (the models are reached as the managed identity), `Jev:ApiKey` (a Key Vault
     reference in Azure; empty turns Jev off), and optionally `Generation:*` (`GenerationOptions`).
 - **The Scriptorium** (`/scriptorium`, `Scriptorium/`): where the **Scribes** (moderators) shape the Liturgical Calendar.

@@ -18,7 +18,7 @@ Export, without "Export for sharing externally") back over this file, so the rep
 | `dms_cosmos_request_charge`, `dms_cosmos_duration_seconds` | `operation`, `status_code` | each Cosmos DB request (`CosmosMetricsHandler`); `status_code` is `failed` or `canceled` when no response came |
 | `dms_generation_answers_total` | `model`, `outcome` | the models' answers: `accepted`, `refused` (broke a rule), `failed` |
 | `dms_rites_published_total` | `kind`, `model` | rites published |
-| `dms_scoring_runs_total` | `outcome` | scoring each new draft (for the Augury and More rites): `scored`, `failed`, `off` |
+| `dms_judging_runs_total` | `outcome` | judging each new draft (its quality for the Augury, its scores for More rites): `judged`, `failed`, `off` |
 | `dms_scriptorium_refusals_total` | `reason` | Scriptorium requests whose Access token was refused: the check that failed (`SecurityTokenExpiredException`, ...), or `keys-unavailable` |
 | `http_client_*`, `dotnet_*` | | .NET's own: outgoing HTTP calls, memory, garbage collection, the thread pool |
 

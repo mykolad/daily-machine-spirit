@@ -14,7 +14,7 @@ public sealed class SiteMetrics
     private readonly Histogram<double> invocations;
     private readonly Counter<long> answers;
     private readonly Counter<long> published;
-    private readonly Counter<long> scoring;
+    private readonly Counter<long> judging;
     private readonly Counter<long> refusals;
 
     public SiteMetrics(IMeterFactory meters)
@@ -30,8 +30,8 @@ public sealed class SiteMetrics
         answers = meter.CreateCounter<long>("dms.generation.answers", "{answer}",
             "The models' answers when asked for a rite: accepted, refused (it broke a rule) or failed (no usable answer).");
         published = meter.CreateCounter<long>("dms.rites.published", "{rite}", "Rites published, by kind and model.");
-        scoring = meter.CreateCounter<long>("dms.scoring.runs", "{run}",
-            "Scoring a new draft (for the Augury and More rites): scored, failed or off.");
+        judging = meter.CreateCounter<long>("dms.judging.runs", "{run}",
+            "Judging a new draft (its quality for the Augury, its scores for More rites): judged, failed or off.");
         refusals = meter.CreateCounter<long>("dms.scriptorium.refusals", "{request}",
             "Scriptorium requests whose Access token was refused, by reason: the token check that failed, or keys-unavailable.");
     }
@@ -44,7 +44,7 @@ public sealed class SiteMetrics
     public void Published(Rite rite)
         => published.Add(1, new("kind", rite.Kind.ToString().ToLowerInvariant()), new("model", rite.GeneratedByModel));
 
-    public void Scoring(string outcome) => scoring.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
+    public void Judging(string outcome) => judging.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
 
     public void ScribeRefused(string reason) => refusals.Add(1, new KeyValuePair<string, object?>("reason", reason));
 }

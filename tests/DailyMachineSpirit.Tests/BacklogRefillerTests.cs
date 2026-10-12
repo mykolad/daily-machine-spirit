@@ -79,41 +79,41 @@ public sealed class BacklogRefillerTests : IAsyncLifetime
     {
         testbed.BacklogSize = 1;
         testbed.Jev = new FakeJev(HttpStatusCode.PaymentRequired, """{"error": "Out of credits."}""");
-        testbed.Models.Answers(Sol, Answer("Unscored"));
-        using var scoring = testbed.Probe.Collect<long>("dms.scoring.runs");
+        testbed.Models.Answers(Sol, Answer("Unjudged"));
+        using var judging = testbed.Probe.Collect<long>("dms.judging.runs");
 
         Ok(await testbed.Refiller().Refill(CancellationToken.None));
 
         var draft = Assert.Single(await testbed.Waiting());
         Assert.True(draft.Augury.IsNone);
         Assert.True(draft.Similarity.IsNone);
-        Assert.Equal(["outcome=failed"], MetricsProbe.Tags(scoring, "outcome"));
+        Assert.Equal(["outcome=failed"], MetricsProbe.Tags(judging, "outcome"));
     }
 
     [Fact]
-    public async Task Refill_WithScoringOff_AddsTheDrafts_WithoutScores()
+    public async Task Refill_WithJudgingOff_AddsTheDrafts_WithoutScores()
     {
         testbed.BacklogSize = 1;
         testbed.JevApiKey = string.Empty;
-        testbed.Models.Answers(Sol, Answer("Unscored"));
-        using var scoring = testbed.Probe.Collect<long>("dms.scoring.runs");
+        testbed.Models.Answers(Sol, Answer("Unjudged"));
+        using var judging = testbed.Probe.Collect<long>("dms.judging.runs");
 
         Ok(await testbed.Refiller().Refill(CancellationToken.None));
 
         Assert.True(Assert.Single(await testbed.Waiting()).Augury.IsNone);
-        Assert.Equal(["outcome=off"], MetricsProbe.Tags(scoring, "outcome"));
+        Assert.Equal(["outcome=off"], MetricsProbe.Tags(judging, "outcome"));
     }
 
     [Fact]
-    public async Task Refill_CountsEachDraftsScoring()
+    public async Task Refill_CountsEachDraftsJudging()
     {
         testbed.BacklogSize = 2;
         testbed.Models.Answers(Sol, Answer("First"), Answer("Second"));
-        using var scoring = testbed.Probe.Collect<long>("dms.scoring.runs");
+        using var judging = testbed.Probe.Collect<long>("dms.judging.runs");
 
         Ok(await testbed.Refiller().Refill(CancellationToken.None));
 
-        Assert.Equal(["outcome=scored", "outcome=scored"], MetricsProbe.Tags(scoring, "outcome"));
+        Assert.Equal(["outcome=judged", "outcome=judged"], MetricsProbe.Tags(judging, "outcome"));
     }
 
     [Fact]

@@ -199,8 +199,8 @@
     },
     {
       "type": "bargauge",
-      "title": "Scoring and runs",
-      "description": "Scoring each new draft (scored, failed, off), and the runs of the DailyRite timer and the RefillBacklog queue function (ok, failed). A failed refill is tried again, up to 3 times.",
+      "title": "Judging and runs",
+      "description": "Judging each new draft (judged, failed, off), and the runs of the DailyRite timer and the RefillBacklog queue function (ok, failed). A failed refill is tried again, up to 3 times.",
       "id": 14,
       "gridPos": { "x": 16, "y": 35, "w": 8, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "${prometheus}" },
@@ -210,8 +210,8 @@
         {
           "refId": "A",
           "instant": true,
-          "expr": "sum by (outcome) (increase(dms_scoring_runs_total{job=\"$service\"}[$__range]))",
-          "legendFormat": "scoring {{outcome}}"
+          "expr": "sum by (outcome) (increase(dms_judging_runs_total{job=\"$service\"}[$__range]))",
+          "legendFormat": "judging {{outcome}}"
         },
         {
           "refId": "B",
@@ -265,7 +265,7 @@
     {
       "type": "logs",
       "title": "The daily rite and the backlog",
-      "description": "Every step of writing and scoring drafts and publishing the day's rite: which model answered, what it got wrong, and what was published.",
+      "description": "Every step of writing and judging drafts and publishing the day's rite: which model answered, what it got wrong, and what was published.",
       "id": 22,
       "gridPos": { "x": 0, "y": 53, "w": 24, "h": 8 },
       "datasource": { "type": "loki", "uid": "${loki}" },

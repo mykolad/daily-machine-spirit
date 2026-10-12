@@ -1,12 +1,12 @@
 using System.Net;
 using DailyMachineSpirit.Data.Entities;
-using DailyMachineSpirit.Functions.Generation.Scoring;
+using DailyMachineSpirit.Functions.Generation.Judging;
 using Microsoft.Extensions.Time.Testing;
 using static DailyMachineSpirit.Tests.Expect;
 
 namespace DailyMachineSpirit.Tests;
 
-public class JevScorerTests
+public class JevJudgeTests
 {
     private static readonly Draft Draft = new()
     {
@@ -24,9 +24,9 @@ public class JevScorerTests
     {
         var jev = FakeJev.AnsweringBuildsAndRepetition();
 
-        var scored = Ok(await jev.Scorer(time, FakeJev.ApiKey).Score(Draft, CancellationToken.None));
+        var judged = Ok(await jev.NewJudge(time, FakeJev.ApiKey).Judge(Draft, CancellationToken.None));
 
-        var similarity = scored.Similarity.IfNone(() => throw new Xunit.Sdk.XunitException("Expected scores."));
+        var similarity = judged.Similarity.IfNone(() => throw new Xunit.Sdk.XunitException("Expected scores."));
         Assert.Equal(JevQuestions.Topics.Count + JevQuestions.Acts.Count, similarity.Scores.Length);
         Assert.Equal(1.0f, similarity.Scores[0]);
         Assert.Equal(0f, similarity.Scores[1]);
@@ -42,14 +42,14 @@ public class JevScorerTests
     {
         var jev = FakeJev.AnsweringBuildsAndRepetition();
 
-        var scored = Ok(await jev.Scorer(time, FakeJev.ApiKey).Score(Draft, CancellationToken.None));
+        var judged = Ok(await jev.NewJudge(time, FakeJev.ApiKey).Judge(Draft, CancellationToken.None));
 
-        var augury = scored.Augury.IfNone(() => throw new Xunit.Sdk.XunitException("Expected a quality."));
+        var augury = judged.Augury.IfNone(() => throw new Xunit.Sdk.XunitException("Expected a quality."));
         // Half "excellent" (1) and half "good" (2/3).
         Assert.Equal(5f / 6, augury.Quality, 0.0001f);
         Assert.Equal("jev-1.13.0/quality-q1", augury.JudgedBy);
         Assert.Equal(time.GetUtcNow().UtcDateTime, augury.JudgedAtUtc);
-        Assert.Equal(Draft.Title, scored.Title);
+        Assert.Equal(Draft.Title, judged.Title);
     }
 
     [Fact]
@@ -57,7 +57,7 @@ public class JevScorerTests
     {
         var jev = FakeJev.AnsweringBuildsAndRepetition();
 
-        await jev.Scorer(time, FakeJev.ApiKey).Score(Draft, CancellationToken.None);
+        await jev.NewJudge(time, FakeJev.ApiKey).Judge(Draft, CancellationToken.None);
 
         var (body, authorization) = Assert.Single(jev.Requests);
         Assert.Equal($"Bearer {FakeJev.ApiKey}", authorization);
@@ -75,9 +75,9 @@ public class JevScorerTests
     {
         var jev = FakeJev.AnsweringBuildsAndRepetition();
 
-        var scored = Ok(await jev.Scorer(time, " ").Score(Draft, CancellationToken.None));
+        var judged = Ok(await jev.NewJudge(time, " ").Judge(Draft, CancellationToken.None));
 
-        Assert.Equal(Draft, scored);
+        Assert.Equal(Draft, judged);
         Assert.Empty(jev.Requests);
     }
 
@@ -89,7 +89,7 @@ public class JevScorerTests
     {
         var jev = new FakeJev(status, body);
 
-        var error = Failed(await jev.Scorer(time, FakeJev.ApiKey).Score(Draft, CancellationToken.None));
+        var error = Failed(await jev.NewJudge(time, FakeJev.ApiKey).Judge(Draft, CancellationToken.None));
 
         Assert.Contains(expected, error.Message);
     }
@@ -100,6 +100,6 @@ public class JevScorerTests
         var jev = FakeJev.AnsweringBuildsAndRepetition();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => jev.Scorer(time, FakeJev.ApiKey).Score(Draft, new CancellationToken(canceled: true)));
+            () => jev.NewJudge(time, FakeJev.ApiKey).Judge(Draft, new CancellationToken(canceled: true)));
     }
 }
