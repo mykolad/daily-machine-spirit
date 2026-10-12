@@ -10,9 +10,10 @@ using static LanguageExt.Prelude;
 namespace DailyMachineSpirit.Functions.Voters;
 
 /// <summary>
-/// Who a signed-in reader is, as far as voting needs: a voter key, an HMAC of their GitHub account id. The same account
-/// always gets the same key, so it votes once per rite, but the key never leads back to the account. Their cookie holds
-/// the key, until when it's good, and a signature, so nobody can make one up for another key.
+/// Who a signed-in reader is, as far as voting needs: a voter key, an HMAC of the provider's name and their account's id
+/// there (<c>github:583231</c>). The same account always gets the same key, so it votes once per rite, but the key never
+/// leads back to the account. An account at another provider is another voter. Their cookie holds the key, until when
+/// it's good, and a signature, so nobody can make one up for another key.
 /// </summary>
 public sealed class VoterSession
 {
@@ -28,8 +29,8 @@ public sealed class VoterSession
         this.time = time;
     }
 
-    public string VoterKeyFor(long gitHubAccountId)
-        => Convert.ToHexStringLower(Hmac(options.Value.KeySecret, $"github:{gitHubAccountId.ToString(CultureInfo.InvariantCulture)}"));
+    public string VoterKeyFor(string provider, string accountId)
+        => Convert.ToHexStringLower(Hmac(options.Value.KeySecret, $"{provider}:{accountId}"));
 
     /// <summary>The cookie's value for a reader who just signed in.</summary>
     public string Issue(string voterKey)

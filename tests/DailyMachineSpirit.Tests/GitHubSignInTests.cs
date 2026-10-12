@@ -7,7 +7,7 @@ using static DailyMachineSpirit.Tests.Expect;
 
 namespace DailyMachineSpirit.Tests;
 
-public class GitHubAccountsTests
+public class GitHubSignInTests
 {
     private static readonly GitHubOptions Options = new()
     {
@@ -19,18 +19,37 @@ public class GitHubAccountsTests
     private readonly FakeGitHub github = new();
 
     [Fact]
+    public void AuthorizeUrl_SendsTheReaderToGitHub_WithTheAppTheCallbackAndTheState()
+    {
+        var url = new Uri(Accounts().AuthorizeUrl("the-state"));
+
+        Assert.Equal(GitHubSignIn.AuthorizeEndpoint, url.GetLeftPart(UriPartial.Path));
+        Assert.Equal("?client_id=Iv1.client&redirect_uri=https%3A%2F%2Fstaging.example%2Fauth%2Fgithub%2Fcallback&state=the-state", url.Query);
+    }
+
+    // The name is in the voter keys of everyone who voted with GitHub: changing it would make them new voters.
+    [Fact]
+    public void Name_IsGitHubs_AndConfiguredOnlyWithItsSettings()
+    {
+        Assert.Equal("github", Accounts().Name);
+        Assert.True(Accounts().IsConfigured);
+        Assert.False(new GitHubSignIn(new HttpClient(github), Microsoft.Extensions.Options.Options.Create(new GitHubOptions()),
+            NullLogger<GitHubSignIn>.Instance).IsConfigured);
+    }
+
+    [Fact]
     public async Task AccountFor_ExchangesTheCode_AndReadsTheAccountId()
     {
         var accountId = Ok(await Accounts().AccountFor("the-code", CancellationToken.None));
 
-        Assert.Equal(583231, accountId);
+        Assert.Equal("583231", accountId);
         var exchange = github.Requests[0];
-        Assert.Equal((HttpMethod.Post, GitHubAccounts.TokenUrl), (exchange.Method, exchange.Url));
+        Assert.Equal((HttpMethod.Post, GitHubSignIn.TokenUrl), (exchange.Method, exchange.Url));
         Assert.Equal("client_id=Iv1.client&client_secret=client-secret&code=the-code&redirect_uri=https%3A%2F%2Fstaging.example%2Fauth%2Fgithub%2Fcallback",
             exchange.Body);
         Assert.Equal("application/json", exchange.Request.Headers.Accept.ToString());
         var user = github.Requests[1];
-        Assert.Equal((HttpMethod.Get, GitHubAccounts.UserUrl), (user.Method, user.Url));
+        Assert.Equal((HttpMethod.Get, GitHubSignIn.UserUrl), (user.Method, user.Url));
         Assert.Equal($"Bearer {FakeGitHub.Token}", user.Request.Headers.Authorization?.ToString());
         Assert.NotEmpty(user.Request.Headers.UserAgent);
     }
@@ -86,7 +105,7 @@ public class GitHubAccountsTests
     {
         github.RevokeStatus = HttpStatusCode.InternalServerError;
 
-        Assert.Equal(583231, Ok(await Accounts().AccountFor("the-code", CancellationToken.None)));
+        Assert.Equal("583231", Ok(await Accounts().AccountFor("the-code", CancellationToken.None)));
     }
 
     [Fact]
@@ -106,6 +125,6 @@ public class GitHubAccountsTests
         Assert.Empty(github.Requests);
     }
 
-    private GitHubAccounts Accounts()
-        => new(new HttpClient(github), Microsoft.Extensions.Options.Options.Create(Options), NullLogger<GitHubAccounts>.Instance);
+    private GitHubSignIn Accounts()
+        => new(new HttpClient(github), Microsoft.Extensions.Options.Options.Create(Options), NullLogger<GitHubSignIn>.Instance);
 }

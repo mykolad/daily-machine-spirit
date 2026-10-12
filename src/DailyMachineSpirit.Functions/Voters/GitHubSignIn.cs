@@ -1,11 +1,14 @@
+using System.Globalization;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using LanguageExt;
 using LanguageExt.Common;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Functions.Voters;
 
@@ -14,23 +17,39 @@ namespace DailyMachineSpirit.Functions.Voters;
 /// Nothing asks for a scope, so the token could only ever read public profile data. The code and the token are never
 /// logged.
 /// </summary>
-public sealed class GitHubAccounts : IGitHubAccounts
+public sealed class GitHubSignIn : ISignInProvider
 {
+    public const string AuthorizeEndpoint = "https://github.com/login/oauth/authorize";
     public const string TokenUrl = "https://github.com/login/oauth/access_token";
     public const string UserUrl = "https://api.github.com/user";
 
     private readonly HttpClient http;
     private readonly IOptions<GitHubOptions> options;
-    private readonly ILogger<GitHubAccounts> logger;
+    private readonly ILogger<GitHubSignIn> logger;
 
-    public GitHubAccounts(HttpClient http, IOptions<GitHubOptions> options, ILogger<GitHubAccounts> logger)
+    public GitHubSignIn(HttpClient http, IOptions<GitHubOptions> options, ILogger<GitHubSignIn> logger)
     {
         this.http = http;
         this.options = options;
         this.logger = logger;
     }
 
-    public async Task<Either<Error, long>> AccountFor(string code, CancellationToken cancellationToken)
+    public string Name => "github";
+
+    public bool IsConfigured => options.Value.IsConfigured;
+
+    public string AuthorizeUrl(string state)
+    {
+        var github = options.Value;
+        return AuthorizeEndpoint + QueryString.Create(new Dictionary<string, string?>
+        {
+            ["client_id"] = github.ClientId,
+            ["redirect_uri"] = github.CallbackUrl,
+            ["state"] = state,
+        });
+    }
+
+    public async Task<Either<Error, string>> AccountFor(string code, CancellationToken cancellationToken)
     {
         try
         {
@@ -77,7 +96,7 @@ public sealed class GitHubAccounts : IGitHubAccounts
         return Error.New($"GitHub didn't exchange the code for a token: {reason ?? "no token in its answer"}.");
     }
 
-    private async Task<Either<Error, long>> AccountIdThenRevoke(string accessToken, CancellationToken cancellationToken)
+    private async Task<Either<Error, string>> AccountIdThenRevoke(string accessToken, CancellationToken cancellationToken)
     {
         try
         {
@@ -91,7 +110,7 @@ public sealed class GitHubAccounts : IGitHubAccounts
         }
     }
 
-    private async Task<Either<Error, long>> AccountId(string accessToken, CancellationToken cancellationToken)
+    private async Task<Either<Error, string>> AccountId(string accessToken, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, UserUrl);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
@@ -105,7 +124,7 @@ public sealed class GitHubAccounts : IGitHubAccounts
 
         var user = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
         return user.TryGetProperty("id", out var id) && id.TryGetInt64(out var accountId)
-            ? accountId
+            ? Right<Error, string>(accountId.ToString(CultureInfo.InvariantCulture))
             : Error.New("GitHub's user endpoint answered without an account id.");
     }
 
