@@ -23,7 +23,12 @@ public sealed class VotesTests : IAsyncLifetime
 
     private readonly CosmosTestContainer cosmos = new();
     private readonly VoterSession session = new(
-        Options.Create(new VoterOptions { KeySecret = "key-secret", SessionSecret = "session-secret" }), TimeProvider.System);
+        Options.Create(new VoterOptions
+        {
+            KeySecret = "key-secret-of-at-least-32-characters",
+            SessionSecret = "session-secret-of-at-least-32-characters",
+        }),
+        TimeProvider.System);
 
     public Task InitializeAsync() => cosmos.InitializeAsync();
 

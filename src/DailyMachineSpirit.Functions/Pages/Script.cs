@@ -113,10 +113,12 @@ public static class Script
                   body: JSON.stringify({ vote }),
                 });
                 if (response.status === 401) {
-                  // The sign-in ran out (after 30 days) or was signed out in another tab.
+                  // The sign-in ran out (after 30 days) or was signed out in another tab: that account's vote is no
+                  // longer this reader's to show.
                   reader.signedIn = false;
+                  reader.vote = null;
                   showReader();
-                  show(previous, before);
+                  show(null, before);
                   say('Sign in with GitHub again to vote.');
                   return;
                 }
