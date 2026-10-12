@@ -17,11 +17,11 @@ var roles = {
   cognitiveServicesOpenAiUser: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
 }
 
-// The Cloudflare Access application guarding production's Scriptorium, filled in at launch (infra/README.md). Neither
+// The Cloudflare Access application guarding production's Scriptorium (infra/README.md, "Outside Azure"). Neither
 // value is secret, and keeping them here, not in parameters, means no deployment can drop them by leaving one out.
 var productionAccess = {
-  teamDomain: ''
-  audience: ''
+  teamDomain: 'restless-river-ab5e.cloudflareaccess.com'
+  audience: '3fac1c3c199e53f8242ae90f5c539f443843eaeff7a9d7ece38afe992f18d1ef'
 }
 
 // The GitHub OAuth apps readers sign in with to vote, one per environment, since each has its own callback URL
@@ -189,8 +189,8 @@ module production 'modules/environment.bicep' = if (deployProduction) {
     aiAccountName: ai.name
     ownerPrincipalId: ownerPrincipalId
     githubSubjectPrefix: githubSubjectPrefix
-    // On once Cloudflare Access guards the Scriptorium.
-    scriptoriumEnabled: false
+    // Only behind Cloudflare Access (productionAccess): the app checks Access's token on every Scriptorium request.
+    scriptoriumEnabled: true
     scriptoriumWithoutSignIn: false
     cloudflareAccessTeamDomain: productionAccess.teamDomain
     cloudflareAccessAudience: productionAccess.audience
