@@ -174,12 +174,19 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
   Production admits only Cloudflare's address ranges (`cloudflare-ips.json`), so its cache and rate limit can't be gone
   around. **Check Cloudflare's Addresses** (a weekly workflow) opens an issue when Cloudflare publishes different
   ranges: copy them into the file, and deploy the infrastructure (Later changes).
-- **Cloudflare Access** guards production's Scriptorium. In Zero Trust → Access → Applications, add a self-hosted
-  application for `dailymachinespirit.fyi/scriptorium` with GitHub as the login method and a policy that allows the
-  Scribes' accounts. Its overview shows the **Application Audience (AUD) tag**; the team domain is in Settings → Custom
-  Pages (`<team>.cloudflareaccess.com`). Put both in `productionAccess` in `resources.bicep` (neither is secret, and
-  there every deployment keeps them), set `scriptoriumEnabled: true` for production there, and deploy. Until both are
-  set, production's Scriptorium lets nobody in, even if it's turned on.
+- **Cloudflare Access** guards production's Scriptorium (set up 2026-10-12). In the Cloudflare One dashboard:
+  - **GitHub as a login method** (Integrations → Identity providers): its own GitHub OAuth app, separate from the
+    readers' sign-in apps, with the callback `https://<team>.cloudflareaccess.com/cdn-cgi/access/callback`. Its client
+    secret stays in Cloudflare.
+  - **A self-hosted application** (Access controls → Applications) with two destinations:
+    - `dailymachinespirit.fyi/scriptorium`, the page;
+    - `dailymachinespirit.fyi/scriptorium/*`, its actions (`/scriptorium/summon`, `/scriptorium/drafts/...`).
+
+    A wildcard doesn't cover its parent path, and listing both doesn't depend on a path covering its children. GitHub
+    is its only login method, and an Allow policy lists the Scribes' emails. A new Scribe is a new email there.
+  - **Its Application Audience (AUD) tag** and the team domain (Settings → Team domain) are in `productionAccess` in
+    `resources.bicep`: neither is secret, and there every deployment keeps them. Without both, production's
+    Scriptorium lets nobody in.
 - **GitHub**: one environment per deploy identity, holding its ids as variables (`AZURE_CLIENT_ID` from
   `githubClientIds` in the deployment's outputs, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`). `staging` exists;
   `production` and `infrastructure` come with their workflows.

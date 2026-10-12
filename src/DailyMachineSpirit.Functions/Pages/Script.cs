@@ -1,8 +1,8 @@
 namespace DailyMachineSpirit.Functions.Pages;
 
 /// <summary>
-/// The pages' only script: breaking the seal, copying links and text, the toast, and the countdown's tick. Everything it
-/// touches is already in the server's HTML, and without it a rite's truth is still shown (a noscript style).
+/// The pages' only script: breaking the seal, copying links and text, the toast, the countdown's tick, and voting.
+/// Everything it touches is already in the server's HTML, and without it a rite's truth is still shown (a noscript style).
 /// </summary>
 public static class Script
 {
@@ -60,59 +60,94 @@ public static class Script
             });
           });
 
-          // Blessed or Heresy, one per rite: this browser remembers its own reaction (and nothing else) and sends it
-          // back as "previous", so the server can move it without knowing who reacted.
+          // The anonymous reactions kept each browser's own in storage; nothing reads it any more, so every page clears it.
+          try { localStorage.removeItem('dms-reactions-v1'); } catch { }
+
+          // Blessed or Heresy, one vote per account per rite. The page is the same for everyone (and cached), so the
+          // script asks who's reading: a signed-in reader sees their own vote pressed and can switch or take it back;
+          // anyone else is offered the sign-in. Without the script, the counts simply show.
           const reactions = document.querySelector('.reactions');
           if (reactions) {
-            const key = 'dms-reactions-v1';
-            // Read once, then the page's own copy is the truth: where storage is blocked or full, saving fails quietly but
-            // the page still remembers, so one reaction per rite holds while it's open.
-            let memory = (() => { try { return JSON.parse(localStorage.getItem(key)) || {}; } catch { return {}; } })();
-            const remembered = () => ({ ...memory });
-            // Changes only this rite's entry, on top of what's stored right now: another tab may have saved or taken back a
-            // reaction while this one's request was on its way. Only where storage can't be read is the page's copy the base.
-            const remember = (number, reaction) => {
-              try { memory = JSON.parse(localStorage.getItem(key)) || {}; } catch { memory = { ...memory }; }
-              if (reaction) memory[number] = reaction; else delete memory[number];
-              try { localStorage.setItem(key, JSON.stringify(memory)); } catch { }
-            };
             const rite = reactions.dataset.rite;
             const buttons = [...reactions.querySelectorAll('[data-reaction]')];
+            const statuses = [...document.querySelectorAll('.vote-status')];
+            const signInLink = document.querySelector('.vote-status[data-signed-in=false] a');
             const counts = () => Object.fromEntries(buttons.map((b) => [b.dataset.reaction, Number(b.querySelector('.count').textContent.replace(/,/g, ''))]));
-            const show = (mine, shown) => buttons.forEach((b) => {
-              b.setAttribute('aria-pressed', String(b.dataset.reaction === mine));
+            const show = (vote, shown) => buttons.forEach((b) => {
+              b.setAttribute('aria-pressed', String(b.dataset.reaction === vote));
               b.querySelector('.count').textContent = shown[b.dataset.reaction].toLocaleString('en');
             });
-            show(remembered()[rite] ?? null, counts());
-            // Another tab of this site reacted: take its memory too, so this tab doesn't count the same visitor twice.
-            window.addEventListener('storage', (event) => {
-              if (event.key !== key) return;
-              try { memory = JSON.parse(event.newValue) || {}; } catch { return; }
-              show(memory[rite] ?? null, counts());
-            });
+            let reader = { available: false, signedIn: false, vote: null, voteLoaded: false };
+            const showReader = () => statuses.forEach((s) => { s.hidden = !reader.available || s.dataset.signedIn !== String(reader.signedIn); });
+            // The signed-in reader's own vote. Until it has loaded, the page doesn't know whether a click sets a vote or
+            // takes one back, so voting waits for it.
+            const loadVote = async () => {
+              try {
+                const votes = await fetch(`/api/votes?rites=${rite}`);
+                // Signed out meanwhile (another tab, or the sign-in ran out): offer the sign-in again.
+                if (votes.status === 401) reader.signedIn = false;
+                else if (votes.ok) reader = { ...reader, vote: (await votes.json())[rite] ?? null, voteLoaded: true };
+              } catch { }
+            };
+            // Until this answers, a click waits for it rather than guessing who's reading.
+            const known = (async () => {
+              try {
+                const me = await (await fetch('/api/me')).json();
+                reader = { available: me.signInAvailable === true, signedIn: me.signedIn === true, vote: null, voteLoaded: false };
+                if (reader.signedIn) await loadVote();
+              } catch { }
+              showReader();
+              show(reader.vote, counts());
+            })();
             buttons.forEach((button) => button.addEventListener('click', async () => {
+              await known;
+              if (!reader.available) { say('Voting isn’t open yet.'); return; }
+              if (!reader.signedIn) { location.assign(signInLink.href); return; }
               if (reactions.getAttribute('aria-busy') === 'true') return;
-              const previous = remembered()[rite] ?? null;
-              const reaction = previous === button.dataset.reaction ? null : button.dataset.reaction;
+              if (!reader.voteLoaded) {
+                // The vote didn't load with the page. Load it now, and show it rather than act on it: the reader clicked
+                // without seeing it, so the click could mean the opposite.
+                reactions.setAttribute('aria-busy', 'true');
+                await loadVote();
+                reactions.removeAttribute('aria-busy');
+                showReader();
+                if (!reader.signedIn) { say('Sign in with GitHub again to vote.'); return; }
+                if (!reader.voteLoaded) { say('Your vote couldn’t be loaded. Try again.'); return; }
+                show(reader.vote, counts());
+                say(reader.vote ? 'Your vote is shown. Click again to change it.' : 'You haven’t voted yet. Click again to vote.');
+                return;
+              }
+              const previous = reader.vote;
+              const vote = previous === button.dataset.reaction ? null : button.dataset.reaction;
               const before = counts();
               const hoped = { ...before };
               if (previous) hoped[previous] = Math.max(0, hoped[previous] - 1);
-              if (reaction) hoped[reaction] += 1;
-              show(reaction, hoped);
+              if (vote) hoped[vote] += 1;
+              show(vote, hoped);
               reactions.setAttribute('aria-busy', 'true');
               try {
-                const response = await fetch(`/api/rites/${rite}/reaction`, {
+                const response = await fetch(`/api/rites/${rite}/vote`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ reaction, previous }),
+                  body: JSON.stringify({ vote }),
                 });
+                if (response.status === 401) {
+                  // The sign-in ran out (after 30 days) or was signed out in another tab: that account's vote is no
+                  // longer this reader's to show.
+                  reader.signedIn = false;
+                  reader.vote = null;
+                  showReader();
+                  show(null, before);
+                  say('Sign in with GitHub again to vote.');
+                  return;
+                }
                 if (!response.ok) throw new Error(String(response.status));
-                // Saved: from here on the reaction counts, even if the answer can't be read.
-                remember(rite, reaction);
-                show(reaction, await response.json().catch(() => hoped));
+                // Saved: from here on the vote counts, even if the answer can't be read.
+                reader.vote = vote;
+                show(vote, await response.json().catch(() => hoped));
               } catch {
                 show(previous, before);
-                say('Your reaction wasn’t recorded. Try again.');
+                say('Your vote wasn’t recorded. Try again.');
               } finally {
                 reactions.removeAttribute('aria-busy');
               }
