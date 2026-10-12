@@ -42,7 +42,7 @@ public sealed class SiteMetrics
     public void Answer(string model, string outcome) => answers.Add(1, new("model", model), new("outcome", outcome));
 
     public void Published(Rite rite)
-        => published.Add(1, new("kind", rite.Kind.ToString().ToLowerInvariant()), new("model", rite.GeneratedByModel));
+        => published.Add(1, new("kind", rite.Writing.Kind.ToString().ToLowerInvariant()), new("model", rite.Writing.GeneratedByModel));
 
     public void Judging(string outcome) => judging.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
 

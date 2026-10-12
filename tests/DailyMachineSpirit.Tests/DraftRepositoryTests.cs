@@ -33,9 +33,9 @@ public sealed class DraftRepositoryTests : IAsyncLifetime
 
         Assert.Equal(draft.Id, saved.Id);
         Assert.Equal(DraftState.Waiting, saved.State);
-        Assert.Equal(RiteKind.Prayer, saved.Kind);
-        Assert.Equal("The Rite of Re-Run", saved.Title);
-        Assert.Equal(draft.GeneratedAtUtc, saved.GeneratedAtUtc);
+        Assert.Equal(RiteKind.Prayer, saved.Writing.Kind);
+        Assert.Equal("The Rite of Re-Run", saved.Writing.Title);
+        Assert.Equal(draft.Writing.GeneratedAtUtc, saved.Writing.GeneratedAtUtc);
         Assert.Equal(Some(0.8f), saved.Augury.Map(augury => augury.Quality));
         Assert.Equal(Some(judgedAt), saved.Augury.Map(augury => augury.JudgedAtUtc));
         Assert.Equal(Some(DateTimeKind.Utc), saved.Augury.Map(augury => augury.JudgedAtUtc.Kind));
@@ -54,9 +54,9 @@ public sealed class DraftRepositoryTests : IAsyncLifetime
 
         Assert.Equal(2, rite.Number);
         var saved = Ok(await Rites.GetPublishedOn(Day, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("No rite."));
-        Assert.Equal("Today's", saved.Title);
-        Assert.Equal(RiteKind.Prayer, saved.Kind);
-        Assert.Equal(draft.GeneratedByModel, saved.GeneratedByModel);
+        Assert.Equal("Today's", saved.Writing.Title);
+        Assert.Equal(RiteKind.Prayer, saved.Writing.Kind);
+        Assert.Equal(draft.Writing.GeneratedByModel, saved.Writing.GeneratedByModel);
         Assert.Equal([1f], saved.Similarity.Map(similarity => similarity.Scores).IfNone([]));
         Assert.Empty(Ok(await Drafts.GetWaiting(CancellationToken.None)));
     }
@@ -114,11 +114,14 @@ public sealed class DraftRepositoryTests : IAsyncLifetime
     {
         Id = Guid.NewGuid(),
         State = DraftState.Waiting,
-        Kind = RiteKind.Prayer,
-        Title = title,
-        Text = "O Machine Spirit, let the cache be warm.",
-        HereticalTruth = "A cold cache is just a cache that hasn't been read yet.",
-        GeneratedByModel = "gpt-6-sol",
-        GeneratedAtUtc = new DateTime(2026, 10, 6, 0, 0, 0, DateTimeKind.Utc),
+        Writing = new RiteWriting
+        {
+            Kind = RiteKind.Prayer,
+            Title = title,
+            Text = "O Machine Spirit, let the cache be warm.",
+            HereticalTruth = "A cold cache is just a cache that hasn't been read yet.",
+            GeneratedByModel = "gpt-6-sol",
+            GeneratedAtUtc = new DateTime(2026, 10, 6, 0, 0, 0, DateTimeKind.Utc),
+        },
     };
 }

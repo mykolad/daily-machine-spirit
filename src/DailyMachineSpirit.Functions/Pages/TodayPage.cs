@@ -16,7 +16,7 @@ public static class TodayPage
         """;
 
     public static string Render(Rite rite, DateTimeOffset now)
-        => Layout.Page(string.Empty, Html.FirstLine(rite.Text.Replace("`", string.Empty)), Section.Today, $"""
+        => Layout.Page(string.Empty, Html.FirstLine(rite.Writing.Text.Replace("`", string.Empty)), Section.Today, $"""
             {Masthead}
             {RiteCard.Render(rite, ownPage: false)}
             <div class="countdown">

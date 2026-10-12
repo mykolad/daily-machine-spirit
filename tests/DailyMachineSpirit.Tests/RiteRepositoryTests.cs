@@ -27,9 +27,9 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
 
         var byNumber = Ok(await Repository.GetByNumbers([saved.Number], CancellationToken.None)).HeadOrNone();
         var byDay = Ok(await Repository.GetPublishedOn(date, CancellationToken.None));
-        Assert.Equal(Some("The Rite of Re-Run"), byNumber.Map(rite => rite.Title));
-        Assert.Equal(Some(RiteKind.Ritual), byNumber.Map(rite => rite.Kind));
-        Assert.Equal(Some("Press Re-run thrice, intoning `it passed locally`."), byDay.Map(rite => rite.Text));
+        Assert.Equal(Some("The Rite of Re-Run"), byNumber.Map(rite => rite.Writing.Title));
+        Assert.Equal(Some(RiteKind.Ritual), byNumber.Map(rite => rite.Writing.Kind));
+        Assert.Equal(Some("Press Re-run thrice, intoning `it passed locally`."), byDay.Map(rite => rite.Writing.Text));
         Assert.Equal(Some(saved.Number), byDay.Map(rite => rite.Number));
     }
 
@@ -53,7 +53,7 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
         var next = await AddOrFail(MakeRite(date.AddDays(1), "Next day"));
 
         Assert.Equal(Left<Error, Rite>(RiteRepository.DayAlreadyHasRite), second);
-        Assert.Equal("First", (await PublishedOnOrFail(date)).Title);
+        Assert.Equal("First", (await PublishedOnOrFail(date)).Writing.Title);
         Assert.Equal(2, next.Number);
     }
 
@@ -99,14 +99,15 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
 
         var newest = Ok(await Repository.GetNewest(2, CancellationToken.None));
 
-        Assert.Equal(["Day 5", "Day 4"], newest.Select(rite => rite.Title));
+        Assert.Equal(["Day 5", "Day 4"], newest.Select(rite => rite.Writing.Title));
     }
 
     [Fact]
     public async Task Timestamps_ComeBackAsUtc_EvenWhenGivenAsLocalTime()
     {
         var utc = new DateTime(2026, 10, 7, 0, 0, 5, DateTimeKind.Utc);
-        var rite = MakeRite(new DateOnly(2026, 10, 7), "Timed") with { GeneratedAtUtc = utc.ToLocalTime() };
+        var timed = MakeRite(new DateOnly(2026, 10, 7), "Timed");
+        var rite = timed with { Writing = timed.Writing with { GeneratedAtUtc = utc.ToLocalTime() } };
         await AddOrFail(rite);
         var scoredAt = new DateTime(2026, 10, 7, 0, 0, 9, DateTimeKind.Utc);
         Ok(await Repository.SaveScores(rite.PublishedOnUtc,
@@ -115,8 +116,8 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
 
         var saved = await PublishedOnOrFail(rite.PublishedOnUtc);
 
-        Assert.Equal(utc, saved.GeneratedAtUtc);
-        Assert.Equal(DateTimeKind.Utc, saved.GeneratedAtUtc.Kind);
+        Assert.Equal(utc, saved.Writing.GeneratedAtUtc);
+        Assert.Equal(DateTimeKind.Utc, saved.Writing.GeneratedAtUtc.Kind);
         Assert.Equal(Some(scoredAt), saved.Similarity.Map(similarity => similarity.CreatedAtUtc));
         Assert.Equal(Some(DateTimeKind.Utc), saved.Similarity.Map(similarity => similarity.CreatedAtUtc.Kind));
     }
@@ -209,12 +210,15 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
     private static Rite MakeRite(DateOnly date, string title) => new()
     {
         PublishedOnUtc = date,
-        Kind = RiteKind.Ritual,
-        Title = title,
-        Text = "Press Re-run thrice, intoning `it passed locally`.",
-        HereticalTruth = "Your test depends on timing.",
-        GeneratedByModel = "gpt-6-sol",
-        GeneratedAtUtc = date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
+        Writing = new RiteWriting
+        {
+            Kind = RiteKind.Ritual,
+            Title = title,
+            Text = "Press Re-run thrice, intoning `it passed locally`.",
+            HereticalTruth = "Your test depends on timing.",
+            GeneratedByModel = "gpt-6-sol",
+            GeneratedAtUtc = date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
+        },
     };
 
     private async Task<Rite> AddOrFail(Rite rite) => Ok(await Repository.Add(rite, CancellationToken.None));

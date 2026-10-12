@@ -191,11 +191,14 @@ public sealed class ReactionsTests : IAsyncLifetime
         => Ok(await Repository.Add(new Rite
         {
             PublishedOnUtc = new DateOnly(2026, 10, 9),
-            Kind = RiteKind.Prayer,
-            Title = "Litany of the Clean Cache",
-            Text = "Clear the cache, and the cache shall clear thee.",
-            HereticalTruth = "A stale cache hides a missing invalidation.",
-            GeneratedByModel = "gpt-6-sol",
-            GeneratedAtUtc = new DateTime(2026, 10, 9, 0, 0, 5, DateTimeKind.Utc),
+            Writing = new RiteWriting
+            {
+                Kind = RiteKind.Prayer,
+                Title = "Litany of the Clean Cache",
+                Text = "Clear the cache, and the cache shall clear thee.",
+                HereticalTruth = "A stale cache hides a missing invalidation.",
+                GeneratedByModel = "gpt-6-sol",
+                GeneratedAtUtc = new DateTime(2026, 10, 9, 0, 0, 5, DateTimeKind.Utc),
+            },
         }, CancellationToken.None));
 }

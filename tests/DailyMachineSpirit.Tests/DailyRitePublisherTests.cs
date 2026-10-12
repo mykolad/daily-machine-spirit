@@ -23,10 +23,10 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
         var published = Ok(await testbed.Publisher().PublishToday(CancellationToken.None));
 
         Assert.True(published.IsNew);
-        Assert.Equal("Excellent", published.Rite.Title);
+        Assert.Equal("Excellent", published.Rite.Writing.Title);
         Assert.Equal(1, published.Rite.Number);
-        Assert.Equal("Excellent", (await testbed.PublishedOn(Today)).Title);
-        Assert.Equal("Fair", Assert.Single(await testbed.Waiting()).Title);
+        Assert.Equal("Excellent", (await testbed.PublishedOn(Today)).Writing.Title);
+        Assert.Equal("Fair", Assert.Single(await testbed.Waiting()).Writing.Title);
         Assert.Empty(testbed.Models.Requests);
     }
 
@@ -51,7 +51,7 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
         var published = Ok(await testbed.Publisher().PublishToday(CancellationToken.None));
 
         Assert.False(published.IsNew);
-        Assert.Equal("Already here", published.Rite.Title);
+        Assert.Equal("Already here", published.Rite.Writing.Title);
         Assert.Single(await testbed.Waiting());
     }
 
@@ -64,7 +64,7 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
 
         Assert.True(published.IsNew);
         var rite = await testbed.PublishedOn(Today);
-        Assert.Equal("Written on the spot", rite.Title);
+        Assert.Equal("Written on the spot", rite.Writing.Title);
         Assert.True(rite.Similarity.IsSome);
         Assert.Empty(await testbed.Waiting());
     }
@@ -95,8 +95,8 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
         var published = Ok(await testbed.Publisher().PublishToday(CancellationToken.None));
 
         Assert.False(published.IsNew);
-        Assert.Equal("Published by another run", (await testbed.PublishedOn(Today)).Title);
-        Assert.Equal("Too late", Assert.Single(await testbed.Waiting()).Title);
+        Assert.Equal("Published by another run", (await testbed.PublishedOn(Today)).Writing.Title);
+        Assert.Equal("Too late", Assert.Single(await testbed.Waiting()).Writing.Title);
     }
 
     [Fact]
@@ -114,7 +114,7 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
         var published = Ok(await testbed.Publisher().PublishToday(CancellationToken.None));
 
         Assert.False(published.IsNew);
-        Assert.Equal("Published by another run", published.Rite.Title);
+        Assert.Equal("Published by another run", published.Rite.Writing.Title);
     }
 
     [Fact]
@@ -132,8 +132,8 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
 
         var published = Ok(await testbed.Publisher().PublishToday(CancellationToken.None));
 
-        Assert.Equal("Better, from a refill", published.Rite.Title);
-        Assert.Equal("The fallback", Assert.Single(await testbed.Waiting()).Title);
+        Assert.Equal("Better, from a refill", published.Rite.Writing.Title);
+        Assert.Equal("The fallback", Assert.Single(await testbed.Waiting()).Writing.Title);
     }
 
     [Fact]
@@ -147,7 +147,7 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
 
         var published = results.Select(Ok).ToList();
         Assert.Single(published, run => run.IsNew);
-        Assert.All(published, run => Assert.Equal("The only draft", run.Rite.Title));
+        Assert.All(published, run => Assert.Equal("The only draft", run.Rite.Writing.Title));
         Assert.Equal(1, (await testbed.PublishedOn(Today)).Number);
     }
 
@@ -158,7 +158,7 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
 
         var message = await Function().Run(new TimerInfo(), CancellationToken.None);
 
-        Assert.Equal("Next up", (await testbed.PublishedOn(Today)).Title);
+        Assert.Equal("Next up", (await testbed.PublishedOn(Today)).Writing.Title);
         Assert.Equal(RefillBacklogFunction.AfterPublishing, message);
     }
 

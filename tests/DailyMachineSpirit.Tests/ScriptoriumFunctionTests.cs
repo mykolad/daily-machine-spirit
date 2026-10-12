@@ -294,7 +294,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
 
         Assert.Equal($"/scriptorium?done=burn&rite={burned.Id:D}", Assert.IsType<RedirectResult>(response.Result).Url);
         Assert.Equal(ScriptoriumFunction.Uncounted, response.RefillReason);
-        Assert.Equal("Still waiting", Assert.Single(await testbed.Waiting()).Title);
+        Assert.Equal("Still waiting", Assert.Single(await testbed.Waiting()).Writing.Title);
     }
 
     [Theory]
@@ -459,7 +459,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var result = await Function(enabled: true).LetTheAuguryDecide(Post(""), CancellationToken.None);
 
         Assert.Equal("/scriptorium?done=augury", Assert.IsType<RedirectResult>(result).Url);
-        Assert.Equal("Excellent", Ok(await testbed.Scribes().View(CancellationToken.None)).Calendar[0].Draft.Title);
+        Assert.Equal("Excellent", Ok(await testbed.Scribes().View(CancellationToken.None)).Calendar[0].Draft.Writing.Title);
     }
 
     private ScriptoriumFunction Function(bool enabled)
