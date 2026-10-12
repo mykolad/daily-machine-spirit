@@ -111,13 +111,15 @@ jobs:
             coverage/
           retention-days: 14
 
-      # A deployment deploys exactly what was tested here: built once, with the commit it reports (AppVersion), and the
-      # version it should report beside it. Kept 90 days, as the package a later deployment rolls back to.
+      # A deployment deploys exactly what was tested here: built once, with the commit it reports (AppVersion), the
+      # version it should report, and the smoke tests from the same commit. Kept 90 days, as the package a later
+      # deployment rolls back to.
       - name: Package the app
         if: ${{ github.event_name != 'pull_request' }}
         run: |
           dotnet publish src/DailyMachineSpirit.Functions -c Release --no-build -o package/publish
           echo "${{ steps.version.outputs.version }}" > package/version.txt
+          cp tools/smoke-test.sh package/
 
       - name: Upload the package
         if: ${{ github.event_name != 'pull_request' }}

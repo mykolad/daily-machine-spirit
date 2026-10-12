@@ -50,11 +50,6 @@ jobs:
       cancel-in-progress: false
 
     steps:
-      # Only for tools/smoke-test.sh: the app itself comes from the package.
-      - uses: actions/checkout@v7
-        with:
-          sparse-checkout: tools
-
       - name: Download the package
         run: gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name app --dir package
 
@@ -86,7 +81,7 @@ jobs:
 
       - name: Smoke tests
         id: smoke
-        run: tools/smoke-test.sh "$BASE_URL" "$VERSION"
+        run: bash package/smoke-test.sh "$BASE_URL" "$VERSION"
 
       # Only when the app failed its smoke tests, not when they couldn't run. The newest master that passed its own smoke
       # tests: Deploy Master succeeds only then. Its package is kept 90 days.
@@ -117,7 +112,8 @@ jobs:
         env:
           LAST_GOOD: ${{ steps.last-good.outputs.version }}
         run: |
-          tools/smoke-test.sh "$BASE_URL" "$LAST_GOOD"
+          # The last good package's own smoke tests, which match what it serves.
+          bash last-good/smoke-test.sh "$BASE_URL" "$LAST_GOOD"
           echo "::error title=Rolled back::$VERSION failed its smoke tests, so $APP runs $LAST_GOOD again."
 
       # On every deployment of an owner-only app, even one that failed before letting its runner in: a rule left by a
