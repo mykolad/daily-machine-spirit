@@ -32,22 +32,6 @@ public sealed class ScriptoriumFunction
     public const string AllBurned = "every draft was burned";
     public const string Uncounted = "the backlog couldn't be counted after a burn";
 
-    // What the page says after each action, by the key in its address.
-    private static readonly Dictionary<string, string> Outcomes = new()
-    {
-        ["anoint"] = "Anointed: it goes out next.",
-        ["exalt"] = "Exalted.",
-        ["humble"] = "Humbled.",
-        ["burn"] = "Consigned to the flames.",
-        ["burn-last"] = "Consigned to the flames. No rite waits now, so new ones are being summoned: look again in a few minutes.",
-        ["restore"] = "Restored from the ashes.",
-        ["summon"] = "New rites are being summoned: look again in a few minutes.",
-        ["augury"] = "The Augury orders every draft again.",
-        ["changed"] = "Another Scribe changed the calendar meanwhile. Look again before deciding.",
-        ["unmoved"] = "It was already there, so nothing moved. Another Scribe may have moved it: look again.",
-        ["note-too-long"] = "That note is too long, so nothing was changed. Shorten it and try again.",
-    };
-
     private readonly Scribes scribes;
     private readonly IScribeSignIn signIn;
     private readonly IOptions<ScriptoriumOptions> options;
@@ -75,9 +59,10 @@ public sealed class ScriptoriumFunction
             return new StatusCodeResult(StatusCodes.Status403Forbidden);
         }
 
-        var status = Optional(request.Query["done"].ToString()).Bind(key => Outcomes.TryGetValue(key, out var text) ? Some(text) : None);
+        var outcome = Optional(request.Query["done"].ToString()).Filter(done => done.Length > 0);
+        var rite = Optional(request.Query["rite"].ToString()).Bind(text => Guid.TryParse(text, out var id) ? Some(id) : None);
         return (await scribes.View(cancellationToken)).Match(
-            Right: view => Html(request, ScriptoriumPage.Render(view, status), StatusCodes.Status200OK),
+            Right: view => Html(request, ScriptoriumPage.Render(view, outcome, rite), StatusCodes.Status200OK),
             Left: error => Failed(request, error));
     }
 
@@ -103,7 +88,7 @@ public sealed class ScriptoriumFunction
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "scriptorium/augury")] HttpRequest request, CancellationToken cancellationToken)
         => await (await Refusal(request, cancellationToken)).Match(
             Some: refused => Task.FromResult(refused),
-            None: async () => Answer(request, "augury", await scribes.LetTheAuguryDecide(cancellationToken)).Result);
+            None: async () => Answer(request, "augury", None, await scribes.LetTheAuguryDecide(cancellationToken)).Result);
 
     private async Task<ScriptoriumResponse> Act(HttpRequest request, Guid draftId, string action, CancellationToken cancellationToken)
     {
@@ -115,19 +100,19 @@ public sealed class ScriptoriumFunction
         var note = form.Map(fields => fields["note"].ToString()).IfNone(string.Empty);
         return action switch
         {
-            "anoint" => Answer(request, action, await scribes.Anoint(draftId, note, cancellationToken)),
-            "exalt" => Answer(request, action, await scribes.Exalt(draftId, note, cancellationToken)),
-            "humble" => Answer(request, action, await scribes.Humble(draftId, note, cancellationToken)),
-            "restore" => Answer(request, action, await scribes.Restore(draftId, note, cancellationToken)),
+            "anoint" => Answer(request, action, draftId, await scribes.Anoint(draftId, note, cancellationToken)),
+            "exalt" => Answer(request, action, draftId, await scribes.Exalt(draftId, note, cancellationToken)),
+            "humble" => Answer(request, action, draftId, await scribes.Humble(draftId, note, cancellationToken)),
+            "restore" => Answer(request, action, draftId, await scribes.Restore(draftId, note, cancellationToken)),
             "burn" => (await scribes.Burn(draftId, note, cancellationToken)).Match(
                 // Nothing waits any more, or it can't be told: refill now rather than at the next daily run. A refill
                 // only writes what's missing, so an unneeded one costs a read.
                 Right: waiting => waiting.Match(
                     Some: count => count == 0
-                        ? new ScriptoriumResponse { Result = BackToPage("burn-last"), RefillReason = AllBurned }
-                        : new ScriptoriumResponse { Result = BackToPage("burn") },
-                    None: () => new ScriptoriumResponse { Result = BackToPage("burn"), RefillReason = Uncounted }),
-                Left: error => Failure(request, error)),
+                        ? new ScriptoriumResponse { Result = AfterBurning("burn-last", draftId), RefillReason = AllBurned }
+                        : new ScriptoriumResponse { Result = AfterBurning("burn", draftId) },
+                    None: () => new ScriptoriumResponse { Result = AfterBurning("burn", draftId), RefillReason = Uncounted }),
+                Left: error => Failure(request, error, draftId)),
             _ => new ScriptoriumResponse { Result = new NotFoundResult() },
         };
     }
@@ -177,24 +162,24 @@ public sealed class ScriptoriumFunction
             && string.Equals(origin.Authority, request.Host.Value, StringComparison.OrdinalIgnoreCase);
     }
 
-    private ScriptoriumResponse Answer(HttpRequest request, string action, Either<Error, Unit> result)
+    private ScriptoriumResponse Answer(HttpRequest request, string action, Option<Guid> draftId, Either<Error, Unit> result)
         => result.Match(
-            Right: _ => new ScriptoriumResponse { Result = BackToPage(action) },
-            Left: error => Failure(request, error));
+            Right: _ => new ScriptoriumResponse { Result = Back(action, draftId) },
+            Left: error => Failure(request, error, draftId));
 
-    private ScriptoriumResponse Failure(HttpRequest request, Error error)
+    private ScriptoriumResponse Failure(HttpRequest request, Error error, Option<Guid> draftId)
     {
         if (error == ScriptoriumRepository.ChangedMeanwhile)
         {
-            return new ScriptoriumResponse { Result = BackToPage("changed") };
+            return new ScriptoriumResponse { Result = Back("changed", draftId) };
         }
         if (error == Scribes.NothingToMove)
         {
-            return new ScriptoriumResponse { Result = BackToPage("unmoved") };
+            return new ScriptoriumResponse { Result = Back("unmoved", draftId) };
         }
         if (error == Scribes.NoteTooLong)
         {
-            return new ScriptoriumResponse { Result = BackToPage("note-too-long") };
+            return new ScriptoriumResponse { Result = Back("note-too-long", draftId) };
         }
         return new ScriptoriumResponse { Result = Failed(request, error) };
     }
@@ -205,9 +190,19 @@ public sealed class ScriptoriumFunction
         return Html(request, ScriptoriumPage.RenderError(), StatusCodes.Status500InternalServerError);
     }
 
+    private static IActionResult BackToPage(string outcome) => Redirect($"/scriptorium?done={outcome}");
+
+    // Back to the rite the Scribe acted on, where they were on the page, and the message names it.
+    private static IActionResult Back(string outcome, Option<Guid> draftId)
+        => draftId.Match(
+            Some: id => Redirect($"/scriptorium?done={outcome}&rite={id:D}#rite-{id:D}"),
+            None: () => BackToPage(outcome));
+
+    // A burned rite has left the calendar, so the page stays at the message, which links to the rite in the Ashes.
+    private static IActionResult AfterBurning(string outcome, Guid draftId) => Redirect($"/scriptorium?done={outcome}&rite={draftId:D}");
+
     // A 302, which browsers follow with a GET.
-    private static IActionResult BackToPage(string outcome)
-        => new RedirectResult($"/scriptorium?done={outcome}") { PreserveMethod = false, Permanent = false };
+    private static IActionResult Redirect(string url) => new RedirectResult(url) { PreserveMethod = false, Permanent = false };
 
     private static IActionResult Html(HttpRequest request, string html, int status)
     {
