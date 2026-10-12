@@ -13,27 +13,25 @@ namespace DailyMachineSpirit.Tests;
 
 public sealed class SignInFunctionTests : IDisposable
 {
-    private const long AccountId = 583231;
+    private const string AccountId = "583231";
 
     private readonly MetricsProbe probe = new();
     private readonly FakeTimeProvider time = new(new DateTimeOffset(2026, 10, 12, 20, 0, 0, TimeSpan.Zero));
-    private readonly FakeGitHubAccounts accounts = new(Right<Error, long>(AccountId));
+    private readonly FakeSignInProvider github = new("github", true, Right<Error, string>(AccountId));
 
     public void Dispose() => probe.Dispose();
 
     [Fact]
-    public void SignIn_SendsTheReaderToGitHub_WithTheAppAndAState()
+    public void SignIn_SendsTheReaderToTheProvider_WithAState()
     {
         var request = Get("/auth/github", "?return=/r/12", string.Empty);
 
-        var redirect = Assert.IsType<RedirectResult>(Function().SignIn(request));
+        var redirect = Assert.IsType<RedirectResult>(Function().SignIn(request, "github"));
 
-        Assert.StartsWith(SignInFunction.AuthorizeUrl + "?", redirect.Url);
-        var query = QueryHelpers.ParseQuery(new Uri(redirect.Url).Query);
-        Assert.Equal("Iv1.client", query["client_id"].ToString());
-        Assert.Equal("https://staging.example/auth/github/callback", query["redirect_uri"].ToString());
+        Assert.StartsWith("https://github.example/authorize?state=", redirect.Url);
+        var state = QueryHelpers.ParseQuery(new Uri(redirect.Url).Query)["state"].ToString();
         var stateCookie = SetCookie(request, SignInFunction.StateCookieName);
-        Assert.StartsWith($"{query["state"]}.", stateCookie.Value);
+        Assert.StartsWith($"{state}.github.", stateCookie.Value);
         Assert.Contains("httponly", stateCookie.Attributes);
         Assert.Contains("secure", stateCookie.Attributes);
         Assert.Contains("samesite=lax", stateCookie.Attributes);
@@ -47,15 +45,15 @@ public sealed class SignInFunctionTests : IDisposable
         var (state, stateCookie) = StartSignIn("/r/12");
         var request = Get("/auth/github/callback", $"?code=the-code&state={state}", stateCookie);
 
-        var result = await Function().Callback(request, CancellationToken.None);
+        var result = await Function().Callback(request, "github", CancellationToken.None);
 
         Assert.Equal("/r/12", Assert.IsType<RedirectResult>(result).Url);
-        Assert.Equal(["the-code"], accounts.Codes);
+        Assert.Equal(["the-code"], github.Codes);
         var voter = SetCookie(request, VoterSession.CookieName);
-        Assert.Equal(Some(Session().VoterKeyFor(AccountId)), Session().Read(voter.Value));
+        Assert.Equal(Some(Session().VoterKeyFor("github", AccountId)), Session().Read(voter.Value));
         Assert.Contains("httponly", voter.Attributes);
         Assert.Equal(string.Empty, SetCookie(request, SignInFunction.StateCookieName).Value);
-        Assert.Equal(["outcome=signed-in"], MetricsProbe.Tags(signIns, "outcome"));
+        Assert.Equal(["provider=github outcome=signed-in"], MetricsProbe.Tags(signIns, "provider", "outcome"));
     }
 
     [Theory]
@@ -68,7 +66,7 @@ public sealed class SignInFunctionTests : IDisposable
         var (state, stateCookie) = StartSignIn(returnTo);
 
         var result = await Function().Callback(Get("/auth/github/callback", $"?code=the-code&state={state}", stateCookie),
-            CancellationToken.None);
+            "github", CancellationToken.None);
 
         Assert.Equal("/", Assert.IsType<RedirectResult>(result).Url);
     }
@@ -84,24 +82,25 @@ public sealed class SignInFunctionTests : IDisposable
         var query = $"?code=the-code&state={(state == "matching" ? started : state)}";
         var request = Get("/auth/github/callback", query, withStateCookie ? stateCookie : string.Empty);
 
-        var result = await Function().Callback(request, CancellationToken.None);
+        var result = await Function().Callback(request, "github", CancellationToken.None);
 
         Assert.IsType<BadRequestResult>(result);
-        Assert.Empty(accounts.Codes);
+        Assert.Empty(github.Codes);
         Assert.False(HasSetCookie(request, VoterSession.CookieName));
         Assert.Equal(["outcome=refused"], MetricsProbe.Tags(signIns, "outcome"));
     }
 
     [Theory]
     [InlineData("no-separator")]
-    [InlineData(".no-state")]
-    [InlineData("state.not*base64")]
+    [InlineData(".github.Lw")]
+    [InlineData("state.github")]
+    [InlineData("state.github.not*base64")]
     public async Task Callback_WithAMangledStateCookie_IsRefused(string stateCookie)
     {
         var request = Get("/auth/github/callback", "?code=the-code&state=state", $"{SignInFunction.StateCookieName}={stateCookie}");
 
-        Assert.IsType<BadRequestResult>(await Function().Callback(request, CancellationToken.None));
-        Assert.Empty(accounts.Codes);
+        Assert.IsType<BadRequestResult>(await Function().Callback(request, "github", CancellationToken.None));
+        Assert.Empty(github.Codes);
     }
 
     [Fact]
@@ -111,10 +110,10 @@ public sealed class SignInFunctionTests : IDisposable
         var (state, stateCookie) = StartSignIn("/archive");
         var request = Get("/auth/github/callback", $"?error=access_denied&state={state}", stateCookie);
 
-        var result = await Function().Callback(request, CancellationToken.None);
+        var result = await Function().Callback(request, "github", CancellationToken.None);
 
         Assert.Equal("/archive", Assert.IsType<RedirectResult>(result).Url);
-        Assert.Empty(accounts.Codes);
+        Assert.Empty(github.Codes);
         Assert.False(HasSetCookie(request, VoterSession.CookieName));
         Assert.Equal(["outcome=declined"], MetricsProbe.Tags(signIns, "outcome"));
     }
@@ -129,10 +128,10 @@ public sealed class SignInFunctionTests : IDisposable
         var (state, stateCookie) = StartSignIn("/archive");
         var query = answer.Length > 0 ? $"{answer}&state={state}" : $"?state={state}";
 
-        var result = await Function().Callback(Get("/auth/github/callback", query, stateCookie), CancellationToken.None);
+        var result = await Function().Callback(Get("/auth/github/callback", query, stateCookie), "github", CancellationToken.None);
 
         Assert.Equal("/archive", Assert.IsType<RedirectResult>(result).Url);
-        Assert.Empty(accounts.Codes);
+        Assert.Empty(github.Codes);
         Assert.Equal(["outcome=failed"], MetricsProbe.Tags(signIns, "outcome"));
     }
 
@@ -140,36 +139,59 @@ public sealed class SignInFunctionTests : IDisposable
     public async Task Callback_WhenGitHubFails_SendsTheReaderBack_SignedOut()
     {
         using var signIns = probe.Collect<long>("dms.signins");
-        var failing = new FakeGitHubAccounts(Left<Error, long>(Error.New("GitHub is down.")));
+        var failing = new FakeSignInProvider("github", true, Left<Error, string>(Error.New("GitHub is down.")));
         var (state, stateCookie) = StartSignIn("/archive");
         var request = Get("/auth/github/callback", $"?code=the-code&state={state}", stateCookie);
 
-        var result = await Function(failing).Callback(request, CancellationToken.None);
+        var result = await Function(failing).Callback(request, "github", CancellationToken.None);
 
         Assert.Equal("/archive", Assert.IsType<RedirectResult>(result).Url);
         Assert.False(HasSetCookie(request, VoterSession.CookieName));
         Assert.Equal(["outcome=failed"], MetricsProbe.Tags(signIns, "outcome"));
     }
 
-    [Theory]
-    [InlineData("", "client-secret", "key-secret")]
-    [InlineData("Iv1.client", "@Microsoft.KeyVault(VaultName=v;SecretName=GitHubClientSecret)", "key-secret")]
-    [InlineData("Iv1.client", "client-secret", "")]
-    public async Task WithoutTheSettings_NobodySignsIn(string clientId, string clientSecret, string keySecret)
+    [Fact]
+    public async Task Callback_ForAnotherProviderThanTheOneStarted_IsRefused()
     {
-        var function = Function(accounts, GitHub(clientId, clientSecret), Voters(keySecret));
+        var google = new FakeSignInProvider("google", true, Right<Error, string>(AccountId));
+        var (state, stateCookie) = StartSignIn("/");
 
-        Assert.IsType<NotFoundResult>(function.SignIn(Get("/auth/github", string.Empty, string.Empty)));
-        Assert.IsType<NotFoundResult>(await function.Callback(Get("/auth/github/callback", "?code=c&state=s", string.Empty), CancellationToken.None));
-        Assert.Empty(accounts.Codes);
+        var result = await Function([github, google], Voters("key-secret"))
+            .Callback(Get("/auth/google/callback", $"?code=the-code&state={state}", stateCookie), "google", CancellationToken.None);
+
+        Assert.IsType<BadRequestResult>(result);
+        Assert.Empty(google.Codes);
+    }
+
+    [Fact]
+    public async Task AProviderThatDoesNotExist_HasNoSignInPages()
+    {
+        Assert.IsType<NotFoundResult>(Function().SignIn(Get("/auth/myspace", string.Empty, string.Empty), "myspace"));
+        Assert.IsType<NotFoundResult>(await Function().Callback(Get("/auth/myspace/callback", "?code=c&state=s", string.Empty),
+            "myspace", CancellationToken.None));
+    }
+
+    [Theory]
+    [InlineData(false, "key-secret")]
+    [InlineData(true, "")]
+    [InlineData(true, "@Microsoft.KeyVault(VaultName=v;SecretName=VoterKeySecret)")]
+    public async Task WithoutTheSettings_NobodySignsIn(bool providerIsConfigured, string keySecret)
+    {
+        var provider = new FakeSignInProvider("github", providerIsConfigured, Right<Error, string>(AccountId));
+        var function = Function([provider], Voters(keySecret));
+
+        Assert.IsType<NotFoundResult>(function.SignIn(Get("/auth/github", string.Empty, string.Empty), "github"));
+        Assert.IsType<NotFoundResult>(await function.Callback(Get("/auth/github/callback", "?code=c&state=s", string.Empty),
+            "github", CancellationToken.None));
+        Assert.Empty(provider.Codes);
         Assert.False(MeSays(function, Get("/api/me", string.Empty, string.Empty), "signInAvailable"));
     }
 
     [Fact]
     public void Me_SaysWhetherTheReaderIsSignedIn()
     {
-        var genuine = Session().Issue(Session().VoterKeyFor(AccountId));
-        var forged = $"{Session().VoterKeyFor(1)}.{genuine.Split('.')[1]}.{genuine.Split('.')[2]}";
+        var genuine = Session().Issue(Session().VoterKeyFor("github", AccountId));
+        var forged = $"{Session().VoterKeyFor("github", "1")}.{genuine.Split('.')[1]}.{genuine.Split('.')[2]}";
 
         Assert.True(SignedIn(Get("/api/me", string.Empty, $"{VoterSession.CookieName}={genuine}")));
         Assert.False(SignedIn(Get("/api/me", string.Empty, $"{VoterSession.CookieName}={forged}")));
@@ -204,7 +226,7 @@ public sealed class SignInFunctionTests : IDisposable
 
     private HttpRequest SignOutPost(string fetchSite)
     {
-        var request = Get("/auth/signout", "?return=/r/12", $"{VoterSession.CookieName}={Session().Issue(Session().VoterKeyFor(AccountId))}");
+        var request = Get("/auth/signout", "?return=/r/12", $"{VoterSession.CookieName}={Session().Issue(Session().VoterKeyFor("github", AccountId))}");
         request.Method = "POST";
         if (fetchSite.Length > 0)
         {
@@ -226,28 +248,20 @@ public sealed class SignInFunctionTests : IDisposable
     private (string State, string Cookie) StartSignIn(string returnTo)
     {
         var request = Get("/auth/github", $"?return={Uri.EscapeDataString(returnTo)}", string.Empty);
-        var redirect = Assert.IsType<RedirectResult>(Function().SignIn(request));
+        var redirect = Assert.IsType<RedirectResult>(Function().SignIn(request, "github"));
         var state = QueryHelpers.ParseQuery(new Uri(redirect.Url).Query)["state"].ToString();
         return (state, $"{SignInFunction.StateCookieName}={SetCookie(request, SignInFunction.StateCookieName).Value}");
     }
 
-    private SignInFunction Function() => Function(accounts);
+    private SignInFunction Function() => Function([github], Voters("key-secret"));
 
-    private SignInFunction Function(FakeGitHubAccounts gitHubAccounts)
-        => Function(gitHubAccounts, GitHub("Iv1.client", "client-secret"), Voters("key-secret"));
+    private SignInFunction Function(FakeSignInProvider provider) => Function([provider], Voters("key-secret"));
 
-    private SignInFunction Function(FakeGitHubAccounts gitHubAccounts, GitHubOptions gitHub, VoterOptions voters)
-        => new(gitHubAccounts, new VoterSession(Options.Create(voters), time), Options.Create(gitHub), Options.Create(voters),
-            probe.Metrics, NullLogger<SignInFunction>.Instance);
+    private SignInFunction Function(IEnumerable<ISignInProvider> providers, VoterOptions voters)
+        => new(providers, new VoterSession(Options.Create(voters), time), Options.Create(voters), probe.Metrics,
+            NullLogger<SignInFunction>.Instance);
 
     private VoterSession Session() => new(Options.Create(Voters("key-secret")), time);
-
-    private static GitHubOptions GitHub(string clientId, string clientSecret) => new()
-    {
-        ClientId = clientId,
-        ClientSecret = clientSecret,
-        CallbackUrl = "https://staging.example/auth/github/callback",
-    };
 
     private static VoterOptions Voters(string keySecret) => new() { KeySecret = keySecret, SessionSecret = "session-secret" };
 

@@ -76,10 +76,10 @@ builder.Services.Configure<ScriptoriumOptions>(builder.Configuration.GetSection(
 builder.Services.AddTransient<Scribes>();
 builder.Services.AddScribeSignIn(builder.Configuration);
 
-// Readers sign in with GitHub to vote; separate from the Scriptorium's sign-in.
+// Readers sign in to vote, with each provider set up (GitHub for now); separate from the Scriptorium's sign-in.
 builder.Services.Configure<GitHubOptions>(builder.Configuration.GetSection(GitHubOptions.SectionName));
 builder.Services.Configure<VoterOptions>(builder.Configuration.GetSection(VoterOptions.SectionName));
-builder.Services.AddHttpClient<IGitHubAccounts, GitHubAccounts>(http => http.Timeout = TimeSpan.FromSeconds(10));
+builder.Services.AddHttpClient<ISignInProvider, GitHubSignIn>(http => http.Timeout = TimeSpan.FromSeconds(10));
 builder.Services.AddSingleton<VoterSession>();
 
 builder.Build().Run();

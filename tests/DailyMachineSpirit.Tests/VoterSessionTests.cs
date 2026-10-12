@@ -17,20 +17,24 @@ public class VoterSessionTests
     {
         var session = Session(Secrets);
 
-        Assert.Equal(session.VoterKeyFor(583231), session.VoterKeyFor(583231));
-        Assert.NotEqual(session.VoterKeyFor(583231), session.VoterKeyFor(583232));
-        Assert.Matches("^[0-9a-f]{64}$", session.VoterKeyFor(583231));
+        Assert.Equal(session.VoterKeyFor("github", "583231"), session.VoterKeyFor("github", "583231"));
+        Assert.NotEqual(session.VoterKeyFor("github", "583231"), session.VoterKeyFor("github", "583232"));
+        Assert.Matches("^[0-9a-f]{64}$", session.VoterKeyFor("github", "583231"));
     }
 
     [Fact]
+    public void VoterKeyFor_DiffersBetweenProviders_ForTheSameId()
+        => Assert.NotEqual(Session(Secrets).VoterKeyFor("github", "583231"), Session(Secrets).VoterKeyFor("google", "583231"));
+
+    [Fact]
     public void VoterKeyFor_DependsOnTheKeySecret_SoItCantBeWorkedOutFromTheId()
-        => Assert.NotEqual(Session(Secrets).VoterKeyFor(583231), Session(WithSecrets("another", "session-secret")).VoterKeyFor(583231));
+        => Assert.NotEqual(Session(Secrets).VoterKeyFor("github", "583231"), Session(WithSecrets("another", "session-secret")).VoterKeyFor("github", "583231"));
 
     [Fact]
     public void Read_GivesBackTheVoterKey_OfACookieItIssued()
     {
         var session = Session(Secrets);
-        var key = session.VoterKeyFor(583231);
+        var key = session.VoterKeyFor("github", "583231");
 
         Assert.Equal(Some(key), session.Read(session.Issue(key)));
     }
@@ -39,9 +43,9 @@ public class VoterSessionTests
     public void Read_RefusesACookie_ForAnotherKey()
     {
         var session = Session(Secrets);
-        var issued = session.Issue(session.VoterKeyFor(583231)).Split('.');
+        var issued = session.Issue(session.VoterKeyFor("github", "583231")).Split('.');
 
-        Assert.Equal(None, session.Read($"{session.VoterKeyFor(1)}.{issued[1]}.{issued[2]}"));
+        Assert.Equal(None, session.Read($"{session.VoterKeyFor("github", "1")}.{issued[1]}.{issued[2]}"));
     }
 
     [Fact]
@@ -49,14 +53,14 @@ public class VoterSessionTests
     {
         var other = Session(WithSecrets("key-secret", "another"));
 
-        Assert.Equal(None, Session(Secrets).Read(other.Issue(other.VoterKeyFor(583231))));
+        Assert.Equal(None, Session(Secrets).Read(other.Issue(other.VoterKeyFor("github", "583231"))));
     }
 
     [Fact]
     public void Read_RefusesACookie_OnceItHasExpired()
     {
         var session = Session(Secrets);
-        var cookie = session.Issue(session.VoterKeyFor(583231));
+        var cookie = session.Issue(session.VoterKeyFor("github", "583231"));
 
         time.Advance(VoterSession.Lasts);
 
@@ -75,7 +79,7 @@ public class VoterSessionTests
     {
         var session = Session(Secrets);
         var request = new DefaultHttpContext().Request;
-        request.Headers.Cookie = $"{VoterSession.CookieName}={session.Issue(session.VoterKeyFor(583231))}";
+        request.Headers.Cookie = $"{VoterSession.CookieName}={session.Issue(session.VoterKeyFor("github", "583231"))}";
 
         Assert.True(session.SignedIn(request).IsSome);
         Assert.True(Session(WithSecrets("key-secret", "@Microsoft.KeyVault(VaultName=v;SecretName=s)")).SignedIn(request).IsNone);

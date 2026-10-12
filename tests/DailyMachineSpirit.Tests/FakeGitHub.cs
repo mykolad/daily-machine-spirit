@@ -25,14 +25,14 @@ public sealed class FakeGitHub : HttpMessageHandler
         var url = request.RequestUri?.ToString() ?? string.Empty;
         var body = request.Content is { } content ? await content.ReadAsStringAsync(cancellationToken) : string.Empty;
         Requests.Add((request.Method, url, body, request));
-        if (url == GitHubAccounts.TokenUrl)
+        if (url == GitHubSignIn.TokenUrl)
         {
             AfterTokenExchange();
         }
         var (status, answer) = url switch
         {
-            GitHubAccounts.TokenUrl => TokenAnswer,
-            GitHubAccounts.UserUrl => UserAnswer,
+            GitHubSignIn.TokenUrl => TokenAnswer,
+            GitHubSignIn.UserUrl => UserAnswer,
             _ when request.Method == HttpMethod.Delete => (RevokeStatus, string.Empty),
             _ => (HttpStatusCode.NotFound, string.Empty),
         };

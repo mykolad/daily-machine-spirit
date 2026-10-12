@@ -262,7 +262,7 @@ public sealed class VotesTests : IAsyncLifetime
     private VotesFunction MissingData()
         => new(new VoteRepository(cosmos.Container.Database.GetContainer("no-such-container")), session, NullLogger<VotesFunction>.Instance);
 
-    private string SignedIn() => $"{VoterSession.CookieName}={session.Issue(session.VoterKeyFor(583231))}";
+    private string SignedIn() => $"{VoterSession.CookieName}={session.Issue(session.VoterKeyFor("github", "583231"))}";
 
     private async Task<ReactionCounts> Vote(string voterKey, Option<Reaction> vote)
         => Ok(await Repository.Vote(1, voterKey, vote, CancellationToken.None))

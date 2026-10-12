@@ -118,7 +118,7 @@ observability/                    — the Grafana dashboard, and what the app's 
   - Every focusable control sits on the dark background, never on the parchment, so the amber focus ring shows.
   - **More rites** (a rite's own page): the three rites whose similarity scores are closest (cosine, `RelatedRites`),
     topped up with the newest others when there aren't enough scored ones. If it fails, the page goes without it.
-- **Votes** (Blessed / Heresy, `Api/VotesFunction`): one per GitHub account per rite, which the reader can switch or
+- **Votes** (Blessed / Heresy, `Api/VotesFunction`): one per account per rite, which the reader can switch or
   take back, signed in as below. `POST /api/rites/{number}/vote` with `{"vote": "blessed" | "heresy" | null}`, and
   `GET /api/votes?rites=12` for the page to show the reader's own vote pressed.
   - **A vote document per account and rite** (`VoteRepository`), its id the rite's number and the voter key, so Cosmos
@@ -128,19 +128,24 @@ observability/                    — the Grafana dashboard, and what the app's 
     them, and nothing reads them, so the counts started again from zero.
   - **The page is the same for everyone:** both "Sign in with GitHub" and "Sign out" are in it, hidden, and the script
     shows the reader's own after asking `/api/me`. The API takes JSON only, so another site's form can't vote.
-- **Readers sign in with GitHub to vote** (`Voters/`, #34): `/auth/github?return=<path>` sends them to GitHub's OAuth
-  web flow, and `/auth/github/callback` brings them back. `/auth/signout` (a form posted from this site,
-  `RequestOrigin`) signs them out; `/api/me` tells the page's script whether they're signed in, so the pages stay the
-  same for everyone and cacheable.
-  - **Nothing about the account is kept:** the callback exchanges GitHub's code for a token, reads only the account's
-    id, and revokes the token. The reader becomes a **voter key**, an HMAC of `github:<id>` (`Voters:KeySecret`): the
-    same account always has the same key, and the key doesn't lead back to it.
+- **Readers sign in to vote** (`Voters/`, #34), with GitHub for now: `/auth/{provider}?return=<path>` sends them to
+  the provider's OAuth web flow, and `/auth/{provider}/callback` brings them back. `/auth/signout` (a form posted from
+  this site, `RequestOrigin`) signs them out; `/api/me` tells the page's script whether sign-in is set up and whether
+  they're signed in, so the pages stay the same for everyone and cacheable.
+  - **A provider is an `ISignInProvider`** (`GitHubSignIn`): its name, whether it's set up, where to send the reader,
+    and the account id for the code that comes back. Another provider is another implementation and its settings; the
+    routes, cookies and voter keys stay as they are.
+  - **Nothing about the account is kept:** the callback exchanges the provider's code for a token, reads only the
+    account's id, and revokes the token. The reader becomes a **voter key**, an HMAC of `<provider>:<id>`
+    (`github:583231`, `Voters:KeySecret`): the same account always has the same key, and the key doesn't lead back to
+    it. An account at another provider is another voter, even if it's the same person.
   - **The cookie** (`dms-voter`, HttpOnly, Secure, SameSite=Lax, 30 days) holds the key, its expiry and a signature
-    (`Voters:SessionSecret`). A state cookie ties GitHub's answer to the browser that started, and the return path
-    must be a path on this site.
+    (`Voters:SessionSecret`). A state cookie ties the provider's answer to the browser and the provider that started,
+    and the return path must be a path on this site.
   - **Separate from the Scriptorium:** signing in here makes nobody a Scribe.
-  - **Settings:** `GitHub:ClientId`, `:ClientSecret`, `:CallbackUrl`, `Voters:KeySecret`, `:SessionSecret`. Until all
-    are set, the sign-in pages answer 404 and nobody is signed in. Sign-ins are counted (`dms.signins`, by outcome).
+  - **Settings:** `Voters:KeySecret` and `:SessionSecret`, and each provider's own (`GitHub:ClientId`, `:ClientSecret`,
+    `:CallbackUrl`). A provider not set up has no sign-in pages (404), and without the voters' secrets nobody signs
+    in. Sign-ins are counted (`dms.signins`, by provider and outcome).
 - **The backlog and the daily rite** (`Generation/`). Rites are written ahead as **drafts** (`Draft`, documents of
   type `draft` next to the rites), so moderators, the Scribes of the Scriptorium, can choose what's published.
   - **Publishing:** the `DailyRite` timer runs at 00:00 UTC and publishes the top of the **Liturgical Calendar**, unless
