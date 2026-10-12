@@ -27,8 +27,8 @@ var productionAccess = {
 // The GitHub OAuth apps readers sign in with to vote, one per environment, since each has its own callback URL
 // (infra/README.md). A client id isn't secret; the client secrets are in the vaults.
 var signInGitHubClientIds = {
-  staging: ''
-  production: ''
+  staging: 'Ov23liMxz7fLNPla4SU6'
+  production: 'Ov23liuQFkbEDRwqBWq6'
 }
 
 // The models. Keys are off: the apps and the owner call them with Entra ID.
