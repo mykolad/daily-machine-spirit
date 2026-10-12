@@ -27,7 +27,8 @@ public class ScriptoriumOptions
 /// <summary>A draft in the Liturgical Calendar, as the Scriptorium shows it.</summary>
 public sealed record CalendarEntry(Draft Draft, DateOnly PublishesOnUtc, bool PlacedByScribes, int AuguryPlace);
 
-public sealed record ScriptoriumView(List<CalendarEntry> Calendar, List<Draft> Ashes, List<ScribeDecision> Decisions);
+/// <summary><see cref="Today"/> (UTC) tells whether the first entry goes out at the coming midnight, or is already due.</summary>
+public sealed record ScriptoriumView(List<CalendarEntry> Calendar, List<Draft> Ashes, List<ScribeDecision> Decisions, DateOnly Today);
 
 /// <summary>
 /// What the Scribes of the Scriptorium do: anoint, exalt and humble drafts (placing them in their order, ahead of the
@@ -73,7 +74,7 @@ public sealed class Scribes
                                 .Select((draft, place) => new CalendarEntry(
                                     draft, first.AddDays(place), placed.Contains(draft.Id), calendar.AuguryPlace(draft)))
                                 .ToList();
-                            return Task.FromResult(new ScriptoriumView(entries, ashes, decisions));
+                            return Task.FromResult(new ScriptoriumView(entries, ashes, decisions, today));
                         }))));
     }
 

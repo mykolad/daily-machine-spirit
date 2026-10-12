@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using DailyMachineSpirit.Data.Entities;
 using LanguageExt;
+using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Functions.Scriptorium;
 
@@ -30,10 +31,19 @@ public static partial class ScriptoriumPage
         .status:not(:empty) { background: #1a1612; border-left: 4px solid #c9a25a; padding: 12px 16px; border-radius: 12px; }
         section { margin-top: 44px; }
         .section-head { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-        .actions, .buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+        .actions, .buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+        .buttons .burn { margin-left: auto; }
+        .pair { display: inline-flex; }
+        .pair button { border-radius: 0; }
+        .pair button:first-child { border-radius: 999px 0 0 999px; }
+        .pair button:last-child { border-radius: 0 999px 999px 0; }
+        .pair button:only-child { border-radius: 999px; }
+        .pair button + button { margin-left: -1px; }
+        .pair button:focus-visible { position: relative; z-index: 1; }
         .actions form { margin: 0; }
         .calendar, .judgments { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 16px; }
-        .rite { background: #1a1612; border: 1px solid rgba(237,227,207,.1); border-radius: 20px; padding: 20px clamp(16px, 3vw, 24px); }
+        .rite { background: #1a1612; border: 1px solid rgba(237,227,207,.1); border-radius: 20px; padding: 20px clamp(16px, 3vw, 24px); scroll-margin-top: 16px; }
+        .next { display: inline-block; margin: 8px 0 0; padding: 2px 10px; border: 1px solid #2e4248; border-radius: 999px; font: 500 13px "JetBrains Mono", monospace; color: #8cc4ae; }
         .ash { opacity: .92; }
         .kicker { margin: 0; font: 700 13px Cinzel, serif; letter-spacing: .16em; text-transform: uppercase; color: #c9a25a; }
         .placed { color: #f0b45a; }
@@ -44,9 +54,11 @@ public static partial class ScriptoriumPage
         .text code { background: #2b2117; color: #f0d58c; }
         .meta, .when, .optional { color: #b6a98f; }
         .meta { margin: 0 0 12px; font-size: 15px; }
-        .decide label { display: block; font-weight: 600; margin-bottom: 4px; }
+        .fold summary { cursor: pointer; padding: 10px 0; font-weight: 600; color: #cdbd9e; }
+        .fold summary .icon { width: 16px; height: 16px; vertical-align: -2px; margin: 0 4px; }
         textarea { width: 100%; background: #100e0b; color: #ede3cf; border: 1px solid #b6a98f; border-radius: 12px; padding: 8px 12px; font: 16px/1.4 Figtree, sans-serif; margin-bottom: 8px; }
-        button { min-height: 46px; padding: 10px 18px; border-radius: 999px; font: 600 16px/1.2 Figtree, sans-serif; cursor: pointer; border: 1px solid transparent; }
+        button { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 10px 18px 10px 14px; border-radius: 999px; font: 600 16px/1.2 Figtree, sans-serif; cursor: pointer; border: 1px solid transparent; }
+        .icon { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
         .primary { background: #c9a25a; color: #100e0b; }
         .primary:hover { background: #d6b170; }
         .outline, .secondary { background: transparent; color: #ede3cf; border-color: rgba(237,227,207,.22); }
@@ -66,8 +78,11 @@ public static partial class ScriptoriumPage
         @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
         """;
 
-    public static string Render(ScriptoriumView view, Option<string> status)
+    /// <param name="outcome">What the last action did (<see cref="ScriptoriumFunction"/>'s <c>done</c>), if anything.</param>
+    /// <param name="rite">The draft it acted on, so the message can name it and say where it went.</param>
+    public static string Render(ScriptoriumView view, Option<string> outcome, Option<Guid> rite)
     {
+        var status = outcome.Bind(done => Status(done, view, rite));
         var html = new StringBuilder();
         Head(html, "The Scriptorium");
         html.Append("""
@@ -75,14 +90,14 @@ public static partial class ScriptoriumPage
             <h1>The Scriptorium</h1>
             <p class="lede">Unconsecrated rites await the judgment of the Scribes. Your notes teach the Augury what to choose when no Scribe is watching.</p>
             """);
-        html.Append($"""<p class="status" role="status">{status.Map(Encode).IfNone(string.Empty)}</p>""");
+        html.Append($"""<p class="status" role="status">{status.IfNone(string.Empty)}</p>""");
 
-        html.Append("""
+        html.Append($"""
             <section aria-labelledby="calendar-heading">
             <div class="section-head">
             <h2 id="calendar-heading">The Liturgical Calendar</h2>
             <div class="actions">
-            <form method="post" action="/scriptorium/summon"><button class="primary">Summon New Rites</button></form>
+            <form method="post" action="/scriptorium/summon"><button class="primary">{ScriptoriumIcons.Summon}Summon New Rites</button></form>
             """);
         if (view.Calendar.Any(entry => entry.PlacedByScribes))
             html.Append("""<form method="post" action="/scriptorium/augury"><button class="outline">Let the Augury Decide</button></form>""");
@@ -95,7 +110,7 @@ public static partial class ScriptoriumPage
             html.Append($"<p>{view.Calendar.Count} unconsecrated {(view.Calendar.Count == 1 ? "rite waits" : "rites wait")}. The Scribes' order comes first; the Augury orders the rest.</p>");
             html.Append("""<ol class="calendar">""");
             for (var index = 0; index < view.Calendar.Count; index++)
-                CalendarEntry(html, view.Calendar[index], isFirst: index == 0, isLast: index == view.Calendar.Count - 1);
+                CalendarEntry(html, view.Calendar[index], place: index + 1, isLast: index == view.Calendar.Count - 1, view.Today);
             html.Append("</ol>");
         }
         html.Append("</section>");
@@ -146,26 +161,36 @@ public static partial class ScriptoriumPage
         return html.ToString();
     }
 
-    private static void CalendarEntry(StringBuilder html, CalendarEntry entry, bool isFirst, bool isLast)
+    private static void CalendarEntry(StringBuilder html, CalendarEntry entry, int place, bool isLast, DateOnly today)
     {
         var draft = entry.Draft;
         var id = draft.Id.ToString("D");
-        html.Append($"""<li><article class="rite" aria-labelledby="title-{id}">""");
-        html.Append($"""<p class="kicker"><time datetime="{entry.PublishesOnUtc:yyyy-MM-dd}">{Date(entry.PublishesOnUtc)}</time> · {Kind(draft.Kind)}""");
-        if (entry.PlacedByScribes)
-            html.Append(""" · <span class="placed">Placed by the Scribes</span>""");
-        html.Append("</p>");
+        html.Append($"""<li><article class="rite" id="rite-{id}" aria-labelledby="title-{id}">""");
+        html.Append($"""<p class="kicker"><time datetime="{entry.PublishesOnUtc:yyyy-MM-dd}">{Date(entry.PublishesOnUtc)}</time> · {Kind(draft.Kind)}</p>""");
+        // Today's own rite is only still due when the midnight run failed; its retry publishes it.
+        if (place == 1)
+            html.Append($"""<p class="next">{(entry.PublishesOnUtc > today ? "Publishes at 00:00 UTC" : "Publishes next")}</p>""");
         RiteBody(html, draft, id);
-        var quality = draft.Augury.Map(augury => $"The Augury: {augury.Quality:P0}, its place #{entry.AuguryPlace}").IfNone("Not yet judged by the Augury");
-        html.Append($"""<p class="meta">{Encode(quality)} · written by <span class="nowrap">{Encode(draft.GeneratedByModel)}</span></p>""");
 
-        DecisionForm(html, id, draft.Title,
+        // The Augury's own place for a draft only says something where the Scribes put it elsewhere.
+        var augury = draft.Augury.Map(judged => entry.PlacedByScribes && entry.AuguryPlace != place
+                ? $"The Augury: {judged.Quality:P0}, it would place it #{entry.AuguryPlace}"
+                : $"The Augury: {judged.Quality:P0}")
+            .IfNone("Not yet judged by the Augury");
+        var placedBy = entry.PlacedByScribes ? """<span class="placed">Placed by the Scribes</span> · """ : string.Empty;
+        html.Append($"""<p class="meta">{placedBy}{Encode(augury)} · written by <span class="nowrap">{Encode(draft.GeneratedByModel)}</span></p>""");
+
+        var reorder = new List<string>();
+        if (place > 1)
+            reorder.Add(Button(id, draft.Title, "exalt", ScriptoriumIcons.Exalt, "Exalt", "secondary"));
+        if (!isLast)
+            reorder.Add(Button(id, draft.Title, "humble", ScriptoriumIcons.Humble, "Humble", "secondary"));
+        DecisionForm(html, id,
         [
             // Anointing the first is useful too: it keeps it first, ahead of a better draft a refill may bring.
-            ("anoint", "Anoint", "secondary"),
-            .. isFirst ? Array.Empty<(string, string, string)>() : [("exalt", "Exalt", "secondary")],
-            .. isLast ? Array.Empty<(string, string, string)>() : [("humble", "Humble", "secondary")],
-            ("burn", "Consign to the Flames", "danger"),
+            Button(id, draft.Title, "anoint", ScriptoriumIcons.Anoint, "Anoint", "primary"),
+            .. reorder.Count == 0 ? [] : new[] { $"""<span class="pair" role="group" aria-label="Reorder">{string.Concat(reorder)}</span>""" },
+            Button(id, draft.Title, "burn", ScriptoriumIcons.Burn, "Consign to the Flames", "danger burn"),
         ]);
         html.Append("</article></li>");
     }
@@ -173,12 +198,12 @@ public static partial class ScriptoriumPage
     private static void Ash(StringBuilder html, Draft draft)
     {
         var id = draft.Id.ToString("D");
-        html.Append($"""<li><article class="rite ash" aria-labelledby="title-{id}">""");
+        html.Append($"""<li><article class="rite ash" id="rite-{id}" aria-labelledby="title-{id}">""");
         html.Append($"""<p class="kicker">{Kind(draft.Kind)}""");
         draft.BurnedAtUtc.IfSome(burned => html.Append($" · burned {Date(DateOnly.FromDateTime(burned))}"));
         html.Append("</p>");
         RiteBody(html, draft, id);
-        DecisionForm(html, id, draft.Title, [("restore", "Restore from the Ashes", "secondary")]);
+        DecisionForm(html, id, [Button(id, draft.Title, "restore", ScriptoriumIcons.Restore, "Restore from the Ashes", "secondary")]);
         html.Append("</article></li>");
     }
 
@@ -189,20 +214,23 @@ public static partial class ScriptoriumPage
         html.Append($"""<p class="truth"><span class="truth-label">Heretical Truth</span> {WithCode(draft.HereticalTruth)}</p>""");
     }
 
-    // One form per draft, so its note goes with whichever button is pressed. Each button names the rite for screen
-    // readers, since every entry has the same buttons.
-    private static void DecisionForm(StringBuilder html, string id, string title, IEnumerable<(string Action, string Label, string Style)> buttons)
-    {
-        html.Append($"""
+    // One form per draft, so its note goes with whichever button is pressed. The note is folded away: twenty open boxes
+    // would make the page very long, and most decisions go without one.
+    private static void DecisionForm(StringBuilder html, string id, IEnumerable<string> buttons)
+        => html.Append($"""
             <form method="post" class="decide">
-            <label for="note-{id}">Note for the Augury <span class="optional">(optional)</span></label>
+            <details class="fold">
+            <summary>{ScriptoriumIcons.Note}Note for the Augury <span class="optional">(optional)</span></summary>
+            <label class="visually-hidden" for="note-{id}">Note for the Augury</label>
             <textarea id="note-{id}" name="note" rows="2" maxlength="{ScribeDecision.MaxNoteLength}"></textarea>
-            <div class="buttons">
+            </details>
+            <div class="buttons">{string.Concat(buttons)}</div>
+            </form>
             """);
-        foreach (var (action, label, style) in buttons)
-            html.Append($"""<button class="{style}" formaction="/scriptorium/drafts/{id}/{action}">{label}<span class="visually-hidden">: {Encode(title)}</span></button>""");
-        html.Append("</div></form>");
-    }
+
+    // Each button names the rite for screen readers, since every entry has the same buttons.
+    private static string Button(string id, string title, string action, string icon, string label, string style)
+        => $"""<button class="{style}" formaction="/scriptorium/drafts/{id}/{action}">{icon}{label}<span class="visually-hidden">: {Encode(title)}</span></button>""";
 
     // Every page carries the site's motto and the Games Workshop disclaimer (CLAUDE.md, Ground rules).
     private static void Footer(StringBuilder html)
@@ -235,6 +263,33 @@ public static partial class ScriptoriumPage
     private static string Kind(RiteKind kind) => kind == RiteKind.Prayer ? "A Prayer" : "A Ritual";
 
     private static string Date(DateOnly day) => day.ToString("ddd d MMM", CultureInfo.InvariantCulture);
+
+    // What the last action did, as HTML. It names the rite and where it went when the rite is still on the page (it may
+    // have been published or moved again since), and links a burned rite to its place in the Ashes, to restore it.
+    private static Option<string> Status(string outcome, ScriptoriumView view, Option<Guid> rite)
+    {
+        var entry = rite.Bind(id => view.Calendar.Where(waiting => waiting.Draft.Id == id).HeadOrNone());
+        var ash = rite.Bind(id => view.Ashes.Where(burned => burned.Id == id).HeadOrNone());
+        var title = (entry.Map(waiting => waiting.Draft) | ash).Map(draft => $"“{WithCode(draft.Title)}”");
+        var date = entry.Map(waiting => Date(waiting.PublishesOnUtc));
+        string Named(string done) => title.Map(name => $"{done} {name}").IfNone(done);
+        var restore = ash.Map(burned => $""" <a href="#rite-{burned.Id:D}">Restore it from the Ashes</a>.""").IfNone(string.Empty);
+        return outcome switch
+        {
+            "anoint" => $"{Named("Anointed")}: it goes out next{date.Map(day => $", {day}").IfNone(string.Empty)}.",
+            "exalt" => $"{Named("Exalted")}{date.Map(day => $" to {day}").IfNone(string.Empty)}.",
+            "humble" => $"{Named("Humbled")}{date.Map(day => $" to {day}").IfNone(string.Empty)}.",
+            "burn" => $"{Named("Consigned")} to the flames.{restore}",
+            "burn-last" => $"{Named("Consigned")} to the flames. No rite waits now, so new ones are being summoned: look again in a few minutes.{restore}",
+            "restore" => $"{Named("Restored")} from the ashes{date.Map(day => $": it waits for {day}").IfNone(string.Empty)}.",
+            "summon" => "New rites are being summoned: look again in a few minutes.",
+            "augury" => "The Augury orders every draft again.",
+            "changed" => "Another Scribe changed the calendar meanwhile. Look again before deciding.",
+            "unmoved" => "It was already there, so nothing moved. Another Scribe may have moved it: look again.",
+            "note-too-long" => "That note is too long, so nothing was changed. Shorten it and try again.",
+            _ => None,
+        };
+    }
 
     private static string Done(ScribeAction action) => action switch
     {
