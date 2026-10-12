@@ -27,10 +27,15 @@ echo "ok: /healthz reports $version"
 page=$(mktemp)
 trap 'rm -f "$page"' EXIT
 
-# A path, the status it must answer, and text its page must contain.
+# A path, the status it must answer, and text its page must contain. A 403 is tried again a few times: an access rule
+# just added for the runner (staging) can take a moment to reach every front end.
 check() {
   local status
-  status=$(curl -s -m 30 -o "$page" -w '%{http_code}' "$base$1" || true)
+  for _ in 1 2 3 4; do
+    status=$(curl -s -m 30 -o "$page" -w '%{http_code}' "$base$1" || true)
+    [[ $status == 403 ]] || break
+    sleep 5
+  done
   [[ $status == "$2" ]] || fail "$1 answered ${status:-nothing}, not $2"
   grep -qF -- "$3" "$page" || fail "$1 doesn't contain \"$3\""
   echo "ok: $1 ($status)"
