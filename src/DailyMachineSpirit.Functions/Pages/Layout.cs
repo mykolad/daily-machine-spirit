@@ -30,6 +30,7 @@ public static class Layout
             <meta property="og:description" content="{Html.Encode(description)}">
             <meta property="og:type" content="website">
             <meta name="theme-color" content="#100e0b">
+            <link rel="icon" type="image/svg+xml" href="{Svg.Favicon}">
             <link rel="preload" href="/fonts/cinzel.woff2" as="font" type="font/woff2" crossorigin>
             <link rel="preload" href="/fonts/eb-garamond.woff2" as="font" type="font/woff2" crossorigin>
             <style>{Styles.Css}</style>
