@@ -1,7 +1,7 @@
 # Load tests
 
 [k6](https://grafana.com/docs/k6/) scripts for the public pages: Today, rite pages, the archive (older pages too), the
-404 page and a font. Reactions are left out: they would change the counts visitors see.
+404 page and a font. Votes are left out: they need a GitHub sign-in, and would change the counts readers see.
 
 Run them from your own machine: staging admits only your address, so Grafana Cloud's k6 runners can't reach it.
 k6 is one program, no Node needed (`winget install k6`).

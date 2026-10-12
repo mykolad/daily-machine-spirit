@@ -5,7 +5,7 @@
 A satirical website: AI and vibe coding turn software engineers into tech-priests who recite rituals and prompts
 instead of understanding their tools. Every day at 00:00 UTC it publishes one **prayer** or **ritual** to the Machine
 Spirit, written ahead by an LLM and chosen by moderators, plus a **Heretical Truth**: one or two plain sentences on
-what really happens. Either kind is a **rite** (the design's word, and `Rite` in the code). Visitors react with
+what really happens. Either kind is a **rite** (the design's word, and `Rite` in the code). Readers vote with
 **Blessed** or **Heresy**.
 
 - Tagline: *In the grim darkness of the far future, no one reads the code.* Footer: *Knowledge is lost. The rituals
@@ -118,11 +118,16 @@ observability/                    — the Grafana dashboard, and what the app's 
   - Every focusable control sits on the dark background, never on the parchment, so the amber focus ring shows.
   - **More rites** (a rite's own page): the three rites whose similarity scores are closest (cosine, `RelatedRites`),
     topped up with the newest others when there aren't enough scored ones. If it fails, the page goes without it.
-- **Reactions** (Blessed / Heresy, `Api/ReactionsFunction`, `POST /api/rites/{number}/reaction`) are anonymous: the
-  browser keeps its own reaction (`localStorage`, `dms-reactions-v1`) and sends it back as `previous`, and the server
-  only moves the counts (`RiteRepository.React`, Cosmos increments, never below zero). Nothing about a visitor is
-  stored, so a visitor who clears their storage can react again; the rate limit belongs at Cloudflare. The API takes
-  JSON only, so another site's form can't post to it.
+- **Votes** (Blessed / Heresy, `Api/VotesFunction`): one per GitHub account per rite, which the reader can switch or
+  take back, signed in as below. `POST /api/rites/{number}/vote` with `{"vote": "blessed" | "heresy" | null}`, and
+  `GET /api/votes?rites=12` for the page to show the reader's own vote pressed.
+  - **A vote document per account and rite** (`VoteRepository`), its id the rite's number and the voter key, so Cosmos
+    itself allows one. The vote and the rite's counts (`blessedVotes`, `heresyVotes`) change in one transactional batch,
+    so the counts are always the votes there are.
+  - **The anonymous reactions before sign-in** counted in `blessedCount` and `heresyCount`: older rites still have
+    them, and nothing reads them, so the counts started again from zero.
+  - **The page is the same for everyone:** both "Sign in with GitHub" and "Sign out" are in it, hidden, and the script
+    shows the reader's own after asking `/api/me`. The API takes JSON only, so another site's form can't vote.
 - **Readers sign in with GitHub to vote** (`Voters/`, #34): `/auth/github?return=<path>` sends them to GitHub's OAuth
   web flow, and `/auth/github/callback` brings them back. `/auth/signout` (a form posted from this site,
   `RequestOrigin`) signs them out; `/api/me` tells the page's script whether they're signed in, so the pages stay the

@@ -145,13 +145,16 @@ public sealed class SignInFunction
         return Redirect(SafeReturnPath(request.Query["return"].ToString()));
     }
 
-    /// <summary>Whether this reader is signed in, for the page's script: the pages themselves are the same for everyone.</summary>
+    /// <summary>
+    /// Whether readers can sign in here at all, and whether this one is, for the page's script: the pages themselves are
+    /// the same for everyone.
+    /// </summary>
     [Function("Me")]
     public IActionResult Me(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/me")] HttpRequest request)
     {
         NeverCached(request);
-        return new OkObjectResult(new { signedIn = session.SignedIn(request).IsSome });
+        return new OkObjectResult(new { signInAvailable = IsConfigured, signedIn = session.SignedIn(request).IsSome });
     }
 
     private bool IsConfigured => github.Value.IsConfigured && voters.Value.IsConfigured;

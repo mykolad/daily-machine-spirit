@@ -18,6 +18,8 @@ public static class RiteCard
         var heading = ownPage ? "h1" : "h2";
         var kind = rite.Writing.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL";
         var url = Paths.Rite(rite.Number);
+        // Where signing in or out comes back to: this page.
+        var here = ownPage ? url : Paths.Today;
         var copyText = $"{rite.Writing.Title}\n\n{rite.Writing.Text}\n\nHeretical Truth: {rite.Writing.HereticalTruth}";
         var copyButton = ownPage
             ? $"""<button type="button" class="button button-ghost" data-copy="text" data-url="{url}" data-text="{Html.Encode(copyText)}">{Svg.CopyIcon}Copy text</button>"""
@@ -63,6 +65,8 @@ public static class RiteCard
             <button type="button" class="button button-ghost" data-copy="link" data-url="{url}">{Svg.LinkIcon}Share link</button>
             {copyButton}
             </div>
+            <div class="vote-status" data-signed-in="false" hidden><a href="{Html.Encode(Paths.SignIn(here))}">Sign in with GitHub</a> to vote<span class="vote-privacy">Only a one-way key made from your account's id is kept: never your name, email or GitHub token.</span></div>
+            <div class="vote-status" data-signed-in="true" hidden>Voting with your GitHub account · <form method="post" action="{Html.Encode(Paths.SignOutFrom(here))}"><button type="submit" class="text-button">Sign out</button></form></div>
             """;
     }
 

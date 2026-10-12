@@ -76,6 +76,20 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.DoesNotContain("More rites", html);
     }
 
+    // The page is the same for everyone: both ways are in it, hidden, and the script shows the reader's own.
+    [Theory]
+    [InlineData("rite", "%2Fr%2F1")]
+    [InlineData("today", "%2F")]
+    public async Task ARitesVotes_OfferSigningInAndOut_BackToTheSamePage(string page, string returnTo)
+    {
+        await Add(Day, "The Rite of Re-Run");
+
+        var (_, html) = page == "rite" ? await Rite("1") : await Today("");
+
+        Assert.Contains($"""<div class="vote-status" data-signed-in="false" hidden><a href="/auth/github?return={returnTo}">Sign in with GitHub</a> to vote<span class="vote-privacy">""", html);
+        Assert.Contains($"""<form method="post" action="/auth/signout?return={returnTo}"><button type="submit" class="text-button">Sign out</button></form>""", html);
+    }
+
     [Fact]
     public async Task Rite_OffersTheClosestRitesByTheirScores()
     {
@@ -158,13 +172,14 @@ public sealed class SitePagesTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Archive_ShowsEachRitesReactions()
+    public async Task Archive_ShowsEachRitesVotes()
     {
         await Add(Day.AddDays(-1), "Litany of the Clean Cache");
         await Add(Day, "The Rite of Re-Run");
-        foreach (var reaction in new[] { Reaction.Blessed, Reaction.Blessed, Reaction.Blessed, Reaction.Heresy })
+        var votes = new VoteRepository(cosmos.Container);
+        foreach (var (voter, vote) in new[] { ("a", Reaction.Blessed), ("b", Reaction.Blessed), ("c", Reaction.Blessed), ("d", Reaction.Heresy) })
         {
-            Ok(await Repository.React(1, Some(reaction), None, CancellationToken.None));
+            Ok(await votes.Vote(1, voter, Some(vote), CancellationToken.None));
         }
 
         var (_, html) = await Archive("");

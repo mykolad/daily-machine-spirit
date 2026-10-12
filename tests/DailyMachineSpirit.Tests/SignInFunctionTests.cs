@@ -162,6 +162,7 @@ public sealed class SignInFunctionTests : IDisposable
         Assert.IsType<NotFoundResult>(function.SignIn(Get("/auth/github", string.Empty, string.Empty)));
         Assert.IsType<NotFoundResult>(await function.Callback(Get("/auth/github/callback", "?code=c&state=s", string.Empty), CancellationToken.None));
         Assert.Empty(accounts.Codes);
+        Assert.False(MeSays(function, Get("/api/me", string.Empty, string.Empty), "signInAvailable"));
     }
 
     [Fact]
@@ -173,6 +174,7 @@ public sealed class SignInFunctionTests : IDisposable
         Assert.True(SignedIn(Get("/api/me", string.Empty, $"{VoterSession.CookieName}={genuine}")));
         Assert.False(SignedIn(Get("/api/me", string.Empty, $"{VoterSession.CookieName}={forged}")));
         Assert.False(SignedIn(Get("/api/me", string.Empty, string.Empty)));
+        Assert.True(MeSays(Function(), Get("/api/me", string.Empty, string.Empty), "signInAvailable"));
     }
 
     [Fact]
@@ -211,11 +213,13 @@ public sealed class SignInFunctionTests : IDisposable
         return request;
     }
 
-    private bool SignedIn(HttpRequest request)
+    private bool SignedIn(HttpRequest request) => MeSays(Function(), request, "signedIn");
+
+    private static bool MeSays(SignInFunction function, HttpRequest request, string property)
     {
-        var result = Assert.IsType<OkObjectResult>(Function().Me(request));
+        var result = Assert.IsType<OkObjectResult>(function.Me(request));
         Assert.Equal("no-store", request.HttpContext.Response.Headers.CacheControl.ToString());
-        return (bool)(result.Value?.GetType().GetProperty("signedIn")?.GetValue(result.Value) ?? false);
+        return (bool)(result.Value?.GetType().GetProperty(property)?.GetValue(result.Value) ?? false);
     }
 
     // Starts a sign-in the way a browser would, and returns the state GitHub would send back and the cookie it would keep.

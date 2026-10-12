@@ -106,6 +106,13 @@ public static class Styles
         .reaction-blessed[aria-pressed=true]{background:#3a2f1a;border-color:#c9a25a;color:#f2e1bd}
         .reaction-heresy[aria-pressed=true]{background:#3b1814;border-color:#d0604d;color:#f6cfc6}
         .reactions[aria-busy=true] .reaction{cursor:progress}
+        .vote-status{margin-top:14px;font-size:15px;color:#bfb39a;text-align:center}
+        .vote-status[hidden]{display:none}
+        .vote-status form{display:inline}
+        .vote-privacy{display:block;margin-top:4px;font-size:13px;color:#a89d86}
+        .vote-status a,.text-button{color:#d9b874;text-decoration:underline;text-underline-offset:3px}
+        .vote-status a:hover,.text-button:hover{color:#f0d59a}
+        .text-button{padding:0;border:0;background:none;font:inherit;cursor:pointer}
         .button-ghost{padding:10px 16px;color:#d9b874}
         .button-ghost:hover{background:rgba(201,162,90,.12);color:#f0d59a}
         .countdown{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:48px}
