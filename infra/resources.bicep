@@ -147,6 +147,7 @@ module staging 'modules/environment.bicep' = {
     nameSuffix: '-staging'
     storageAccountName: '${prefix}staging'
     allowedIp: stagingAllowedIp
+    admitsOnlyCloudflare: false
     cosmosAccountName: cosmos.name
     aiAccountName: ai.name
     ownerPrincipalId: ownerPrincipalId
@@ -164,6 +165,7 @@ module production 'modules/environment.bicep' = if (deployProduction) {
     nameSuffix: ''
     storageAccountName: '${prefix}prod'
     allowedIp: ''
+    admitsOnlyCloudflare: true
     cosmosAccountName: cosmos.name
     aiAccountName: ai.name
     ownerPrincipalId: ownerPrincipalId

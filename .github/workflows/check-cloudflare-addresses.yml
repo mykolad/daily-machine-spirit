@@ -1,0 +1,51 @@
+name: Check Cloudflare's Addresses
+
+# Production admits only Cloudflare's published address ranges (infra/cloudflare-ips.json). When Cloudflare changes
+# them, readers coming through a new range would be refused, so this compares them every week and opens an issue
+# (once) when they differ. Updating the file and deploying the infrastructure stays a person's step (infra/README.md).
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    name: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: infra
+
+      - name: Compare with Cloudflare's published ranges
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          published=$(curl -sf -m 30 https://api.cloudflare.com/client/v4/ips)
+          jq -e '.success' <<< "$published" > /dev/null || { echo "::error::Cloudflare's address API didn't answer."; exit 1; }
+          jq -r '.result.ipv4_cidrs[], .result.ipv6_cidrs[]' <<< "$published" | sort > published.txt
+          jq -r '.ipv4[], .ipv6[]' infra/cloudflare-ips.json | sort > ours.txt
+          if diff -u ours.txt published.txt > changes.txt; then
+            echo "Production's rules match Cloudflare's published ranges." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          title="Cloudflare's address ranges changed"
+          if [ -n "$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$title\" in:title" --json number --jq '.[].number')" ]; then
+            echo "Already reported in an open issue." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          {
+            echo "Cloudflare's published ranges (https://api.cloudflare.com/client/v4/ips) no longer match \`infra/cloudflare-ips.json\`, which production's access rules come from. Readers coming through a new range are refused until the file is updated and the infrastructure deployed (infra/README.md)."
+            echo
+            echo '```diff'
+            cat changes.txt
+            echo '```'
+          } > body.md
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body-file body.md
+          echo "::warning::Cloudflare's ranges changed; an issue was opened."
