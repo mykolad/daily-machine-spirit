@@ -92,18 +92,18 @@ public class LiturgicalCalendarTests
     public void Order_PutsDraftsJudgedByAnOlderJudge_AfterTheNewestJudges()
     {
         var judgedEarlier = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
-        var oldJudge = MakeDraft("Old judge, high score", RiteKind.Prayer, 0.9f, AboutCaches) with
+        var oldJudge = MakeDraft("Old judge, high quality", RiteKind.Prayer, 0.9f, AboutCaches) with
         {
             Augury = new Augury { Quality = 0.9f, JudgedBy = "jev-1.12.0/quality-q1", JudgedAtUtc = judgedEarlier },
         };
-        var newJudge = MakeDraft("New judge, low score", RiteKind.Prayer, 0.3f, AboutBuilds) with
+        var newJudge = MakeDraft("New judge, low quality", RiteKind.Prayer, 0.3f, AboutBuilds) with
         {
             Augury = new Augury { Quality = 0.3f, JudgedBy = "jev-1.13.0/quality-q1", JudgedAtUtc = judgedEarlier.AddDays(1) },
         };
 
         var ordered = LiturgicalCalendar.Order([oldJudge, newJudge], [], []);
 
-        Assert.Equal(["New judge, low score", "Old judge, high score"], Titles(ordered));
+        Assert.Equal(["New judge, low quality", "Old judge, high quality"], Titles(ordered));
     }
 
     [Fact]
