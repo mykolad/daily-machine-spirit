@@ -1,8 +1,8 @@
 name: Deploy Master
 
 # Every merge to master is built and tested again (a flaky pass on its PR doesn't reach staging), packaged once, and
-# that package is deployed to staging, smoke-tested, and rolled back if the smoke tests fail. Production joins at
-# launch, after staging.
+# that package is deployed to staging, smoke-tested, and rolled back if the smoke tests fail. Only when staging passed
+# does the same package go to production, smoke-tested and rolled back the same way: no approval, staging is the gate.
 on:
   push:
     branches: [master]
@@ -35,4 +35,17 @@ jobs:
       app-name: machinespirit-app-staging
       base-url: https://machinespirit-app-staging.azurewebsites.net
       version: ${{ needs.build-and-test.outputs.version }}
-      admits-only-owner: true
+      restricts-addresses: true
+
+  # The same package, once staging ran it and passed its smoke tests (a failed staging job, rolled back or not, stops
+  # here). Smoke-tested on the app's own address, past Cloudflare's cache, so they test what was just deployed.
+  production:
+    name: production
+    needs: [build-and-test, staging]
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: production
+      app-name: machinespirit-app
+      base-url: https://machinespirit-app.azurewebsites.net
+      version: ${{ needs.build-and-test.outputs.version }}
+      restricts-addresses: true

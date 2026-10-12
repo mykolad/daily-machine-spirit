@@ -146,15 +146,20 @@ Keep `voter-key.txt`: it's what makes an account the same voter, and a new one w
 
 GitHub Actions deploys the app (`.github/workflows/`), signed in as the environment's GitHub identity:
 
-- **Deploy Master**: every merge to `master` is built and tested again, then that package goes to staging.
+- **Deploy Master**: every merge to `master` is built and tested again, then that package goes to staging, and once
+  staging passes its smoke tests, to production. No approval: staging is the gate, and the `production` environment
+  admits deployments from `master` only.
 - **Deploy Branch to Staging**: Actions → Deploy Branch to Staging → Run workflow, with a branch name, to try a PR
   on staging before merging. Staging keeps it until the next deployment.
 
 Each deployment ends with smoke tests (`tests/DailyMachineSpirit.SmokeTests`), and rolls back to the last good master
-if they fail. For them, the workflow briefly adds the runner's address to staging's access rules (`smoke-tests`): the
-GitHub identity is Website Contributor on its own app, which is enough.
+if they fail. For them, the workflow briefly adds the runner's address to the app's access rules (`smoke-tests`), since
+staging admits only your address and production only Cloudflare: each GitHub identity is Website Contributor on its own
+app, which is enough.
 
 `https://machinespirit-app-staging.azurewebsites.net/healthz` shows the deployed commit (only from your address).
+Production's, `https://machinespirit-app.azurewebsites.net/healthz`, answers only Cloudflare: through the domain, once it
+points there (#31).
 
 By hand, from a checkout (Azure Functions Core Tools v4, signed in with `az login`):
 

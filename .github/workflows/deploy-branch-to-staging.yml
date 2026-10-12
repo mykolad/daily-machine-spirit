@@ -33,4 +33,4 @@ jobs:
       app-name: machinespirit-app-staging
       base-url: https://machinespirit-app-staging.azurewebsites.net
       version: ${{ needs.build-and-test.outputs.version }}
-      admits-only-owner: true
+      restricts-addresses: true

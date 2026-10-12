@@ -21,8 +21,8 @@ on:
         description: The commit's first 7 characters, which /healthz must report once it's deployed.
         type: string
         required: true
-      admits-only-owner:
-        description: The app admits only its owner's address (staging), so the runner's is added for the smoke tests.
+      restricts-addresses:
+        description: The app admits only some addresses (staging its owner, production Cloudflare), so the runner's is added for the smoke tests.
         type: boolean
         required: true
 
@@ -83,13 +83,13 @@ jobs:
       # here, and an infrastructure deployment removes it too: Bicep sets the rules whole.
       - name: Let the runner in
         id: let-in
-        if: ${{ inputs.admits-only-owner }}
+        if: ${{ inputs.restricts-addresses }}
         run: |
           ip=$(curl -s -m 20 https://api.ipify.org)
           az functionapp config access-restriction remove -g "$RESOURCE_GROUP" -n "$APP" --rule-name smoke-tests -o none \
             2>/dev/null || true
           az functionapp config access-restriction add -g "$RESOURCE_GROUP" -n "$APP" --rule-name smoke-tests \
-            --action Allow --ip-address "$ip/32" --priority 200 -o none
+            --action Allow --ip-address "$ip/32" --priority 300 -o none
           # The rule reaches the app's front ends one by one: wait until ten requests in a row get past it. A 403 or no
           # answer at all starts the count again. Any other answer counts, even an error: whether the app is healthy is
           # for the smoke tests to judge, so a broken app still fails them and is rolled back.
@@ -152,10 +152,10 @@ jobs:
           dotnet test last-good/smoke-tests/DailyMachineSpirit.SmokeTests.dll --logger "console;verbosity=normal"
           echo "::error title=Rolled back::$VERSION failed its smoke tests, so $APP runs $LAST_GOOD again."
 
-      # On every deployment of an owner-only app, even one that failed before letting its runner in: a rule left by a
-      # runner that died goes too.
+      # On every deployment of an app that restricts addresses, even one that failed before letting its runner in: a rule
+      # left by a runner that died goes too.
       - name: Shut the runner out
-        if: ${{ always() && inputs.admits-only-owner }}
+        if: ${{ always() && inputs.restricts-addresses }}
         run: |
           rules=$(az functionapp config access-restriction show -g "$RESOURCE_GROUP" -n "$APP" \
             --query "ipSecurityRestrictions[?name=='smoke-tests'].name" -o tsv)

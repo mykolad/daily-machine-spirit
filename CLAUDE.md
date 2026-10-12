@@ -258,15 +258,17 @@ repository tests. For a deployment it also packages the app (the `app` artifact,
 ## Deploying
 
 - **Deploy Master** (`deploy-master.yml`): every push to `master` is built and tested again (it calls Build and Test),
-  and that package is deployed to staging. Production joins at launch.
+  and that package is deployed to staging, then, only if staging passed its smoke tests, to production. No approval:
+  staging is the gate, and only `master` may deploy to the `production` environment.
 - **Deploy Branch to Staging** (`deploy-branch-to-staging.yml`): run by hand with a branch name, to try a PR on staging.
 - Both call `deploy.yml`, which deploys the package as the GitHub environment's identity (OIDC: the environment's
   `AZURE_*` variables hold ids, not secrets), one deployment per environment at a time. Then:
   - **Smoke tests** (`tests/DailyMachineSpirit.SmokeTests`, published into the package, so a package is always checked
     by its own): `/healthz` reports the new commit, and Today, the archive, a rite, the 404 page and a font answer as
     they should. They read the app's address and expected version from `SMOKE_TEST_BASE_URL` and `SMOKE_TEST_VERSION`,
-    so they can also run from your machine against staging. Staging admits only its owner, so the workflow adds the
-    runner's address to its access rules for the tests and removes it afterwards, even when the run fails or is
-    cancelled.
+    so they can also run from your machine against staging. They call the app's own address (production's past
+    Cloudflare's cache), and both apps admit only some addresses (staging its owner, production Cloudflare), so the
+    workflow adds the runner's address to the access rules for the tests (`smoke-tests`) and removes it afterwards,
+    even when the run fails or is cancelled.
   - **Rollback:** when the smoke tests fail, the package of the newest successful Deploy Master run goes back and is
     smoke-tested, and the run fails.
