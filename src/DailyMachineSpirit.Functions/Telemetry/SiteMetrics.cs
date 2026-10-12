@@ -15,6 +15,7 @@ public sealed class SiteMetrics
     private readonly Counter<long> answers;
     private readonly Counter<long> published;
     private readonly Counter<long> scoring;
+    private readonly Counter<long> refusals;
 
     public SiteMetrics(IMeterFactory meters)
     {
@@ -31,6 +32,8 @@ public sealed class SiteMetrics
         published = meter.CreateCounter<long>("dms.rites.published", "{rite}", "Rites published, by kind and model.");
         scoring = meter.CreateCounter<long>("dms.scoring.runs", "{run}",
             "Scoring a new draft (for the Augury and More rites): scored, failed or off.");
+        refusals = meter.CreateCounter<long>("dms.scriptorium.refusals", "{request}",
+            "Scriptorium requests whose Access token was refused, by reason: the token check that failed, or keys-unavailable.");
     }
 
     public void Invocation(string function, string outcome, TimeSpan duration)
@@ -42,4 +45,6 @@ public sealed class SiteMetrics
         => published.Add(1, new("kind", rite.Kind.ToString().ToLowerInvariant()), new("model", rite.GeneratedByModel));
 
     public void Scoring(string outcome) => scoring.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
+
+    public void ScribeRefused(string reason) => refusals.Add(1, new KeyValuePair<string, object?>("reason", reason));
 }
