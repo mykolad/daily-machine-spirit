@@ -23,7 +23,7 @@ public static class ScribeSignInRegistration
             return services.AddSingleton<IScribeSignIn, CloudflareAccessSignIn>();
         }
         return scriptorium.WithoutSignIn
-            ? services.AddSingleton<IScribeSignIn, NoSignIn>()
-            : services.AddSingleton<IScribeSignIn, NobodySignsIn>();
+            ? services.AddSingleton<IScribeSignIn, EveryoneIsScribeSignIn>()
+            : services.AddSingleton<IScribeSignIn, NobodyIsScribeSignIn>();
     }
 }

@@ -232,7 +232,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     public async Task Page_WhenCosmosFails_SaysTheScriptoriumIsSilent()
     {
         var function = new ScriptoriumFunction(
-            testbed.ScribesWithoutCosmos(), new NoSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), NullLogger<ScriptoriumFunction>.Instance);
+            testbed.ScribesWithoutCosmos(), new EveryoneIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), NullLogger<ScriptoriumFunction>.Instance);
 
         var html = Html(await function.Page(Get(""), CancellationToken.None), 500);
 
@@ -288,7 +288,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var burned = await testbed.AddDraft("Burned", 0.5f);
         await testbed.AddDraft("Still waiting", 0.5f);
         var scribes = new Scribes(new DraftsFailingAfterFirstRead(testbed.Drafts), testbed.Rites, testbed.Scriptorium, testbed.Time);
-        var function = new ScriptoriumFunction(scribes, new NoSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), NullLogger<ScriptoriumFunction>.Instance);
+        var function = new ScriptoriumFunction(scribes, new EveryoneIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), NullLogger<ScriptoriumFunction>.Instance);
 
         var response = await function.Decide(Post(""), burned.Id, "burn", CancellationToken.None);
 
@@ -426,7 +426,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var draft = await testbed.AddDraft("Kept", 0.5f);
         var function = new ScriptoriumFunction(
-            testbed.Scribes(), new NobodySignsIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), NullLogger<ScriptoriumFunction>.Instance);
+            testbed.Scribes(), new NobodyIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), NullLogger<ScriptoriumFunction>.Instance);
 
         var page = await function.Page(Get(""), CancellationToken.None);
         var decision = await function.Decide(Post(""), draft.Id, "burn", CancellationToken.None);
@@ -463,7 +463,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     }
 
     private ScriptoriumFunction Function(bool enabled)
-        => new(testbed.Scribes(), new NoSignIn(), Options.Create(new ScriptoriumOptions { Enabled = enabled }), NullLogger<ScriptoriumFunction>.Instance);
+        => new(testbed.Scribes(), new EveryoneIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = enabled }), NullLogger<ScriptoriumFunction>.Instance);
 
     private static HttpRequest Get(string query)
     {

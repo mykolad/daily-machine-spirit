@@ -25,18 +25,18 @@ public sealed class CloudflareAccessSignIn : IScribeSignIn
     public static readonly Error KeysUnavailable = Error.New("Access's signing keys couldn't be fetched lately; the next try waits a few minutes.");
 
     private static readonly TimeSpan KeysKeptFor = TimeSpan.FromHours(1);
-    // A token naming an unknown key fetches the keys again, but at most this often: the app's address is public, and
-    // forged tokens with made-up key ids mustn't turn into a stream of fetches that keeps the Scribes waiting.
-    private static readonly TimeSpan RefreshAtMostEvery = TimeSpan.FromMinutes(5);
+    // The app's address is public: forged tokens with made-up key ids, or an Access outage, mustn't turn into a stream
+    // of fetches that keeps the Scribes waiting.
+    private static readonly TimeSpan MinTimeBetweenFetches = TimeSpan.FromMinutes(5);
 
     private readonly IHttpClientFactory httpClients;
     private readonly IOptions<CloudflareAccessOptions> options;
     private readonly TimeProvider time;
     private readonly SiteMetrics metrics;
     private readonly ILogger<CloudflareAccessSignIn> logger;
-    private readonly SemaphoreSlim fetching = new(1, 1);
-    private Option<(JsonWebKeySet Keys, DateTimeOffset FetchedAt)> keys = None;
-    private Option<DateTimeOffset> lastFailure = None;
+    private readonly SemaphoreSlim oneFetchAtATime = new(1, 1);
+    private Option<(JsonWebKeySet Keys, DateTimeOffset FetchedAt)> cachedKeys = None;
+    private Option<DateTimeOffset> lastFailedFetchAt = None;
 
     public CloudflareAccessSignIn(
         IHttpClientFactory httpClients,
@@ -58,21 +58,21 @@ public sealed class CloudflareAccessSignIn : IScribeSignIn
         if (token.Length == 0)
             return false;
 
-        var checkedToken = await Keys(refresh: false, cancellationToken).MapAsync(current => Check(token, current))
-            .BindAsync(result => result.Exception is SecurityTokenSignatureKeyNotFoundException
-                ? Keys(refresh: true, cancellationToken).MapAsync(fresh => Check(token, fresh))
-                : Task.FromResult(Right<Error, TokenValidationResult>(result)));
+        var validation = await GetOrFetchKeys(maxAge: KeysKeptFor, cancellationToken)
+            .MapAsync(keys => Validate(token, keys));
+        if (validation.Exists(SignedWithUnknownKey))
+            validation = await GetOrFetchKeys(maxAge: MinTimeBetweenFetches, cancellationToken)
+                .MapAsync(keys => Validate(token, keys));
+
         // Refusals are counted, not logged: the app's address is public, so anyone can send tokens, and a log line for
         // each would let them flood the logs. The reason is the check that failed, never the token itself.
-        var isScribe = checkedToken.Match(Right: result => result.IsValid, Left: _ => false);
+        var isScribe = validation.Exists(result => result.IsValid);
         if (!isScribe)
-            metrics.ScribeRefused(checkedToken.Match(
-                Right: result => result.Exception?.GetType().Name ?? "invalid",
-                Left: _ => "keys-unavailable"));
+            metrics.ScribeRefused(RefusalReason(validation));
         return isScribe;
     }
 
-    private Task<TokenValidationResult> Check(string token, JsonWebKeySet signingKeys)
+    private Task<TokenValidationResult> Validate(string token, JsonWebKeySet signingKeys)
     {
         var access = options.Value;
         var parameters = new TokenValidationParameters
@@ -88,47 +88,56 @@ public sealed class CloudflareAccessSignIn : IScribeSignIn
         return new JsonWebTokenHandler().ValidateTokenAsync(token, parameters);
     }
 
-    private async Task<Either<Error, JsonWebKeySet>> Keys(bool refresh, CancellationToken cancellationToken)
+    private static bool SignedWithUnknownKey(TokenValidationResult result) =>
+        result.Exception is SecurityTokenSignatureKeyNotFoundException;
+
+    private static string RefusalReason(Either<Error, TokenValidationResult> validation) =>
+        validation.Match(
+            Right: result => result.Exception?.GetType().Name ?? "invalid",
+            Left: _ => "keys-unavailable");
+
+    private async Task<Either<Error, JsonWebKeySet>> GetOrFetchKeys(TimeSpan maxAge, CancellationToken cancellationToken)
     {
-        await fetching.WaitAsync(cancellationToken);
+        await oneFetchAtATime.WaitAsync(cancellationToken);
         try
         {
             var now = time.GetUtcNow();
-            // Waiting requests that also missed the key find it fetched by the first, so they share one refresh.
-            var fresh = keys.Filter(fetched => now - fetched.FetchedAt < (refresh ? RefreshAtMostEvery : KeysKeptFor));
-            // After a failed fetch, the next waits as long as a refresh would: during an Access outage, each request
-            // starting its own fetch would keep the Scribes waiting behind them. Keys still within their hour still serve.
-            var coolingDown = lastFailure.Filter(failed => now - failed < RefreshAtMostEvery).IsSome;
-            return await fresh.Match(
-                Some: fetched => Task.FromResult(Right<Error, JsonWebKeySet>(fetched.Keys)),
-                None: () => coolingDown
-                    ? Task.FromResult(keys.Filter(fetched => now - fetched.FetchedAt < KeysKeptFor).Map(fetched => fetched.Keys)
-                        .ToEither(KeysUnavailable))
-                    : Fetch(now, cancellationToken));
+            var shouldFetch = !HasKeysFetchedWithin(maxAge, now) && !FetchFailedRecently(now);
+            return shouldFetch ? await FetchKeys(now, cancellationToken) : UnexpiredCachedKeys(now);
         }
         finally
         {
-            fetching.Release();
+            oneFetchAtATime.Release();
         }
     }
 
-    private async Task<Either<Error, JsonWebKeySet>> Fetch(DateTimeOffset now, CancellationToken cancellationToken)
+    private bool HasKeysFetchedWithin(TimeSpan maxAge, DateTimeOffset now) =>
+        cachedKeys.Exists(cached => now - cached.FetchedAt < maxAge);
+
+    private Either<Error, JsonWebKeySet> UnexpiredCachedKeys(DateTimeOffset now) =>
+        cachedKeys.Filter(cached => now - cached.FetchedAt < KeysKeptFor).Map(cached => cached.Keys)
+            .ToEither(KeysUnavailable);
+
+    private bool FetchFailedRecently(DateTimeOffset now) =>
+        lastFailedFetchAt.Exists(failedAt => now - failedAt < MinTimeBetweenFetches);
+
+    private async Task<Either<Error, JsonWebKeySet>> FetchKeys(DateTimeOffset now, CancellationToken cancellationToken)
     {
         try
         {
             var url = $"https://{options.Value.TeamDomain}/cdn-cgi/access/certs";
             var json = await httpClients.CreateClient(HttpClientName).GetStringAsync(url, cancellationToken);
             var fetchedKeys = new JsonWebKeySet(json);
-            keys = Some((fetchedKeys, now));
-            lastFailure = None;
+            cachedKeys = Some((fetchedKeys, now));
+            lastFailedFetchAt = None;
             return fetchedKeys;
         }
-        // An outage or an answer that isn't a key set: nobody is let in. Only the caller's cancellation throws. Logged
-        // here, once per failed fetch, rather than for every request refused during the wait before the next.
+        // Only the caller's cancellation throws. Logged once per failed fetch, not for every request refused until the
+        // next one.
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             logger.LogError(ex, "Access's signing keys couldn't be fetched, so nobody is let in for a few minutes: {Reason}", ex.Message);
-            lastFailure = Some(now);
+            lastFailedFetchAt = Some(now);
             return Error.New(ex);
         }
     }
