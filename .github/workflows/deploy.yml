@@ -81,15 +81,16 @@ jobs:
             2>/dev/null || true
           az functionapp config access-restriction add -g "$RESOURCE_GROUP" -n "$APP" --rule-name smoke-tests \
             --action Allow --ip-address "$ip/32" --priority 200 -o none
-          # The rule reaches the app's front ends one by one: wait until ten requests in a row get through.
+          # The rule reaches the app's front ends one by one: wait until ten requests in a row are answered (200). A 403 or
+          # no answer at all starts the count again.
           admitted=0
           deadline=$((SECONDS + 180))
           while (( admitted < 10 && SECONDS < deadline )); do
             status=$(curl -s -m 15 -o /dev/null -w '%{http_code}' "$BASE_URL/healthz" || true)
-            if [ "$status" = 403 ]; then admitted=0; sleep 3; else admitted=$((admitted + 1)); fi
+            if [ "$status" = 200 ]; then admitted=$((admitted + 1)); else admitted=0; sleep 3; fi
           done
           if (( admitted < 10 )); then
-            echo "::error title=Access rule::The runner still gets 403 from $APP after three minutes."
+            echo "::error title=Access rule::$APP still doesn't answer the runner reliably after three minutes."
             exit 1
           fi
 
