@@ -64,8 +64,9 @@ public sealed class GitHubAccounts : IGitHubAccounts
             return Error.New($"GitHub's token endpoint answered {(int)response.StatusCode}.");
         }
 
-        // A refused code still answers 200, with an error instead of a token.
-        var answer = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
+        // A refused code still answers 200, with an error instead of a token. Read even if the reader has left: GitHub has
+        // issued the token by now, and only a token read can be revoked.
+        var answer = await response.Content.ReadFromJsonAsync<JsonElement>(CancellationToken.None);
         if (answer.TryGetProperty("access_token", out var token) && token.GetString() is { Length: > 0 } value)
         {
             return value;
@@ -82,7 +83,9 @@ public sealed class GitHubAccounts : IGitHubAccounts
         }
         finally
         {
-            await Revoke(accessToken, cancellationToken);
+            // Not the request's cancellation: a reader closing the tab mid-sign-in mustn't leave the token valid. The
+            // client's timeout bounds it, and the original exception still follows.
+            await Revoke(accessToken);
         }
     }
 
@@ -106,7 +109,7 @@ public sealed class GitHubAccounts : IGitHubAccounts
 
     // Only logged when it fails: the sign-in still counts, since the account id is all it needed, but a token left
     // valid is worth knowing about.
-    private async Task Revoke(string accessToken, CancellationToken cancellationToken)
+    private async Task Revoke(string accessToken)
     {
         var github = options.Value;
         try
@@ -119,13 +122,13 @@ public sealed class GitHubAccounts : IGitHubAccounts
                 "Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{github.ClientId}:{github.ClientSecret}")));
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
             AddUserAgent(request);
-            using var response = await http.SendAsync(request, cancellationToken);
+            using var response = await http.SendAsync(request, CancellationToken.None);
             if (!response.IsSuccessStatusCode)
             {
                 logger.LogWarning("A reader's GitHub token couldn't be revoked: GitHub answered {Status}.", (int)response.StatusCode);
             }
         }
-        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        catch (Exception ex)
         {
             logger.LogWarning(ex, "A reader's GitHub token couldn't be revoked: {Reason}", ex.Message);
         }

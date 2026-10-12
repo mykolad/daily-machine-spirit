@@ -119,6 +119,23 @@ public sealed class SignInFunctionTests : IDisposable
         Assert.Equal(["outcome=declined"], MetricsProbe.Tags(signIns, "outcome"));
     }
 
+    [Theory]
+    [InlineData("?error=redirect_uri_mismatch")]
+    [InlineData("?error=application_suspended")]
+    [InlineData("")]
+    public async Task Callback_WhenGitHubSendsAnErrorOrNoCode_CountsAFailure_NotTheReadersChoice(string answer)
+    {
+        using var signIns = probe.Collect<long>("dms.signins");
+        var (state, stateCookie) = StartSignIn("/archive");
+        var query = answer.Length > 0 ? $"{answer}&state={state}" : $"?state={state}";
+
+        var result = await Function().Callback(Get("/auth/github/callback", query, stateCookie), CancellationToken.None);
+
+        Assert.Equal("/archive", Assert.IsType<RedirectResult>(result).Url);
+        Assert.Empty(accounts.Codes);
+        Assert.Equal(["outcome=failed"], MetricsProbe.Tags(signIns, "outcome"));
+    }
+
     [Fact]
     public async Task Callback_WhenGitHubFails_SendsTheReaderBack_SignedOut()
     {
@@ -161,13 +178,37 @@ public sealed class SignInFunctionTests : IDisposable
     [Fact]
     public void SignOut_ForgetsTheReader_AndSendsThemBack()
     {
-        var request = Get("/auth/signout", "?return=/r/12", $"{VoterSession.CookieName}={Session().Issue(Session().VoterKeyFor(AccountId))}");
-        request.Method = "POST";
+        var request = SignOutPost("same-origin");
 
         var result = Function().SignOut(request);
 
         Assert.Equal("/r/12", Assert.IsType<RedirectResult>(result).Url);
         Assert.Equal(string.Empty, SetCookie(request, VoterSession.CookieName).Value);
+    }
+
+    [Theory]
+    [InlineData("cross-site")]
+    [InlineData("same-site")]
+    [InlineData("")]
+    public void SignOut_PostedFromAnotherSite_IsRefused(string fetchSite)
+    {
+        var request = SignOutPost(fetchSite);
+
+        var result = Function().SignOut(request);
+
+        Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<StatusCodeResult>(result).StatusCode);
+        Assert.False(HasSetCookie(request, VoterSession.CookieName));
+    }
+
+    private HttpRequest SignOutPost(string fetchSite)
+    {
+        var request = Get("/auth/signout", "?return=/r/12", $"{VoterSession.CookieName}={Session().Issue(Session().VoterKeyFor(AccountId))}");
+        request.Method = "POST";
+        if (fetchSite.Length > 0)
+        {
+            request.Headers["Sec-Fetch-Site"] = fetchSite;
+        }
+        return request;
     }
 
     private bool SignedIn(HttpRequest request)

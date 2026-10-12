@@ -99,11 +99,19 @@ public sealed class SignInFunction
             return new BadRequestResult();
         }
 
-        // The reader chose not to sign in on GitHub ("access_denied"), or GitHub had nothing to give: back where they were.
-        var code = request.Query["code"].ToString();
-        if (request.Query.ContainsKey("error") || code.Length == 0)
+        // Back where they were, signed out, when the reader said no on GitHub ("access_denied"). Any other error, such as
+        // redirect_uri_mismatch or a suspended app, is the site's own setup failing, so it's counted and logged as one.
+        var error = request.Query["error"].ToString();
+        if (error == "access_denied")
         {
             metrics.SignIn("declined");
+            return Redirect(returnPath);
+        }
+        var code = request.Query["code"].ToString();
+        if (error.Length > 0 || code.Length == 0)
+        {
+            logger.LogWarning("GitHub sent a reader back without a sign-in: {Error}", error.Length > 0 ? error : "no code");
+            metrics.SignIn("failed");
             return Redirect(returnPath);
         }
 
@@ -123,12 +131,16 @@ public sealed class SignInFunction
             });
     }
 
-    /// <summary>A form's post, so another site's link or image can't sign a reader out.</summary>
+    /// <summary>A form posted from this site: another site's link, image or form can't sign a reader out.</summary>
     [Function("SignOut")]
     public IActionResult SignOut(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "auth/signout")] HttpRequest request)
     {
         NeverCached(request);
+        if (!RequestOrigin.IsFromThisSite(request))
+        {
+            return new StatusCodeResult(StatusCodes.Status403Forbidden);
+        }
         request.HttpContext.Response.Cookies.Delete(VoterSession.CookieName, Cookie(TimeSpan.Zero));
         return Redirect(SafeReturnPath(request.Query["return"].ToString()));
     }

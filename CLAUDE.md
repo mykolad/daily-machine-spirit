@@ -122,7 +122,7 @@ observability/                    — the Grafana dashboard, and what the app's 
   stored, so a visitor who clears their storage can react again; the rate limit belongs at Cloudflare. The API takes
   JSON only, so another site's form can't post to it.
 - **Readers sign in with GitHub to vote** (`Voters/`, #34): `/auth/github?return=<path>` sends them to GitHub's OAuth
-  web flow, and `/auth/github/callback` brings them back. `/auth/signout` (a post) signs them out; `/api/me` tells the
+  web flow, and `/auth/github/callback` brings them back. `/auth/signout` (a form posted from this site, `RequestOrigin`) signs them out; `/api/me` tells the
   page's script whether they're signed in, so the pages stay the same for everyone and cacheable.
   - **Nothing about the account is kept:** the callback exchanges GitHub's code for a token, reads only the account's
     id, and revokes the token. The reader becomes a **voter key**, an HMAC of `github:<id>` (`Voters:KeySecret`): the

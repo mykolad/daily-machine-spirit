@@ -14,6 +14,9 @@ public sealed class FakeGitHub : HttpMessageHandler
 
     public HttpStatusCode RevokeStatus { get; set; } = HttpStatusCode.NoContent;
 
+    /// <summary>Runs once GitHub has handed out the token, e.g. to cancel the reader's request right then.</summary>
+    public Action AfterTokenExchange { get; set; } = () => { };
+
     public List<(HttpMethod Method, string Url, string Body, HttpRequestMessage Request)> Requests { get; } = [];
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -22,6 +25,10 @@ public sealed class FakeGitHub : HttpMessageHandler
         var url = request.RequestUri?.ToString() ?? string.Empty;
         var body = request.Content is { } content ? await content.ReadAsStringAsync(cancellationToken) : string.Empty;
         Requests.Add((request.Method, url, body, request));
+        if (url == GitHubAccounts.TokenUrl)
+        {
+            AfterTokenExchange();
+        }
         var (status, answer) = url switch
         {
             GitHubAccounts.TokenUrl => TokenAnswer,

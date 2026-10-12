@@ -71,6 +71,17 @@ public class GitHubAccountsTests
     }
 
     [Fact]
+    public async Task AccountFor_WhenTheReaderLeavesMidSignIn_StillRevokesTheToken()
+    {
+        using var readerLeaves = new CancellationTokenSource();
+        github.AfterTokenExchange = readerLeaves.Cancel;
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Accounts().AccountFor("the-code", readerLeaves.Token));
+
+        Assert.Contains(github.Requests, request => request.Method == HttpMethod.Delete);
+    }
+
+    [Fact]
     public async Task AccountFor_WhenTheTokenCantBeRevoked_StillSignsIn()
     {
         github.RevokeStatus = HttpStatusCode.InternalServerError;
