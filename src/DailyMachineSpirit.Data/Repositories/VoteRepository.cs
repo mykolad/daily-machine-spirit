@@ -55,24 +55,27 @@ public class VoteRepository : IVoteRepository
             return found.ToDictionary(document => document.RiteNumber, document => document.Reaction);
         });
 
+    // The vote is read before the rite: a vote saved by the reader's other tab before this read is then already in the
+    // counts read after it, so an unchanged vote never comes back with counts that leave it out.
     private async Task<Either<Error, Option<ReactionCounts>>> VoteOnce(
         int riteNumber, string voterKey, Option<Reaction> vote, CancellationToken cancellationToken)
     {
+        var id = VoteDocument.IdFor(riteNumber, voterKey);
+        var existing = await container.ReadOrNone<VoteDocument>(id, cancellationToken);
         var rite = (await container.Query<RiteDocument>(
             new QueryDefinition("SELECT * FROM c WHERE c.type = @type AND c.number = @number")
                 .WithParameter("@type", RiteDocument.RiteType)
                 .WithParameter("@number", riteNumber),
             cancellationToken)).HeadOrNone();
         return await rite.MatchAsync(
-            Some: found => Move(found, voterKey, vote, cancellationToken),
+            Some: found => Move(found, id, existing, voterKey, vote, cancellationToken),
             None: () => Right<Error, Option<ReactionCounts>>(None));
     }
 
     private async Task<Either<Error, Option<ReactionCounts>>> Move(
-        RiteDocument rite, string voterKey, Option<Reaction> vote, CancellationToken cancellationToken)
+        RiteDocument rite, string id, Option<(VoteDocument Document, string ETag)> existing, string voterKey, Option<Reaction> vote,
+        CancellationToken cancellationToken)
     {
-        var id = VoteDocument.IdFor(rite.Number, voterKey);
-        var existing = await container.ReadOrNone<VoteDocument>(id, cancellationToken);
         var previous = existing.Map(found => found.Document.Reaction);
         if (previous == vote)
         {
