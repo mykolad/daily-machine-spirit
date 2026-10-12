@@ -173,8 +173,11 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
   - **GitHub as a login method** (Integrations → Identity providers): its own GitHub OAuth app, separate from the
     readers' sign-in apps, with the callback `https://<team>.cloudflareaccess.com/cdn-cgi/access/callback`. Its client
     secret stays in Cloudflare.
-  - **A self-hosted application** (Access controls → Applications) for `dailymachinespirit.fyi/scriptorium`, with
-    GitHub as its only login method and an Allow policy listing the Scribes' emails. A new Scribe is a new email there.
+  - **A self-hosted application** (Access controls → Applications) with two destinations, `dailymachinespirit.fyi/`
+    `scriptorium` and `dailymachinespirit.fyi/scriptorium/*`: the page and its actions (`/scriptorium/summon`,
+    `/scriptorium/drafts/...`). A wildcard doesn't cover its parent path, and listing both doesn't depend on a path
+    covering its children. GitHub is its only login method, and an Allow policy lists the Scribes' emails. A new Scribe
+    is a new email there.
   - **Its Application Audience (AUD) tag** and the team domain (Settings → Team domain) are in `productionAccess` in
     `resources.bicep`: neither is secret, and there every deployment keeps them. Without both, production's
     Scriptorium lets nobody in.
