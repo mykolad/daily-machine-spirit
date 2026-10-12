@@ -269,6 +269,7 @@ public static partial class ScriptoriumPage
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <meta name="robots" content="noindex">
+            <link rel="icon" type="image/svg+xml" href="{Pages.Svg.Favicon}">
             <title>{Encode(title)} · The Daily Machine Spirit</title>
             <style>{Pages.Styles.FontFaces}{Styles}</style>
             </head>
