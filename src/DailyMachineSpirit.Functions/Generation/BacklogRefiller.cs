@@ -68,7 +68,7 @@ public sealed class BacklogRefiller
     }
 
     /// <summary>
-    /// Writes, scores and saves one draft, of the kind the backlog has fewer of, on a subject none of the recent rites,
+    /// Writes, judges and saves one draft, of the kind the backlog has fewer of, on a subject none of the recent rites,
     /// the <paramref name="waiting"/> drafts or the recently burned ones have: the burned ones teach the model what the
     /// Scribes didn't want.
     /// </summary>

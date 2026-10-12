@@ -89,7 +89,7 @@ public class LiturgicalCalendarTests
     }
 
     [Fact]
-    public void Order_PutsDraftsAnOlderJudgeScored_AfterTheNewestJudges()
+    public void Order_PutsDraftsJudgedByAnOlderJudge_AfterTheNewestJudges()
     {
         var judgedEarlier = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
         var oldJudge = MakeDraft("Old judge, high score", RiteKind.Prayer, 0.9f, AboutCaches) with
