@@ -98,9 +98,13 @@ public class GitHubAccountsTests
     }
 
     [Fact]
-    public async Task AccountFor_WhenCancelled_Throws()
-        => await Assert.ThrowsAnyAsync<OperationCanceledException>(
+    public async Task AccountFor_WhenCancelledBeforehand_Throws_AndAsksGitHubNothing()
+    {
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => Accounts().AccountFor("the-code", new CancellationToken(canceled: true)));
+
+        Assert.Empty(github.Requests);
+    }
 
     private GitHubAccounts Accounts()
         => new(new HttpClient(github), Microsoft.Extensions.Options.Options.Create(Options), NullLogger<GitHubAccounts>.Instance);

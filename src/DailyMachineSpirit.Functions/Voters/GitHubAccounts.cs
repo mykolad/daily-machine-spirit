@@ -44,8 +44,11 @@ public sealed class GitHubAccounts : IGitHubAccounts
         }
     }
 
+    // Once the exchange starts, GitHub may issue a token at any moment, and only a token read can be revoked: so the
+    // reader's cancellation is checked before it, and the client's timeout bounds the exchange itself.
     private async Task<Either<Error, string>> AccessToken(string code, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var github = options.Value;
         using var request = new HttpRequestMessage(HttpMethod.Post, TokenUrl)
         {
@@ -58,14 +61,13 @@ public sealed class GitHubAccounts : IGitHubAccounts
             }),
         };
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        using var response = await http.SendAsync(request, cancellationToken);
+        using var response = await http.SendAsync(request, CancellationToken.None);
         if (!response.IsSuccessStatusCode)
         {
             return Error.New($"GitHub's token endpoint answered {(int)response.StatusCode}.");
         }
 
-        // A refused code still answers 200, with an error instead of a token. Read even if the reader has left: GitHub has
-        // issued the token by now, and only a token read can be revoked.
+        // A refused code still answers 200, with an error instead of a token.
         var answer = await response.Content.ReadFromJsonAsync<JsonElement>(CancellationToken.None);
         if (answer.TryGetProperty("access_token", out var token) && token.GetString() is { Length: > 0 } value)
         {
