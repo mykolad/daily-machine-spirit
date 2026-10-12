@@ -195,7 +195,9 @@ public sealed class Scribes
     {
         var trimmed = note.Trim();
         if (trimmed.Length > ScribeDecision.MaxNoteLength)
+        {
             return NoteTooLong;
+        }
         return trimmed.Length == 0 ? Option<string>.None : Some(trimmed);
     }
 

@@ -56,19 +56,25 @@ public sealed class CloudflareAccessSignIn : IScribeSignIn
     {
         var token = request.Headers[TokenHeader].ToString();
         if (token.Length == 0)
+        {
             return false;
+        }
 
         var validation = await GetOrFetchKeys(maxAge: KeysKeptFor, cancellationToken)
             .MapAsync(keys => Validate(token, keys));
         if (validation.Exists(SignedWithUnknownKey))
+        {
             validation = await GetOrFetchKeys(maxAge: MinTimeBetweenFetches, cancellationToken)
                 .MapAsync(keys => Validate(token, keys));
+        }
 
         // Refusals are counted, not logged: the app's address is public, so anyone can send tokens, and a log line for
         // each would let them flood the logs. The reason is the check that failed, never the token itself.
         var isScribe = validation.Exists(result => result.IsValid);
         if (!isScribe)
+        {
             metrics.ScribeRefused(RefusalReason(validation));
+        }
         return isScribe;
     }
 

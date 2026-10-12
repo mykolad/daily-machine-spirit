@@ -88,7 +88,9 @@ public sealed class CloudflareAccessSignInTests : IDisposable
         Assert.True(await IsScribe(team.ValidToken()));
 
         for (var i = 0; i < 10; i++)
+        {
             Assert.False(await IsScribe(FakeAccessTeam.ForgedToken()));
+        }
 
         Assert.Equal(1, team.KeyFetches);
         time.Advance(TimeSpan.FromMinutes(6));
@@ -126,7 +128,9 @@ public sealed class CloudflareAccessSignInTests : IDisposable
         team.KeysStatus = HttpStatusCode.ServiceUnavailable;
 
         for (var i = 0; i < 10; i++)
+        {
             Assert.False(await IsScribe(team.ValidToken()));
+        }
 
         Assert.Equal(1, team.KeyFetches);
         team.KeysStatus = HttpStatusCode.OK;

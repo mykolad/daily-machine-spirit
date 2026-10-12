@@ -35,6 +35,7 @@ observability/                    — the Grafana dashboard, and what the app's 
 - **`this.` only when required** to disambiguate a field from a same-named parameter.
 - **No `Async` suffix** on our own methods: the `Task` return type already says it, and there are no synchronous twins
   to tell apart. Framework methods keep their names (`SaveChangesAsync`).
+- **Braces always**, even around a one-line body of `if`, `else`, `for`, `foreach` or `while`.
 - **No default arguments** on method parameters: callers always pass explicitly
   (e.g. `CancellationToken cancellationToken`, never `= default`).
 - **Tests check behaviour, not logs.** Assert on outcomes: what's saved, returned or sent. Never on log messages, and

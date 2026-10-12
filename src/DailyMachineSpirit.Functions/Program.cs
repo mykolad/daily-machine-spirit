@@ -42,7 +42,9 @@ var telemetry = builder.Services.AddOpenTelemetry()
         .AddMeter(CosmosMetricsHandler.MeterName))
     .WithLogging();
 if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
+{
     telemetry.UseOtlpExporter();
+}
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddMetrics();

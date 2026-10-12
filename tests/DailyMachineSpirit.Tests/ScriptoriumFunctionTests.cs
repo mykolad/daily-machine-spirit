@@ -319,7 +319,9 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var request = new DefaultHttpContext().Request;
         request.Method = "GET";
         if (done.Length > 0)
+        {
             request.QueryString = new QueryString($"?done={done}");
+        }
         return request;
     }
 
