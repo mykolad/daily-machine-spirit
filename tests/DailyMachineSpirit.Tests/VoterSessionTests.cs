@@ -8,7 +8,7 @@ namespace DailyMachineSpirit.Tests;
 
 public class VoterSessionTests
 {
-    private static readonly VoterOptions Secrets = WithSecrets("key-secret", "session-secret");
+    private static readonly VoterOptions Secrets = WithSecrets("key-secret-of-at-least-32-characters", "session-secret-of-at-least-32-characters");
 
     private readonly FakeTimeProvider time = new(new DateTimeOffset(2026, 10, 12, 20, 0, 0, TimeSpan.Zero));
 
@@ -28,7 +28,7 @@ public class VoterSessionTests
 
     [Fact]
     public void VoterKeyFor_DependsOnTheKeySecret_SoItCantBeWorkedOutFromTheId()
-        => Assert.NotEqual(Session(Secrets).VoterKeyFor("github", "583231"), Session(WithSecrets("another", "session-secret")).VoterKeyFor("github", "583231"));
+        => Assert.NotEqual(Session(Secrets).VoterKeyFor("github", "583231"), Session(WithSecrets("another-secret-of-at-least-32-characters", "session-secret-of-at-least-32-characters")).VoterKeyFor("github", "583231"));
 
     [Fact]
     public void Read_GivesBackTheVoterKey_OfACookieItIssued()
@@ -51,7 +51,7 @@ public class VoterSessionTests
     [Fact]
     public void Read_RefusesACookie_SignedWithAnotherSecret()
     {
-        var other = Session(WithSecrets("key-secret", "another"));
+        var other = Session(WithSecrets("key-secret-of-at-least-32-characters", "another-secret-of-at-least-32-characters"));
 
         Assert.Equal(None, Session(Secrets).Read(other.Issue(other.VoterKeyFor("github", "583231"))));
     }
@@ -82,8 +82,15 @@ public class VoterSessionTests
         request.Headers.Cookie = $"{VoterSession.CookieName}={session.Issue(session.VoterKeyFor("github", "583231"))}";
 
         Assert.True(session.SignedIn(request).IsSome);
-        Assert.True(Session(WithSecrets("key-secret", "@Microsoft.KeyVault(VaultName=v;SecretName=s)")).SignedIn(request).IsNone);
+        Assert.True(Session(WithSecrets("key-secret-of-at-least-32-characters", "@Microsoft.KeyVault(VaultName=v;SecretName=s)")).SignedIn(request).IsNone);
     }
+
+    [Theory]
+    [InlineData("k", "session-secret-of-at-least-32-characters")]
+    [InlineData("key-secret-of-at-least-32-characters", "short-session-secret")]
+    [InlineData("key-secret-of-at-least-32-characters", "                                  s")]
+    public void ShortSecrets_CountAsNotSet_SoNobodySignsIn(string keySecret, string sessionSecret)
+        => Assert.False(WithSecrets(keySecret, sessionSecret).IsConfigured);
 
     private VoterSession Session(VoterOptions secrets) => new(Options.Create(secrets), time);
 
