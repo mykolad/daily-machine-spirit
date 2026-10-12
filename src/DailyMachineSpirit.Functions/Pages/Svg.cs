@@ -17,6 +17,12 @@ public static class Svg
 
     public const string BrandCog = $"""<svg viewBox="0 0 64 64" width="28" height="28" aria-hidden="true">{CogPaths}</svg>""";
 
+    // The tab's icon: the cog on the site's background, a little inset so the rounded corners don't clip its teeth. Inline
+    // as a data URI, so it costs no request; and with an icon declared, browsers stop asking for /favicon.ico, which
+    // would get the 404 page.
+    public static readonly string Favicon = "data:image/svg+xml," + Uri.EscapeDataString(
+        $"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#100e0b"/><g transform="translate(4 4) scale(.875)">{CogPaths}</g></svg>""");
+
     public const string MastheadRule =
         $"""<svg class="masthead-rule" viewBox="0 0 320 40" width="320" height="40" fill="none" aria-hidden="true"><path d="M4 20h104l8-8h18M316 20H212l-8-8h-18" stroke="#84662c" stroke-width="1.5"></path><path d="M60 20l8 8h40M260 20l-8 8h-40" stroke="#84662c" stroke-width="1.5"></path><circle cx="4" cy="20" r="2.5" fill="#84662c"></circle><circle cx="316" cy="20" r="2.5" fill="#84662c"></circle><svg x="140" y="0" width="40" height="40" viewBox="0 0 64 64">{CogPaths}</svg></svg>""";
 

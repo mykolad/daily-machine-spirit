@@ -31,6 +31,16 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.Contains("3h 12m", html);
     }
 
+    // Inline, so the icon costs no request, and browsers don't ask for /favicon.ico (which would get the 404 page).
+    [Fact]
+    public async Task EveryPage_CarriesItsIcon_Inline()
+    {
+        var (_, today) = await Today("");
+        var (_, notFound) = await Today("no-such-page");
+
+        Assert.All(new[] { today, notFound }, html => Assert.Contains("""<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg""", html));
+    }
+
     [Fact]
     public async Task Today_ShowsTheNewestRite_WithItsTruthSealed()
     {

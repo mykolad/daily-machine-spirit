@@ -59,6 +59,14 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Page_CarriesTheSitesIcon_Inline()
+    {
+        var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+
+        Assert.Contains("""<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg""", html);
+    }
+
+    [Fact]
     public async Task Page_UsesTheSitesOwnFonts_AndContactsNoOtherSite()
     {
         var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
