@@ -16,7 +16,10 @@ public static class RequestOrigin
         {
             return fetchSite == "same-origin";
         }
+        // HTTPS, whatever scheme the request reached the app with (TLS may end before it): the site is HTTPS-only, and
+        // this site's name over plain HTTP is another origin, which anyone on the reader's network can put a page on.
         return Uri.TryCreate(request.Headers.Origin.ToString(), UriKind.Absolute, out var origin)
+            && origin.Scheme == Uri.UriSchemeHttps
             && string.Equals(origin.Authority, request.Host.Value, StringComparison.OrdinalIgnoreCase);
     }
 }
