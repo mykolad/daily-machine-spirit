@@ -8,7 +8,7 @@ public static class RitePage
 {
     /// <param name="more">Rites to read next; the section is left out when there are none (the site's first rite).</param>
     public static string Render(Rite rite, IReadOnlyList<Rite> more)
-        => Layout.Page(rite.Title, Html.FirstLine(rite.Text.Replace("`", string.Empty)), Section.Other, $"""
+        => Layout.Page(rite.Writing.Title, Html.FirstLine(rite.Writing.Text.Replace("`", string.Empty)), Section.Other, $"""
             <a class="back" href="{Paths.Archive}">{Svg.BackIcon}Back to the Archive</a>
             {RiteCard.Render(rite, ownPage: true)}
             {MoreRites(more)}
@@ -26,9 +26,9 @@ public static class RitePage
         {
             cards.Append($"""
                 <li><a class="more-card" href="{Paths.Rite(other.Number)}">
-                <span class="kind">{(other.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL")} · {Html.ShortDate(other.PublishedOnUtc)}</span>
-                <span class="more-title">{Html.Encode(other.Title)}</span>
-                <span class="row-first">{Html.WithInlineCode(Html.FirstLine(other.Text))}</span>
+                <span class="kind">{(other.Writing.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL")} · {Html.ShortDate(other.PublishedOnUtc)}</span>
+                <span class="more-title">{Html.Encode(other.Writing.Title)}</span>
+                <span class="row-first">{Html.WithInlineCode(Html.FirstLine(other.Writing.Text))}</span>
                 </a></li>
                 """);
         }

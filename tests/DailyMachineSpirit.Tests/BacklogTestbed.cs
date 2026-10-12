@@ -87,12 +87,15 @@ public sealed class BacklogTestbed : IAsyncLifetime
         {
             Id = Guid.NewGuid(),
             State = DraftState.Waiting,
-            Kind = kind,
-            Title = title,
-            Text = "O Machine Spirit, let the cache be warm.",
-            HereticalTruth = "A cold cache is just a cache that hasn't been read yet.",
-            GeneratedByModel = Sol,
-            GeneratedAtUtc = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc),
+            Writing = new RiteWriting
+            {
+                Kind = kind,
+                Title = title,
+                Text = "O Machine Spirit, let the cache be warm.",
+                HereticalTruth = "A cold cache is just a cache that hasn't been read yet.",
+                GeneratedByModel = Sol,
+                GeneratedAtUtc = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc),
+            },
             Augury = new Augury { Quality = quality, JudgedBy = "jev-1.13.0/quality-q1" },
         };
         return Expect.Ok(await Drafts.Add(draft, CancellationToken.None));
@@ -102,12 +105,15 @@ public sealed class BacklogTestbed : IAsyncLifetime
         => Expect.Ok(await Rites.Add(new Rite
         {
             PublishedOnUtc = day,
-            Kind = RiteKind.Ritual,
-            Title = title,
-            Text = "Clear the cache, and the cache shall clear thee.",
-            HereticalTruth = "A stale cache hides a missing invalidation.",
-            GeneratedByModel = Sol,
-            GeneratedAtUtc = day.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
+            Writing = new RiteWriting
+            {
+                Kind = RiteKind.Ritual,
+                Title = title,
+                Text = "Clear the cache, and the cache shall clear thee.",
+                HereticalTruth = "A stale cache hides a missing invalidation.",
+                GeneratedByModel = Sol,
+                GeneratedAtUtc = day.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
+            },
         }, CancellationToken.None));
 
     public async Task<List<Draft>> Waiting() => Expect.Ok(await Drafts.GetWaiting(CancellationToken.None));

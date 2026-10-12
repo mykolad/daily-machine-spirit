@@ -16,9 +16,9 @@ public static class RiteCard
     public static string Render(Rite rite, bool ownPage)
     {
         var heading = ownPage ? "h1" : "h2";
-        var kind = rite.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL";
+        var kind = rite.Writing.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL";
         var url = Paths.Rite(rite.Number);
-        var copyText = $"{rite.Title}\n\n{rite.Text}\n\nHeretical Truth: {rite.HereticalTruth}";
+        var copyText = $"{rite.Writing.Title}\n\n{rite.Writing.Text}\n\nHeretical Truth: {rite.Writing.HereticalTruth}";
         var copyButton = ownPage
             ? $"""<button type="button" class="button button-ghost" data-copy="text" data-url="{url}" data-text="{Html.Encode(copyText)}">{Svg.CopyIcon}Copy text</button>"""
             : string.Empty;
@@ -31,12 +31,12 @@ public static class RiteCard
             <span class="margin-text margin-right" aria-hidden="true">01001011 01001110 01001111 01010111 · 01001011 01001110</span>
             <div class="parchment-body">
             <p class="kicker">A {kind} · NO. {rite.Number}</p>
-            <{heading} class="rite-title" id="rite-title">{Html.Encode(rite.Title)}</{heading}>
+            <{heading} class="rite-title" id="rite-title">{Html.Encode(rite.Writing.Title)}</{heading}>
             <time class="rite-date" datetime="{Html.IsoDate(rite.PublishedOnUtc)}">{Html.LongDate(rite.PublishedOnUtc)}</time>
             {Svg.RubricDivider}
-            <p class="prayer">{Prayer(rite.Text)}</p>
+            <p class="prayer">{Prayer(rite.Writing.Text)}</p>
             <div class="colophon">
-            <span class="inscribed">Inscribed by {Html.Encode(rite.GeneratedByModel)}</span>
+            <span class="inscribed">Inscribed by {Html.Encode(rite.Writing.GeneratedByModel)}</span>
             <span class="purity" aria-hidden="true"><span class="purity-strip">{PurityStrips[rite.Number % PurityStrips.Length]}</span>{Svg.PuritySeal}</span>
             </div>
             </div>
@@ -52,7 +52,7 @@ public static class RiteCard
             <div class="truth-prompt" aria-hidden="true">$ explain --plainly</div>
             <div class="truth-body">
             <h2 id="truth-heading">Heretical Truth</h2>
-            <p>{Html.WithInlineCode(rite.HereticalTruth)}</p>
+            <p>{Html.WithInlineCode(rite.Writing.HereticalTruth)}</p>
             </div>
             </section>
             <div class="actions">

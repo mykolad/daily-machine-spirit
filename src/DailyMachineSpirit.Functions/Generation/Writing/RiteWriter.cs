@@ -80,12 +80,15 @@ public sealed class RiteWriter
                     {
                         Id = Guid.NewGuid(),
                         State = DraftState.Waiting,
-                        Kind = kind,
-                        Title = content.Title,
-                        Text = content.Text,
-                        HereticalTruth = content.HereticalTruth,
-                        GeneratedByModel = model,
-                        GeneratedAtUtc = time.GetUtcNow().UtcDateTime,
+                        Writing = new RiteWriting
+                        {
+                            Kind = kind,
+                            Title = content.Title,
+                            Text = content.Text,
+                            HereticalTruth = content.HereticalTruth,
+                            GeneratedByModel = model,
+                            GeneratedAtUtc = time.GetUtcNow().UtcDateTime,
+                        },
                     });
                 metrics.Answer(model, answer.IsLeft ? "failed" : written.IsLeft ? "refused" : "accepted");
                 if (written.IsRight)
@@ -93,7 +96,7 @@ public sealed class RiteWriter
                     // The model shows whether the fallback had to step in, even when the run succeeds.
                     written.IfRight(rite => logger.LogInformation(
                         "{Model} wrote the {Kind} \"{Title}\" on try {Attempt}, after {FailedTries} failed tries in all.",
-                        model, kind, rite.Title, attempt, failures.Count));
+                        model, kind, rite.Writing.Title, attempt, failures.Count));
                     return written;
                 }
 
@@ -141,9 +144,9 @@ public sealed class RiteWriter
             return Error.New("The answer has an empty field.");
         }
 
-        if (content.Title.Length > Rite.MaxTitleLength
-            || content.Text.Length > Rite.MaxTextLength
-            || content.HereticalTruth.Length > Rite.MaxHereticalTruthLength)
+        if (content.Title.Length > RiteWriting.MaxTitleLength
+            || content.Text.Length > RiteWriting.MaxTextLength
+            || content.HereticalTruth.Length > RiteWriting.MaxHereticalTruthLength)
         {
             return Error.New(
                 $"The answer is too long: title {content.Title.Length}, text {content.Text.Length}, heretical truth {content.HereticalTruth.Length} characters.");

@@ -30,13 +30,13 @@ public sealed class RiteWriterTests : IDisposable
 
         var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, [], CancellationToken.None));
 
-        Assert.Equal("The Rite of Re-Run", draft.Title);
-        Assert.Equal("Press Re-run thrice.", draft.Text);
-        Assert.Equal("It's flaky.", draft.HereticalTruth);
+        Assert.Equal("The Rite of Re-Run", draft.Writing.Title);
+        Assert.Equal("Press Re-run thrice.", draft.Writing.Text);
+        Assert.Equal("It's flaky.", draft.Writing.HereticalTruth);
         Assert.Equal(DraftState.Waiting, draft.State);
-        Assert.Equal(RiteKind.Ritual, draft.Kind);
-        Assert.Equal(Sol, draft.GeneratedByModel);
-        Assert.Equal(time.GetUtcNow().UtcDateTime, draft.GeneratedAtUtc);
+        Assert.Equal(RiteKind.Ritual, draft.Writing.Kind);
+        Assert.Equal(Sol, draft.Writing.GeneratedByModel);
+        Assert.Equal(time.GetUtcNow().UtcDateTime, draft.Writing.GeneratedAtUtc);
         Assert.Single(models.Requests);
     }
 
@@ -63,7 +63,7 @@ public sealed class RiteWriterTests : IDisposable
 
         var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, [], CancellationToken.None));
 
-        Assert.Equal("The Rite of --force", draft.Title);
+        Assert.Equal("The Rite of --force", draft.Writing.Title);
         Assert.Single(models.Requests);
     }
 
@@ -78,7 +78,7 @@ public sealed class RiteWriterTests : IDisposable
 
         var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, [], CancellationToken.None));
 
-        Assert.Equal("The Rite of Re-Run", draft.Title);
+        Assert.Equal("The Rite of Re-Run", draft.Writing.Title);
         Assert.Equal(2, models.Requests.Count);
     }
 
@@ -88,14 +88,14 @@ public sealed class RiteWriterTests : IDisposable
     [InlineData("hereticalTruth")]
     public async Task Write_AsksAgain_RatherThanCutAnAnswerThatIsTooLong(string field)
     {
-        var tooLong = new string('a', Rite.MaxTextLength + 1);
+        var tooLong = new string('a', RiteWriting.MaxTextLength + 1);
         models.Answers(Sol, FakeChatClients.Answer(
             field == "title" ? tooLong : "Title", field == "text" ? tooLong : "Text.", field == "hereticalTruth" ? tooLong : "Truth."),
             GoodAnswer);
 
         var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, [], CancellationToken.None));
 
-        Assert.Equal("The Rite of Re-Run", draft.Title);
+        Assert.Equal("The Rite of Re-Run", draft.Writing.Title);
         Assert.Equal(2, models.Requests.Count);
     }
 
@@ -116,7 +116,7 @@ public sealed class RiteWriterTests : IDisposable
 
         var draft = Ok(await Writer(retryDelaySeconds: 0).Write(kind, [], CancellationToken.None));
 
-        Assert.Equal("The Rite of Re-Run", draft.Title);
+        Assert.Equal("The Rite of Re-Run", draft.Writing.Title);
     }
 
     [Fact]
@@ -126,7 +126,7 @@ public sealed class RiteWriterTests : IDisposable
 
         var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Prayer, [], CancellationToken.None));
 
-        Assert.Equal("O Omnissiah, let the build pass.", draft.Text);
+        Assert.Equal("O Omnissiah, let the build pass.", draft.Writing.Text);
     }
 
     [Fact]
@@ -136,7 +136,7 @@ public sealed class RiteWriterTests : IDisposable
 
         var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, [], CancellationToken.None));
 
-        Assert.Equal(Luna, draft.GeneratedByModel);
+        Assert.Equal(Luna, draft.Writing.GeneratedByModel);
         Assert.Equal([Sol, Sol, Sol, Luna], models.Requests.Select(request => request.Model));
     }
 
@@ -177,7 +177,7 @@ public sealed class RiteWriterTests : IDisposable
         time.Advance(TimeSpan.FromSeconds(1));
         var draft = Ok(await writing);
 
-        Assert.Equal("The Rite of Re-Run", draft.Title);
+        Assert.Equal("The Rite of Re-Run", draft.Writing.Title);
         Assert.Equal(2, models.Requests.Count);
     }
 

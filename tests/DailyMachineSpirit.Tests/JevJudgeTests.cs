@@ -11,10 +11,13 @@ public class JevJudgeTests
     private static readonly Draft Draft = new()
     {
         Id = Guid.NewGuid(),
-        Kind = RiteKind.Ritual,
-        Title = "The Rite of Re-Run",
-        Text = "Press Re-run thrice.",
-        HereticalTruth = "The test is flaky.",
+        Writing = new RiteWriting
+        {
+            Kind = RiteKind.Ritual,
+            Title = "The Rite of Re-Run",
+            Text = "Press Re-run thrice.",
+            HereticalTruth = "The test is flaky.",
+        },
     };
 
     private readonly FakeTimeProvider time = new(new DateTimeOffset(2026, 10, 7, 0, 1, 0, TimeSpan.Zero));
@@ -49,7 +52,7 @@ public class JevJudgeTests
         Assert.Equal(5f / 6, augury.Quality, 0.0001f);
         Assert.Equal("jev-1.13.0/quality-q1", augury.JudgedBy);
         Assert.Equal(time.GetUtcNow().UtcDateTime, augury.JudgedAtUtc);
-        Assert.Equal(Draft.Title, judged.Title);
+        Assert.Equal(Draft.Writing.Title, judged.Writing.Title);
     }
 
     [Fact]
@@ -63,9 +66,9 @@ public class JevJudgeTests
         Assert.Equal($"Bearer {FakeJev.ApiKey}", authorization);
         Assert.Equal("jev-1.13.0", body["model"]?.GetValue<string>());
         var state = body["state"]?.GetValue<string>() ?? string.Empty;
-        Assert.Contains(Draft.Title, state);
-        Assert.Contains(Draft.Text, state);
-        Assert.Contains(Draft.HereticalTruth, state);
+        Assert.Contains(Draft.Writing.Title, state);
+        Assert.Contains(Draft.Writing.Text, state);
+        Assert.Contains(Draft.Writing.HereticalTruth, state);
         Assert.Equal(JevQuestions.Topics.Count, body["questions"]?["topic"]?["criteria"]?.AsObject().Count);
         Assert.Equal(JevQuestions.Qualities.Count, body["questions"]?["quality"]?["criteria"]?.AsObject().Count);
     }

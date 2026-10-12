@@ -12,17 +12,7 @@ public sealed record Draft
 
     public DraftState State { get; init; }
 
-    public RiteKind Kind { get; init; }
-
-    public string Title { get; init; } = string.Empty;
-
-    public string Text { get; init; } = string.Empty;
-
-    public string HereticalTruth { get; init; } = string.Empty;
-
-    public string GeneratedByModel { get; init; } = string.Empty;
-
-    public DateTime GeneratedAtUtc { get; init; }
+    public RiteWriting Writing { get; init; } = new();
 
     /// <summary>Copied to the rite when it's published, for "More rites".</summary>
     public Option<RiteSimilarity> Similarity { get; init; }
@@ -36,32 +26,7 @@ public sealed record Draft
     public Rite ToRite(DateOnly publishedOnUtc) => new()
     {
         PublishedOnUtc = publishedOnUtc,
-        Kind = Kind,
-        Title = Title,
-        Text = Text,
-        HereticalTruth = HereticalTruth,
-        GeneratedByModel = GeneratedByModel,
-        GeneratedAtUtc = GeneratedAtUtc,
+        Writing = Writing,
         Similarity = Similarity,
     };
-}
-
-public enum DraftState
-{
-    Waiting,
-    Published,
-    /// <summary>Consigned to the flames by a Scribe: hidden, never deleted, and can be restored.</summary>
-    Burned,
-}
-
-/// <summary>How good a judge thinks a draft is: the Augury publishes the better ones first.</summary>
-public sealed record Augury
-{
-    /// <summary>From 0 (weak) to 1 (excellent).</summary>
-    public float Quality { get; init; }
-
-    /// <summary>Which judge, and which version of its question: qualities from different judges aren't comparable.</summary>
-    public string JudgedBy { get; init; } = string.Empty;
-
-    public DateTime JudgedAtUtc { get; init; }
 }
