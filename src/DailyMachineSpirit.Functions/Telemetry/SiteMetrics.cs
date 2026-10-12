@@ -36,7 +36,7 @@ public sealed class SiteMetrics
         refusals = meter.CreateCounter<long>("dms.scriptorium.refusals", "{request}",
             "Scriptorium requests whose Access token was refused, by reason: the token check that failed, or keys-unavailable.");
         signIns = meter.CreateCounter<long>("dms.signins", "{sign-in}",
-            "Readers signing in with GitHub to vote: signed-in, declined (on GitHub), refused (not started here) or failed.");
+            "Readers signing in with GitHub to vote: signed-in, declined (on GitHub), refused (not started here) or failed (anything else).");
     }
 
     public void Invocation(string function, string outcome, TimeSpan duration)
