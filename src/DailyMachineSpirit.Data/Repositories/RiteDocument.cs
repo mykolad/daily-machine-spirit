@@ -32,9 +32,11 @@ internal sealed record RiteDocument
 
     public DateTime GeneratedAtUtc { get; init; }
 
-    public int BlessedCount { get; init; }
+    // The signed-in votes (VoteRepository). The anonymous counts from before sign-in were "blessedCount" and
+    // "heresyCount": older documents still have them, and nothing reads them, so the counts started again from zero.
+    public int BlessedVotes { get; init; }
 
-    public int HeresyCount { get; init; }
+    public int HeresyVotes { get; init; }
 
     // Null when missing: the JSON serializer doesn't know Option, so this is the one place a rite's null lives.
     public RiteSimilarity? Similarity { get; init; }
@@ -52,8 +54,8 @@ internal sealed record RiteDocument
         HereticalTruth = rite.Writing.HereticalTruth,
         GeneratedByModel = rite.Writing.GeneratedByModel,
         GeneratedAtUtc = Utc.From(rite.Writing.GeneratedAtUtc),
-        BlessedCount = rite.BlessedCount,
-        HeresyCount = rite.HeresyCount,
+        BlessedVotes = rite.BlessedCount,
+        HeresyVotes = rite.HeresyCount,
         Similarity = rite.Similarity.Map(Utc.From).OrNull(),
     };
 
@@ -70,8 +72,8 @@ internal sealed record RiteDocument
             GeneratedByModel = GeneratedByModel,
             GeneratedAtUtc = GeneratedAtUtc,
         },
-        BlessedCount = BlessedCount,
-        HeresyCount = HeresyCount,
+        BlessedCount = BlessedVotes,
+        HeresyCount = HeresyVotes,
         Similarity = Optional(Similarity),
     };
 }

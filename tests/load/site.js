@@ -1,4 +1,4 @@
-// A load test of the public pages (tests/load/README.md). Reactions are left out: they'd change the counts.
+// A load test of the public pages (tests/load/README.md). Votes are left out: they need a sign-in, and change the counts.
 //
 //   k6 run -e PROFILE=smoke tests/load/site.js
 //
