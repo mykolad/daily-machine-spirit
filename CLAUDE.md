@@ -160,8 +160,11 @@ observability/                    — the Grafana dashboard, and what the app's 
     again.
   - **Refills:** burning the last waiting draft asks for a refill at once (the `backlog-refills` queue), as does
     Summon.
-  - **The page:** plain HTML forms, no script. Each action posts and redirects back with what happened. It's never
-    cached or indexed, and forms posted from another site are refused (`Sec-Fetch-Site`).
+  - **The page:** plain HTML forms, no script. Each action posts and redirects back to the rite it acted on
+    (`#rite-{id}`), with a message that names it and where it went; after a burn, the message links to the rite in the
+    Ashes, to restore it. It's never cached or indexed, and forms posted from another site are refused
+    (`Sec-Fetch-Site`). The icons are inline and decorative: Lucide's (`Pages/Lucide-LICENSE.txt`), except Summon's
+    sparkle, which is the design's own.
   - **Access:** `Scriptorium:Enabled` is off by default. Who counts as a Scribe is an `IScribeSignIn`
     (`Scriptorium/SignIn/`), chosen to fail closed (`AddScribeSignIn`):
     - **Cloudflare Access** (`CloudflareAccess:TeamDomain` and `:Audience` set, production): every request must carry

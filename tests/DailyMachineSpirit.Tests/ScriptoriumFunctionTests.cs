@@ -5,7 +5,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 using static DailyMachineSpirit.Tests.Expect;
 
 namespace DailyMachineSpirit.Tests;
@@ -68,9 +70,156 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     [Fact]
     public async Task Page_SaysWhatTheLastActionDid()
     {
-        var html = Html(await Function(enabled: true).Page(Get("burn"), CancellationToken.None), 200);
+        var html = Html(await Function(enabled: true).Page(Get("?done=burn"), CancellationToken.None), 200);
 
         Assert.Contains("Consigned to the flames.", html);
+    }
+
+    [Theory]
+    [InlineData("anoint", "Anointed: it goes out next.")]
+    [InlineData("exalt", "Exalted.")]
+    [InlineData("humble", "Humbled.")]
+    [InlineData("restore", "Restored from the ashes.")]
+    [InlineData("burn-last", "Consigned to the flames. No rite waits now")]
+    [InlineData("summon", "New rites are being summoned")]
+    [InlineData("augury", "The Augury orders every draft again.")]
+    [InlineData("changed", "Another Scribe changed the calendar meanwhile.")]
+    [InlineData("unmoved", "It was already there, so nothing moved.")]
+    [InlineData("note-too-long", "That note is too long, so nothing was changed.")]
+    public async Task Page_SaysWhatTheLastActionDid_EvenWhenTheRiteIsGoneSince(string done, string message)
+    {
+        var html = Html(await Function(enabled: true).Page(Get($"?done={done}&rite={Guid.NewGuid():D}"), CancellationToken.None), 200);
+
+        Assert.Contains($"""<p class="status" role="status">{message}""", html);
+    }
+
+    [Fact]
+    public async Task Page_SaysNothing_ForAnUnknownOutcome()
+    {
+        var html = Html(await Function(enabled: true).Page(Get("?done=smite"), CancellationToken.None), 200);
+
+        Assert.Contains("""<p class="status" role="status"></p>""", html);
+    }
+
+    [Theory]
+    [InlineData("exalt", "Exalted")]
+    [InlineData("anoint", "Anointed")]
+    public async Task AfterAMove_ThePageNamesTheRite_AndWhenItNowGoesOut(string action, string done)
+    {
+        await testbed.AddDraft("Excellent", 0.95f);
+        var good = await testbed.AddDraft("Good", 0.7f);
+        var function = Function(enabled: true);
+
+        var response = await function.Decide(Post(""), good.Id, action, CancellationToken.None);
+        var html = Html(await function.Page(Following(response.Result), CancellationToken.None), 200);
+
+        var first = Ok(await testbed.Scribes().View(CancellationToken.None)).Calendar[0];
+        Assert.Equal(good.Id, first.Draft.Id);
+        Assert.Contains($"{done} “Good”", html);
+        Assert.Contains(first.PublishesOnUtc.ToString("ddd d MMM", CultureInfo.InvariantCulture) + ".", html);
+        Assert.Contains($"""<article class="rite" id="rite-{good.Id:D}" """, html);
+    }
+
+    [Fact]
+    public async Task AfterAHumbling_ThePageSaysWhenTheRiteNowGoesOut()
+    {
+        var excellent = await testbed.AddDraft("Excellent", 0.95f);
+        await testbed.AddDraft("Good", 0.7f);
+        var function = Function(enabled: true);
+
+        var response = await function.Decide(Post(""), excellent.Id, "humble", CancellationToken.None);
+        var html = Html(await function.Page(Following(response.Result), CancellationToken.None), 200);
+
+        var second = Ok(await testbed.Scribes().View(CancellationToken.None)).Calendar[1];
+        Assert.Equal(excellent.Id, second.Draft.Id);
+        Assert.Contains($"Humbled “Excellent” to {second.PublishesOnUtc.ToString("ddd d MMM", CultureInfo.InvariantCulture)}.", html);
+    }
+
+    [Fact]
+    public async Task AfterABurn_TheMessageLinksToTheRiteInTheAshes()
+    {
+        var burned = await testbed.AddDraft("Burned", 0.5f);
+        await testbed.AddDraft("Still waiting", 0.5f);
+        var function = Function(enabled: true);
+
+        var response = await function.Decide(Post(""), burned.Id, "burn", CancellationToken.None);
+        var html = Html(await function.Page(Following(response.Result), CancellationToken.None), 200);
+
+        Assert.Contains($"""Consigned “Burned” to the flames. <a href="#rite-{burned.Id:D}">Restore it from the Ashes</a>.""", html);
+        Assert.Contains($"""<article class="rite ash" id="rite-{burned.Id:D}" """, html);
+    }
+
+    [Fact]
+    public async Task AfterARestore_ThePageSaysWhenTheRiteGoesOut()
+    {
+        var draft = await testbed.AddDraft("Second chance", 0.5f);
+        Ok(await testbed.Scribes().Burn(draft.Id, "", CancellationToken.None));
+        var function = Function(enabled: true);
+
+        var response = await function.Decide(Post(""), draft.Id, "restore", CancellationToken.None);
+        var html = Html(await function.Page(Following(response.Result), CancellationToken.None), 200);
+
+        Assert.Contains("Restored “Second chance” from the ashes: it waits for", html);
+    }
+
+    [Fact]
+    public async Task Page_TagsTheNextRite_WithWhenItGoesOut()
+    {
+        await testbed.AddDraft("Excellent", 0.95f);
+        await testbed.AddDraft("Good", 0.7f);
+        await testbed.AddDraft("Fair", 0.4f);
+
+        // Today's rite isn't out yet, so the first is already due: the midnight run's retry publishes it.
+        var due = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+        Ok(await testbed.Publisher().PublishToday(CancellationToken.None));
+        var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+
+        Assert.Contains("Publishes next", due);
+        Assert.DoesNotContain("00:00 UTC", due);
+        Assert.Single(html.Split("Publishes at 00:00 UTC").Skip(1));
+    }
+
+    [Fact]
+    public async Task Page_ShowsTheAuguryPlace_OnlyWhereTheScribesOverruledIt()
+    {
+        await testbed.AddDraft("Excellent", 0.95f);
+        var good = await testbed.AddDraft("Good", 0.7f);
+        await testbed.AddDraft("Fair", 0.4f);
+        var before = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+
+        // Good goes up and Excellent down, both placed by the Scribes; Fair stays where the Augury put it.
+        Ok(await testbed.Scribes().Exalt(good.Id, "", CancellationToken.None));
+        var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+
+        Assert.DoesNotContain("it would place it", before);
+        Assert.Contains("it would place it #2", html);
+        Assert.Contains("it would place it #1", html);
+        Assert.Equal(2, html.Split("it would place it").Length - 1);
+        Assert.Equal(2, html.Split("Placed by the Scribes").Length - 1);
+    }
+
+    [Fact]
+    public async Task Page_GroupsTheButtons_EachWithAnIconHiddenFromScreenReaders_AndFoldsTheNotes()
+    {
+        await testbed.AddDraft("Excellent", 0.95f);
+        var top = await testbed.AddDraft("Good", 0.7f);
+        var burned = await testbed.AddDraft("Burned", 0.3f);
+        Ok(await testbed.Scribes().Burn(burned.Id, "", CancellationToken.None));
+        // A Scribe placed a draft, so Let the Augury Decide shows too.
+        Ok(await testbed.Scribes().Anoint(top.Id, "", CancellationToken.None));
+
+        var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+
+        Assert.Contains($"""<button class="primary" formaction="/scriptorium/drafts/{top.Id:D}/anoint">""", html);
+        Assert.Contains("""<span class="pair" role="group" aria-label="Reorder">""", html);
+        Assert.Contains($"""<button class="danger burn" formaction="/scriptorium/drafts/{top.Id:D}/burn">""", html);
+        Assert.Contains("Let the Augury Decide", html);
+        var buttons = Regex.Matches(html, "<button[^>]*>(.{0,120})").Select(match => match.Groups[1].Value).ToList();
+        Assert.Equal(9, buttons.Count);
+        Assert.All(buttons, label => Assert.StartsWith("""<svg class="icon" aria-hidden="true" focusable="false" """, label));
+        Assert.All(Regex.Matches(html, "<svg[^>]*>"), icon => Assert.Contains("""aria-hidden="true" focusable="false" """, icon.Value));
+        Assert.Equal(3, html.Split("""<details class="fold">""").Length - 1);
+        Assert.Equal(3, html.Split("""<label class="visually-hidden" for="note-""").Length - 1);
     }
 
     [Fact]
@@ -103,7 +252,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
 
         var response = await Function(enabled: true).Decide(Post("A fine note."), middle.Id, action, CancellationToken.None);
 
-        Assert.Equal($"/scriptorium?done={action}", Assert.IsType<RedirectResult>(response.Result).Url);
+        Assert.Equal($"/scriptorium?done={action}&rite={middle.Id:D}#rite-{middle.Id:D}", Assert.IsType<RedirectResult>(response.Result).Url);
         Assert.Null(response.RefillReason);
         var decision = Assert.Single(Ok(await testbed.Scribes().View(CancellationToken.None)).Decisions);
         Assert.Equal(LanguageExt.Prelude.Some("A fine note."), decision.Note);
@@ -117,7 +266,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
 
         var response = await Function(enabled: true).Decide(Post(""), burned.Id, "burn", CancellationToken.None);
 
-        Assert.Equal("/scriptorium?done=burn", Assert.IsType<RedirectResult>(response.Result).Url);
+        Assert.Equal($"/scriptorium?done=burn&rite={burned.Id:D}", Assert.IsType<RedirectResult>(response.Result).Url);
         Assert.Null(response.RefillReason);
     }
 
@@ -128,7 +277,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
 
         var response = await Function(enabled: true).Decide(Post(""), last.Id, "burn", CancellationToken.None);
 
-        Assert.Equal("/scriptorium?done=burn-last", Assert.IsType<RedirectResult>(response.Result).Url);
+        Assert.Equal($"/scriptorium?done=burn-last&rite={last.Id:D}", Assert.IsType<RedirectResult>(response.Result).Url);
         Assert.Equal(ScriptoriumFunction.AllBurned, response.RefillReason);
         Assert.Empty(await testbed.Waiting());
     }
@@ -143,7 +292,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
 
         var response = await function.Decide(Post(""), burned.Id, "burn", CancellationToken.None);
 
-        Assert.Equal("/scriptorium?done=burn", Assert.IsType<RedirectResult>(response.Result).Url);
+        Assert.Equal($"/scriptorium?done=burn&rite={burned.Id:D}", Assert.IsType<RedirectResult>(response.Result).Url);
         Assert.Equal(ScriptoriumFunction.Uncounted, response.RefillReason);
         Assert.Equal("Still waiting", Assert.Single(await testbed.Waiting()).Title);
     }
@@ -169,16 +318,18 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
 
         var response = await Function(enabled: true).Decide(Post(""), draft.Id, "restore", CancellationToken.None);
 
-        Assert.Equal("/scriptorium?done=restore", Assert.IsType<RedirectResult>(response.Result).Url);
+        Assert.Equal($"/scriptorium?done=restore&rite={draft.Id:D}#rite-{draft.Id:D}", Assert.IsType<RedirectResult>(response.Result).Url);
         Assert.Single(await testbed.Waiting());
     }
 
     [Fact]
     public async Task ActingOnADraftThatChanged_SaysSo_InsteadOfFailing()
     {
-        var response = await Function(enabled: true).Decide(Post(""), Guid.NewGuid(), "burn", CancellationToken.None);
+        var gone = Guid.NewGuid();
 
-        Assert.Equal("/scriptorium?done=changed", Assert.IsType<RedirectResult>(response.Result).Url);
+        var response = await Function(enabled: true).Decide(Post(""), gone, "burn", CancellationToken.None);
+
+        Assert.Equal($"/scriptorium?done=changed&rite={gone:D}#rite-{gone:D}", Assert.IsType<RedirectResult>(response.Result).Url);
     }
 
     [Fact]
@@ -189,7 +340,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
 
         var response = await Function(enabled: true).Decide(Post(""), first.Id, "exalt", CancellationToken.None);
 
-        Assert.Equal("/scriptorium?done=unmoved", Assert.IsType<RedirectResult>(response.Result).Url);
+        Assert.Equal($"/scriptorium?done=unmoved&rite={first.Id:D}#rite-{first.Id:D}", Assert.IsType<RedirectResult>(response.Result).Url);
         Assert.Empty(Ok(await testbed.Scribes().View(CancellationToken.None)).Decisions);
     }
 
@@ -201,7 +352,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var response = await Function(enabled: true).Decide(
             Post(new string('a', ScribeDecision.MaxNoteLength + 1)), draft.Id, "humble", CancellationToken.None);
 
-        Assert.Equal("/scriptorium?done=note-too-long", Assert.IsType<RedirectResult>(response.Result).Url);
+        Assert.Equal($"/scriptorium?done=note-too-long&rite={draft.Id:D}#rite-{draft.Id:D}", Assert.IsType<RedirectResult>(response.Result).Url);
     }
 
     [Fact]
@@ -314,16 +465,20 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     private ScriptoriumFunction Function(bool enabled)
         => new(testbed.Scribes(), new EveryoneIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = enabled }), NullLogger<ScriptoriumFunction>.Instance);
 
-    private static HttpRequest Get(string done)
+    private static HttpRequest Get(string query)
     {
         var request = new DefaultHttpContext().Request;
         request.Method = "GET";
-        if (done.Length > 0)
+        if (query.Length > 0)
         {
-            request.QueryString = new QueryString($"?done={done}");
+            request.QueryString = new QueryString(query);
         }
         return request;
     }
+
+    // Where a redirect leads, as the browser asks for it: the address without its #fragment.
+    private static HttpRequest Following(IActionResult redirect)
+        => Get(new Uri(new Uri("https://dailymachinespirit.fyi"), Assert.IsType<RedirectResult>(redirect).Url).Query);
 
     // As a browser posts the page's form: same origin, with the note field, url-encoded.
     private static HttpRequest Post(string note)
