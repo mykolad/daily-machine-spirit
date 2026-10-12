@@ -199,21 +199,25 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Page_GroupsTheButtons_WithIconsHiddenFromScreenReaders_AndFoldsTheNotes()
+    public async Task Page_GroupsTheButtons_EachWithAnIconHiddenFromScreenReaders_AndFoldsTheNotes()
     {
-        var top = await testbed.AddDraft("Excellent", 0.95f);
-        await testbed.AddDraft("Good", 0.7f);
+        await testbed.AddDraft("Excellent", 0.95f);
+        var top = await testbed.AddDraft("Good", 0.7f);
         var burned = await testbed.AddDraft("Burned", 0.3f);
         Ok(await testbed.Scribes().Burn(burned.Id, "", CancellationToken.None));
+        // A Scribe placed a draft, so Let the Augury Decide shows too.
+        Ok(await testbed.Scribes().Anoint(top.Id, "", CancellationToken.None));
 
         var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
 
         Assert.Contains($"""<button class="primary" formaction="/scriptorium/drafts/{top.Id:D}/anoint">""", html);
         Assert.Contains("""<span class="pair" role="group" aria-label="Reorder">""", html);
         Assert.Contains($"""<button class="danger burn" formaction="/scriptorium/drafts/{top.Id:D}/burn">""", html);
-        var icons = Regex.Matches(html, "<svg[^>]*>").Select(match => match.Value).ToList();
-        Assert.True(icons.Count >= 8);
-        Assert.All(icons, icon => Assert.Contains("""aria-hidden="true" focusable="false" """, icon));
+        Assert.Contains("Let the Augury Decide", html);
+        var buttons = Regex.Matches(html, "<button[^>]*>(.{0,120})").Select(match => match.Groups[1].Value).ToList();
+        Assert.Equal(9, buttons.Count);
+        Assert.All(buttons, label => Assert.StartsWith("""<svg class="icon" aria-hidden="true" focusable="false" """, label));
+        Assert.All(Regex.Matches(html, "<svg[^>]*>"), icon => Assert.Contains("""aria-hidden="true" focusable="false" """, icon.Value));
         Assert.Equal(3, html.Split("""<details class="fold">""").Length - 1);
         Assert.Equal(3, html.Split("""<label class="visually-hidden" for="note-""").Length - 1);
     }

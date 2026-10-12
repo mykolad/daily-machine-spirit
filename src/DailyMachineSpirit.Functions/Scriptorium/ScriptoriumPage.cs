@@ -100,7 +100,7 @@ public static partial class ScriptoriumPage
             <form method="post" action="/scriptorium/summon"><button class="primary">{ScriptoriumIcons.Summon}Summon New Rites</button></form>
             """);
         if (view.Calendar.Any(entry => entry.PlacedByScribes))
-            html.Append("""<form method="post" action="/scriptorium/augury"><button class="outline">Let the Augury Decide</button></form>""");
+            html.Append($"""<form method="post" action="/scriptorium/augury"><button class="outline">{ScriptoriumIcons.Augury}Let the Augury Decide</button></form>""");
         html.Append("</div></div>");
 
         if (view.Calendar.Count == 0)
