@@ -24,9 +24,29 @@ jobs:
     with:
       ref: ${{ inputs.branch }}
 
+  # Staging's deployments share one queue, and GitHub cancels a deployment waiting in it when a newer one joins. So a
+  # branch deployment never joins while Deploy Master is under way: it stops instead of knocking a merge out of the
+  # queue. Checked after the build, just before deploying.
+  staging-is-free:
+    name: staging is free
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: No Deploy Master under way
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          busy=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow deploy-master.yml --limit 20 --json status \
+            --jq '[.[] | select(.status != "completed")] | length')
+          if [ "$busy" != 0 ]; then
+            echo "::error title=Staging is busy::Deploy Master is deploying a merge. Run this again once it's done."
+            exit 1
+          fi
+
   staging:
     name: staging
-    needs: build-and-test
+    needs: [build-and-test, staging-is-free]
     uses: ./.github/workflows/deploy.yml
     with:
       environment: staging
