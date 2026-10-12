@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Checks a freshly deployed app the way a reader would: it runs the deployed commit, and the pages answer.
+# Usage: tools/smoke-test.sh <base url> <expected version (the commit's first 7 characters)>
+set -euo pipefail
+
+base=${1%/}
+version=$2
+
+fail() {
+  echo "::error title=Smoke test::$1"
+  exit 1
+}
+
+# The app restarts after a deploy and may start cold: give the new version a few minutes to answer.
+health=""
+for _ in $(seq 1 36); do
+  health=$(curl -s -m 20 "$base/healthz" || true)
+  [[ $health == *"\"version\":\"$version\""* ]] && break
+  sleep 5
+done
+[[ $health == *"\"status\":\"healthy\""* && $health == *"\"version\":\"$version\""* ]] \
+  || fail "/healthz didn't report version $version: ${health:-no answer}"
+echo "ok: /healthz reports $version"
+
+page=$(mktemp)
+trap 'rm -f "$page"' EXIT
+
+# A path, the status it must answer, and text its page must contain.
+check() {
+  local status
+  status=$(curl -s -m 30 -o "$page" -w '%{http_code}' "$base$1" || true)
+  [[ $status == "$2" ]] || fail "$1 answered ${status:-nothing}, not $2"
+  grep -qF -- "$3" "$page" || fail "$1 doesn't contain \"$3\""
+  echo "ok: $1 ($status)"
+}
+
+check / 200 "<title>The Daily Machine Spirit</title>"
+check /archive 200 "<title>The Archive · The Daily Machine Spirit</title>"
+# The newest rite in the archive, if there's one yet (a new environment has none until its first midnight).
+rite=$(grep -oE 'href="/r/[0-9]+"' "$page" | head -n 1 | grep -oE '/r/[0-9]+' || true)
+if [[ -n $rite ]]; then
+  check "$rite" 200 " · The Daily Machine Spirit</title>"
+else
+  echo "skipped: no rite published yet"
+fi
+check /smoke-test-no-such-page 404 "<title>No such rite exists · The Daily Machine Spirit</title>"
+check /fonts/cinzel.woff2 200 "wOF2"

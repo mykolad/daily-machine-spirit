@@ -1,23 +1,31 @@
 name: Deploy Master
 
-# Every merge to master that passes Build and Test goes to staging: the same commit that was tested. Production joins
-# at launch, after staging.
+# Every merge to master is built and tested again (a flaky pass on its PR doesn't reach staging), packaged once, and
+# that package is deployed to staging, smoke-tested, and rolled back if the smoke tests fail. Production joins at
+# launch, after staging.
 on:
-  workflow_run:
-    workflows: [Build and Test]
-    types: [completed]
+  push:
     branches: [master]
 
 permissions:
   contents: read
   id-token: write
+  actions: read
 
 jobs:
+  build-and-test:
+    name: build-and-test
+    uses: ./.github/workflows/build-and-test.yml
+    with:
+      ref: ${{ github.sha }}
+
   staging:
     name: staging
-    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    needs: build-and-test
     uses: ./.github/workflows/deploy.yml
     with:
       environment: staging
       app-name: machinespirit-app-staging
-      ref: ${{ github.event.workflow_run.head_sha }}
+      base-url: https://machinespirit-app-staging.azurewebsites.net
+      version: ${{ needs.build-and-test.outputs.version }}
+      admits-only-owner: true

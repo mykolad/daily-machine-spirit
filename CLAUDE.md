@@ -25,6 +25,7 @@ src/DailyMachineSpirit.Data       — Cosmos DB: entities, documents, repositori
 tests/DailyMachineSpirit.Tests    — xUnit tests (the repository tests run against the Cosmos DB emulator)
 tests/load                        — k6 load tests of the public pages, run by hand against staging (its README)
 tools/coverage.ps1                — tests + coverage report + the coverage gate (Build and Test runs it)
+tools/smoke-test.sh               — checks a deployed app answers as it should (each deployment runs it)
 infra/                            — Bicep for all of Azure (main.bicep); infra/README.md covers what Bicep can't do
 observability/                    — the Grafana dashboard, and what the app's metrics measure
 ```
@@ -205,16 +206,20 @@ database, as your `az login`; never production's). HTTP functions run without st
 
 ## Build and Test
 
-`.github/workflows/build-and-test.yml` (**Build and Test**, job `build-and-test`, the required check) runs on every PR
-and on pushes to `master`: restore, Release build, a Bicep lint and build of `infra/` (any warning fails it), then
+`.github/workflows/build-and-test.yml` (**Build and Test**, job `build-and-test`, the required check) runs on every PR,
+and inside every deployment: restore, Release build, a Bicep lint and build of `infra/` (any warning fails it), then
 `tools/coverage.ps1 -NoBuild` (the same gate as a local run), with the Cosmos DB emulator as a service container for the
-repository tests.
+repository tests. For a deployment it also packages the app (the `app` artifact, kept 90 days).
 
 ## Deploying
 
-- **Deploy Master** (`deploy-master.yml`): when Build and Test passes on a push to `master`, the same commit is deployed
-  to staging. Production joins at launch.
+- **Deploy Master** (`deploy-master.yml`): every push to `master` is built and tested again (it calls Build and Test),
+  and that package is deployed to staging. Production joins at launch.
 - **Deploy Branch to Staging** (`deploy-branch-to-staging.yml`): run by hand with a branch name, to try a PR on staging.
-- Both call `deploy.yml`, which publishes the app and deploys it as the GitHub environment's identity (OIDC: the
-  environment's `AZURE_*` variables hold ids, not secrets). One deployment per environment at a time.
-- Staging admits only the owner's address, so the workflow can't call `/healthz`; check it from your machine.
+- Both call `deploy.yml`, which deploys the package as the GitHub environment's identity (OIDC: the environment's
+  `AZURE_*` variables hold ids, not secrets), one deployment per environment at a time. Then:
+  - **Smoke tests** (`tools/smoke-test.sh`): `/healthz` reports the new commit, and Today, the archive, a rite, the 404
+    page and a font answer as they should. Staging admits only its owner, so the workflow adds the runner's address to
+    its access rules for the tests and removes it afterwards, even when the run fails or is cancelled.
+  - **Rollback:** when the smoke tests fail, the package of the newest successful Deploy Master run goes back and is
+    smoke-tested, and the run fails.
