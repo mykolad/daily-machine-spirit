@@ -22,7 +22,8 @@ Remove-Item TestResults, coverage -Recurse -Force -ErrorAction SilentlyContinue
 dotnet tool restore
 if ($LASTEXITCODE -ne 0) { throw 'dotnet tool restore failed.' }
 
-# Only the unit test project: smoke tests (once they exist) target a deployed app and run in the deploys.
+# Only the unit test project: the smoke tests (tests/DailyMachineSpirit.SmokeTests) target a deployed app and run in
+# the deployments.
 $testArgs = @(
     'test', 'tests/DailyMachineSpirit.Tests/DailyMachineSpirit.Tests.csproj', '-c', $Configuration,
     '--collect', 'XPlat Code Coverage',

@@ -112,9 +112,13 @@ The dashboard is in `observability/` (its README says how to import it).
 
 GitHub Actions deploys the app (`.github/workflows/`), signed in as the environment's GitHub identity:
 
-- **Deploy Master**: after every merge to `master` that passes Build and Test, that commit goes to staging.
+- **Deploy Master**: every merge to `master` is built and tested again, then that package goes to staging.
 - **Deploy Branch to Staging**: Actions → Deploy Branch to Staging → Run workflow, with a branch name, to try a PR
   on staging before merging. Staging keeps it until the next deployment.
+
+Each deployment ends with smoke tests (`tests/DailyMachineSpirit.SmokeTests`), and rolls back to the last good master
+if they fail. For them, the workflow briefly adds the runner's address to staging's access rules (`smoke-tests`): the
+GitHub identity is Website Contributor on its own app, which is enough.
 
 `https://machinespirit-app-staging.azurewebsites.net/healthz` shows the deployed commit (only from your address).
 

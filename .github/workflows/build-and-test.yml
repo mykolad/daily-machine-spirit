@@ -1,16 +1,22 @@
 name: Build and Test
 
+# Every PR, and every deployment (Deploy Master, Deploy Branch to Staging), which calls it to test the commit again and
+# package the app it then deploys.
 on:
   pull_request:
-  push:
-    branches: [master]
+  workflow_call:
+    inputs:
+      ref:
+        description: The commit or branch to build, test and package.
+        type: string
+        required: true
+    outputs:
+      version:
+        description: The commit's first 7 characters, which /healthz reports once it's deployed.
+        value: ${{ jobs.build-and-test.outputs.version }}
 
 permissions:
   contents: read
-
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
 
 env:
   DOTNET_NOLOGO: true
@@ -21,6 +27,12 @@ jobs:
     name: build-and-test
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # A newer push to a PR replaces its run in progress; a deployment's tests are never cancelled by another's.
+    concurrency:
+      group: build-and-test-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
 
     # The repository tests run against the Cosmos DB emulator. It has a well-known key and holds nothing but the
     # tests' throwaway databases. HTTPS, because the .NET SDK doesn't talk HTTP to it.
@@ -34,7 +46,14 @@ jobs:
           PROTOCOL: https
 
     steps:
+      # A PR's own commit, or the one a deployment asks for.
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Version
+        id: version
+        run: echo "version=$(git rev-parse HEAD | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-dotnet@v6
         with:
@@ -67,7 +86,7 @@ jobs:
 
       - name: Wait for the Cosmos DB emulator
         run: |
-          for i in $(seq 1 60); do
+          for _ in $(seq 1 60); do
             curl -sf http://localhost:8080/ready >/dev/null && exit 0
             sleep 2
           done
@@ -92,3 +111,22 @@ jobs:
             coverage/
           retention-days: 14
 
+      # A deployment deploys exactly what was tested here: built once, with the commit it reports (AppVersion), the
+      # version it should report, and the smoke tests from the same commit. Kept 90 days, as the package a later
+      # deployment rolls back to.
+      - name: Package the app
+        if: ${{ github.event_name != 'pull_request' }}
+        run: |
+          dotnet publish src/DailyMachineSpirit.Functions -c Release --no-build -o package/publish
+          echo "${{ steps.version.outputs.version }}" > package/version.txt
+          dotnet publish tests/DailyMachineSpirit.SmokeTests -c Release --no-build -o package/smoke-tests
+
+      - name: Upload the package
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: app
+          path: package/
+          # The Functions worker needs publish/.azurefunctions.
+          include-hidden-files: true
+          retention-days: 90
