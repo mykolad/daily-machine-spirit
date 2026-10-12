@@ -1,5 +1,5 @@
 Icons from Lucide (https://lucide.dev): the Blessed and Heresy icons (Pages/Svg.cs) and the Scriptorium's
-(Scriptorium/ScriptoriumIcons.cs).
+(Scriptorium/ScriptoriumIcons.cs), except the Summon sparkle, which is the design's own.
 
 ISC License
 
