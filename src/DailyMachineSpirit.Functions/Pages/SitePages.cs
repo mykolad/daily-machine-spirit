@@ -91,7 +91,7 @@ public sealed class SitePages
     }
 
     // The rites closest to this one by their scores, topped up with the newest others when there aren't enough scored
-    // ones (a rite Jev couldn't score, or a young site). A nicety: if it fails, the page simply goes without.
+    // ones (a rite Jev couldn't judge, or a young site). A nicety: if it fails, the page simply goes without.
     private async Task<List<Rite>> MoreRites(Rite rite, CancellationToken cancellationToken)
     {
         var related = await rite.Similarity.Match(

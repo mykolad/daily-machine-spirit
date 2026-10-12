@@ -1,12 +1,12 @@
 using System.Net;
 using DailyMachineSpirit.Data.Entities;
-using DailyMachineSpirit.Functions.Generation.Scoring;
+using DailyMachineSpirit.Functions.Generation.Judging;
 using Microsoft.Extensions.Time.Testing;
 using static DailyMachineSpirit.Tests.Expect;
 
 namespace DailyMachineSpirit.Tests;
 
-public class JevScorerTests
+public class JevJudgeTests
 {
     private static readonly Draft Draft = new()
     {
@@ -20,13 +20,13 @@ public class JevScorerTests
     private readonly FakeTimeProvider time = new(new DateTimeOffset(2026, 10, 7, 0, 1, 0, TimeSpan.Zero));
 
     [Fact]
-    public async Task Score_GivesTheTopicsThenTheActs_InQuestionOrder()
+    public async Task Judge_GivesTheTopicsThenTheActs_InQuestionOrder()
     {
         var jev = FakeJev.AnsweringBuildsAndRepetition();
 
-        var scored = Ok(await jev.Scorer(time, FakeJev.ApiKey).Score(Draft, CancellationToken.None));
+        var judged = Ok(await jev.NewJudge(time, FakeJev.ApiKey).Judge(Draft, CancellationToken.None));
 
-        var similarity = scored.Similarity.IfNone(() => throw new Xunit.Sdk.XunitException("Expected scores."));
+        var similarity = judged.Similarity.IfNone(() => throw new Xunit.Sdk.XunitException("Expected scores."));
         Assert.Equal(JevQuestions.Topics.Count + JevQuestions.Acts.Count, similarity.Scores.Length);
         Assert.Equal(1.0f, similarity.Scores[0]);
         Assert.Equal(0f, similarity.Scores[1]);
@@ -38,26 +38,26 @@ public class JevScorerTests
     }
 
     [Fact]
-    public async Task Score_JudgesTheQuality_AsTheProbabilitiesWeightedAverage()
+    public async Task Judge_JudgesTheQuality_AsTheProbabilitiesWeightedAverage()
     {
         var jev = FakeJev.AnsweringBuildsAndRepetition();
 
-        var scored = Ok(await jev.Scorer(time, FakeJev.ApiKey).Score(Draft, CancellationToken.None));
+        var judged = Ok(await jev.NewJudge(time, FakeJev.ApiKey).Judge(Draft, CancellationToken.None));
 
-        var augury = scored.Augury.IfNone(() => throw new Xunit.Sdk.XunitException("Expected a quality."));
+        var augury = judged.Augury.IfNone(() => throw new Xunit.Sdk.XunitException("Expected a quality."));
         // Half "excellent" (1) and half "good" (2/3).
         Assert.Equal(5f / 6, augury.Quality, 0.0001f);
         Assert.Equal("jev-1.13.0/quality-q1", augury.JudgedBy);
         Assert.Equal(time.GetUtcNow().UtcDateTime, augury.JudgedAtUtc);
-        Assert.Equal(Draft.Title, scored.Title);
+        Assert.Equal(Draft.Title, judged.Title);
     }
 
     [Fact]
-    public async Task Score_SendsTheDraftAndTheKey()
+    public async Task Judge_SendsTheDraftAndTheKey()
     {
         var jev = FakeJev.AnsweringBuildsAndRepetition();
 
-        await jev.Scorer(time, FakeJev.ApiKey).Score(Draft, CancellationToken.None);
+        await jev.NewJudge(time, FakeJev.ApiKey).Judge(Draft, CancellationToken.None);
 
         var (body, authorization) = Assert.Single(jev.Requests);
         Assert.Equal($"Bearer {FakeJev.ApiKey}", authorization);
@@ -71,13 +71,13 @@ public class JevScorerTests
     }
 
     [Fact]
-    public async Task Score_WithoutAKey_IsOff_AndAsksNothing()
+    public async Task Judge_WithoutAKey_IsOff_AndAsksNothing()
     {
         var jev = FakeJev.AnsweringBuildsAndRepetition();
 
-        var scored = Ok(await jev.Scorer(time, " ").Score(Draft, CancellationToken.None));
+        var judged = Ok(await jev.NewJudge(time, " ").Judge(Draft, CancellationToken.None));
 
-        Assert.Equal(Draft, scored);
+        Assert.Equal(Draft, judged);
         Assert.Empty(jev.Requests);
     }
 
@@ -85,21 +85,21 @@ public class JevScorerTests
     [InlineData(HttpStatusCode.PaymentRequired, """{"error": "Out of credits."}""", "Jev answered 402")]
     [InlineData(HttpStatusCode.OK, """{"answers": {}}""", "no probabilities")]
     [InlineData(HttpStatusCode.OK, "<html>", "")]
-    public async Task Score_WhenJevCantAnswer_ReturnsAnError(HttpStatusCode status, string body, string expected)
+    public async Task Judge_WhenJevCantAnswer_ReturnsAnError(HttpStatusCode status, string body, string expected)
     {
         var jev = new FakeJev(status, body);
 
-        var error = Failed(await jev.Scorer(time, FakeJev.ApiKey).Score(Draft, CancellationToken.None));
+        var error = Failed(await jev.NewJudge(time, FakeJev.ApiKey).Judge(Draft, CancellationToken.None));
 
         Assert.Contains(expected, error.Message);
     }
 
     [Fact]
-    public async Task Score_WhenCancelled_Throws()
+    public async Task Judge_WhenCancelled_Throws()
     {
         var jev = FakeJev.AnsweringBuildsAndRepetition();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => jev.Scorer(time, FakeJev.ApiKey).Score(Draft, new CancellationToken(canceled: true)));
+            () => jev.NewJudge(time, FakeJev.ApiKey).Judge(Draft, new CancellationToken(canceled: true)));
     }
 }

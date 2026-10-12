@@ -7,7 +7,7 @@ namespace DailyMachineSpirit.Functions.Generation;
 /// The order the waiting drafts are published in, first next. The drafts the Scribes placed come first, in their order.
 /// The Augury orders the rest: better drafts first, but a draft much like the rites just before it waits, and prayers
 /// and rituals take turns where the qualities allow, so the days vary. Drafts without a quality (Jev off or failing)
-/// follow, oldest first, and so do drafts an older judge scored: a quality is only comparable with the same judge's.
+/// follow, oldest first, and so do drafts judged by an older judge: a quality is only comparable with the same judge's.
 /// </summary>
 public static class LiturgicalCalendar
 {
@@ -32,7 +32,7 @@ public static class LiturgicalCalendar
         var before = recent.Take(ResemblanceWindow).Reverse().Select(rite => (rite.Kind, rite.Similarity))
             .Concat(ordered.Select(draft => (draft.Kind, draft.Similarity)))
             .ToList();
-        // The judge that scored most recently: after a new Jev model or quality question, drafts it hasn't judged yet
+        // The most recent judge: after a new Jev model or quality question, drafts it hasn't judged yet
         // wait behind the ones it has.
         var judge = waiting.SelectMany(draft => draft.Augury).OrderByDescending(augury => augury.JudgedAtUtc)
             .Select(augury => augury.JudgedBy).HeadOrNone();

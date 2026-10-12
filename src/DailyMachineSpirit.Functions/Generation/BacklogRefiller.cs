@@ -1,6 +1,6 @@
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
-using DailyMachineSpirit.Functions.Generation.Scoring;
+using DailyMachineSpirit.Functions.Generation.Judging;
 using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Telemetry;
 using LanguageExt;
@@ -18,7 +18,7 @@ public sealed class BacklogRefiller
     private readonly IRiteRepository rites;
     private readonly IScriptoriumRepository scriptorium;
     private readonly RiteWriter writer;
-    private readonly IRiteScorer scorer;
+    private readonly IRiteJudge judge;
     private readonly IOptions<GenerationOptions> options;
     private readonly SiteMetrics metrics;
     private readonly ILogger<BacklogRefiller> logger;
@@ -28,7 +28,7 @@ public sealed class BacklogRefiller
         IRiteRepository rites,
         IScriptoriumRepository scriptorium,
         RiteWriter writer,
-        IRiteScorer scorer,
+        IRiteJudge judge,
         IOptions<GenerationOptions> options,
         SiteMetrics metrics,
         ILogger<BacklogRefiller> logger)
@@ -37,7 +37,7 @@ public sealed class BacklogRefiller
         this.rites = rites;
         this.scriptorium = scriptorium;
         this.writer = writer;
-        this.scorer = scorer;
+        this.judge = judge;
         this.options = options;
         this.metrics = metrics;
         this.logger = logger;
@@ -68,7 +68,7 @@ public sealed class BacklogRefiller
     }
 
     /// <summary>
-    /// Writes, scores and saves one draft, of the kind the backlog has fewer of, on a subject none of the recent rites,
+    /// Writes, judges and saves one draft, of the kind the backlog has fewer of, on a subject none of the recent rites,
     /// the <paramref name="waiting"/> drafts or the recently burned ones have: the burned ones teach the model what the
     /// Scribes didn't want.
     /// </summary>
@@ -79,7 +79,7 @@ public sealed class BacklogRefiller
                     KindToWrite(waiting),
                     [.. recent.Select(rite => rite.Title), .. waiting.Select(draft => draft.Title), .. burned.Select(draft => draft.Title)],
                     cancellationToken)))
-            .BindAsync(async draft => Right<Error, Draft>(await Scored(draft, cancellationToken)))
+            .BindAsync(async draft => Right<Error, Draft>(await Judged(draft, cancellationToken)))
             .BindAsync(draft => drafts.Add(draft, cancellationToken));
 
     private static RiteKind KindToWrite(IReadOnlyList<Draft> waiting)
@@ -87,29 +87,30 @@ public sealed class BacklogRefiller
             ? RiteKind.Prayer
             : RiteKind.Ritual;
 
-    // Scores only order the backlog and power "More rites": a draft Jev couldn't score still joins it, after the scored
-    // ones, rather than being lost.
-    private async Task<Draft> Scored(Draft draft, CancellationToken cancellationToken)
-        => (await scorer.Score(draft, cancellationToken)).Match(
-            Right: scored =>
+    // Judging only orders the backlog and powers "More rites": a draft Jev couldn't judge still joins it, after the
+    // judged ones, rather than being lost.
+    private async Task<Draft> Judged(Draft draft, CancellationToken cancellationToken)
+        => (await judge.Judge(draft, cancellationToken)).Match(
+            Right: judged =>
             {
-                scored.Similarity.Match(
+                judged.Similarity.Match(
                     Some: scores =>
                     {
-                        logger.LogInformation("Draft {Title} was scored by {ScoresGenerator}.", draft.Title, scores.ScoresGeneratorVersion);
-                        metrics.Scoring("scored");
+                        logger.LogInformation("Draft {Title} was judged by {Judge}, its scores made by {ScoresGenerator}.",
+                            draft.Title, judged.Augury.Map(augury => augury.JudgedBy).IfNone("no quality judge"), scores.ScoresGeneratorVersion);
+                        metrics.Judging("judged");
                     },
                     None: () =>
                     {
-                        logger.LogInformation("Draft {Title} joins the backlog without scores: scoring is turned off.", draft.Title);
-                        metrics.Scoring("off");
+                        logger.LogInformation("Draft {Title} joins the backlog without scores: judging is turned off.", draft.Title);
+                        metrics.Judging("off");
                     });
-                return scored;
+                return judged;
             },
             Left: error =>
             {
                 logger.LogWarning(error.ToException(), "Draft {Title} joins the backlog without scores: {Reason}", draft.Title, error.Message);
-                metrics.Scoring("failed");
+                metrics.Judging("failed");
                 return draft;
             });
 }

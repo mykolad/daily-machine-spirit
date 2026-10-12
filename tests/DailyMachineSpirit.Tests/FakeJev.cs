@@ -1,6 +1,6 @@
 using System.Net;
 using System.Text.Json.Nodes;
-using DailyMachineSpirit.Functions.Generation.Scoring;
+using DailyMachineSpirit.Functions.Generation.Judging;
 using Microsoft.Extensions.Options;
 
 namespace DailyMachineSpirit.Tests;
@@ -33,7 +33,7 @@ public sealed class FakeJev : HttpMessageHandler
             }
             """);
 
-    public JevScorer Scorer(TimeProvider time, string apiKey)
+    public JevJudge NewJudge(TimeProvider time, string apiKey)
         => new(new HttpClient(this), Options.Create(new JevOptions { ApiKey = apiKey }), time);
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
