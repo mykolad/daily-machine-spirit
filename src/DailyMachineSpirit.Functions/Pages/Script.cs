@@ -60,13 +60,14 @@ public static class Script
             });
           });
 
-          // Blessed or Heresy, one vote per GitHub account per rite. The page is the same for everyone (and cached), so
-          // the script asks who's reading: a signed-in reader sees their own vote pressed and can switch or take it back;
+          // The anonymous reactions kept each browser's own in storage; nothing reads it any more, so every page clears it.
+          try { localStorage.removeItem('dms-reactions-v1'); } catch { }
+
+          // Blessed or Heresy, one vote per account per rite. The page is the same for everyone (and cached), so the
+          // script asks who's reading: a signed-in reader sees their own vote pressed and can switch or take it back;
           // anyone else is offered the sign-in. Without the script, the counts simply show.
           const reactions = document.querySelector('.reactions');
           if (reactions) {
-            // The anonymous reactions kept each browser's own in storage; nothing reads it any more.
-            try { localStorage.removeItem('dms-reactions-v1'); } catch { }
             const rite = reactions.dataset.rite;
             const buttons = [...reactions.querySelectorAll('[data-reaction]')];
             const statuses = [...document.querySelectorAll('.vote-status')];
