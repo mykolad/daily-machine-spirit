@@ -15,8 +15,10 @@ namespace DailyMachineSpirit.Data.Repositories;
 public class VoteRepository : IVoteRepository
 {
     // The same reader voting from two tabs at once: one batch fails on the vote's ETag (or finds it created or deleted
-    // meanwhile), and is tried again from a fresh read.
-    private const int MaxAttempts = 3;
+    // meanwhile), and is tried again from a fresh read, after a short random pause, so requests racing each other don't
+    // collide again in step.
+    private const int MaxAttempts = 5;
+    private static readonly TimeSpan MaxPauseBetweenAttempts = TimeSpan.FromMilliseconds(50);
 
     private static readonly Error LostRace = Error.New("The vote changed meanwhile.");
 
@@ -39,6 +41,7 @@ public class VoteRepository : IVoteRepository
                 {
                     return result;
                 }
+                await Task.Delay(MaxPauseBetweenAttempts * Random.Shared.NextDouble(), cancellationToken);
             }
         });
 
@@ -72,40 +75,45 @@ public class VoteRepository : IVoteRepository
             None: () => Right<Error, Option<ReactionCounts>>(None));
     }
 
+    // Every answer comes from one transactional batch: the vote, changed only if it's still as read (a change by the
+    // reader's other tab fails the batch, which is tried again), then the rite, with its counts moved or as they are. So
+    // the counts answered always belong with the vote that was asked for.
     private async Task<Either<Error, Option<ReactionCounts>>> Move(
         RiteDocument rite, string id, Option<(VoteDocument Document, string ETag)> existing, string voterKey, Option<Reaction> vote,
         CancellationToken cancellationToken)
     {
         var previous = existing.Map(found => found.Document.Reaction);
-        if (previous == vote)
-        {
-            return Some(Counts(rite));
-        }
-
         var batch = container.CreateTransactionalBatch(SharedPartitionKey);
         batch = existing.Match(
             Some: found => vote.Match(
+                // Unchanged too: saving the same vote again still checks its ETag.
                 Some: reaction => batch.ReplaceItem(id, found.Document with { Reaction = reaction }, IfMatch(found.ETag)),
                 None: () => batch.DeleteItem(id, IfMatch(found.ETag))),
             None: () => vote.Match(
-                Some: reaction => batch.CreateItem(new VoteDocument { Id = id, RiteNumber = rite.Number, VoterKey = voterKey, Reaction = reaction }),
-                None: () => batch));
+                Some: reaction => batch.CreateItem(NewVote(id, rite.Number, voterKey, reaction)),
+                // No vote, and none asked for: creating one and deleting it again changes nothing, but fails if the
+                // reader's other tab saved a vote meanwhile.
+                None: () => batch.CreateItem(NewVote(id, rite.Number, voterKey, Reaction.Blessed)).DeleteItem(id)));
+        var riteIndex = existing.IsNone && vote.IsNone ? 2 : 1;
         List<PatchOperation> counts =
         [
             .. previous.Map(reaction => PatchOperation.Increment($"/{CountField(reaction)}", -1)),
             .. vote.Map(reaction => PatchOperation.Increment($"/{CountField(reaction)}", 1)),
         ];
-        batch = batch.PatchItem(rite.Id, counts);
+        batch = previous == vote ? batch.ReadItem(rite.Id) : batch.PatchItem(rite.Id, counts);
 
         using var response = await batch.ExecuteAsync(cancellationToken);
         if (response.IsSuccessStatusCode)
         {
-            return Some(Counts(response.GetOperationResultAtIndex<RiteDocument>(1).Resource));
+            return Some(Counts(response.GetOperationResultAtIndex<RiteDocument>(riteIndex).Resource));
         }
         return response[0].StatusCode is HttpStatusCode.PreconditionFailed or HttpStatusCode.Conflict or HttpStatusCode.NotFound
             ? LostRace
             : Error.New($"Saving a vote on rite NO. {rite.Number} failed: {response.StatusCode}. {response.ErrorMessage}");
     }
+
+    private static VoteDocument NewVote(string id, int riteNumber, string voterKey, Reaction reaction)
+        => new() { Id = id, RiteNumber = riteNumber, VoterKey = voterKey, Reaction = reaction };
 
     private static TransactionalBatchItemRequestOptions IfMatch(string etag) => new() { IfMatchEtag = etag };
 

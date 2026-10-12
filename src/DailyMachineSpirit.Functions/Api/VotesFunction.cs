@@ -47,14 +47,14 @@ public sealed class VotesFunction
         CancellationToken cancellationToken)
     {
         NeverCached(request);
-        if (!request.HasJsonContentType())
-        {
-            return new StatusCodeResult(StatusCodes.Status415UnsupportedMediaType);
-        }
         var voter = session.SignedIn(request);
         if (voter.IsNone)
         {
             return new UnauthorizedResult();
+        }
+        if (!request.HasJsonContentType())
+        {
+            return new StatusCodeResult(StatusCodes.Status415UnsupportedMediaType);
         }
 
         VoteRequest? body;

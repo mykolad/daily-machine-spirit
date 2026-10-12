@@ -169,13 +169,14 @@ public sealed class VotesTests : IAsyncLifetime
     }
 
     [Theory]
-    [InlineData("")]
-    [InlineData("not-a-cookie")]
-    public async Task Post_WithoutASignIn_IsUnauthorized_AndCountsNothing(string cookie)
+    [InlineData("", "application/json")]
+    [InlineData("not-a-cookie", "application/json")]
+    [InlineData("", "application/x-www-form-urlencoded")]
+    public async Task Post_WithoutASignIn_IsUnauthorized_AndCountsNothing(string cookie, string contentType)
     {
         await AddRite();
 
-        var (status, _) = await Post(Function(), 1, """{"vote":"blessed"}""", "application/json", cookie);
+        var (status, _) = await Post(Function(), 1, """{"vote":"blessed"}""", contentType, cookie);
 
         Assert.Equal(StatusCodes.Status401Unauthorized, status);
         Assert.Equal(new ReactionCounts(0, 0), await Vote("someone-else", None));
