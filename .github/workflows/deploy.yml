@@ -72,7 +72,7 @@ jobs:
           package: package/publish
           sku: flexconsumption
 
-      # Removed again in the last step, even when the run is cancelled. A rule left by a runner that died is replaced
+      # Removed again near the end, even when the run fails or is cancelled. A rule left by a runner that died is replaced
       # here, and an infrastructure deployment removes it too: Bicep sets the rules whole.
       - name: Let the runner in
         id: let-in
@@ -118,9 +118,16 @@ jobs:
           tools/smoke-test.sh "$BASE_URL" "$LAST_GOOD"
           echo "::error title=Rolled back::$VERSION failed its smoke tests, so $APP runs $LAST_GOOD again."
 
+      # On every deployment of an owner-only app, even one that failed before letting its runner in: a rule left by a
+      # runner that died goes too.
       - name: Shut the runner out
-        if: ${{ always() && steps.let-in.outcome != 'skipped' }}
-        run: az functionapp config access-restriction remove -g "$RESOURCE_GROUP" -n "$APP" --rule-name smoke-tests -o none
+        if: ${{ always() && inputs.admits-only-owner }}
+        run: |
+          rules=$(az functionapp config access-restriction show -g "$RESOURCE_GROUP" -n "$APP" \
+            --query "ipSecurityRestrictions[?name=='smoke-tests'].name" -o tsv)
+          if [ -n "$rules" ]; then
+            az functionapp config access-restriction remove -g "$RESOURCE_GROUP" -n "$APP" --rule-name smoke-tests -o none
+          fi
 
       - name: Summary
         if: ${{ always() }}
