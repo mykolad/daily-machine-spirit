@@ -23,9 +23,9 @@ src/DailyMachineSpirit.Functions  — the Functions app (HTTP, timer and queue f
   Pages/                          — the public pages, rendered on the server (Today, the archive, a rite's page)
 src/DailyMachineSpirit.Data       — Cosmos DB: entities, documents, repositories
 tests/DailyMachineSpirit.Tests    — xUnit tests (the repository tests run against the Cosmos DB emulator)
+tests/DailyMachineSpirit.SmokeTests — xUnit tests of a deployed app over HTTP (each deployment runs them)
 tests/load                        — k6 load tests of the public pages, run by hand against staging (its README)
 tools/coverage.ps1                — tests + coverage report + the coverage gate (Build and Test runs it)
-tools/smoke-test.sh               — checks a deployed app answers as it should (each deployment runs it)
 infra/                            — Bicep for all of Azure (main.bicep); infra/README.md covers what Bicep can't do
 observability/                    — the Grafana dashboard, and what the app's metrics measure
 ```
@@ -218,8 +218,11 @@ repository tests. For a deployment it also packages the app (the `app` artifact,
 - **Deploy Branch to Staging** (`deploy-branch-to-staging.yml`): run by hand with a branch name, to try a PR on staging.
 - Both call `deploy.yml`, which deploys the package as the GitHub environment's identity (OIDC: the environment's
   `AZURE_*` variables hold ids, not secrets), one deployment per environment at a time. Then:
-  - **Smoke tests** (`tools/smoke-test.sh`): `/healthz` reports the new commit, and Today, the archive, a rite, the 404
-    page and a font answer as they should. Staging admits only its owner, so the workflow adds the runner's address to
-    its access rules for the tests and removes it afterwards, even when the run fails or is cancelled.
+  - **Smoke tests** (`tests/DailyMachineSpirit.SmokeTests`, published into the package, so a package is always checked
+    by its own): `/healthz` reports the new commit, and Today, the archive, a rite, the 404 page and a font answer as
+    they should. They read the app's address and expected version from `SMOKE_TEST_BASE_URL` and `SMOKE_TEST_VERSION`,
+    so they can also run from your machine against staging. Staging admits only its owner, so the workflow adds the
+    runner's address to its access rules for the tests and removes it afterwards, even when the run fails or is
+    cancelled.
   - **Rollback:** when the smoke tests fail, the package of the newest successful Deploy Master run goes back and is
     smoke-tested, and the run fails.

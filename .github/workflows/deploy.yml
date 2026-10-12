@@ -56,6 +56,12 @@ jobs:
       - name: Download the package
         run: gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name app --dir package
 
+      # For the smoke tests, which are .NET tests published into the package. Before deploying, so a failure here changes
+      # nothing.
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
       - uses: azure/login@v3
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
@@ -96,7 +102,10 @@ jobs:
 
       - name: Smoke tests
         id: smoke
-        run: bash package/smoke-test.sh "$BASE_URL" "$VERSION"
+        env:
+          SMOKE_TEST_BASE_URL: ${{ inputs.base-url }}
+          SMOKE_TEST_VERSION: ${{ inputs.version }}
+        run: dotnet test package/smoke-tests/DailyMachineSpirit.SmokeTests.dll --logger "console;verbosity=normal"
 
       # Only when the app failed its smoke tests, not when they couldn't run. The newest master that passed its own smoke
       # tests: Deploy Master succeeds only then. Its package is kept 90 days.
@@ -126,9 +135,11 @@ jobs:
         if: ${{ failure() && steps.last-good.outcome == 'success' }}
         env:
           LAST_GOOD: ${{ steps.last-good.outputs.version }}
+          SMOKE_TEST_BASE_URL: ${{ inputs.base-url }}
+          SMOKE_TEST_VERSION: ${{ steps.last-good.outputs.version }}
         run: |
           # The last good package's own smoke tests, which match what it serves.
-          bash last-good/smoke-test.sh "$BASE_URL" "$LAST_GOOD"
+          dotnet test last-good/smoke-tests/DailyMachineSpirit.SmokeTests.dll --logger "console;verbosity=normal"
           echo "::error title=Rolled back::$VERSION failed its smoke tests, so $APP runs $LAST_GOOD again."
 
       # On every deployment of an owner-only app, even one that failed before letting its runner in: a rule left by a

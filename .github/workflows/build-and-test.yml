@@ -119,7 +119,7 @@ jobs:
         run: |
           dotnet publish src/DailyMachineSpirit.Functions -c Release --no-build -o package/publish
           echo "${{ steps.version.outputs.version }}" > package/version.txt
-          cp tools/smoke-test.sh package/
+          dotnet publish tests/DailyMachineSpirit.SmokeTests -c Release --no-build -o package/smoke-tests
 
       - name: Upload the package
         if: ${{ github.event_name != 'pull_request' }}
