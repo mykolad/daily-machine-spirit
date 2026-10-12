@@ -27,6 +27,10 @@ param scriptoriumWithoutSignIn bool
 @description('The Cloudflare Access team and application guarding the Scriptorium (CloudflareAccessOptions); empty until set up.')
 param cloudflareAccessTeamDomain string
 param cloudflareAccessAudience string
+@description('The domain readers reach the app at, through Cloudflare (production); empty for none.')
+param customDomain string
+@description('The name of the vault secret holding the Cloudflare Origin CA certificate for the domain, a PFX (infra/README.md).')
+param customDomainCertificate string
 @description('The GitHub OAuth app readers sign in with to vote (GitHubOptions); empty until it exists. Not the deploy identity.')
 param signInGitHubClientId string
 @description('Where GitHub sends readers back after signing in: exactly the OAuth app\'s callback URL.')
@@ -339,6 +343,31 @@ resource githubTrust 'Microsoft.ManagedIdentity/userAssignedIdentities/federated
     issuer: 'https://token.actions.githubusercontent.com'
     subject: '${githubSubjectPrefix}:environment:${environmentName}'
     audiences: ['api://AzureADTokenExchange']
+  }
+}
+
+// The domain, through Cloudflare: Cloudflare's Origin CA certificate, imported from the vault by the app's own identity
+// (Key Vault Secrets User, appAccess), and bound to the name. Azure checks the domain's asuid TXT record first, so the
+// DNS comes before this (infra/README.md).
+resource domainCertificate 'Microsoft.Web/sites/certificates@2024-11-01' = if (!empty(customDomain)) {
+  parent: app
+  name: customDomainCertificate
+  location: location
+  dependsOn: [appAccess]
+  properties: {
+    keyVaultId: vault.id
+    keyVaultSecretName: customDomainCertificate
+  }
+}
+
+resource domainBinding 'Microsoft.Web/sites/hostNameBindings@2024-11-01' = if (!empty(customDomain)) {
+  parent: app
+  name: customDomain
+  properties: {
+    siteName: app.name
+    hostNameType: 'Verified'
+    sslState: 'SniEnabled'
+    thumbprint: domainCertificate!.properties.thumbprint
   }
 }
 

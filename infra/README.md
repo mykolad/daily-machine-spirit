@@ -165,7 +165,16 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
 
 ## Outside Azure
 
-- **Cloudflare** (`dailymachinespirit.fyi`): the DNS records and the origin certificate, added with the custom domain.
+- **Cloudflare** (`dailymachinespirit.fyi`) sits in front of production (set up 2026-10-12):
+  - **SSL/TLS** in **Full (strict)** mode, with a **Cloudflare Origin CA certificate** (SSL/TLS → Origin Server) for
+    `dailymachinespirit.fyi` and `*.dailymachinespirit.fyi`, valid 15 years. It lives in production's vault as the
+    secret `dailymachinespirit-origin`: a PFX with Cloudflare's origin root
+    (`https://developers.cloudflare.com/ssl/static/origin_ca_rsa_root.pem`), content type `application/x-pkcs12`.
+    Bicep imports it into the app (`productionDomain` in `resources.bicep`) and binds the domain. When it nears its
+    end, make a new one, set the secret again, and deploy the infrastructure.
+  - **DNS**: a proxied CNAME `@` → `machinespirit-app.azurewebsites.net`, and a TXT record `asuid` with the app's
+    `customDomainVerificationId`, which Azure checks before binding the domain.
+
   Production admits only Cloudflare's address ranges (`cloudflare-ips.json`), so its cache and rate limit can't be gone
   around. **Check Cloudflare's Addresses** (a weekly workflow) opens an issue when Cloudflare publishes different
   ranges: copy them into the file, and deploy the infrastructure (Later changes).
