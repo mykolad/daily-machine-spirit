@@ -14,7 +14,7 @@ are what it gets then.
 | Cosmos DB | `machinespirit-cosmos` | free tier (1000 RU/s, 25 GB for the account's lifetime); databases `machinespirit` and `machinespirit-staging` at 400 RU/s each, container `rites` (partition key `/partition`); keys off |
 | Key Vault | `machinespirit-kv`, `machinespirit-kv-staging` | one per environment, so staging can't read production's secrets |
 | Storage | `machinespiritprod`, `machinespiritstaging` | the Functions host's storage; keys off |
-| Functions app | `machinespirit-app`, `machinespirit-app-staging` | Flex Consumption, .NET 10 isolated, 512 MB instances, at most 10; staging admits only the owner's IP |
+| Functions app | `machinespirit-app`, `machinespirit-app-staging` | Flex Consumption, .NET 10 isolated, 512 MB instances, at most 10; staging admits only the owner's IP, production only Cloudflare |
 | GitHub identities | `machinespirit-github-staging`, `-production`, `-infrastructure` | OIDC from this repository's GitHub environments of the same names |
 
 Each app has its own managed identity, with access to its own database, vault and storage, and to the models. Nothing in
@@ -128,6 +128,9 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
 ## Outside Azure
 
 - **Cloudflare** (`dailymachinespirit.fyi`): the DNS records and the origin certificate, added with the custom domain.
+  Production admits only Cloudflare's address ranges (`cloudflare-ips.json`), so its cache and rate limit can't be gone
+  around. **Check Cloudflare's Addresses** (a weekly workflow) opens an issue when Cloudflare publishes different
+  ranges: copy them into the file, and deploy the infrastructure (Later changes).
 - **Cloudflare Access** guards production's Scriptorium. In Zero Trust → Access → Applications, add a self-hosted
   application for `dailymachinespirit.fyi/scriptorium` with GitHub as the login method and a policy that allows the
   Scribes' accounts. Its overview shows the **Application Audience (AUD) tag**; the team domain is in Settings → Custom

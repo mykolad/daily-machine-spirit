@@ -8,10 +8,12 @@ param environmentName string
 param nameSuffix string
 @description('Storage account names allow only lowercase letters and digits, up to 24.')
 param storageAccountName string
-@description('The only IPv4 address the app admits; empty admits everyone (production sits behind Cloudflare).')
+@description('The only IPv4 address the app admits (staging); empty sets no such rule.')
 // Secure, so the nested deployment's history masks it too (secure doesn't carry across module boundaries).
 @secure()
 param allowedIp string
+@description('Whether the app admits only Cloudflare (production), whose address ranges are in infra/cloudflare-ips.json.')
+param admitsOnlyCloudflare bool
 param cosmosAccountName string
 param aiAccountName string
 param ownerPrincipalId string
@@ -30,6 +32,24 @@ var databaseName = '${prefix}${nameSuffix}'
 var deploymentContainer = 'deployments'
 // The Grafana Cloud stack's OTLP gateway (its region, not a secret).
 var otlpEndpoint = 'https://otlp-gateway-prod-eu-north-0.grafana.net/otlp'
+// Readers reach production through Cloudflare alone, so its cache and rate limit can't be gone around. Cloudflare
+// publishes its ranges, and a weekly workflow (Check Cloudflare's Addresses) says when they change.
+var cloudflare = loadJsonContent('../cloudflare-ips.json')
+var cloudflareRules = [for (range, index) in concat(cloudflare.ipv4, cloudflare.ipv6): {
+  name: 'cloudflare-${index}'
+  ipAddress: range
+  action: 'Allow'
+  priority: 200 + index
+}]
+var ownerRules = empty(allowedIp) ? [] : [
+  {
+    name: 'owner'
+    ipAddress: '${allowedIp}/32'
+    action: 'Allow'
+    priority: 100
+  }
+]
+var accessRules = concat(ownerRules, admitsOnlyCloudflare ? cloudflareRules : [])
 
 resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' existing = {
   name: cosmosAccountName
@@ -180,15 +200,8 @@ resource app 'Microsoft.Web/sites@2024-04-01' = {
     siteConfig: {
       minTlsVersion: '1.2'
       ftpsState: 'Disabled'
-      ipSecurityRestrictionsDefaultAction: empty(allowedIp) ? 'Allow' : 'Deny'
-      ipSecurityRestrictions: empty(allowedIp) ? [] : [
-        {
-          name: 'owner'
-          ipAddress: '${allowedIp}/32'
-          action: 'Allow'
-          priority: 100
-        }
-      ]
+      ipSecurityRestrictionsDefaultAction: empty(accessRules) ? 'Allow' : 'Deny'
+      ipSecurityRestrictions: accessRules
       // Deploys go to the SCM site from GitHub's runners, whose addresses change, so the IP rule applies to visitors
       // only. The SCM site takes Entra ID alone: basic-auth publishing credentials are off (below).
       scmIpSecurityRestrictionsUseMain: false
