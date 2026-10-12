@@ -24,7 +24,7 @@ public sealed class DailyRiteFunction
 
     /// <summary>
     /// Publishes today's rite, then asks for the backlog to be refilled (the message is the reason). With
-    /// <see cref="GenerationOptions.PublishDaily"/> off, it does neither: no message is null.
+    /// <see cref="GenerationOptions.PublishDaily"/> off, it does neither, and returns null: no refill message is queued.
     /// </summary>
     // A failed run (every model failing on an empty backlog, Cosmos down) is tried again later in the day; publishing
     // skips a day that already has its rite, so a retry is always safe.
