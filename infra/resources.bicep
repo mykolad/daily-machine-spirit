@@ -26,6 +26,13 @@ var productionAccess = {
 
 // The GitHub OAuth apps readers sign in with to vote, one per environment, since each has its own callback URL
 // (infra/README.md). A client id isn't secret; the client secrets are in the vaults.
+// Where readers reach production, through Cloudflare, and the vault secret holding Cloudflare's Origin CA certificate
+// for it (infra/README.md, "Outside Azure").
+var productionDomain = {
+  name: 'dailymachinespirit.fyi'
+  certificateSecret: 'dailymachinespirit-origin'
+}
+
 var signInGitHubClientIds = {
   staging: 'Ov23liMxz7fLNPla4SU6'
   production: 'Ov23liuQFkbEDRwqBWq6'
@@ -173,6 +180,8 @@ module staging 'modules/environment.bicep' = {
     cloudflareAccessAudience: ''
     signInGitHubClientId: signInGitHubClientIds.staging
     signInCallbackUrl: 'https://${prefix}-app-staging.azurewebsites.net/auth/github/callback'
+    customDomain: ''
+    customDomainCertificate: ''
   }
 }
 
@@ -199,7 +208,9 @@ module production 'modules/environment.bicep' = if (deployProduction) {
     cloudflareAccessTeamDomain: productionAccess.teamDomain
     cloudflareAccessAudience: productionAccess.audience
     signInGitHubClientId: signInGitHubClientIds.production
-    signInCallbackUrl: 'https://dailymachinespirit.fyi/auth/github/callback'
+    signInCallbackUrl: 'https://${productionDomain.name}/auth/github/callback'
+    customDomain: productionDomain.name
+    customDomainCertificate: productionDomain.certificateSecret
   }
 }
 
