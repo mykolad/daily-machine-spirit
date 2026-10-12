@@ -8,6 +8,11 @@
     "AzureOpenAI__Endpoint": "",
     "Jev__ApiKey": "",
     "Scriptorium__Enabled": "true",
-    "Scriptorium__WithoutSignIn": "true"
+    "Scriptorium__WithoutSignIn": "true",
+    "GitHub__ClientId": "",
+    "GitHub__ClientSecret": "",
+    "GitHub__CallbackUrl": "http://localhost:7071/auth/github/callback",
+    "Voters__KeySecret": "",
+    "Voters__SessionSecret": ""
   }
 }
