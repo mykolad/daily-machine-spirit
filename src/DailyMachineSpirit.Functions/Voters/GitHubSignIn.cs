@@ -90,6 +90,14 @@ public sealed class GitHubSignIn : ISignInProvider
         var answer = await response.Content.ReadFromJsonAsync<JsonElement>(CancellationToken.None);
         if (answer.TryGetProperty("access_token", out var token) && token.GetString() is { Length: > 0 } value)
         {
+            // This app asks for no scope, but GitHub's grants add up: had the reader ever granted it more, the token would
+            // carry that again. Such a token is revoked unused, so a token here can only ever read public profile data.
+            var scope = answer.TryGetProperty("scope", out var granted) ? granted.GetString() : null;
+            if (!string.IsNullOrEmpty(scope))
+            {
+                await Revoke(value);
+                return Error.New($"GitHub granted scopes this site never asks for: {scope}.");
+            }
             return value;
         }
         var reason = answer.TryGetProperty("error", out var error) ? error.GetString() : null;
