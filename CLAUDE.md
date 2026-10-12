@@ -111,6 +111,8 @@ observability/                    — the Grafana dashboard, and what the app's 
   is one request (plus the fonts, cached for a year) and works without the script (the truth then simply shows).
   - The fonts are the site's own copies (`Pages/Fonts/`, Latin subsets, OFL), served at `/fonts/<name>.woff2`: a page
     never makes the visitor's browser contact another site (Google Fonts would learn every visitor's address).
+  - The tab's icon is the logo's cog, inline in each page as an SVG data URI (`Svg.Favicon`): no request for it, and
+    browsers don't ask for `/favicon.ico`.
   - Routes: `/` (Today: the newest rite), `/archive` (`?before=<number>` for older pages, which the archive also
     loads in place as the reader nears the end), `/r/<number>`. A catch-all
     route takes `/` and answers every unknown address with the 404 page; more specific routes win over it.
