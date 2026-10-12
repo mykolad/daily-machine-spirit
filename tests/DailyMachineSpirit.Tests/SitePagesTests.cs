@@ -115,7 +115,9 @@ public sealed class SitePagesTests : IAsyncLifetime
     public async Task Rite_WithoutScores_OffersTheNewestOtherRites()
     {
         for (var daysAgo = 4; daysAgo >= 0; daysAgo--)
+        {
             await Add(Day.AddDays(-daysAgo), $"Rite {5 - daysAgo}");
+        }
 
         var (_, html) = await Rite("4");
 
@@ -140,7 +142,9 @@ public sealed class SitePagesTests : IAsyncLifetime
     public async Task Archive_LeavesOutTodaysRite_AndPagesOlderOnes()
     {
         for (var daysAgo = 8; daysAgo >= 0; daysAgo--)
+        {
             await Add(Day.AddDays(-daysAgo), $"Rite {9 - daysAgo}");
+        }
 
         var (status, first) = await Archive("");
         var (_, second) = await Archive("3");
@@ -159,7 +163,9 @@ public sealed class SitePagesTests : IAsyncLifetime
         await Add(Day.AddDays(-1), "Litany of the Clean Cache");
         await Add(Day, "The Rite of Re-Run");
         foreach (var reaction in new[] { Reaction.Blessed, Reaction.Blessed, Reaction.Blessed, Reaction.Heresy })
+        {
             Ok(await Repository.React(1, Some(reaction), None, CancellationToken.None));
+        }
 
         var (_, html) = await Archive("");
 

@@ -58,7 +58,10 @@ internal static class CosmosCalls
         var results = new List<T>();
         using var iterator = container.GetItemQueryIterator<T>(query, requestOptions: new QueryRequestOptions { PartitionKey = SharedPartitionKey });
         while (iterator.HasMoreResults)
+        {
             results.AddRange(await iterator.ReadNextAsync(cancellationToken));
+        }
+
         return results;
     }
 }

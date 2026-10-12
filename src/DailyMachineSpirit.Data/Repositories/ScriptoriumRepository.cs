@@ -146,7 +146,10 @@ public class ScriptoriumRepository : IScriptoriumRepository
     {
         using var response = await batch.ExecuteAsync(cancellationToken);
         if (response.IsSuccessStatusCode)
+        {
             return unit;
+        }
+
         return response.Any(result => result.StatusCode is HttpStatusCode.PreconditionFailed or HttpStatusCode.Conflict)
             ? ChangedMeanwhile
             : Error.New($"Saving the Scribes' change failed: {response.StatusCode}. {response.ErrorMessage}");

@@ -8,4 +8,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <!-- The code-style rules .editorconfig marks as errors fail the build, not just the editor. -->
+  <PropertyGroup>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
 </Project>

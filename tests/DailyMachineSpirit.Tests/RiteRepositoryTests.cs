@@ -93,7 +93,9 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
     public async Task GetNewest_ReturnsTheNewestFirst()
     {
         foreach (var day in new[] { 3, 5, 4 })
+        {
             await AddOrFail(MakeRite(new DateOnly(2026, 10, day), $"Day {day}"));
+        }
 
         var newest = Ok(await Repository.GetNewest(2, CancellationToken.None));
 

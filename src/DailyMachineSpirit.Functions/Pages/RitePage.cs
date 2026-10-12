@@ -17,9 +17,13 @@ public static class RitePage
     private static string MoreRites(IReadOnlyList<Rite> more)
     {
         if (more.Count == 0)
+        {
             return string.Empty;
+        }
+
         var cards = new StringBuilder();
         foreach (var other in more)
+        {
             cards.Append($"""
                 <li><a class="more-card" href="{Paths.Rite(other.Number)}">
                 <span class="kind">{(other.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL")} · {Html.ShortDate(other.PublishedOnUtc)}</span>
@@ -27,6 +31,8 @@ public static class RitePage
                 <span class="row-first">{Html.WithInlineCode(Html.FirstLine(other.Text))}</span>
                 </a></li>
                 """);
+        }
+
         return $"""
             <section class="more" aria-labelledby="more-rites">
             <h2 id="more-rites">More rites</h2>

@@ -41,7 +41,9 @@ public sealed class ReactionsFunction
     {
         request.HttpContext.Response.Headers.CacheControl = "no-store";
         if (!request.HasJsonContentType())
+        {
             return new StatusCodeResult(StatusCodes.Status415UnsupportedMediaType);
+        }
 
         ReactionRequest? body;
         try
@@ -53,7 +55,9 @@ public sealed class ReactionsFunction
             return new BadRequestResult();
         }
         if (body is null || !TryRead(body.Reaction, out var reaction) || !TryRead(body.Previous, out var previous))
+        {
             return new BadRequestResult();
+        }
 
         var result = await rites.React(number, reaction, previous, cancellationToken);
         return result.Match(

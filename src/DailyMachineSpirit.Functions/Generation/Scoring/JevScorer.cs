@@ -33,7 +33,9 @@ public sealed class JevScorer : IRiteScorer
     {
         var jev = options.Value;
         if (!jev.Enabled)
+        {
             return draft;
+        }
 
         try
         {
@@ -58,15 +60,19 @@ public sealed class JevScorer : IRiteScorer
             using var response = await http.SendAsync(request, cancellationToken);
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
             if (!response.IsSuccessStatusCode)
+            {
                 // 402 means the credits ran out; the body says why.
                 return Error.New($"Jev answered {(int)response.StatusCode}: {Shorten(body)}");
+            }
 
             var answers = JsonNode.Parse(body)?["answers"];
             var topic = answers?["topic"]?["probabilities"];
             var act = answers?["act"]?["probabilities"];
             var quality = answers?["quality"]?["probabilities"];
             if (topic is null || act is null || quality is null)
+            {
                 return Error.New($"Jev's answer has no probabilities: {Shorten(body)}");
+            }
 
             var now = time.GetUtcNow().UtcDateTime;
             return draft with

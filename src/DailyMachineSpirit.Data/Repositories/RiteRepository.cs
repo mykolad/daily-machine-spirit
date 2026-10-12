@@ -129,19 +129,30 @@ public class RiteRepository : IRiteRepository
 
             using var response = await batch.ExecuteAsync(cancellationToken);
             if (response.IsSuccessStatusCode)
+            {
                 return rite with { Number = number };
+            }
 
             // A batch stops at its first failed operation; the ones after it report 424 (failed dependency).
             var counterStatus = response[0].StatusCode;
             var riteStatus = response[1].StatusCode;
             if (riteStatus == HttpStatusCode.Conflict)
+            {
                 return DayAlreadyHasRite;
+            }
+
             if (fromDraft.IsSome && response[2].StatusCode == HttpStatusCode.PreconditionFailed)
+            {
                 return DraftNotWaiting;
+            }
+
             var numberTaken = counterStatus is HttpStatusCode.PreconditionFailed or HttpStatusCode.Conflict;
             if (!numberTaken || attempt == MaxSaveAttempts)
+            {
                 return Error.New(
                     $"Saving the rite for {rite.PublishedOnUtc:yyyy-MM-dd} failed: {response.StatusCode} (counter {counterStatus}, rite {riteStatus}). {response.ErrorMessage}");
+            }
+
             logger.LogInformation("Number {Number} was taken while saving the rite for {Day}; trying the next one.",
                 number, rite.PublishedOnUtc);
         }
@@ -159,7 +170,9 @@ public class RiteRepository : IRiteRepository
         RiteDocument document, Option<Reaction> reaction, Option<Reaction> previous, CancellationToken cancellationToken)
     {
         if (reaction == previous)
+        {
             return new ReactionCounts(document.BlessedCount, document.HeresyCount);
+        }
 
         var add = reaction.Map(r => PatchOperation.Increment($"/{CountField(r)}", 1)).ToList();
         var takeBack = previous.Map(p => PatchOperation.Increment($"/{CountField(p)}", -1)).ToList();
@@ -171,7 +184,9 @@ public class RiteRepository : IRiteRepository
         catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.PreconditionFailed)
         {
             if (add.Count > 0)
+            {
                 return await PatchCounts(document.Id, add, None, cancellationToken);
+            }
             // Nothing to change, but the counts may have moved since the query: answer what's stored now.
             var current = (await container.ReadItemAsync<RiteDocument>(document.Id, SharedPartitionKey, cancellationToken: cancellationToken)).Resource;
             return new ReactionCounts(current.BlessedCount, current.HeresyCount);

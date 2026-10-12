@@ -1,0 +1,8 @@
+root = true
+
+# Only the code-style rules the build enforces (EnforceCodeStyleInBuild in Directory.Build.props); the rest of the
+# style is in CLAUDE.md, "Code style rules".
+[*.cs]
+# Braces always, even around a one-line body.
+csharp_prefer_braces = true:error
+dotnet_diagnostic.IDE0011.severity = error

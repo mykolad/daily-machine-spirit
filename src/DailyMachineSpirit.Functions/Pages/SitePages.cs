@@ -35,7 +35,9 @@ public sealed class SitePages
         CancellationToken cancellationToken)
     {
         if (!string.IsNullOrEmpty(path))
+        {
             return Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(path));
+        }
 
         var now = time.GetUtcNow();
         return (await rites.GetNewest(1, cancellationToken)).Match(
@@ -52,7 +54,9 @@ public sealed class SitePages
         CancellationToken cancellationToken)
     {
         if (!int.TryParse(id, out var number) || number < 1)
+        {
             return Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(id));
+        }
 
         var found = (await rites.GetByNumbers([number], cancellationToken)).Map(matches => matches.HeadOrNone());
         return await found.Match<Task<IActionResult>>(

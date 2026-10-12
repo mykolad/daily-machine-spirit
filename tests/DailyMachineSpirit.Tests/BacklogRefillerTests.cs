@@ -35,7 +35,9 @@ public sealed class BacklogRefillerTests : IAsyncLifetime
     public async Task Refill_WhenTheBacklogIsFull_WritesNothing()
     {
         foreach (var title in new[] { "One", "Two", "Three" })
+        {
             await testbed.AddDraft(title, 0.5f);
+        }
 
         var written = Ok(await testbed.Refiller().Refill(CancellationToken.None));
 

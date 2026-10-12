@@ -22,7 +22,10 @@ public sealed class FontsFunction
         string name)
     {
         if (!Fonts.TryGetValue(name, out var font))
+        {
             return new NotFoundResult();
+        }
+
         request.HttpContext.Response.Headers.CacheControl = CacheForever;
         return new FileContentResult(font, "font/woff2");
     }
