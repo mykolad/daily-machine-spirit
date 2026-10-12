@@ -110,6 +110,7 @@ jobs:
           sku: flexconsumption
 
       - name: Smoke tests after the rollback
+        id: rollback-checked
         if: ${{ failure() && steps.last-good.outcome == 'success' }}
         env:
           LAST_GOOD: ${{ steps.last-good.outputs.version }}
@@ -126,11 +127,14 @@ jobs:
         env:
           OUTCOME: ${{ job.status }}
           LAST_GOOD: ${{ steps.last-good.outputs.version }}
+          ROLLBACK: ${{ steps.rollback-checked.outcome }}
         run: |
           if [ "$OUTCOME" = success ]; then
             echo "Deployed \`$VERSION\` to $APP; the smoke tests passed." >> "$GITHUB_STEP_SUMMARY"
-          elif [ -n "$LAST_GOOD" ]; then
+          elif [ "$ROLLBACK" = success ]; then
             echo "\`$VERSION\` failed on $APP, which was rolled back to \`$LAST_GOOD\`." >> "$GITHUB_STEP_SUMMARY"
+          elif [ -n "$LAST_GOOD" ]; then
+            echo "\`$VERSION\` failed on $APP, and so did rolling back to \`$LAST_GOOD\`: check the app." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "\`$VERSION\` failed on $APP, and it wasn't rolled back." >> "$GITHUB_STEP_SUMMARY"
           fi
