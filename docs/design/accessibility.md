@@ -45,6 +45,12 @@ The handoff has no search. It uses the site's tokens, on the dark background.
 - **It works without the script:** a plain form that sends `GET /search?q=`, and "Load older rites" is a link, as in
   the archive.
 
+## The main region
+
+- **`<main>` shows no focus ring.** It takes focus (`tabindex="-1"`) only so "Skip to content" can move focus to it, and
+  isn't a control. A click inside it focuses it too, and a reload restored that focus with the amber ring around the
+  whole page for a moment. Its first link or button still shows the ring, as every control does.
+
 ## The Scriptorium, shown in place
 
 - **The forms still work without the script,** and the script only changes how the result is shown, never what is
