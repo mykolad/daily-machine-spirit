@@ -34,10 +34,8 @@ jobs:
           fi
 
           today=$(date -u +%F)
-          page=$(curl -sf -m 30 --retry 3 --retry-all-errors https://dailymachinespirit.fyi/) || {
-            echo "::error::Today didn't answer."
-            exit 1
-          }
+          # A page that doesn't answer at all hides the rite from readers too, so it's reported the same way.
+          page=$(curl -sSf -m 30 --retry 3 --retry-all-errors https://dailymachinespirit.fyi/ 2> fetch-error.txt) || page=''
           if grep -q "class=\"rite-date\" datetime=\"$today\"" <<< "$page"; then
             echo "Today shows the rite for $today." >> "$GITHUB_STEP_SUMMARY"
             exit 0
@@ -48,7 +46,11 @@ jobs:
             echo "Already reported in an open issue." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          shown=$(grep -o 'class="rite-date" datetime="[0-9-]*"' <<< "$page" | grep -o '[0-9]\{4\}-[0-9-]*' || echo 'no rite')
+          if [ -z "$page" ]; then
+            shown="no page at all ($(tr -d '\n' < fetch-error.txt))"
+          else
+            shown=$(grep -o 'class="rite-date" datetime="[0-9-]*"' <<< "$page" | grep -o '[0-9]\{4\}-[0-9-]*' || echo 'no rite')
+          fi
           {
             echo "At 02:00 UTC, Today (https://dailymachinespirit.fyi/) shows $shown, not the rite for $today."
             echo

@@ -7,8 +7,8 @@
     its uid. The rules stay editable in Grafana; export them back over the file afterwards, so the repository stays the
     truth. Notifications follow the stack's default notification policy (its default contact point emails the owner).
 
-    It first checks that production's telemetry reaches the stack: the rules would otherwise watch nothing, and only
-    "No telemetry from production" would ever fire.
+    It first checks that production's metrics and logs both reach the stack: the rules would otherwise watch nothing,
+    and stay silent.
 
 .PARAMETER GrafanaUrl
     The stack's address, e.g. https://<stack>.grafana.net.
@@ -44,7 +44,15 @@ $seen = Invoke-RestMethod -Uri "$grafana/api/datasources/proxy/uid/$($prometheus
 if ($seen.data.result.Count -eq 0) {
     throw "No telemetry from machinespirit-app in the last day: check production's OtlpHeaders secret first (infra/README.md)."
 }
-Write-Host "Production's telemetry reaches $($prometheus.name)."
+Write-Host "Production's metrics reach $($prometheus.name)."
+
+# The rare-failure rules count log lines, and find nothing to count (no alert) if logs stopped arriving.
+$query = [Uri]::EscapeDataString('sum(count_over_time({service_name="machinespirit-app"}[1d]))')
+$logged = Invoke-RestMethod -Uri "$grafana/api/datasources/proxy/uid/$($loki.uid)/loki/api/v1/query?query=$query" -Headers $headers
+if ($logged.data.result.Count -eq 0) {
+    throw "No logs from machinespirit-app in the last day: check production's OtlpHeaders token can write logs (logs:write)."
+}
+Write-Host "Production's logs reach $($loki.name)."
 
 try {
     Invoke-RestMethod -Uri "$grafana/api/folders/$folderUid" -Headers $headers | Out-Null
