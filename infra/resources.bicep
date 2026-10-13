@@ -31,6 +31,8 @@ var productionAccess = {
 var productionDomain = {
   name: 'dailymachinespirit.fyi'
   certificateSecret: 'dailymachinespirit-origin'
+  // Cloudflare dashboard → the domain → Overview → Zone ID; not secret. The app purges the zone's cached pages with it.
+  zoneId: '143ab86fe8cf72cb735e20bfaac6ebcc'
 }
 
 // App Service's own service principal (Microsoft.Azure.WebSites, app id abfa0a7c-a6b6-4736-8310-5855508787cd): it
@@ -186,6 +188,8 @@ module staging 'modules/environment.bicep' = {
     signInCallbackUrl: 'https://${prefix}-app-staging.azurewebsites.net/auth/github/callback'
     customDomain: ''
     customDomainCertificate: ''
+    cloudflareZoneId: ''
+    cloudflareSiteUrl: ''
     appServicePrincipalId: appServicePrincipalId
   }
 }
@@ -216,6 +220,8 @@ module production 'modules/environment.bicep' = if (deployProduction) {
     signInCallbackUrl: 'https://${productionDomain.name}/auth/github/callback'
     customDomain: productionDomain.name
     customDomainCertificate: productionDomain.certificateSecret
+    cloudflareZoneId: productionDomain.zoneId
+    cloudflareSiteUrl: 'https://${productionDomain.name}'
     appServicePrincipalId: appServicePrincipalId
   }
 }

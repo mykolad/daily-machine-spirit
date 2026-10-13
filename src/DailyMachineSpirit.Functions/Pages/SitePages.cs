@@ -43,8 +43,8 @@ public sealed class SitePages
         var now = time.GetUtcNow();
         return (await rites.GetNewest(1, cancellationToken)).Match(
             Right: newest => newest.HeadOrNone().Match(
-                Some: rite => Page(request, StatusCodes.Status200OK, TodayPage.Render(rite, now)),
-                None: () => Page(request, StatusCodes.Status200OK, TodayPage.Slumbering(now))),
+                Some: rite => Page(request, StatusCodes.Status200OK, TodayPage.Render(rite, now), EdgeLifetime.UntilPurged),
+                None: () => Page(request, StatusCodes.Status200OK, TodayPage.Slumbering(now), EdgeLifetime.UntilPurged)),
             Left: error => Failed(request, error));
     }
 
@@ -59,10 +59,14 @@ public sealed class SitePages
             return Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(id));
         }
 
+        // Taken before the counts are read, so it errs toward the voter: for a vote saved during the read, the script shows
+        // that vote's answer, which has the vote, rather than counts that might not.
+        var now = time.GetUtcNow();
         var found = (await rites.GetByNumbers([number], cancellationToken)).Map(matches => matches.HeadOrNone());
         return await found.Match<Task<IActionResult>>(
             Right: rite => rite.Match<Task<IActionResult>>(
-                Some: async shown => Page(request, StatusCodes.Status200OK, RitePage.Render(shown, await MoreRites(shown, cancellationToken))),
+                Some: async shown => Page(request, StatusCodes.Status200OK,
+                    RitePage.Render(shown, await MoreRites(shown, cancellationToken), now), EdgeLifetime.UntilPurged),
                 None: () => Task.FromResult<IActionResult>(Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(id)))),
             Left: error => Task.FromResult(Failed(request, error)));
     }
@@ -156,11 +160,16 @@ public sealed class SitePages
         return Page(request, StatusCodes.Status503ServiceUnavailable, StatePages.Failed($"{request.Path}{request.QueryString}"));
     }
 
-    private static ContentResult Page(HttpRequest request, int status, string html)
+    private static ContentResult Page(HttpRequest request, int status, string html) => Page(request, status, html, EdgeLifetime.Brief);
+
+    // An address with a query string (/?utm_source=...) stays brief whatever its page: Cloudflare caches each one apart,
+    // and purges name only the plain address.
+    private static ContentResult Page(HttpRequest request, int status, string html, EdgeLifetime edge)
     {
         var headers = request.HttpContext.Response.Headers;
-        // A rite never changes once published, and Today changes once a day: a minute's cache costs nothing.
-        headers.CacheControl = status == StatusCodes.Status200OK ? "public, max-age=60" : "no-store";
+        headers.CacheControl = status != StatusCodes.Status200OK ? "no-store"
+            : request.QueryString.HasValue ? EdgeLifetime.Brief.CacheControl
+            : edge.CacheControl;
         headers.XContentTypeOptions = "nosniff";
         headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
         return new ContentResult { Content = html, ContentType = "text/html; charset=utf-8", StatusCode = status };

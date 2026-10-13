@@ -18,7 +18,7 @@ public static class TodayPage
     public static string Render(Rite rite, DateTimeOffset now)
         => Layout.Page(string.Empty, Html.FirstLine(rite.Writing.Text.Replace("`", string.Empty)), Section.Today, $"""
             {Masthead}
-            {RiteCard.Render(rite, ownPage: false)}
+            {RiteCard.Render(rite, ownPage: false, countedAt: now)}
             <div class="countdown">
             <div class="countdown-line">{Svg.CandleLeft}<p>Next litany in <span class="amber" data-countdown>{Countdown.ToNextRite(now)}</span></p>{Svg.CandleRight}</div>
             <p class="countdown-note">A new rite is published every day at 00:00 UTC. <a href="{Paths.Archive}">Browse the Archive</a></p>

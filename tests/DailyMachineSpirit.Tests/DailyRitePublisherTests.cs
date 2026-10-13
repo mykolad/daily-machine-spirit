@@ -11,6 +11,7 @@ namespace DailyMachineSpirit.Tests;
 public sealed class DailyRitePublisherTests : IAsyncLifetime
 {
     private readonly BacklogTestbed testbed = new();
+    private readonly FakePageCache pages = new();
 
     public Task InitializeAsync() => testbed.InitializeAsync();
 
@@ -55,6 +56,7 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
         Assert.False(published.IsNew);
         Assert.Equal("Already here", published.Rite.Writing.Title);
         Assert.Single(await testbed.Waiting());
+        Assert.Empty(pages.Purges);
     }
 
     [Fact]
@@ -164,6 +166,30 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
         Assert.Equal(RefillBacklogFunction.AfterPublishing, message);
     }
 
+    // Today showed the rite before, kept at the edge until purged.
+    [Fact]
+    public async Task TimerFunction_PublishingANewRite_PurgesToday()
+    {
+        await testbed.AddDraft("Next up", 0.9f);
+
+        await Function().Run(new TimerInfo(), CancellationToken.None);
+
+        Assert.Equal(["/"], Assert.Single(pages.Purges));
+    }
+
+    // A retry later in the day: the page already shows the day's rite.
+    [Fact]
+    public async Task TimerFunction_WhenTheDayAlreadyHasItsRite_PurgesNothing()
+    {
+        await testbed.AddDraft("Next up", 0.9f);
+        await Function().Run(new TimerInfo(), CancellationToken.None);
+        pages.Purges.Clear();
+
+        await Function().Run(new TimerInfo(), CancellationToken.None);
+
+        Assert.Empty(pages.Purges);
+    }
+
     // Before launch: nothing published, and no refill asked for, while the Scriptorium can still summon drafts.
     [Fact]
     public async Task TimerFunction_WithDailyPublishingOff_PublishesNothing_AndAsksForNoRefill()
@@ -188,5 +214,5 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
     private DailyRiteFunction Function() => Function(publishDaily: true);
 
     private DailyRiteFunction Function(bool publishDaily)
-        => new(testbed.Publisher(), Options.Create(new GenerationOptions { PublishDaily = publishDaily }), NullLogger<DailyRiteFunction>.Instance);
+        => new(testbed.Publisher(), pages, Options.Create(new GenerationOptions { PublishDaily = publishDaily }), NullLogger<DailyRiteFunction>.Instance);
 }

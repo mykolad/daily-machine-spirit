@@ -300,15 +300,45 @@ public sealed class SitePagesTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Pages_AreCachedBriefly_AndEncodeWhatTheModelWrote()
+    public async Task Pages_EncodeWhatTheModelWrote()
     {
         await Add(Day, "<b>Bold</b> & `code`");
 
         var page = await Read(context => Pages().Today(context.Request, "", CancellationToken.None));
 
-        Assert.Equal("public, max-age=60", page.CacheControl);
         Assert.Contains("&lt;b&gt;Bold&lt;/b&gt; &amp; `code`", page.Html);
         Assert.DoesNotContain("<b>Bold</b>", page.Html);
+    }
+
+    // Votes and publishing purge Today and a rite's page from Cloudflare, so it can keep them an hour; nothing purges the
+    // archive, a tag's page, or an address with a query string, which Cloudflare caches apart. Browsers keep each a
+    // minute.
+    [Fact]
+    public async Task TodayAndARitesPage_StayAtTheEdgeUntilPurged_TheArchiveTagsAndQueriesBriefly()
+    {
+        var slumbering = await Read(context => Pages().Today(context.Request, "", CancellationToken.None));
+        await Add(Day, "Litany of the Clean Cache");
+
+        var today = await Read(context => Pages().Today(context.Request, "", CancellationToken.None));
+        var rite = await Read(context => Pages().Rite(context.Request, "1", CancellationToken.None));
+        var archive = await Read(context => Pages().Archive(context.Request, CancellationToken.None), "/archive", "");
+        var withQuery = await Read(context => Pages().Today(context.Request, "", CancellationToken.None), "/", "?utm_source=feed");
+        var tag = await Read(context => Pages().Tag(context.Request, "caches", CancellationToken.None), "/tags/caches", "");
+
+        Assert.All([slumbering, today, rite], page => Assert.Equal("public, max-age=60, s-maxage=3600", page.CacheControl));
+        Assert.All([archive, tag, withQuery], page => Assert.Equal("public, max-age=60", page.CacheControl));
+    }
+
+    // The script shows the counts a vote answered over a page whose counts were read before that vote.
+    [Fact]
+    public async Task ARitesCounts_SayWhenTheyWereRead()
+    {
+        await Add(Day, "Litany of the Clean Cache");
+
+        var (_, today) = await Today("");
+        var (_, rite) = await Rite("1");
+
+        Assert.All(new[] { today, rite }, html => Assert.Contains($"""data-counted-at="{time.GetUtcNow().ToUnixTimeMilliseconds()}">""", html));
     }
 
     private SitePages Pages() => new(Repository, time, NullLogger<SitePages>.Instance);

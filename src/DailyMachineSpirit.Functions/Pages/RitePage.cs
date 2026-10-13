@@ -7,10 +7,10 @@ namespace DailyMachineSpirit.Functions.Pages;
 public static class RitePage
 {
     /// <param name="more">Rites to read next; the section is left out when there are none (the site's first rite).</param>
-    public static string Render(Rite rite, IReadOnlyList<Rite> more)
+    public static string Render(Rite rite, IReadOnlyList<Rite> more, DateTimeOffset countedAt)
         => Layout.Page(rite.Writing.Title, Html.FirstLine(rite.Writing.Text.Replace("`", string.Empty)), Section.Other, $"""
             <a class="back" href="{Paths.Archive}">{Svg.BackIcon}Back to the Archive</a>
-            {RiteCard.Render(rite, ownPage: true)}
+            {RiteCard.Render(rite, ownPage: true, countedAt)}
             {MoreRites(more)}
             """);
 
