@@ -231,8 +231,9 @@ observability/                    — the Grafana dashboard and alerts, and what
   - **Shown in place** (`ScriptoriumScript`): where scripts run, an action is posted in the background, the new page's
     calendar replaces the old, and each rite that moved slides from its old place to its new one, so a Scribe sees
     what changed (an Exalt can reorder the rites the Augury places, too). The status message stays the same element,
-    so it's announced; focus returns to the same button. Anything unexpected (an error, Cloudflare Access wanting a new
-    sign-in) loads `/scriptorium` afresh. Reduced motion: no slide, only the mark.
+    so it's announced; focus returns to the same button (after a burn, to the rite that took its place, without
+    scrolling away). Anything unexpected (an error, Cloudflare Access wanting a new sign-in) loads `/scriptorium`
+    afresh. Reduced motion: no slide, only the mark.
   - **Access:** `Scriptorium:Enabled` is off by default. Who counts as a Scribe is an `IScribeSignIn`
     (`Scriptorium/SignIn/`), chosen to fail closed (`AddScribeSignIn`):
     - **Cloudflare Access** (`CloudflareAccess:TeamDomain` and `:Audience` set, production): every request must carry

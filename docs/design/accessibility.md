@@ -51,8 +51,9 @@ The handoff has no search. It uses the site's tokens, on the dark background.
   sent: the same request, then the page the redirect leads to.
 - **The status message is never replaced, only given new text,** so a screen reader announces it as after a reload: a
   live region that's removed and added again may not be.
-- **Focus goes where a reload would have left it:** the same button on the rite that moved, else its first button;
-  after a burn, the message, which links to the rite in the Ashes.
+- **Focus stays where the Scribe is working:** the same button on the rite that moved, else its first button. After a
+  burn, the first button of the rite that took its place, without scrolling away; the message, with its link to the
+  rite in the Ashes, is announced all the same.
 - **Reduced motion** (`prefers-reduced-motion`) turns off the slide and the glow; the rite acted on keeps its amber
   border, which isn't motion.
 - **One action at a time:** while one is under way, `aria-busy` marks the page, and a second click is ignored until the first is done.

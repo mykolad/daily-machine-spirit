@@ -35,6 +35,9 @@ public static class ScriptoriumScript
             main.setAttribute('aria-busy', 'true');
             const pressed = actionOf(button);
             const before = positions();
+            // The rite that takes a burned one's place in the list (or the one above, when it was the last), for focus.
+            const row = form.closest('li');
+            const neighbour = (row?.nextElementSibling ?? row?.previousElementSibling)?.querySelector('article')?.id;
             try {
               const response = await fetch(button?.formAction || form.action, {
                 method: 'POST',
@@ -73,16 +76,19 @@ public static class ScriptoriumScript
                 }
               }
 
-              // Focus where a reload would have put the Scribe: the same button on the rite, else its first one. After
-              // a burn, like a reload, the message: it links to the rite in the Ashes.
-              const again = burned ? null
+              // Focus stays where the Scribe is working: the same button on the rite, else its first one. After a burn,
+              // the rite that took the burned one's place, so the page doesn't jump away from it; the message (with
+              // its link to restore the rite) is announced all the same.
+              const burnedNeighbour = burned && neighbour ? document.getElementById(neighbour) : null;
+              const again = burned ? burnedNeighbour?.querySelector('button')
                 : [...main.querySelectorAll('button')].find((other) => actionOf(other) === pressed)
                   ?? acted?.querySelector('button');
               status.tabIndex = -1;
               (again ?? status).focus({ preventScroll: true });
               // Once the rite has arrived, it's brought into view. Not awaited: a hidden tab pauses the slide, and the
               // page mustn't stay busy until it's shown again.
-              arrived.then(() => (again && acted ? acted : status)
+              const shown = burned ? burnedNeighbour : again && acted;
+              arrived.then(() => (shown || status)
                 .scrollIntoView({ block: 'nearest', behavior: reduced.matches ? 'auto' : 'smooth' }));
             } catch {
               // Whether the action happened isn't known (Cloudflare Access may want a new sign-in, or the network
