@@ -116,7 +116,7 @@ public sealed class SitePages
             Right: found =>
             {
                 var (shown, olderThan) = OnePage(found.OrderByDescending(rite => rite.Number).ToList());
-                return Page(request, StatusCodes.Status200OK, TagPage.Render(tag, shown, olderThan));
+                return Page(request, StatusCodes.Status200OK, TagPage.Render(tag, shown, olderThan, isFirstPage: before == int.MaxValue));
             },
             Left: error => Failed(request, error));
     }
