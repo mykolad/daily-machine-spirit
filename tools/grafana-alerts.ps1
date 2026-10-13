@@ -15,8 +15,7 @@
     The stack's address, e.g. https://<stack>.grafana.net.
 
 .PARAMETER TokenPath
-    A file holding a Grafana service account token: role Editor, plus the fixed role Alerting Provisioning Writer (or
-    role Admin). The token is read from it and never printed.
+    A file holding a Grafana service account token (role Editor). The token is read from it and never printed.
 
 .PARAMETER Export
     Instead of applying the file, write the group as Grafana has it back over the file, in the form the script reads.
