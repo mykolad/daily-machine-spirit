@@ -31,8 +31,9 @@ is never seen as an increase. Each log line is an event of its own.
 The Grafana rules are `grafana/alerts.json`, one rule group, evaluated every five minutes, and they notify through the
 stack's default notification policy (the default contact point emails the stack's owner). To put them into Grafana:
 
-1. **Administration → Users and access → Service accounts → Add service account** (role **Editor**), then **Add service
-   account token**. Save the token to `$HOME\.machinespirit\grafana-alerts-token.txt`.
+1. **Administration → Users and access → Service accounts → Add service account** (role **Editor**, enough for the
+   folder and the rules on Grafana Cloud in October 2026), then **Add service account token**. Save the token to
+   `$HOME\.machinespirit\grafana-alerts-token.txt`.
 2. Run `./tools/grafana-alerts.ps1 -GrafanaUrl https://<stack>.grafana.net`. It checks that production's telemetry
    reaches the stack, then creates the **Daily Machine Spirit** folder if needed and replaces the group's rules. Running
    it again changes nothing.
