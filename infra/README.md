@@ -171,6 +171,19 @@ az functionapp restart -g machinespirit-rg -n machinespirit-app
 Purges are counted (`dms.pages.purges`, `purged` or `failed`); a failed one is also logged, and the page refreshes
 within the hour.
 
+**After a deployment that changes every page** (the navigation, the styles, the footer), purge everything by hand: a
+deployment purges nothing, so Today and the rites' pages would show the old version for up to an hour. Either in the
+dashboard (**Caching → Configuration → Purge Everything**), or with the same token, which also shows it still works:
+
+```powershell
+$token = (Get-Content -Path $HOME\.machinespirit\cloudflare-purge-token.txt -Raw).Trim()
+(Invoke-RestMethod -Method Post -Uri https://api.cloudflare.com/client/v4/zones/143ab86fe8cf72cb735e20bfaac6ebcc/purge_cache `
+  -Headers @{ Authorization = "Bearer $token" } -ContentType application/json -Body '{"purge_everything":true}').success
+```
+
+It prints `True`. The next request for each page then reaches the app once; browsers keep their copy a minute at most
+(the Cache Rule's Browser TTL).
+
 ## Deploying the app
 
 GitHub Actions deploys the app (`.github/workflows/`), signed in as the environment's GitHub identity:
