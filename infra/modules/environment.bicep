@@ -37,6 +37,10 @@ param appServicePrincipalId string
 param signInGitHubClientId string
 @description('Where GitHub sends readers back after signing in: exactly the OAuth app\'s callback URL.')
 param signInCallbackUrl string
+@description('The Cloudflare zone readers reach the site through, whose cached pages the app purges when they change (CloudflareOptions); empty where nothing caches the pages.')
+param cloudflareZoneId string
+@description('The address of the site in that zone, e.g. https://example.com.')
+param cloudflareSiteUrl string
 
 var keyVaultSecretsOfficer = 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7'
 var keyVaultSecretsUser = '4633458b-17de-408a-b874-0445c86b69e6'
@@ -273,6 +277,20 @@ resource app 'Microsoft.Web/sites@2024-04-01' = {
         {
           name: 'GitHub__CallbackUrl'
           value: signInCallbackUrl
+        }
+        // Purging pages from Cloudflare's cache when votes or a new rite change them. The token's secret (infra/README.md)
+        // is referenced only where there's a zone, so staging has no reference to a secret that doesn't exist.
+        {
+          name: 'Cloudflare__ZoneId'
+          value: cloudflareZoneId
+        }
+        {
+          name: 'Cloudflare__SiteUrl'
+          value: cloudflareSiteUrl
+        }
+        {
+          name: 'Cloudflare__ApiToken'
+          value: empty(cloudflareZoneId) ? '' : '@Microsoft.KeyVault(VaultName=${vault.name};SecretName=CloudflareApiToken)'
         }
         {
           name: 'Voters__KeySecret'

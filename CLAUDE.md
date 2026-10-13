@@ -123,6 +123,19 @@ observability/                    — the Grafana dashboard and alerts, and what
   - Every focusable control sits on the dark background, never on the parchment, so the amber focus ring shows.
   - **More rites** (a rite's own page): the three rites whose similarity scores are closest (cosine, `RelatedRites`),
     topped up with the newest others when there aren't enough scored ones. If it fails, the page goes without it.
+  - **Cached until they change** (#37): browsers keep a page a minute, and Cloudflare keeps Today and a rite's page an
+    hour (`s-maxage`, `EdgeLifetime.UntilPurged`), so their requests rarely reach the app. Whatever changes them purges
+    them (`IPageCache`, `CloudflarePageCache`): a saved vote adds its rite's page and Today
+    (`Paths.ShowingVotesOf`) to the minute's batch (`PurgeBatcher`), so a vote never waits for Cloudflare and a page is
+    purged at most once a minute per instance; a new rite purges Today at once. The archive and a tag's page, which no
+    purge can find, stay a minute, as does any address with a query string (Cloudflare caches each apart). Purges go 30
+    URLs to a request. A purge never fails the change: it's logged and counted (`dms.pages.purges`), and the page
+    refreshes within the hour.
+    Settings: `Cloudflare:ZoneId`, `:SiteUrl`, `:ApiToken` (a token that may only purge the zone); without them
+    (staging, a local run) nothing is purged.
+  - **The voter's own counts survive a cached page:** the vote answers with the counts and when they were counted
+    (`countedAt`), the page carries when its counts were read (`data-counted-at`, taken before reading), and the script
+    keeps each vote's answer for two hours in `localStorage` (`dms-votes-v1`), showing it over an older page.
   - **Tags** (#6): the site's own fixed vocabulary (`Tags/RiteTags`), so there's no `cache` next to `caches`. The
     judge gives a draft its tags with its scores (`IRiteJudge`), and they're stored with the draft and the rite it
     becomes (`tags`, a list of keys), so a tag's page is one query, and switching judges keeps every rite's tags.

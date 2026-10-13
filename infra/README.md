@@ -78,6 +78,7 @@ Production's vault exists only from launch (`deployProduction`); set its secrets
 | `GitHubClientSecret` | readers signing in with GitHub to vote: the OAuth app's client secret | `GitHub__ClientSecret`, a Key Vault reference |
 | `VoterKeySecret` | keying each account's votes. Set once: a new value makes every account a new voter. At least 32 characters | `Voters__KeySecret`, a Key Vault reference |
 | `VoterSessionSecret` | signing the sign-in cookie. A new value only signs everyone out. At least 32 characters | `Voters__SessionSecret`, a Key Vault reference |
+| `CloudflareApiToken` | production only: purging pages from Cloudflare's cache when they change | `Cloudflare__ApiToken`, a Key Vault reference (only where `zoneId` is set) |
 
 ### Jev
 
@@ -142,6 +143,26 @@ az functionapp restart -g machinespirit-rg -n machinespirit-app-staging
 
 Keep `voter-key.txt`: it's what makes an account the same voter, and a new one would let every account vote again.
 
+### Purging Cloudflare's cache
+
+Cloudflare keeps Today and each rite's page for up to an hour, and the app purges them when a vote or a new rite changes
+them. Set this up before the Cache Rule (Outside Azure); without it, a vote would show elsewhere only an hour later.
+
+1. Put the zone's id (Cloudflare dashboard → `dailymachinespirit.fyi` → Overview → Zone ID; not secret) in
+   `productionDomain.zoneId` in `resources.bicep`, and deploy the infrastructure.
+2. In the Cloudflare dashboard, **My Profile → API Tokens → Create Token → Custom token**: permission **Zone → Cache
+   Purge → Purge**, zone resources **Include → Specific zone → dailymachinespirit.fyi**, nothing else. Save it to
+   `$HOME\.machinespirit\cloudflare-purge-token.txt`.
+
+```powershell
+az keyvault secret set --vault-name machinespirit-kv --name CloudflareApiToken `
+  --file $HOME\.machinespirit\cloudflare-purge-token.txt -o none
+az functionapp restart -g machinespirit-rg -n machinespirit-app
+```
+
+Purges are counted (`dms.pages.purges`, `purged` or `failed`); a failed one is also logged, and the page refreshes
+within the hour.
+
 ## Deploying the app
 
 GitHub Actions deploys the app (`.github/workflows/`), signed in as the environment's GitHub identity:
@@ -179,10 +200,16 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
     end, make a new one, set the secret again, and deploy the infrastructure.
   - **DNS**: a proxied CNAME `@` → `machinespirit-app.azurewebsites.net`, and a TXT record `asuid` with the app's
     `customDomainVerificationId`, which Azure checks before binding the domain.
-
-  - **A rate limit rule** (Security → WAF → Rate limiting rules) on `/search`, counted by IP, 20 in 10 seconds,
-    blocked for 10 seconds: each search reads every rite. The Free plan has one such rule, so every limited path shares
-    it: its expression lists them with `or`.
+  - **A Cache Rule** (Caching → Cache Rules), after the purge is set up (Secrets): hostname equals
+    `dailymachinespirit.fyi` and the URI path doesn't start with `/api/`, `/auth/`, `/scriptorium` or `/healthz`;
+    **Eligible for cache**, Edge TTL **Use cache-control header if present, bypass cache if not**. The app's
+    `Cache-Control` decides the rest: Today and a rite's page an hour at the edge (`s-maxage`), purged on change, the
+    archive a minute, errors and the API never. `cf-cache-status: HIT` on a second request for `/` shows it works.
+  - **A rate limit rule** (Security → WAF → Rate limiting rules, set up 2026-10-13) for votes and searches (each
+    search reads every rite), counted by IP, 20 in 10 seconds, blocked for 10 seconds. The Free plan has one such rule,
+    so every limited path shares it:
+    `(http.request.uri.path wildcard r"/api/rites/*/vote") or (http.request.uri.path eq "/search")`. With `eq`, the
+    `*` would be taken literally, and match nothing.
 
   Production admits only Cloudflare's address ranges (`cloudflare-ips.json`), so its cache and rate limit can't be gone
   around. **Check Cloudflare's Addresses** (a weekly workflow) opens an issue when Cloudflare publishes different
