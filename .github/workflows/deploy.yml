@@ -183,7 +183,8 @@ jobs:
           app: ${{ inputs.app-name }}
           base-url: ${{ inputs.base-url }}
 
-      # The last good package's own smoke tests, which match what it serves.
+      # The last good package's own smoke tests, which match what it serves. Either way the run's annotations say what
+      # the app runs now: the version that failed, rolled back (an error, as the run fails), or a rollback that failed too.
       - name: Smoke tests
         id: smoke
         env:
@@ -191,8 +192,12 @@ jobs:
           SMOKE_TEST_BASE_URL: ${{ inputs.base-url }}
           SMOKE_TEST_VERSION: ${{ steps.last-good.outputs.version }}
         run: |
-          dotnet test last-good/smoke-tests/DailyMachineSpirit.SmokeTests.dll --logger "console;verbosity=normal"
-          echo "::error title=Rolled back::$VERSION failed its smoke tests, so $APP runs $LAST_GOOD again."
+          if dotnet test last-good/smoke-tests/DailyMachineSpirit.SmokeTests.dll --logger "console;verbosity=normal"; then
+            echo "::error title=Rolled back::$VERSION failed its smoke tests, so $APP runs $LAST_GOOD again."
+          else
+            echo "::error title=Rollback failed::$APP runs $LAST_GOOD again, but it failed its smoke tests too: check the app."
+            exit 1
+          fi
 
       - name: Shut the runner out
         if: ${{ always() && inputs.restricts-addresses }}
