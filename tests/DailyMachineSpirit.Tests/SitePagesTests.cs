@@ -241,6 +241,7 @@ public sealed class SitePagesTests : IAsyncLifetime
 
         var (status, first) = await Tagged("caches", "");
         var (_, second) = await Tagged("caches", "3");
+        var (_, beyond) = await Tagged("caches", "1");
 
         Assert.Equal(StatusCodes.Status200OK, status);
         Assert.Contains("""<h1 class="archive-title">Filed under Caches</h1>""", first);
@@ -249,6 +250,8 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.Contains("""<a class="button button-outline" href="/tags/caches?before=3">Load older rites</a>""", first);
         Assert.Equal(["Rite 2", "Rite 1"], Titles(second));
         Assert.Contains("No earlier rite is filed under Caches.", second);
+        Assert.Empty(Titles(beyond));
+        Assert.Contains("No earlier rite is filed under Caches.", beyond);
     }
 
     [Fact]

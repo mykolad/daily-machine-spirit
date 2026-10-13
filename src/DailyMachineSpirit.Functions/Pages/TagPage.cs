@@ -8,11 +8,13 @@ namespace DailyMachineSpirit.Functions.Pages;
 public static class TagPage
 {
     /// <param name="olderThan">Where the next page starts, or None when these are the oldest.</param>
-    public static string Render(Tag tag, IReadOnlyList<Rite> rites, Option<int> olderThan)
+    /// <param name="isFirstPage">An empty first page means the tag has no rites yet; an empty later one, only that
+    /// none are older.</param>
+    public static string Render(Tag tag, IReadOnlyList<Rite> rites, Option<int> olderThan, bool isFirstPage)
     {
         var label = Html.Encode(tag.Label);
         var about = $"Rites about {tag.About}, newest first.";
-        var end = rites.Count == 0
+        var end = isFirstPage && rites.Count == 0
             ? $"No rite is filed under {label} yet."
             : $"No earlier rite is filed under {label}.";
         var others = RiteTags.All.Where(other => other != tag);
