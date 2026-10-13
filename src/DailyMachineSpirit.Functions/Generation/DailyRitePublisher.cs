@@ -3,6 +3,7 @@ using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Telemetry;
 using LanguageExt;
 using LanguageExt.Common;
+using Microsoft.Extensions.Logging;
 using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Functions.Generation;
@@ -19,6 +20,7 @@ public sealed class DailyRitePublisher
     private readonly BacklogRefiller refiller;
     private readonly TimeProvider time;
     private readonly SiteMetrics metrics;
+    private readonly ILogger<DailyRitePublisher> logger;
 
     public DailyRitePublisher(
         IRiteRepository rites,
@@ -26,7 +28,8 @@ public sealed class DailyRitePublisher
         IScriptoriumRepository scriptorium,
         BacklogRefiller refiller,
         TimeProvider time,
-        SiteMetrics metrics)
+        SiteMetrics metrics,
+        ILogger<DailyRitePublisher> logger)
     {
         this.rites = rites;
         this.drafts = drafts;
@@ -34,6 +37,7 @@ public sealed class DailyRitePublisher
         this.refiller = refiller;
         this.time = time;
         this.metrics = metrics;
+        this.logger = logger;
     }
 
     public async Task<Either<Error, PublishedRite>> PublishToday(CancellationToken cancellationToken)
@@ -67,9 +71,15 @@ public sealed class DailyRitePublisher
                 Some: draft => Task.FromResult(Right<Error, Draft>(draft)),
                 // An empty backlog never leaves a day without its rite: one is written on the spot. The calendar is read
                 // again afterwards, since a refill running meanwhile may have saved a better draft.
-                None: () => refiller.AddDraft([], cancellationToken)
-                    .BindAsync(_ => TopOfTheCalendar(cancellationToken))
-                    .BindAsync(again => again.ToEither(Error.New("The backlog is still empty after writing a draft.")))));
+                None: () =>
+                {
+                    // Logged, not counted: a counter's first value in a process that soon stops is easily lost, and this
+                    // happens about once a day at most (observability/README.md, "Backlog ran empty").
+                    logger.LogWarning("The backlog was empty: today's rite is written on the spot, unmoderated.");
+                    return refiller.AddDraft([], cancellationToken)
+                        .BindAsync(_ => TopOfTheCalendar(cancellationToken))
+                        .BindAsync(again => again.ToEither(Error.New("The backlog is still empty after writing a draft.")));
+                }));
 
     // The Scribes' order is read before the waiting drafts, so every draft it places is among them, as in the Scriptorium:
     // a draft that arrives and is anointed in between is simply not in this snapshot, rather than placed but unknown.

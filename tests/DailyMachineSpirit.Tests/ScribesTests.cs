@@ -4,6 +4,7 @@ using DailyMachineSpirit.Functions.Scriptorium;
 using LanguageExt;
 using LanguageExt.Common;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging.Abstractions;
 using static DailyMachineSpirit.Tests.BacklogTestbed;
 using static DailyMachineSpirit.Tests.Expect;
 using static LanguageExt.Prelude;
@@ -178,7 +179,8 @@ public sealed class ScribesTests : IAsyncLifetime
             Ok(await testbed.Scribes().Anoint(arrived.Id, "", CancellationToken.None));
         });
         var publisher = new DailyMachineSpirit.Functions.Generation.DailyRitePublisher(
-            testbed.Rites, drafts, testbed.Scriptorium, testbed.Refiller(), testbed.Time, testbed.Probe.Metrics);
+            testbed.Rites, drafts, testbed.Scriptorium, testbed.Refiller(), testbed.Time, testbed.Probe.Metrics,
+            NullLogger<DailyMachineSpirit.Functions.Generation.DailyRitePublisher>.Instance);
 
         var published = Ok(await publisher.PublishToday(CancellationToken.None));
 

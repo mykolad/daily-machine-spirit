@@ -30,6 +30,11 @@ public sealed class RefillBacklogFunction
         var result = await refiller.Refill(cancellationToken);
         result.Match(
             Right: written => logger.LogInformation("Refilled the backlog ({Reason}): {Written} new drafts.", reason, written),
-            Left: error => throw error.ToException());
+            // Logged here too: only the app's telemetry is exported, and the host alone would see the exception.
+            Left: error =>
+            {
+                logger.LogError(error.ToException(), "The backlog couldn't be refilled ({Reason}): {Error}", reason, error.Message);
+                throw error.ToException();
+            });
     }
 }
