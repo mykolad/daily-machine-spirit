@@ -351,11 +351,16 @@ resource githubTrust 'Microsoft.ManagedIdentity/userAssignedIdentities/federated
 
 // The domain, through Cloudflare: Cloudflare's Origin CA certificate, imported from the vault and bound to the name.
 // Azure checks the domain's asuid TXT record first, so the DNS comes before this (infra/README.md). The import is done
-// by App Service itself (its Microsoft.Azure.WebSites service principal), not the app's identity, so it may read the
-// vault's secrets, in the vault that holds the certificate only.
+// by App Service itself (its Microsoft.Azure.WebSites service principal), not the app's identity. That principal serves
+// every App Service app in the tenant, so it may read this one secret, not the vault's others (the voter keys, tokens).
+resource certificateSecret 'Microsoft.KeyVault/vaults/secrets@2024-11-01' existing = if (!empty(customDomain)) {
+  parent: vault
+  name: customDomainCertificate
+}
+
 resource appServiceReadsCertificate 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(customDomain)) {
-  scope: vault
-  name: guid(vault.id, appServicePrincipalId, keyVaultSecretsUser)
+  scope: certificateSecret
+  name: guid(certificateSecret.id, appServicePrincipalId, keyVaultSecretsUser)
   properties: {
     principalId: appServicePrincipalId
     principalType: 'ServicePrincipal'
