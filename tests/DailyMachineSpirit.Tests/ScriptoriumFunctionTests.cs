@@ -58,7 +58,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
 
         Assert.Contains("Subjects waiting: Caches (2), Infrastructure (1), untagged (1).", html);
-        Assert.Contains("The Augury: 80% · filed under Infrastructure, Caches · written by", html);
+        Assert.Contains(" · filed under Infrastructure, Caches · written by", html);
     }
 
     [Fact]

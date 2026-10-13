@@ -19,12 +19,14 @@ namespace DailyMachineSpirit.Functions.Pages;
 public sealed class SitePages
 {
     private readonly IRiteRepository rites;
+    private readonly TagIndex tags;
     private readonly TimeProvider time;
     private readonly ILogger<SitePages> logger;
 
-    public SitePages(IRiteRepository rites, TimeProvider time, ILogger<SitePages> logger)
+    public SitePages(IRiteRepository rites, TagIndex tags, TimeProvider time, ILogger<SitePages> logger)
     {
         this.rites = rites;
+        this.tags = tags;
         this.time = time;
         this.logger = logger;
     }
@@ -93,7 +95,7 @@ public sealed class SitePages
 
     /// <summary>
     /// A tag's rites, paged like the archive, Today's rite included. Which rites have the tag comes from every rite's
-    /// scores (<see cref="RiteTags"/>): one small query over a few hundred rites, then the page's own rites.
+    /// scores, kept for a few minutes (<see cref="TagIndex"/>); then the page's own rites.
     /// </summary>
     [Function("Tag")]
     public Task<IActionResult> Tag(
@@ -102,7 +104,7 @@ public sealed class SitePages
         CancellationToken cancellationToken)
         => RiteTags.Find(key).Match(
             Some: tag => TaggedRites(request, tag, cancellationToken),
-            None: () => Task.FromResult<IActionResult>(Page(request, StatusCodes.Status404NotFound, StatePages.NotFound($"tags/{key}"))));
+            None: () => Task.FromResult<IActionResult>(Page(request, StatusCodes.Status404NotFound, StatePages.NoSuchTag(key))));
 
     /// <summary>
     /// The rites holding every word the reader typed (<c>?q=</c>), paged like the archive, Today's rite included. The
@@ -143,13 +145,8 @@ public sealed class SitePages
     private async Task<IActionResult> TaggedRites(HttpRequest request, Tag tag, CancellationToken cancellationToken)
     {
         var before = int.TryParse(request.Query["before"], out var number) && number > 0 ? number : int.MaxValue;
-        var page = await rites.GetSimilarities(cancellationToken)
-            .MapAsync(similarities => similarities
-                .Where(rite => rite.Key < before && RiteTags.Of(rite.Value).Contains(tag))
-                .Select(rite => rite.Key)
-                .OrderDescending()
-                .Take(ArchivePage.PageSize + 1)
-                .ToList())
+        var page = await tags.Numbers(tag, cancellationToken)
+            .MapAsync(numbers => numbers.Where(tagged => tagged < before).Take(ArchivePage.PageSize + 1).ToList())
             .BindAsync(numbers => rites.GetByNumbers(numbers, cancellationToken));
         return page.Match(
             Right: found =>

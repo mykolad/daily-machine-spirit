@@ -36,9 +36,11 @@ public sealed class RiteTagsTests
     public void Of_GivesNoTags_WithoutJevsTopicScores()
     {
         var anotherQuestionSet = TopicScores.About(("builds", 1f)) with { ScoresGeneratorVersion = "jev-1.13.0/q2" };
+        var anotherJudge = TopicScores.About(("builds", 1f)) with { ScoresGeneratorVersion = "other/q1" };
         var tooFewScores = new RiteSimilarity { ScoresGeneratorVersion = JevQuestions.Version("jev-1.13.0"), Scores = [1f, 0f] };
 
         Assert.Empty(RiteTags.Of(anotherQuestionSet));
+        Assert.Empty(RiteTags.Of(anotherJudge));
         Assert.Empty(RiteTags.Of(tooFewScores));
         Assert.Empty(RiteTags.Of(None));
     }

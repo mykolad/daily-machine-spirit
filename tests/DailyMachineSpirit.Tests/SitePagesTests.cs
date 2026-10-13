@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Pages;
+using DailyMachineSpirit.Functions.Tags;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -128,7 +129,8 @@ public sealed class SitePagesTests : IAsyncLifetime
         Ok(await Repository.SaveScores(Day,
             new RiteSimilarity { ScoresGeneratorVersion = "jev/q1", Scores = [1f, 0f], CreatedAtUtc = DateTime.UtcNow },
             CancellationToken.None));
-        var pages = new SitePages(new RitesWithoutScores(Repository), time, NullLogger<SitePages>.Instance);
+        var failing = new RitesWithoutScores(Repository);
+        var pages = new SitePages(failing, new TagIndex(failing, time), time, NullLogger<SitePages>.Instance);
 
         var page = await Read(context => pages.Rite(context.Request, "2", CancellationToken.None));
 
@@ -270,9 +272,11 @@ public sealed class SitePagesTests : IAsyncLifetime
     [InlineData("no-such-tag")]
     public async Task Tag_ThatIsntOne_IsTheNotFoundPage(string key)
     {
-        var (status, _) = await Tagged(key, "");
+        var (status, html) = await Tagged(key, "");
 
         Assert.Equal(StatusCodes.Status404NotFound, status);
+        Assert.Contains("<h1>No such subject.</h1>", html);
+        Assert.Contains($"No rite is filed under “{key}”.", html);
     }
 
     [Fact]
@@ -334,10 +338,8 @@ public sealed class SitePagesTests : IAsyncLifetime
     [Fact]
     public async Task EveryPage_WhenTheDataCantBeRead_FailsWith503_AndOffersToTryAgain()
     {
-        var pages = new SitePages(
-            new RiteRepository(cosmos.Container.Database.GetContainer("no-such-container"), NullLogger<RiteRepository>.Instance),
-            time,
-            NullLogger<SitePages>.Instance);
+        var missing = new RiteRepository(cosmos.Container.Database.GetContainer("no-such-container"), NullLogger<RiteRepository>.Instance);
+        var pages = new SitePages(missing, new TagIndex(missing, time), time, NullLogger<SitePages>.Instance);
 
         var today = await Read(context => pages.Today(context.Request, "", CancellationToken.None));
         var rite = await Read(context => pages.Rite(context.Request, "1", CancellationToken.None));
@@ -365,7 +367,7 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.DoesNotContain("<b>Bold</b>", page.Html);
     }
 
-    private SitePages Pages() => new(Repository, time, NullLogger<SitePages>.Instance);
+    private SitePages Pages() => new(Repository, new TagIndex(Repository, time), time, NullLogger<SitePages>.Instance);
 
     private RiteRepository Repository => new(cosmos.Container, NullLogger<RiteRepository>.Instance);
 

@@ -6,6 +6,7 @@ using DailyMachineSpirit.Functions.Generation.Judging;
 using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Scriptorium;
 using DailyMachineSpirit.Functions.Scriptorium.SignIn;
+using DailyMachineSpirit.Functions.Tags;
 using DailyMachineSpirit.Functions.Telemetry;
 using DailyMachineSpirit.Functions.Voters;
 using Microsoft.Azure.Cosmos;
@@ -57,6 +58,7 @@ builder.Services.AddSingleton(_ => CosmosClients.Create(cosmos));
 builder.Services.AddSingleton(services =>
     services.GetRequiredService<CosmosClient>().GetContainer(cosmos.Database, RiteRepository.ContainerName));
 builder.Services.AddSingleton<IRiteRepository, RiteRepository>();
+builder.Services.AddSingleton<TagIndex>();
 builder.Services.AddSingleton<IDraftRepository, DraftRepository>();
 builder.Services.AddSingleton<IScriptoriumRepository, ScriptoriumRepository>();
 builder.Services.AddSingleton<IVoteRepository, VoteRepository>();
