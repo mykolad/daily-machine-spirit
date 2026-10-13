@@ -83,8 +83,11 @@ builder.Services.Configure<VoterOptions>(builder.Configuration.GetSection(VoterO
 builder.Services.AddHttpClient<ISignInProvider, GitHubSignIn>(http => http.Timeout = TimeSpan.FromSeconds(10));
 builder.Services.AddSingleton<VoterSession>();
 
-// Cloudflare keeps the pages until they change; votes and publishing purge them (production only).
+// Cloudflare keeps the pages until they change; votes (batched, once a minute) and publishing purge them (production only).
 builder.Services.Configure<CloudflareOptions>(builder.Configuration.GetSection(CloudflareOptions.SectionName));
-builder.Services.AddHttpClient<IPageCache, CloudflarePageCache>(http => http.Timeout = TimeSpan.FromSeconds(10));
+builder.Services.AddHttpClient(CloudflarePageCache.HttpClientName, http => http.Timeout = TimeSpan.FromSeconds(10));
+builder.Services.AddSingleton<IPageCache, CloudflarePageCache>();
+builder.Services.AddSingleton<PurgeBatcher>();
+builder.Services.AddHostedService(services => services.GetRequiredService<PurgeBatcher>());
 
 builder.Build().Run();

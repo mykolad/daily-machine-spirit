@@ -33,15 +33,15 @@ public sealed class VotesFunction
 
     private readonly IVoteRepository votes;
     private readonly VoterSession session;
-    private readonly IPageCache pages;
+    private readonly PurgeBatcher purges;
     private readonly TimeProvider time;
     private readonly ILogger<VotesFunction> logger;
 
-    public VotesFunction(IVoteRepository votes, VoterSession session, IPageCache pages, TimeProvider time, ILogger<VotesFunction> logger)
+    public VotesFunction(IVoteRepository votes, VoterSession session, PurgeBatcher purges, TimeProvider time, ILogger<VotesFunction> logger)
     {
         this.votes = votes;
         this.session = session;
-        this.pages = pages;
+        this.purges = purges;
         this.time = time;
         this.logger = logger;
     }
@@ -83,8 +83,7 @@ public sealed class VotesFunction
         var countedAt = time.GetUtcNow().ToUnixTimeMilliseconds();
         if (saved.Exists(counts => counts.IsSome))
         {
-            // Not the request's token: a reader who leaves mid-vote has still changed the pages everyone else sees.
-            await pages.Purge(Paths.ShowingVotesOf(number), CancellationToken.None);
+            purges.Add(Paths.ShowingVotesOf(number));
         }
         return saved.Match(
             Right: counts => counts.Match<IActionResult>(

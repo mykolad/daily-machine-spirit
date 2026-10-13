@@ -93,5 +93,5 @@ public sealed class CloudflarePageCacheTests : IDisposable
     private static CloudflareOptions Configured() => new() { SiteUrl = "https://example.test/", ZoneId = "zone-id", ApiToken = "purge-token" };
 
     private CloudflarePageCache Cache(CloudflareOptions options)
-        => new(new HttpClient(cloudflare), Options.Create(options), probe.Metrics, NullLogger<CloudflarePageCache>.Instance);
+        => new(cloudflare, Options.Create(options), probe.Metrics, NullLogger<CloudflarePageCache>.Instance);
 }

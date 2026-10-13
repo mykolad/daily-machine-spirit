@@ -3,13 +3,15 @@ using System.Net;
 namespace DailyMachineSpirit.Tests;
 
 /// <summary>Cloudflare's API, answering every request one way (or failing to answer). Records every request.</summary>
-public sealed class FakeCloudflare : HttpMessageHandler
+public sealed class FakeCloudflare : HttpMessageHandler, IHttpClientFactory
 {
     public (HttpStatusCode Status, string Body) Answer { get; set; } = (HttpStatusCode.OK, """{"success":true,"errors":[],"messages":[],"result":{"id":"zone"}}""");
 
     public bool Unreachable { get; set; }
 
     public List<(HttpMethod Method, string Url, string Body, HttpRequestMessage Request)> Requests { get; } = [];
+
+    public HttpClient CreateClient(string name) => new(this, disposeHandler: false);
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {

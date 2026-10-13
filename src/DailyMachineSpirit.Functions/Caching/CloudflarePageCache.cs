@@ -15,14 +15,16 @@ namespace DailyMachineSpirit.Functions.Caching;
 /// </summary>
 public sealed class CloudflarePageCache : IPageCache
 {
-    private readonly HttpClient http;
+    public const string HttpClientName = "cloudflare-api";
+
+    private readonly IHttpClientFactory httpClients;
     private readonly IOptions<CloudflareOptions> options;
     private readonly SiteMetrics metrics;
     private readonly ILogger<CloudflarePageCache> logger;
 
-    public CloudflarePageCache(HttpClient http, IOptions<CloudflareOptions> options, SiteMetrics metrics, ILogger<CloudflarePageCache> logger)
+    public CloudflarePageCache(IHttpClientFactory httpClients, IOptions<CloudflareOptions> options, SiteMetrics metrics, ILogger<CloudflarePageCache> logger)
     {
-        this.http = http;
+        this.httpClients = httpClients;
         this.options = options;
         this.metrics = metrics;
         this.logger = logger;
@@ -44,7 +46,7 @@ public sealed class CloudflarePageCache : IPageCache
                 Content = JsonContent.Create(new { files = paths.Select(path => site + path).ToList() }),
             };
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cloudflare.ApiToken);
-            using var response = await http.SendAsync(request, cancellationToken);
+            using var response = await httpClients.CreateClient(HttpClientName).SendAsync(request, cancellationToken);
             var answer = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
             var succeeded = response.IsSuccessStatusCode
                 && answer.TryGetProperty("success", out var success) && success.ValueKind == JsonValueKind.True;

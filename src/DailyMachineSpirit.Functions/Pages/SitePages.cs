@@ -58,7 +58,8 @@ public sealed class SitePages
             return Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(id));
         }
 
-        // Taken before the counts are read: a vote saved later can't be on the page, which the script needs to know.
+        // Taken before the counts are read, so it errs toward the voter: for a vote saved during the read, the script shows
+        // that vote's answer, which has the vote, rather than counts that might not.
         var now = time.GetUtcNow();
         var found = (await rites.GetByNumbers([number], cancellationToken)).Map(matches => matches.HeadOrNone());
         return await found.Match<Task<IActionResult>>(

@@ -4,6 +4,7 @@ using System.Text.Json.Nodes;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Api;
+using DailyMachineSpirit.Functions.Caching;
 using DailyMachineSpirit.Functions.Voters;
 using LanguageExt;
 using Microsoft.AspNetCore.Http;
@@ -32,6 +33,12 @@ public sealed class VotesTests : IAsyncLifetime
             SessionSecret = "session-secret-of-at-least-32-characters",
         }),
         TimeProvider.System);
+    private readonly PurgeBatcher purges;
+
+    public VotesTests()
+    {
+        purges = new PurgeBatcher(pages, time);
+    }
 
     public Task InitializeAsync() => cosmos.InitializeAsync();
 
@@ -177,7 +184,7 @@ public sealed class VotesTests : IAsyncLifetime
 
         await Post(Function(), 1, """{"vote":"blessed"}""", "application/json", SignedIn());
 
-        Assert.Equal(["/", "/r/1"], Assert.Single(pages.Purges));
+        Assert.Equal(["/", "/r/1"], Assert.Single(await Purged()).Order());
     }
 
     [Fact]
@@ -240,7 +247,7 @@ public sealed class VotesTests : IAsyncLifetime
         var (status, _) = await Post(Function(), 9, """{"vote":"heresy"}""", "application/json", SignedIn());
 
         Assert.Equal(StatusCodes.Status404NotFound, status);
-        Assert.Empty(pages.Purges);
+        Assert.Empty(await Purged());
     }
 
     [Fact]
@@ -249,7 +256,7 @@ public sealed class VotesTests : IAsyncLifetime
         var (status, _) = await Post(MissingData(), 1, """{"vote":"heresy"}""", "application/json", SignedIn());
 
         Assert.Equal(StatusCodes.Status503ServiceUnavailable, status);
-        Assert.Empty(pages.Purges);
+        Assert.Empty(await Purged());
     }
 
     [Fact]
@@ -283,10 +290,17 @@ public sealed class VotesTests : IAsyncLifetime
 
     private VoteRepository Repository => new(cosmos.Container);
 
-    private VotesFunction Function() => new(Repository, session, pages, time, NullLogger<VotesFunction>.Instance);
+    // Whatever the votes left waiting for the batch, purged.
+    private async Task<List<IReadOnlyCollection<string>>> Purged()
+    {
+        await purges.StopAsync(CancellationToken.None);
+        return pages.Purges;
+    }
+
+    private VotesFunction Function() => new(Repository, session, purges, time, NullLogger<VotesFunction>.Instance);
 
     private VotesFunction MissingData()
-        => new(new VoteRepository(cosmos.Container.Database.GetContainer("no-such-container")), session, pages, time, NullLogger<VotesFunction>.Instance);
+        => new(new VoteRepository(cosmos.Container.Database.GetContainer("no-such-container")), session, purges, time, NullLogger<VotesFunction>.Instance);
 
     private string SignedIn() => $"{VoterSession.CookieName}={session.Issue(session.VoterKeyFor("github", "583231"))}";
 

@@ -77,10 +77,10 @@ public static class Script
               b.setAttribute('aria-pressed', String(b.dataset.reaction === vote));
               b.querySelector('.count').textContent = shown[b.dataset.reaction].toLocaleString('en');
             });
-            // Cloudflare keeps the page until a vote purges it, but the reader's browser may still have the copy from
-            // before their own vote (for a minute), or a purge may have failed. So the browser keeps the counts each vote
-            // answered, with when the server counted them, and shows them over a page whose counts were read earlier. Kept
-            // for two hours, past the hour Cloudflare keeps a page at most.
+            // Cloudflare keeps the page until votes purge it, up to a minute after them (batched), and the reader's browser
+            // keeps its copy a minute too, so a refresh may show the page from before their own vote. So the browser keeps
+            // the counts each vote answered, with when the server counted them, and shows them over a page whose counts were
+            // read earlier. Kept for two hours, past the hour Cloudflare keeps a page at most.
             const votesKey = 'dms-votes-v1';
             const recalled = () => {
               try {
@@ -93,6 +93,8 @@ public static class Script
               if (typeof answer.countedAt !== 'number') return;
               try {
                 const all = Object.fromEntries(Object.entries(recalled()).filter(([, entry]) => entry && Date.now() - entry.countedAt < 7200000));
+                // Another tab's vote may have been counted later and answered sooner: the later count stays.
+                if (all[rite] && all[rite].countedAt > answer.countedAt) return;
                 all[rite] = { blessed: answer.blessed, heresy: answer.heresy, countedAt: answer.countedAt };
                 localStorage.setItem(votesKey, JSON.stringify(all));
               } catch { }

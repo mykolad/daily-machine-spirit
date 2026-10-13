@@ -122,9 +122,10 @@ observability/                    — the Grafana dashboard, and what the app's 
     topped up with the newest others when there aren't enough scored ones. If it fails, the page goes without it.
   - **Cached until they change** (#37): browsers keep a page a minute, and Cloudflare keeps Today and a rite's page an
     hour (`s-maxage`, `EdgeLifetime.UntilPurged`), so their requests rarely reach the app. Whatever changes them purges
-    them (`IPageCache`, `CloudflarePageCache`): a saved vote purges its rite's page and Today
-    (`Paths.ShowingVotesOf`), a new rite purges Today. The archive, which no purge can find, stays a minute. A purge
-    never fails the change: it's logged and counted (`dms.pages.purges`), and the page refreshes within the hour.
+    them (`IPageCache`, `CloudflarePageCache`): a saved vote adds its rite's page and Today
+    (`Paths.ShowingVotesOf`) to the minute's batch (`PurgeBatcher`), so a vote never waits for Cloudflare and a page is
+    purged at most once a minute; a new rite purges Today at once. The archive, which no purge can find, stays a minute.
+    A purge never fails the change: it's logged and counted (`dms.pages.purges`), and the page refreshes within the hour.
     Settings: `Cloudflare:ZoneId`, `:SiteUrl`, `:ApiToken` (a token that may only purge the zone); without them
     (staging, a local run) nothing is purged.
   - **The voter's own counts survive a cached page:** the vote answers with the counts and when they were counted
