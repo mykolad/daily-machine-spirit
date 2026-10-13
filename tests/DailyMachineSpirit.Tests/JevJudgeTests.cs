@@ -3,6 +3,7 @@ using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Functions.Generation.Judging;
 using Microsoft.Extensions.Time.Testing;
 using static DailyMachineSpirit.Tests.Expect;
+using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Tests;
 
@@ -38,6 +39,16 @@ public class JevJudgeTests
         Assert.Equal(0.25f, acts[JevQuestions.Acts.ToList().FindIndex(act => act.Key == "waiting")]);
         Assert.Equal("jev-1.13.0/q1", similarity.ScoresGeneratorVersion);
         Assert.Equal(time.GetUtcNow().UtcDateTime, similarity.CreatedAtUtc);
+    }
+
+    [Fact]
+    public async Task Judge_TagsTheDraft_FromItsTopics()
+    {
+        var jev = FakeJev.AnsweringBuildsAndRepetition();
+
+        var judged = Ok(await jev.NewJudge(time, FakeJev.ApiKey).Judge(Draft, CancellationToken.None));
+
+        Assert.Equal(Some(new[] { "builds" }), judged.Tags);
     }
 
     [Fact]

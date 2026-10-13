@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Pages;
@@ -59,6 +60,7 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.Contains("""<span>Blessed</span><span class="count">0</span>""", html);
         Assert.DoesNotContain("Litany of the Clean Cache", html);
         Assert.DoesNotContain("Copy text", html);
+        Assert.DoesNotContain("Filed under", html);
     }
 
     [Fact]
@@ -126,7 +128,8 @@ public sealed class SitePagesTests : IAsyncLifetime
         Ok(await Repository.SaveScores(Day,
             new RiteSimilarity { ScoresGeneratorVersion = "jev/q1", Scores = [1f, 0f], CreatedAtUtc = DateTime.UtcNow },
             CancellationToken.None));
-        var pages = new SitePages(new RitesWithoutScores(Repository), time, NullLogger<SitePages>.Instance);
+        var failing = new RitesWithoutScores(Repository);
+        var pages = new SitePages(failing, time, NullLogger<SitePages>.Instance);
 
         var page = await Read(context => pages.Rite(context.Request, "2", CancellationToken.None));
 
@@ -209,18 +212,88 @@ public sealed class SitePagesTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ARitesTags_LinkToTheirPages_FromToday_ItsOwnPage_AndTheArchive()
+    {
+        await Add(Day.AddDays(-1), "Litany of the Clean Cache");
+        await Add(Day, "The Rite of Re-Run");
+        await Tag(Day.AddDays(-1), "caches", "restarts");
+        await Tag(Day, "caches", "restarts");
+
+        var (_, today) = await Today("");
+        var (_, own) = await Rite("2");
+        var (_, archive) = await Archive("");
+
+        const string links = """<a class="tag" href="/tags/caches">Caches</a> <a class="tag" href="/tags/restarts">Restarts</a>""";
+        Assert.Contains($"""<p class="tags">Filed under {links}</p>""", today);
+        Assert.Contains($"""<p class="tags">Filed under {links}</p>""", own);
+        Assert.Contains($"""<span class="row-tags"><span class="sr-only">Filed under </span>{links}</span>""", archive);
+    }
+
+    [Fact]
+    public async Task Tag_ListsItsRites_NewestFirst_TodaysToo_APageAtATime()
+    {
+        for (var i = 1; i <= 9; i++)
+        {
+            await Add(Day.AddDays(i - 9), $"Rite {i}");
+            await Tag(Day.AddDays(i - 9), i == 5 ? "builds" : "caches");
+        }
+
+        var (status, first) = await Tagged("caches", "");
+        var (_, second) = await Tagged("caches", "3");
+        var (_, beyond) = await Tagged("caches", "1");
+
+        Assert.Equal(StatusCodes.Status200OK, status);
+        Assert.Contains("""<h1 class="archive-title">Filed under Caches</h1>""", first);
+        Assert.Contains("Rites about caches, temporary files, clean installs, leftover state, newest first.", first);
+        Assert.Equal(["Rite 9", "Rite 8", "Rite 7", "Rite 6", "Rite 4", "Rite 3"], Titles(first));
+        Assert.Contains("""<a class="button button-outline" href="/tags/caches?before=3">Load older rites</a>""", first);
+        Assert.Equal(["Rite 2", "Rite 1"], Titles(second));
+        Assert.Contains("No earlier rite is filed under Caches.", second);
+        Assert.Empty(Titles(beyond));
+        Assert.Contains("No earlier rite is filed under Caches.", beyond);
+    }
+
+    [Fact]
+    public async Task Tag_WithoutRites_SaysSo_AndOffersTheOtherSubjects()
+    {
+        await Add(Day, "The Rite of Re-Run");
+        await Tag(Day, "caches");
+
+        var (status, html) = await Tagged("security", "");
+
+        Assert.Equal(StatusCodes.Status200OK, status);
+        Assert.Empty(Titles(html));
+        Assert.Contains("No rite is filed under Security yet.", html);
+        Assert.Contains("""<a class="tag" href="/tags/caches">Caches</a>""", html);
+        Assert.DoesNotContain("""href="/tags/security""", html);
+    }
+
+    [Theory]
+    [InlineData("other")]
+    [InlineData("Caches")]
+    [InlineData("no-such-tag")]
+    public async Task Tag_ThatIsntOne_IsTheNotFoundPage(string key)
+    {
+        var (status, html) = await Tagged(key, "");
+
+        Assert.Equal(StatusCodes.Status404NotFound, status);
+        Assert.Contains("<h1>No such subject.</h1>", html);
+        Assert.Contains($"No rite is filed under “{key}”.", html);
+    }
+
+    [Fact]
     public async Task EveryPage_WhenTheDataCantBeRead_FailsWith503_AndOffersToTryAgain()
     {
-        var pages = new SitePages(
-            new RiteRepository(cosmos.Container.Database.GetContainer("no-such-container"), NullLogger<RiteRepository>.Instance),
-            time,
-            NullLogger<SitePages>.Instance);
+        var missing = new RiteRepository(cosmos.Container.Database.GetContainer("no-such-container"), NullLogger<RiteRepository>.Instance);
+        var pages = new SitePages(missing, time, NullLogger<SitePages>.Instance);
 
         var today = await Read(context => pages.Today(context.Request, "", CancellationToken.None));
         var rite = await Read(context => pages.Rite(context.Request, "1", CancellationToken.None));
         var archive = await Read(context => pages.Archive(context.Request, CancellationToken.None), "/archive", "?before=4");
 
-        Assert.All([today, rite, archive], page => Assert.Equal(StatusCodes.Status503ServiceUnavailable, page.Status));
+        var tag = await Read(context => pages.Tag(context.Request, "caches", CancellationToken.None), "/tags/caches", "");
+
+        Assert.All([today, rite, archive, tag], page => Assert.Equal(StatusCodes.Status503ServiceUnavailable, page.Status));
         Assert.Contains("The rite has failed.", today.Html);
         Assert.Contains("""href="/archive?before=4">""", archive.Html);
         Assert.Equal("no-store", archive.CacheControl);
@@ -238,9 +311,10 @@ public sealed class SitePagesTests : IAsyncLifetime
     }
 
     // Votes and publishing purge Today and a rite's page from Cloudflare, so it can keep them an hour; nothing purges the
-    // archive, or an address with a query string, which Cloudflare caches apart. Browsers keep each a minute.
+    // archive, a tag's page, or an address with a query string, which Cloudflare caches apart. Browsers keep each a
+    // minute.
     [Fact]
-    public async Task TodayAndARitesPage_StayAtTheEdgeUntilPurged_TheArchiveAndQueriesBriefly()
+    public async Task TodayAndARitesPage_StayAtTheEdgeUntilPurged_TheArchiveTagsAndQueriesBriefly()
     {
         var slumbering = await Read(context => Pages().Today(context.Request, "", CancellationToken.None));
         await Add(Day, "Litany of the Clean Cache");
@@ -249,9 +323,10 @@ public sealed class SitePagesTests : IAsyncLifetime
         var rite = await Read(context => Pages().Rite(context.Request, "1", CancellationToken.None));
         var archive = await Read(context => Pages().Archive(context.Request, CancellationToken.None), "/archive", "");
         var withQuery = await Read(context => Pages().Today(context.Request, "", CancellationToken.None), "/", "?utm_source=feed");
+        var tag = await Read(context => Pages().Tag(context.Request, "caches", CancellationToken.None), "/tags/caches", "");
 
         Assert.All([slumbering, today, rite], page => Assert.Equal("public, max-age=60, s-maxage=3600", page.CacheControl));
-        Assert.All([archive, withQuery], page => Assert.Equal("public, max-age=60", page.CacheControl));
+        Assert.All([archive, tag, withQuery], page => Assert.Equal("public, max-age=60", page.CacheControl));
     }
 
     // The script shows the counts a vote answered over a page whose counts were read before that vote.
@@ -289,6 +364,13 @@ public sealed class SitePagesTests : IAsyncLifetime
         return (page.Status, page.Html);
     }
 
+    private async Task<(int Status, string Html)> Tagged(string key, string before)
+    {
+        var query = before.Length == 0 ? "" : $"?before={before}";
+        var page = await Read(context => Pages().Tag(context.Request, key, CancellationToken.None), $"/tags/{key}", query);
+        return (page.Status, page.Html);
+    }
+
     private static Task<(int Status, string Html, string CacheControl)> Read(Func<HttpContext, Task<IActionResult>> serve)
         => Read(serve, "/", "");
 
@@ -308,7 +390,10 @@ public sealed class SitePagesTests : IAsyncLifetime
 
     // The archive rows' titles, in order.
     private static List<string> Titles(string html)
-        => html.Split("""<span class="row-title">""").Skip(1).Select(part => part[..part.IndexOf("</span>", StringComparison.Ordinal)]).ToList();
+        => Regex.Matches(html, """<a class="row-title" href="/r/\d+">(.*?)</a>""").Select(match => match.Groups[1].Value).ToList();
+
+    private async Task Tag(DateOnly day, params string[] tags)
+        => Ok(await Repository.SaveTags(day, tags, CancellationToken.None));
 
     private async Task Add(DateOnly day, string title)
         => Ok(await Repository.Add(new Rite

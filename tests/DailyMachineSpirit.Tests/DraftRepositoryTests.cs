@@ -25,6 +25,7 @@ public sealed class DraftRepositoryTests : IAsyncLifetime
         var draft = MakeDraft("The Rite of Re-Run") with
         {
             Similarity = new RiteSimilarity { ScoresGeneratorVersion = "jev/q1", Scores = [0.25f, 0.75f], CreatedAtUtc = judgedAt },
+            Tags = new[] { "restarts" },
             Augury = new Augury { Quality = 0.8f, JudgedBy = "jev/quality-q1", JudgedAtUtc = judgedAt.ToLocalTime() },
         };
 
@@ -40,6 +41,7 @@ public sealed class DraftRepositoryTests : IAsyncLifetime
         Assert.Equal(Some(judgedAt), saved.Augury.Map(augury => augury.JudgedAtUtc));
         Assert.Equal(Some(DateTimeKind.Utc), saved.Augury.Map(augury => augury.JudgedAtUtc.Kind));
         Assert.Equal([0.25f, 0.75f], saved.Similarity.Map(similarity => similarity.Scores).IfNone([]));
+        Assert.Equal(Some(new[] { "restarts" }), saved.Tags);
         Assert.True(saved.PublishedOnUtc.IsNone);
     }
 
@@ -48,7 +50,7 @@ public sealed class DraftRepositoryTests : IAsyncLifetime
     {
         Ok(await Rites.Add(MakeDraft("Yesterday's").ToRite(Day.AddDays(-1)), CancellationToken.None));
         var scores = new RiteSimilarity { ScoresGeneratorVersion = "jev/q1", Scores = [1f], CreatedAtUtc = DateTime.UtcNow };
-        var draft = Ok(await Drafts.Add(MakeDraft("Today's") with { Similarity = scores }, CancellationToken.None));
+        var draft = Ok(await Drafts.Add(MakeDraft("Today's") with { Similarity = scores, Tags = new[] { "caches" } }, CancellationToken.None));
 
         var rite = Ok(await Rites.Publish(draft.Id, Day, CancellationToken.None));
 
@@ -58,7 +60,26 @@ public sealed class DraftRepositoryTests : IAsyncLifetime
         Assert.Equal(RiteKind.Prayer, saved.Writing.Kind);
         Assert.Equal(draft.Writing.GeneratedByModel, saved.Writing.GeneratedByModel);
         Assert.Equal([1f], saved.Similarity.Map(similarity => similarity.Scores).IfNone([]));
+        Assert.Equal(Some(new[] { "caches" }), saved.Tags);
         Assert.Empty(Ok(await Drafts.GetWaiting(CancellationToken.None)));
+    }
+
+    // Whatever their state: a published draft's tags are as useful to the Augury's lessons as a waiting one's.
+    [Fact]
+    public async Task GetUntagged_FindsScoredDraftsWithoutTags_UntilTheirTagsAreSaved()
+    {
+        var scores = new RiteSimilarity { ScoresGeneratorVersion = "jev/q1", Scores = [1f], CreatedAtUtc = DateTime.UtcNow };
+        var untagged = Ok(await Drafts.Add(MakeDraft("Scored") with { Similarity = scores }, CancellationToken.None));
+        Ok(await Drafts.Add(MakeDraft("Unscored"), CancellationToken.None));
+        Ok(await Drafts.Add(MakeDraft("Tagged") with { Similarity = scores, Tags = new string[0] }, CancellationToken.None));
+
+        var found = Ok(await Drafts.GetUntagged(CancellationToken.None));
+        Ok(await Drafts.SaveTags(untagged.Id, ["ai"], CancellationToken.None));
+        var afterwards = Ok(await Drafts.GetUntagged(CancellationToken.None));
+
+        Assert.Equal([untagged.Id], found.Select(draft => draft.Id));
+        Assert.Empty(afterwards);
+        Assert.Equal(Some(new[] { "ai" }), Ok(await Drafts.Get(untagged.Id, CancellationToken.None)).Bind(draft => draft.Tags));
     }
 
     [Fact]

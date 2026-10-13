@@ -1,5 +1,6 @@
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
+using DailyMachineSpirit.Functions.Tags;
 using LanguageExt;
 using LanguageExt.Common;
 using Microsoft.AspNetCore.Http;
@@ -11,8 +12,8 @@ using static LanguageExt.Prelude;
 namespace DailyMachineSpirit.Functions.Pages;
 
 /// <summary>
-/// The public pages, rendered on the server: Today (<c>/</c>), the archive (<c>/archive</c>) and a rite's own page
-/// (<c>/r/&lt;number&gt;</c>). Any other address gets the 404 page.
+/// The public pages, rendered on the server: Today (<c>/</c>), the archive (<c>/archive</c>), a rite's own page
+/// (<c>/r/&lt;number&gt;</c>) and a tag's (<c>/tags/&lt;key&gt;</c>). Any other address gets the 404 page.
 /// </summary>
 public sealed class SitePages
 {
@@ -87,9 +88,35 @@ public sealed class SitePages
         return page.Match(
             Right: found =>
             {
-                var shown = found.Take(ArchivePage.PageSize).ToList();
-                var olderThan = found.Count > ArchivePage.PageSize ? Some(shown[^1].Number) : Option<int>.None;
+                var (shown, olderThan) = OnePage(found);
                 return Page(request, StatusCodes.Status200OK, ArchivePage.Render(shown, olderThan));
+            },
+            Left: error => Failed(request, error));
+    }
+
+    /// <summary>
+    /// A tag's rites, paged like the archive, Today's rite included: one query for the page, as the rites' tags are
+    /// stored with them.
+    /// </summary>
+    [Function("Tag")]
+    public Task<IActionResult> Tag(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "tags/{key}")] HttpRequest request,
+        string key,
+        CancellationToken cancellationToken)
+        => RiteTags.Find(key).Match(
+            Some: tag => TaggedRites(request, tag, cancellationToken),
+            None: () => Task.FromResult<IActionResult>(Page(request, StatusCodes.Status404NotFound, StatePages.NoSuchTag(key))));
+
+    // Like the archive, a page and one rite more, to know whether there are older ones.
+    private async Task<IActionResult> TaggedRites(HttpRequest request, Tag tag, CancellationToken cancellationToken)
+    {
+        var before = int.TryParse(request.Query["before"], out var number) && number > 0 ? number : int.MaxValue;
+        var page = await rites.GetTagged(tag.Key, before, ArchivePage.PageSize + 1, cancellationToken);
+        return page.Match(
+            Right: found =>
+            {
+                var (shown, olderThan) = OnePage(found);
+                return Page(request, StatusCodes.Status200OK, TagPage.Render(tag, shown, olderThan, isFirstPage: before == int.MaxValue));
             },
             Left: error => Failed(request, error));
     }
@@ -117,6 +144,14 @@ public sealed class SitePages
                 logger.LogWarning(error.ToException(), "Rite NO. {Number} is shown without More rites: {Reason}", rite.Number, error.Message);
                 return [];
             });
+    }
+
+    // Newest first, read one beyond a page: the extra one says there are older ones, and the next page starts below the
+    // last one shown.
+    private static (List<Rite> Shown, Option<int> OlderThan) OnePage(IReadOnlyList<Rite> newestFirst)
+    {
+        var shown = newestFirst.Take(ArchivePage.PageSize).ToList();
+        return (shown, newestFirst.Count > ArchivePage.PageSize ? Some(shown[^1].Number) : Option<int>.None);
     }
 
     private IActionResult Failed(HttpRequest request, Error error)
