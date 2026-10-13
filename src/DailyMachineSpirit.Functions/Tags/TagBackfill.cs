@@ -32,11 +32,13 @@ public sealed class TagBackfill : BackgroundService
     /// <summary>How many rites and drafts it tagged.</summary>
     public async Task<Either<Error, int>> Run(CancellationToken cancellationToken)
     {
-        var taggedRites = await rites.GetUntagged(cancellationToken)
-            .BindAsync(untagged => TagEach(untagged, rite => rite.Similarity, (rite, tags) => rites.SaveTags(rite.PublishedOnUtc, tags, cancellationToken)));
+        // Drafts first: a draft published meanwhile then takes its tags to its rite, as publishing reads the stored
+        // draft, and a rite published before its draft was tagged is still untagged when the rites are looked at.
         var taggedDrafts = await drafts.GetUntagged(cancellationToken)
             .BindAsync(untagged => TagEach(untagged, draft => draft.Similarity, (draft, tags) => drafts.SaveTags(draft.Id, tags, cancellationToken)));
-        return taggedRites.Bind(fromRites => taggedDrafts.Map(fromDrafts => fromRites + fromDrafts));
+        var taggedRites = await rites.GetUntagged(cancellationToken)
+            .BindAsync(untagged => TagEach(untagged, rite => rite.Similarity, (rite, tags) => rites.SaveTags(rite.PublishedOnUtc, tags, cancellationToken)));
+        return taggedDrafts.Bind(fromDrafts => taggedRites.Map(fromRites => fromDrafts + fromRites));
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
