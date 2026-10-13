@@ -26,8 +26,9 @@ tests/DailyMachineSpirit.Tests    — xUnit tests (the repository tests run agai
 tests/DailyMachineSpirit.SmokeTests — xUnit tests of a deployed app over HTTP (each deployment runs them)
 tests/load                        — k6 load tests of the public pages, run by hand against staging (its README)
 tools/coverage.ps1                — tests + coverage report + the coverage gate (Build and Test runs it)
+tools/grafana-alerts.ps1          — puts the alert rules into Grafana Cloud (observability/README.md)
 infra/                            — Bicep for all of Azure (main.bicep); infra/README.md covers what Bicep can't do
-observability/                    — the Grafana dashboard, and what the app's metrics measure
+observability/                    — the Grafana dashboard and alerts, and what the app's metrics measure
 ```
 
 ## Code style rules

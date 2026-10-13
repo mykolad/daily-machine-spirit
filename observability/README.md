@@ -10,6 +10,38 @@ Grafana: **Dashboards → New → Import**, upload the file, and pick the stack'
 its uid, so importing a newer version replaces the old one. Change it in Grafana if you like, then export it (Share →
 Export, without "Export for sharing externally") back over this file, so the repository stays the truth.
 
+## The alerts
+
+Production only (the service `machinespirit-app`), so staging's experiments never wake anyone. Each one's description says
+what to look at.
+
+| Alert | Fires when |
+|---|---|
+| **No rite today** | Today doesn't show today's rite at 02:00 UTC, after the timer and its retries. A workflow (**Check Today's Rite**), not Grafana: it reads the page readers get, through Cloudflare's cache, and opens an issue. Until production publishes daily (`publishesDaily` in `infra/resources.bicep`), it checks nothing. |
+| **Refills failing** | a backlog refill failed all three tries within an hour (its error logs) |
+| **Backlog ran empty** | publishing found no waiting draft more than once in a week (its warning logs) |
+| **Jev failing** | two or more drafts in a day couldn't be judged (the refiller's warning logs) |
+| **Server errors** | more than 5% of requests answered 5xx for ten minutes, over at least ten requests |
+| **No telemetry from production** | nothing for 26 hours: the midnight timer wakes the app every day, so silence means a broken export or a dead app |
+
+Rare events are counted from logs, not metrics: each process keeps its own counters, and the app's processes come and
+go with traffic, so a counter's first value in a process (often its only one, for something that happens once a day)
+is never seen as an increase. Each log line is an event of its own.
+
+The Grafana rules are `grafana/alerts.json`, one rule group, evaluated every five minutes, and they notify through the
+stack's default notification policy (the default contact point emails the stack's owner). To put them into Grafana:
+
+1. **Administration → Users and access → Service accounts → Add service account** (role **Editor**), then **Add service
+   account token**. Save the token to `$HOME\.machinespirit\grafana-alerts-token.txt`.
+2. Run `./tools/grafana-alerts.ps1 -GrafanaUrl https://<stack>.grafana.net`. It checks that production's telemetry
+   reaches the stack, then creates the **Daily Machine Spirit** folder if needed and replaces the group's rules. Running
+   it again changes nothing.
+
+The rules stay editable in Grafana (**Alerting → Alert rules**). After changing one there, run the script with `-Export`:
+it writes the group back over the file in the form the script reads, with `${prometheus}` and `${loki}` for the data
+sources' uids and without what the script and Grafana add (`folderUID`, `ruleGroup`, `orgID`, ids, timestamps).
+Grafana's own **More → Export** writes another format (file provisioning), which the script can't read.
+
 ## The metrics
 
 | Metric (as Prometheus names it) | Tags | What it measures |
