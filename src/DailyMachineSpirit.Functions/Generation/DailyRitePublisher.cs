@@ -3,6 +3,7 @@ using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Telemetry;
 using LanguageExt;
 using LanguageExt.Common;
+using Microsoft.Extensions.Logging;
 using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Functions.Generation;
@@ -19,6 +20,7 @@ public sealed class DailyRitePublisher
     private readonly BacklogRefiller refiller;
     private readonly TimeProvider time;
     private readonly SiteMetrics metrics;
+    private readonly ILogger<DailyRitePublisher> logger;
 
     public DailyRitePublisher(
         IRiteRepository rites,
@@ -26,7 +28,8 @@ public sealed class DailyRitePublisher
         IScriptoriumRepository scriptorium,
         BacklogRefiller refiller,
         TimeProvider time,
-        SiteMetrics metrics)
+        SiteMetrics metrics,
+        ILogger<DailyRitePublisher> logger)
     {
         this.rites = rites;
         this.drafts = drafts;
@@ -34,6 +37,7 @@ public sealed class DailyRitePublisher
         this.refiller = refiller;
         this.time = time;
         this.metrics = metrics;
+        this.logger = logger;
     }
 
     public async Task<Either<Error, PublishedRite>> PublishToday(CancellationToken cancellationToken)
@@ -69,7 +73,9 @@ public sealed class DailyRitePublisher
                 // again afterwards, since a refill running meanwhile may have saved a better draft.
                 None: () =>
                 {
-                    metrics.BacklogEmpty();
+                    // Logged, not counted: a counter's first value in a process that soon stops is easily lost, and this
+                    // happens about once a day at most (observability/README.md, "Backlog ran empty").
+                    logger.LogWarning("The backlog was empty: today's rite is written on the spot, unmoderated.");
                     return refiller.AddDraft([], cancellationToken)
                         .BindAsync(_ => TopOfTheCalendar(cancellationToken))
                         .BindAsync(again => again.ToEither(Error.New("The backlog is still empty after writing a draft.")));

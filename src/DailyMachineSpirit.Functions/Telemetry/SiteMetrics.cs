@@ -14,7 +14,6 @@ public sealed class SiteMetrics
     private readonly Histogram<double> invocations;
     private readonly Counter<long> answers;
     private readonly Counter<long> published;
-    private readonly Counter<long> emptyBacklogs;
     private readonly Counter<long> judging;
     private readonly Counter<long> refusals;
     private readonly Counter<long> signIns;
@@ -32,8 +31,6 @@ public sealed class SiteMetrics
         answers = meter.CreateCounter<long>("dms.generation.answers", "{answer}",
             "The models' answers when asked for a rite: accepted, refused (it broke a rule) or failed (no usable answer).");
         published = meter.CreateCounter<long>("dms.rites.published", "{rite}", "Rites published, by kind and model.");
-        emptyBacklogs = meter.CreateCounter<long>("dms.backlog.empty", "{time}",
-            "Times publishing found no waiting draft, and wrote the day's rite on the spot, unmoderated.");
         judging = meter.CreateCounter<long>("dms.judging.runs", "{run}",
             "Judging a new draft (its quality for the Augury, its scores for More rites): judged, failed or off.");
         refusals = meter.CreateCounter<long>("dms.scriptorium.refusals", "{request}",
@@ -49,8 +46,6 @@ public sealed class SiteMetrics
 
     public void Published(Rite rite)
         => published.Add(1, new("kind", rite.Writing.Kind.ToString().ToLowerInvariant()), new("model", rite.Writing.GeneratedByModel));
-
-    public void BacklogEmpty() => emptyBacklogs.Add(1);
 
     public void Judging(string outcome) => judging.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
 

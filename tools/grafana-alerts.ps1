@@ -31,12 +31,12 @@ $rulesPath = Join-Path $PSScriptRoot '..' 'observability' 'grafana' 'alerts.json
 $grafana = $GrafanaUrl.TrimEnd('/')
 $headers = @{ Authorization = "Bearer $((Get-Content -Path $TokenPath -Raw).Trim())" }
 
-# Grafana Cloud names the stack's Prometheus data source grafanacloud-<stack>-prom.
-$prometheus = Invoke-RestMethod -Uri "$grafana/api/datasources" -Headers $headers |
-    Where-Object { $_.type -eq 'prometheus' -and $_.name -like 'grafanacloud-*-prom' } |
-    Select-Object -First 1
-if (-not $prometheus) {
-    throw "No grafanacloud-*-prom data source in $grafana."
+# Grafana Cloud names the stack's data sources grafanacloud-<stack>-prom and grafanacloud-<stack>-logs.
+$dataSources = Invoke-RestMethod -Uri "$grafana/api/datasources" -Headers $headers
+$prometheus = $dataSources | Where-Object { $_.type -eq 'prometheus' -and $_.name -like 'grafanacloud-*-prom' } | Select-Object -First 1
+$loki = $dataSources | Where-Object { $_.type -eq 'loki' -and $_.name -like 'grafanacloud-*-logs' } | Select-Object -First 1
+if (-not $prometheus -or -not $loki) {
+    throw "The stack's grafanacloud-*-prom and grafanacloud-*-logs data sources aren't both in $grafana."
 }
 
 $query = [Uri]::EscapeDataString('count(last_over_time(target_info{job="machinespirit-app"}[1d]))')
@@ -58,7 +58,7 @@ catch {
     Write-Host "Created the folder $folderTitle."
 }
 
-$group = (Get-Content -Path $rulesPath -Raw).Replace('${prometheus}', $prometheus.uid) | ConvertFrom-Json
+$group = (Get-Content -Path $rulesPath -Raw).Replace('${prometheus}', $prometheus.uid).Replace('${loki}', $loki.uid) | ConvertFrom-Json
 foreach ($rule in $group.rules) {
     $rule | Add-Member -NotePropertyName folderUID -NotePropertyValue $folderUid
     $rule | Add-Member -NotePropertyName ruleGroup -NotePropertyValue $group.title
