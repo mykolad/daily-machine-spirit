@@ -21,8 +21,8 @@ param stagingAllowedIp string
 @description('GitHub\'s OIDC subject prefix for this repository (immutable format: owner and repository ids).')
 param githubSubjectPrefix string = 'repo:mykolad@2202717/daily-machine-spirit@1406418170'
 
-@description('Whether to deploy production too. On since production went live; off leaves production as it is.')
-param deployProduction bool = true
+@description('Whether to deploy production too. Off by default: a change goes to staging first, then to production with this set.')
+param deployProduction bool = false
 
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   name: '${prefix}-rg'

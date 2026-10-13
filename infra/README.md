@@ -4,8 +4,9 @@ Everything the site runs on in Azure is in Bicep: `main.bicep` creates the resou
 Central) and everything in it. This page covers the few things Bicep can't do: the first deployment, the secret values,
 and what lives outside Azure.
 
-Both environments are deployed (`deployProduction`, true by default since production went live with #50). Production's
-daily publishing is held until launch (`publishesDaily` in `resources.bicep`).
+Every infrastructure change goes to staging first: production takes it only with `deployProduction=true` (false by
+default). Production is live since #50; its daily publishing is held until launch (`publishesDaily` in
+`resources.bicep`).
 
 | Resource | Name | Notes |
 |---|---|---|
@@ -46,13 +47,13 @@ az deployment sub create --location swedencentral --name machinespirit --templat
 
 The Cosmos DB free tier can only be chosen when the account is created, and a subscription gets one free account.
 
-`deployProduction=false` deploys staging alone and leaves production as it is: nothing there is deleted, but nothing is
-updated either, so a change meant for production wouldn't reach it.
+Add `deployProduction=true` to create production too (it was, with #50). A deployment without it leaves production as
+it is: nothing there is deleted, but nothing is updated either.
 
 ## Later changes
 
 Into the existing group, with `resources.bicep`: that's all the infrastructure identity (Owner of this group only) can do,
-so a deploy workflow will use the same command. Preview first with `what-if`:
+so a deploy workflow will use the same command. Staging first, previewed with `what-if`:
 
 ```powershell
 $owner = az ad signed-in-user show --query id -o tsv
@@ -63,12 +64,17 @@ az deployment group create -g machinespirit-rg --name machinespirit --template-f
   --parameters ownerPrincipalId=$owner stagingAllowedIp=$ip
 ```
 
+Then, once staging works, production: the same two commands with `deployProduction=true` added to `--parameters`. Its
+`what-if` lists production's resources; without the flag they're marked ignored (`*`), and a change meant for
+production doesn't reach it. A change to production alone (its domain, its Cloudflare zone) needs the second step only.
+
 (In bash, the same with `\` line breaks and `"$owner"`, `"$ip"`.) When your IP changes, deploy again with the new one.
 
 ## Secrets
 
 Bicep creates the vaults but never their values. Put each value in a file outside the repository and set it from there,
 so it stays out of your shell history. `-o none` matters: without it, `az keyvault secret set` prints the value back.
+Production's vault exists only from launch (`deployProduction`); set its secrets then.
 
 | Secret | Used for | The app reads it from |
 |---|---|---|
@@ -204,8 +210,11 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
     **Eligible for cache**, Edge TTL **Use cache-control header if present, bypass cache if not**. The app's
     `Cache-Control` decides the rest: Today and a rite's page an hour at the edge (`s-maxage`), purged on change, the
     archive a minute, errors and the API never. `cf-cache-status: HIT` on a second request for `/` shows it works.
-  - **A rate limit rule** (Security → WAF → Rate limiting rules): POST requests to `/api/rites/*/vote`, counted by
-    IP, 20 in 10 seconds, blocked for 10 seconds.
+  - **A rate limit rule** (Security → WAF → Rate limiting rules, set up 2026-10-13) for votes and searches (each
+    search reads every rite), counted by IP, 20 in 10 seconds, blocked for 10 seconds. The Free plan has one such rule,
+    so every limited path shares it:
+    `(http.request.uri.path wildcard r"/api/rites/*/vote") or (http.request.uri.path eq "/search")`. With `eq`, the
+    `*` would be taken literally, and match nothing.
 
   Production admits only Cloudflare's address ranges (`cloudflare-ips.json`), so its cache and rate limit can't be gone
   around. **Check Cloudflare's Addresses** (a weekly workflow) opens an issue when Cloudflare publishes different

@@ -10,9 +10,9 @@ param ownerPrincipalId string
 @minLength(7)
 param stagingAllowedIp string
 param githubSubjectPrefix string = 'repo:mykolad@2202717/daily-machine-spirit@1406418170'
-// On since production went live (#50). Turned off, a deployment leaves production as it is: nothing deleted, nothing
-// updated.
-param deployProduction bool = true
+// Off by default, so an infrastructure change reaches staging first; production takes it when this is set. Off, a
+// deployment leaves production as it is: nothing deleted, nothing updated.
+param deployProduction bool = false
 
 var roles = {
   cognitiveServicesOpenAiUser: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
