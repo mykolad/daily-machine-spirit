@@ -210,9 +210,12 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
     `customDomainVerificationId`, which Azure checks before binding the domain.
   - **A Cache Rule** (Caching → Cache Rules), after the purge is set up (Secrets): hostname equals
     `dailymachinespirit.fyi` and the URI path doesn't start with `/api/`, `/auth/`, `/scriptorium` or `/healthz`;
-    **Eligible for cache**, Edge TTL **Use cache-control header if present, bypass cache if not**. The app's
-    `Cache-Control` decides the rest: Today and a rite's page an hour at the edge (`s-maxage`), purged on change, the
-    archive a minute, errors and the API never. `cf-cache-status: HIT` on a second request for `/` shows it works.
+    **Eligible for cache**, Edge TTL **Use cache-control header if present, bypass cache if not**, Browser TTL
+    **Respect origin TTL**. The app's `Cache-Control` decides the rest: Today and a rite's page an hour at the edge
+    (`s-maxage`), purged on change, the archive a minute, errors and the API never; browsers a minute (`max-age`).
+    Without Respect origin TTL, Cloudflare raises `max-age` to the zone's Browser Cache TTL (4 hours by default), and
+    a purge never reaches a browser's copy. `cf-cache-status: HIT` on a second request for `/` shows it works, and
+    its `cache-control` should read `public, max-age=60, s-maxage=3600`.
   - **A rate limit rule** (Security → WAF → Rate limiting rules, set up 2026-10-13) for votes and searches (each
     search reads every rite), counted by IP, 20 in 10 seconds, blocked for 10 seconds. The Free plan has one such rule,
     so every limited path shares it:
