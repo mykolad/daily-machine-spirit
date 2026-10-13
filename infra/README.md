@@ -4,8 +4,8 @@ Everything the site runs on in Azure is in Bicep: `main.bicep` creates the resou
 Central) and everything in it. This page covers the few things Bicep can't do: the first deployment, the secret values,
 and what lives outside Azure.
 
-Production is off until launch (`deployProduction`, false by default): staging comes first. The production names below
-are what it gets then.
+Both environments are deployed (`deployProduction`, true by default since production went live with #50). Production's
+daily publishing is held until launch (`publishesDaily` in `resources.bicep`).
 
 | Resource | Name | Notes |
 |---|---|---|
@@ -46,8 +46,8 @@ az deployment sub create --location swedencentral --name machinespirit --templat
 
 The Cosmos DB free tier can only be chosen when the account is created, and a subscription gets one free account.
 
-At launch, add `deployProduction=true` to the same command, and the launch PR makes `true` the default. Once production
-exists, a deployment without it leaves production alone: nothing is deleted, but nothing there is updated either.
+`deployProduction=false` deploys staging alone and leaves production as it is: nothing there is deleted, but nothing is
+updated either, so a change meant for production wouldn't reach it.
 
 ## Later changes
 
@@ -69,7 +69,6 @@ az deployment group create -g machinespirit-rg --name machinespirit --template-f
 
 Bicep creates the vaults but never their values. Put each value in a file outside the repository and set it from there,
 so it stays out of your shell history. `-o none` matters: without it, `az keyvault secret set` prints the value back.
-Production's vault exists only from launch (`deployProduction`); set its secrets then.
 
 | Secret | Used for | The app reads it from |
 |---|---|---|
