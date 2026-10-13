@@ -56,6 +56,16 @@ public class RiteRepository : IRiteRepository
                 .WithParameter("@number", number),
             cancellationToken)).Select(document => document.ToRite()).ToList());
 
+    public Task<Either<Error, List<Rite>>> Search(IReadOnlyList<string> words, int number, int count, CancellationToken cancellationToken)
+        => Attempt(async () => (await container.Query<RiteDocument>(
+            Holding(words, "SELECT TOP @count * FROM c", "AND c.number < @number ORDER BY c.number DESC")
+                .WithParameter("@count", count)
+                .WithParameter("@number", number),
+            cancellationToken)).Select(document => document.ToRite()).ToList());
+
+    public Task<Either<Error, int>> CountFound(IReadOnlyList<string> words, CancellationToken cancellationToken)
+        => Attempt(async () => (await container.Query<int>(Holding(words, "SELECT VALUE COUNT(1) FROM c", string.Empty), cancellationToken)).Sum());
+
     public Task<Either<Error, Rite>> Add(Rite rite, CancellationToken cancellationToken)
         => AttemptEither(() => Save(rite, None, cancellationToken));
 
@@ -98,6 +108,19 @@ public class RiteRepository : IRiteRepository
     private sealed record NumberAndScores(int Number, float[] Scores);
 
     private sealed record NumberAndSimilarity(int Number, RiteSimilarity Similarity);
+
+    // The rites holding every word somewhere in their title, text or Heretical Truth, ignoring case. Each word is a
+    // parameter, so what a reader typed never becomes part of the query's text. A plain CONTAINS reads every rite, which
+    // costs little at a few hundred; Cosmos's full-text index can take over if that grows.
+    private static QueryDefinition Holding(IReadOnlyList<string> words, string select, string rest)
+    {
+        var conditions = words.Select((_, index) =>
+            $" AND (CONTAINS(c.title, @word{index}, true) OR CONTAINS(c.text, @word{index}, true) OR CONTAINS(c.hereticalTruth, @word{index}, true))");
+        var query = new QueryDefinition($"{select} WHERE c.type = @type{string.Concat(conditions)} {rest}")
+            .WithParameter("@type", RiteDocument.RiteType);
+        return words.Select((word, index) => (word, index))
+            .Aggregate(query, (holding, word) => holding.WithParameter($"@word{word.index}", word.word));
+    }
 
     // Saves the rite and takes its number in one batch; when it comes from a draft, the draft is marked published in the
     // same batch, and only if nobody changed it since it was read (its ETag), so a draft is never published twice.

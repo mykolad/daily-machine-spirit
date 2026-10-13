@@ -115,7 +115,8 @@ observability/                    — the Grafana dashboard, and what the app's 
   - The tab's icon is the logo's cog, inline in each page (the Scriptorium's too) as an SVG data URI (`Svg.Favicon`):
     no request for it, and browsers don't ask for `/favicon.ico`.
   - Routes: `/` (Today: the newest rite), `/archive` (`?before=<number>` for older pages, which the archive also
-    loads in place as the reader nears the end), `/r/<number>`, `/tags/<key>` (a tag's rites, paged like the archive).
+    loads in place as the reader nears the end), `/r/<number>`, `/tags/<key>` (a tag's rites, paged like the archive),
+    `/search?q=<words>` (paged the same way).
     A catch-all route takes `/` and answers every unknown address with the 404 page; more specific routes win over it.
   - Everything a model wrote goes through `Html.Encode` (`Html.WithInlineCode` for text with `backticks`).
   - Every focusable control sits on the dark background, never on the parchment, so the amber focus ring shows.
@@ -127,6 +128,10 @@ observability/                    — the Grafana dashboard, and what the app's 
     every rite at once. A tag's page reads every rite's scores (a few hundred small documents) to find its rites. The
     rite card, the archive's rows and the Scriptorium's drafts show them; a row's title link covers the row, so its
     tag links can sit inside it.
+  - **Search** (`SitePages.Search`, #7): the rites holding every word typed (at most 6, quotes ignored) in their title,
+    text or Heretical Truth, ignoring case, newest first. A plain `CONTAINS` over a few hundred rites (each word a query
+    parameter); Cosmos's full-text index can take over when that grows. The words are never logged, and how many rites
+    were found is in the page's title, which a screen reader reads when the results load. Cloudflare rate-limits it.
 - **Votes** (Blessed / Heresy, `Api/VotesFunction`): one per account per rite, which the reader can switch or
   take back, signed in as below. `POST /api/rites/{number}/vote` with `{"vote": "blessed" | "heresy" | null}`, and
   `GET /api/votes?rites=12` for the page to show the reader's own vote pressed.
@@ -271,11 +276,11 @@ repository tests. For a deployment it also packages the app (the `app` artifact,
 - Both call `deploy.yml`, which deploys the package as the GitHub environment's identity (OIDC: the environment's
   `AZURE_*` variables hold ids, not secrets), one deployment per environment at a time. Then:
   - **Smoke tests** (`tests/DailyMachineSpirit.SmokeTests`, published into the package, so a package is always checked
-    by its own): `/healthz` reports the new commit, and Today, the archive, a rite, a tag's page, the 404 page and a font
-    answer as they should. They read the app's address and expected version from `SMOKE_TEST_BASE_URL` and
-    `SMOKE_TEST_VERSION`, so they can also run from your machine against staging. They call the app's own address
-    (production's past Cloudflare's cache), and both apps admit only some addresses (staging its owner, production Cloudflare), so the
-    workflow adds the runner's address to the access rules for the tests (`smoke-tests`) and removes it afterwards,
-    even when the run fails or is cancelled.
+    by its own): `/healthz` reports the new commit, and Today, the archive, a rite, a tag's page, a search, the 404
+    page and a font answer as they should. They read the app's address and expected version from
+    `SMOKE_TEST_BASE_URL` and `SMOKE_TEST_VERSION`, so they can also run from your machine against staging. They call
+    the app's own address (production's past Cloudflare's cache), and both apps admit only some addresses (staging its
+    owner, production Cloudflare), so the workflow adds the runner's address to the access rules for the tests
+    (`smoke-tests`) and removes it afterwards, even when the run fails or is cancelled.
   - **Rollback:** when the smoke tests fail, the package of the newest successful Deploy Master run goes back and is
     smoke-tested, and the run fails.

@@ -13,7 +13,8 @@ namespace DailyMachineSpirit.Functions.Pages;
 
 /// <summary>
 /// The public pages, rendered on the server: Today (<c>/</c>), the archive (<c>/archive</c>), a rite's own page
-/// (<c>/r/&lt;number&gt;</c>) and a tag's (<c>/tags/&lt;key&gt;</c>). Any other address gets the 404 page.
+/// (<c>/r/&lt;number&gt;</c>), a tag's (<c>/tags/&lt;key&gt;</c>) and search (<c>/search</c>). Any other
+/// address gets the 404 page.
 /// </summary>
 public sealed class SitePages
 {
@@ -102,6 +103,41 @@ public sealed class SitePages
         => RiteTags.Find(key).Match(
             Some: tag => TaggedRites(request, tag, cancellationToken),
             None: () => Task.FromResult<IActionResult>(Page(request, StatusCodes.Status404NotFound, StatePages.NotFound($"tags/{key}"))));
+
+    /// <summary>
+    /// The rites holding every word the reader typed (<c>?q=</c>), paged like the archive, Today's rite included. The
+    /// words are never logged: a failure logs the path alone.
+    /// </summary>
+    [Function("Search")]
+    public async Task<IActionResult> Search(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "search")] HttpRequest request,
+        CancellationToken cancellationToken)
+    {
+        var typed = SearchWords.Typed(request.Query["q"]);
+        var words = SearchWords.From(typed);
+        if (words.Count == 0)
+        {
+            return Page(request, StatusCodes.Status200OK, SearchPage.Render(typed, None));
+        }
+
+        var before = int.TryParse(request.Query["before"], out var number) && number > 0 ? number : int.MaxValue;
+        var found = await rites.Search(words, before, ArchivePage.PageSize + 1, cancellationToken)
+            .BindAsync(page => Counted(words, before, page, cancellationToken));
+        return found.Match(
+            Right: results => Page(request, StatusCodes.Status200OK, SearchPage.Render(typed, results)),
+            Left: error => Failed(request, error));
+    }
+
+    // A first page that holds every result is its own count; only longer searches ask Cosmos to count.
+    private async Task<Either<Error, SearchResults>> Counted(
+        IReadOnlyList<string> words, int before, List<Rite> page, CancellationToken cancellationToken)
+    {
+        var (shown, olderThan) = OnePage(page);
+        var count = before == int.MaxValue && olderThan.IsNone
+            ? Right<Error, int>(page.Count)
+            : await rites.CountFound(words, cancellationToken);
+        return count.Map(found => new SearchResults(found, shown, olderThan));
+    }
 
     // Like the archive, a page and one rite more, to know whether there are older ones.
     private async Task<IActionResult> TaggedRites(HttpRequest request, Tag tag, CancellationToken cancellationToken)

@@ -159,6 +159,11 @@ public static class Styles
         .tag:hover{background:rgba(201,162,90,.12);color:#f0d59a}
         .subjects{width:100%;margin-top:56px;display:flex;flex-direction:column;align-items:center}
         .subjects h2{margin:0;font-family:Cinzel,serif;font-size:22px}
+        .search{width:100%;max-width:560px;display:flex;flex-direction:column;gap:8px;margin-bottom:28px;text-align:left}
+        .search label{font-weight:600;color:#cdbd9e}
+        .search-row{display:flex;flex-wrap:wrap;gap:10px}
+        .search input{flex:1 1 220px;min-width:0;min-height:46px;padding:10px 18px;border-radius:999px;border:1px solid #b6a98f;background:#1a1612;color:#ede3cf;font:inherit}
+        .search-count{margin:0 0 20px;font-family:'EB Garamond',serif;font-style:italic;font-size:21px;color:#cdbd9e;overflow-wrap:anywhere}
         .archive-end{margin:0;font-family:'EB Garamond',serif;font-style:italic;font-size:19px;color:#b6a98f}
         .state{display:flex;flex-direction:column;align-items:center;gap:16px;max-width:580px;padding:24px 0}
         .state h1,.state h2{margin:0;font-family:Cinzel,serif;font-size:clamp(26px,3.6vw,36px);line-height:1.15}

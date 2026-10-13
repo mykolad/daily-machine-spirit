@@ -180,6 +180,10 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
   - **DNS**: a proxied CNAME `@` → `machinespirit-app.azurewebsites.net`, and a TXT record `asuid` with the app's
     `customDomainVerificationId`, which Azure checks before binding the domain.
 
+  - **A rate limit rule** (Security → WAF → Rate limiting rules) on `/search`, counted by IP, 20 in 10 seconds,
+    blocked for 10 seconds: each search reads every rite. The Free plan has one such rule, so every limited path shares
+    it: its expression lists them with `or`.
+
   Production admits only Cloudflare's address ranges (`cloudflare-ips.json`), so its cache and rate limit can't be gone
   around. **Check Cloudflare's Addresses** (a weekly workflow) opens an issue when Cloudflare publishes different
   ranges: copy them into the file, and deploy the infrastructure (Later changes).

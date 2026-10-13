@@ -39,6 +39,11 @@ public sealed partial class DeployedAppTests
     public async Task ATagsPage_Answers()
         => AssertAnswers(await app.Get("/tags/builds"), HttpStatusCode.OK, $"<title>Filed under Builds · {SiteName}</title>");
 
+    // A query of its own, over the rites' text, for the deployed database to answer.
+    [Fact]
+    public async Task Search_Answers()
+        => AssertAnswers(await app.Get("/search?q=machine"), HttpStatusCode.OK, "<title>“machine”: ");
+
     // Today's rite rather than one from the archive, which leaves today's out.
     [Fact]
     public async Task TodaysRite_HasItsOwnPage()
