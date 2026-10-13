@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using DailyMachineSpirit.Functions.Caching;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -23,6 +24,17 @@ public sealed class CloudflarePageCacheTests : IDisposable
         Assert.Equal("""{"files":["https://example.test/","https://example.test/r/12"]}""", body);
         Assert.Equal("Bearer", request.Headers.Authorization?.Scheme);
         Assert.Equal("purge-token", request.Headers.Authorization?.Parameter);
+    }
+
+    // Cloudflare refuses a request naming more than 30 URLs, whole.
+    [Fact]
+    public async Task Purge_OfManyPages_AsksInBatchesCloudflareAccepts()
+    {
+        var paths = Enumerable.Range(1, 31).Select(number => $"/r/{number}").ToList();
+
+        await Cache(Configured()).Purge(paths, CancellationToken.None);
+
+        Assert.Equal([30, 1], cloudflare.Requests.Select(request => JsonDocument.Parse(request.Body).RootElement.GetProperty("files").GetArrayLength()));
     }
 
     [Fact]

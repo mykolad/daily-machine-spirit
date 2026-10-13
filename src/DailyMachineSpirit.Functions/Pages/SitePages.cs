@@ -130,12 +130,13 @@ public sealed class SitePages
     // Browsers keep a page a minute either way. Cloudflare keeps Today and a rite's page an hour, since the app purges
     // them when they change (a vote, a new rite: Paths.ShowingVotesOf), so it reads the database only after a change; the
     // hour is the most a page can be stale if a purge fails. The archive, which no purge can find, stays a minute there
-    // too.
+    // too. So does any address with a query string (/?utm_source=...): Cloudflare caches each one apart, and
+    // purges name only the plain address.
     private static ContentResult Page(HttpRequest request, int status, string html, EdgeLifetime edge)
     {
         var headers = request.HttpContext.Response.Headers;
         headers.CacheControl = status != StatusCodes.Status200OK ? "no-store"
-            : edge == EdgeLifetime.UntilPurged ? "public, max-age=60, s-maxage=3600"
+            : edge == EdgeLifetime.UntilPurged && !request.QueryString.HasValue ? "public, max-age=60, s-maxage=3600"
             : "public, max-age=60";
         headers.XContentTypeOptions = "nosniff";
         headers["Referrer-Policy"] = "strict-origin-when-cross-origin";

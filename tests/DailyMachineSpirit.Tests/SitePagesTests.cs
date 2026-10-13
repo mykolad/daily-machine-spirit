@@ -238,9 +238,9 @@ public sealed class SitePagesTests : IAsyncLifetime
     }
 
     // Votes and publishing purge Today and a rite's page from Cloudflare, so it can keep them an hour; nothing purges the
-    // archive. Browsers keep each a minute.
+    // archive, or an address with a query string, which Cloudflare caches apart. Browsers keep each a minute.
     [Fact]
-    public async Task TodayAndARitesPage_StayAtTheEdgeUntilPurged_TheArchiveBriefly()
+    public async Task TodayAndARitesPage_StayAtTheEdgeUntilPurged_TheArchiveAndQueriesBriefly()
     {
         var slumbering = await Read(context => Pages().Today(context.Request, "", CancellationToken.None));
         await Add(Day, "Litany of the Clean Cache");
@@ -248,9 +248,10 @@ public sealed class SitePagesTests : IAsyncLifetime
         var today = await Read(context => Pages().Today(context.Request, "", CancellationToken.None));
         var rite = await Read(context => Pages().Rite(context.Request, "1", CancellationToken.None));
         var archive = await Read(context => Pages().Archive(context.Request, CancellationToken.None), "/archive", "");
+        var withQuery = await Read(context => Pages().Today(context.Request, "", CancellationToken.None), "/", "?utm_source=feed");
 
         Assert.All([slumbering, today, rite], page => Assert.Equal("public, max-age=60, s-maxage=3600", page.CacheControl));
-        Assert.Equal("public, max-age=60", archive.CacheControl);
+        Assert.All([archive, withQuery], page => Assert.Equal("public, max-age=60", page.CacheControl));
     }
 
     // The script shows the counts a vote answered over a page whose counts were read before that vote.

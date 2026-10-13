@@ -17,6 +17,9 @@ public sealed class CloudflarePageCache : IPageCache
 {
     public const string HttpClientName = "cloudflare-api";
 
+    // The most URLs one purge-by-URL request may name on Cloudflare's Free plan: a longer list is refused whole.
+    public const int MaxUrlsPerPurge = 30;
+
     private readonly IHttpClientFactory httpClients;
     private readonly IOptions<CloudflareOptions> options;
     private readonly SiteMetrics metrics;
@@ -33,11 +36,19 @@ public sealed class CloudflarePageCache : IPageCache
     public async Task Purge(IReadOnlyCollection<string> paths, CancellationToken cancellationToken)
     {
         var cloudflare = options.Value;
-        if (!cloudflare.IsConfigured || paths.Count == 0)
+        if (!cloudflare.IsConfigured)
         {
             return;
         }
 
+        foreach (var batch in paths.Chunk(MaxUrlsPerPurge))
+        {
+            await PurgeBatch(cloudflare, batch, cancellationToken);
+        }
+    }
+
+    private async Task PurgeBatch(CloudflareOptions cloudflare, IReadOnlyCollection<string> paths, CancellationToken cancellationToken)
+    {
         try
         {
             var site = cloudflare.SiteUrl.TrimEnd('/');
