@@ -5,9 +5,10 @@ namespace DailyMachineSpirit.Functions.Caching;
 
 /// <summary>
 /// Gathers the pages votes change and purges them together once a minute, so a vote never waits for Cloudflare, and a
-/// rite's pages are purged at most once a minute however many votes come in. Other readers see a vote within that
-/// minute; the voter sees theirs at once (the page's script). Whatever is still waiting when the app stops is purged
-/// then.
+/// rite's pages are purged at most once a minute per instance however many votes come in. Other readers see a vote
+/// within that minute; the voter sees theirs at once (the page's script). Whatever is still waiting when the app stops
+/// is purged then. Each instance batches its own votes: a purge is harmless to repeat, and even at the app's most
+/// instances (10) a page is purged a few times a minute at most, so sharing one batch isn't worth a coordinator.
 /// </summary>
 public sealed class PurgeBatcher : BackgroundService
 {
