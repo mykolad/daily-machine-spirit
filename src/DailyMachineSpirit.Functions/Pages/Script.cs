@@ -82,17 +82,22 @@ public static class Script
             // the counts each vote answered, with when the server counted them, and shows them over a page whose counts were
             // read earlier. Kept for two hours, past the hour Cloudflare keeps a page at most.
             const votesKey = 'dms-votes-v1';
+            // Every read drops what's past its two hours, so nothing stays for a reader who doesn't vote again.
             const recalled = () => {
               try {
-                const all = JSON.parse(localStorage.getItem(votesKey) ?? '{}');
-                return all && typeof all === 'object' ? all : {};
+                const stored = JSON.parse(localStorage.getItem(votesKey) ?? '{}');
+                const entries = Object.entries(stored && typeof stored === 'object' ? stored : {});
+                const fresh = entries.filter(([, entry]) => entry && Date.now() - entry.countedAt < 7200000);
+                if (fresh.length === 0) localStorage.removeItem(votesKey);
+                else if (fresh.length < entries.length) localStorage.setItem(votesKey, JSON.stringify(Object.fromEntries(fresh)));
+                return Object.fromEntries(fresh);
               } catch { return {}; }
             };
             // Never throws: the vote is saved by now, whatever storage holds.
             const remember = (answer) => {
               if (typeof answer.countedAt !== 'number') return;
               try {
-                const all = Object.fromEntries(Object.entries(recalled()).filter(([, entry]) => entry && Date.now() - entry.countedAt < 7200000));
+                const all = recalled();
                 // Another tab's vote may have been counted later and answered sooner: the later count stays.
                 if (all[rite] && all[rite].countedAt > answer.countedAt) return;
                 all[rite] = { blessed: answer.blessed, heresy: answer.heresy, countedAt: answer.countedAt };
