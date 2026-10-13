@@ -29,4 +29,11 @@ public sealed class SearchWordsTests
         Assert.Equal("", SearchWords.Typed(null));
         Assert.Equal(SearchWords.MaxLength, SearchWords.Typed(new string('a', 300)).Length);
     }
-}
+
+    [Fact]
+    public void Typed_NeverCutsACharacterInHalf()
+    {
+        var typed = SearchWords.Typed(new string('a', SearchWords.MaxLength - 1) + "\U0001F56F" + "b");
+
+        Assert.Equal(new string('a', SearchWords.MaxLength - 1), typed);
+    }}

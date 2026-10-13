@@ -14,7 +14,14 @@ public static class SearchWords
     public static string Typed(string? query)
     {
         var typed = (query ?? string.Empty).Trim();
-        return typed.Length <= MaxLength ? typed : typed[..MaxLength].TrimEnd();
+        if (typed.Length <= MaxLength)
+        {
+            return typed;
+        }
+
+        // A cut between the two halves of a character outside the BMP (an emoji) would leave half of it.
+        var cut = char.IsHighSurrogate(typed[MaxLength - 1]) ? MaxLength - 1 : MaxLength;
+        return typed[..cut].TrimEnd();
     }
 
     /// <summary>The words to look for, each once, at most <see cref="MaxWords"/>.</summary>
