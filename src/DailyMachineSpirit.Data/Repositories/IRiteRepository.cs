@@ -44,6 +44,11 @@ public interface IRiteRepository
 
     Task<Either<Error, Dictionary<int, float[]>>> GetScoresByRiteNumber(string scoresGeneratorVersion, CancellationToken cancellationToken);
 
-    /// <summary>Every rite's similarity, by number, whatever made its scores; rites without scores are left out.</summary>
-    Task<Either<Error, Dictionary<int, RiteSimilarity>>> GetSimilarities(CancellationToken cancellationToken);
+    /// <summary>The rites with this tag numbered below <paramref name="number"/>, the newest first: a page of the tag's.</summary>
+    Task<Either<Error, List<Rite>>> GetTagged(string tag, int number, int count, CancellationToken cancellationToken);
+
+    /// <summary>The rites judged before tags existed: with scores, without tags.</summary>
+    Task<Either<Error, List<Rite>>> GetUntagged(CancellationToken cancellationToken);
+
+    Task<Either<Error, Unit>> SaveTags(DateOnly publishedOnUtc, string[] tags, CancellationToken cancellationToken);
 }

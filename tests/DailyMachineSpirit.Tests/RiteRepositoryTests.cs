@@ -163,23 +163,38 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task GetSimilarities_ReturnsEveryScoredRite_WhateverMadeItsScores()
+    public async Task GetTagged_FindsTheTagsRites_NewestFirst_APageAtATime()
     {
-        var jev = await AddOrFail(MakeRite(new DateOnly(2026, 10, 6), "Judged by Jev"));
-        var other = await AddOrFail(MakeRite(new DateOnly(2026, 10, 7), "Judged by another"));
-        await AddOrFail(MakeRite(new DateOnly(2026, 10, 8), "Unscored"));
-        var createdAt = new DateTime(2026, 10, 7, 0, 1, 0, DateTimeKind.Utc);
-        Ok(await Repository.SaveScores(jev.PublishedOnUtc,
-            new RiteSimilarity { ScoresGeneratorVersion = "jev/q1", Scores = [0.75f, 0.25f], CreatedAtUtc = createdAt }, CancellationToken.None));
-        Ok(await Repository.SaveScores(other.PublishedOnUtc,
-            new RiteSimilarity { ScoresGeneratorVersion = "other/v1", Scores = [1f], CreatedAtUtc = createdAt }, CancellationToken.None));
+        var first = await AddOrFail(MakeRite(new DateOnly(2026, 10, 5), "First") with { Tags = new[] { "caches", "restarts" } });
+        await AddOrFail(MakeRite(new DateOnly(2026, 10, 6), "Builds only") with { Tags = new[] { "builds" } });
+        var third = await AddOrFail(MakeRite(new DateOnly(2026, 10, 7), "Third") with { Tags = new[] { "caches" } });
+        await AddOrFail(MakeRite(new DateOnly(2026, 10, 8), "Untagged"));
 
-        var similarities = Ok(await Repository.GetSimilarities(CancellationToken.None));
+        var page = Ok(await Repository.GetTagged("caches", int.MaxValue, 10, CancellationToken.None));
+        var older = Ok(await Repository.GetTagged("caches", third.Number, 10, CancellationToken.None));
 
-        Assert.Equal([jev.Number, other.Number], similarities.Keys.Order());
-        Assert.Equal("jev/q1", similarities[jev.Number].ScoresGeneratorVersion);
-        Assert.Equal([0.75f, 0.25f], similarities[jev.Number].Scores);
-        Assert.Equal("other/v1", similarities[other.Number].ScoresGeneratorVersion);
+        Assert.Equal([third.Number, first.Number], page.Select(rite => rite.Number));
+        Assert.Equal(Some(new[] { "caches" }), page[0].Tags);
+        Assert.Equal([first.Number], older.Select(rite => rite.Number));
+    }
+
+    [Fact]
+    public async Task GetUntagged_FindsScoredRitesWithoutTags_UntilTheirTagsAreSaved()
+    {
+        var scored = await AddOrFail(MakeRite(new DateOnly(2026, 10, 5), "Scored"));
+        await AddOrFail(MakeRite(new DateOnly(2026, 10, 6), "Unscored"));
+        var judged = await AddOrFail(MakeRite(new DateOnly(2026, 10, 7), "Judged with none") with { Tags = new string[0] });
+        var similarity = new RiteSimilarity { ScoresGeneratorVersion = "jev/q1", Scores = [1f], CreatedAtUtc = new DateTime(2026, 10, 5, 0, 1, 0, DateTimeKind.Utc) };
+        Ok(await Repository.SaveScores(scored.PublishedOnUtc, similarity, CancellationToken.None));
+        Ok(await Repository.SaveScores(judged.PublishedOnUtc, similarity, CancellationToken.None));
+
+        var untagged = Ok(await Repository.GetUntagged(CancellationToken.None));
+        Ok(await Repository.SaveTags(scored.PublishedOnUtc, ["data"], CancellationToken.None));
+        var afterwards = Ok(await Repository.GetUntagged(CancellationToken.None));
+
+        Assert.Equal([scored.Number], untagged.Select(rite => rite.Number));
+        Assert.Empty(afterwards);
+        Assert.Equal(Some(new[] { "data" }), Ok(await Repository.GetByNumbers([scored.Number], CancellationToken.None))[0].Tags);
     }
 
     [Fact]
@@ -249,7 +264,9 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
         Assert.True((await missing.Add(MakeRite(date, "Lost"), CancellationToken.None)).IsLeft);
         Assert.True((await missing.SaveScores(date, new RiteSimilarity(), CancellationToken.None)).IsLeft);
         Assert.True((await missing.GetScoresByRiteNumber("jev/v1", CancellationToken.None)).IsLeft);
-        Assert.True((await missing.GetSimilarities(CancellationToken.None)).IsLeft);
+        Assert.True((await missing.GetTagged("caches", int.MaxValue, 6, CancellationToken.None)).IsLeft);
+        Assert.True((await missing.GetUntagged(CancellationToken.None)).IsLeft);
+        Assert.True((await missing.SaveTags(date, ["caches"], CancellationToken.None)).IsLeft);
         Assert.True((await missing.Search(["cache"], int.MaxValue, 6, CancellationToken.None)).IsLeft);
         Assert.True((await missing.CountFound(["cache"], CancellationToken.None)).IsLeft);
     }

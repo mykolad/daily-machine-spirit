@@ -32,8 +32,13 @@ public sealed class InterruptedDrafts : IDraftRepository
         await pending.IfSomeAsync(interrupt => interrupt());
         return waiting;
     }
-}
 
+    public Task<Either<Error, List<Draft>>> GetUntagged(CancellationToken cancellationToken)
+        => inner.GetUntagged(cancellationToken);
+
+    public Task<Either<Error, Unit>> SaveTags(Guid draftId, string[] tags, CancellationToken cancellationToken)
+        => inner.SaveTags(draftId, tags, cancellationToken);
+}
 /// <summary>The real drafts, except that every read of the waiting ones after the first fails, as if Cosmos went down.</summary>
 public sealed class DraftsFailingAfterFirstRead : IDraftRepository
 {
@@ -53,4 +58,10 @@ public sealed class DraftsFailingAfterFirstRead : IDraftRepository
 
     public async Task<Either<Error, List<Draft>>> GetWaiting(CancellationToken cancellationToken)
         => ++reads == 1 ? await inner.GetWaiting(cancellationToken) : Error.New("Cosmos is down.");
+
+    public Task<Either<Error, List<Draft>>> GetUntagged(CancellationToken cancellationToken)
+        => inner.GetUntagged(cancellationToken);
+
+    public Task<Either<Error, Unit>> SaveTags(Guid draftId, string[] tags, CancellationToken cancellationToken)
+        => inner.SaveTags(draftId, tags, cancellationToken);
 }

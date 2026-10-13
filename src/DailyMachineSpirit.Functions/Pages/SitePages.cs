@@ -19,14 +19,12 @@ namespace DailyMachineSpirit.Functions.Pages;
 public sealed class SitePages
 {
     private readonly IRiteRepository rites;
-    private readonly TagIndex tags;
     private readonly TimeProvider time;
     private readonly ILogger<SitePages> logger;
 
-    public SitePages(IRiteRepository rites, TagIndex tags, TimeProvider time, ILogger<SitePages> logger)
+    public SitePages(IRiteRepository rites, TimeProvider time, ILogger<SitePages> logger)
     {
         this.rites = rites;
-        this.tags = tags;
         this.time = time;
         this.logger = logger;
     }
@@ -94,8 +92,8 @@ public sealed class SitePages
     }
 
     /// <summary>
-    /// A tag's rites, paged like the archive, Today's rite included. Which rites have the tag comes from every rite's
-    /// scores, kept for a few minutes (<see cref="TagIndex"/>); then the page's own rites.
+    /// A tag's rites, paged like the archive, Today's rite included: one query for the page, as the rites' tags are
+    /// stored with them.
     /// </summary>
     [Function("Tag")]
     public Task<IActionResult> Tag(
@@ -145,13 +143,11 @@ public sealed class SitePages
     private async Task<IActionResult> TaggedRites(HttpRequest request, Tag tag, CancellationToken cancellationToken)
     {
         var before = int.TryParse(request.Query["before"], out var number) && number > 0 ? number : int.MaxValue;
-        var page = await tags.Numbers(tag, cancellationToken)
-            .MapAsync(numbers => numbers.Where(tagged => tagged < before).Take(ArchivePage.PageSize + 1).ToList())
-            .BindAsync(numbers => rites.GetByNumbers(numbers, cancellationToken));
+        var page = await rites.GetTagged(tag.Key, before, ArchivePage.PageSize + 1, cancellationToken);
         return page.Match(
             Right: found =>
             {
-                var (shown, olderThan) = OnePage(found.OrderByDescending(rite => rite.Number).ToList());
+                var (shown, olderThan) = OnePage(found);
                 return Page(request, StatusCodes.Status200OK, TagPage.Render(tag, shown, olderThan, isFirstPage: before == int.MaxValue));
             },
             Left: error => Failed(request, error));

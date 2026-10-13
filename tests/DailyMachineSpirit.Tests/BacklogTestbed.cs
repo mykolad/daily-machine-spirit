@@ -86,7 +86,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
     public async Task<Draft> AddDraft(string title, float quality, RiteKind kind)
         => await AddDraft(title, quality, kind, None);
 
-    public async Task<Draft> AddDraft(string title, float quality, RiteKind kind, Option<RiteSimilarity> similarity)
+    public async Task<Draft> AddDraft(string title, float quality, RiteKind kind, Option<string[]> tags)
     {
         var draft = new Draft
         {
@@ -101,7 +101,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
                 GeneratedByModel = Sol,
                 GeneratedAtUtc = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc),
             },
-            Similarity = similarity,
+            Tags = tags,
             Augury = new Augury { Quality = quality, JudgedBy = "jev-1.13.0/quality-q1" },
         };
         return Expect.Ok(await Drafts.Add(draft, CancellationToken.None));

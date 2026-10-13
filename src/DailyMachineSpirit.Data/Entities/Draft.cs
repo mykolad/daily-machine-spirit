@@ -17,6 +17,12 @@ public sealed record Draft
     /// <summary>Copied to the rite when it's published, for "More rites".</summary>
     public Option<RiteSimilarity> Similarity { get; init; }
 
+    /// <summary>
+    /// What it's about, as tag keys from the site's vocabulary (the Functions app's <c>RiteTags</c>), given by its judge
+    /// with the scores. None until then; <c>[]</c> when the judge gave none.
+    /// </summary>
+    public Option<string[]> Tags { get; init; }
+
     public Option<Augury> Augury { get; init; }
 
     public Option<DateOnly> PublishedOnUtc { get; init; }
@@ -28,5 +34,6 @@ public sealed record Draft
         PublishedOnUtc = publishedOnUtc,
         Writing = Writing,
         Similarity = Similarity,
+        Tags = Tags,
     };
 }

@@ -25,7 +25,7 @@ public static class RiteCard
         var copyButton = ownPage
             ? $"""<button type="button" class="button button-ghost" data-copy="text" data-url="{url}" data-text="{Html.Encode(copyText)}">{Svg.CopyIcon}Copy text</button>"""
             : string.Empty;
-        var tags = RiteTags.Of(rite.Similarity);
+        var tags = RiteTags.Of(rite.Tags);
         var filedUnder = tags.Count == 0 ? string.Empty : $"""<p class="tags">Filed under {TagLinks.Render(tags)}</p>""";
         return $"""
             <div class="rite">

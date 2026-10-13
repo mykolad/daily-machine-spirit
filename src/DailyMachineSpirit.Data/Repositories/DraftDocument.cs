@@ -31,6 +31,8 @@ internal sealed record DraftDocument
     // Null when missing: the JSON serializer doesn't know Option.
     public RiteSimilarity? Similarity { get; init; }
 
+    public string[]? Tags { get; init; }
+
     public Augury? Augury { get; init; }
 
     public DateOnly? PublishedOnUtc { get; init; }
@@ -50,6 +52,7 @@ internal sealed record DraftDocument
         GeneratedByModel = draft.Writing.GeneratedByModel,
         GeneratedAtUtc = Utc.From(draft.Writing.GeneratedAtUtc),
         Similarity = draft.Similarity.Map(Utc.From).OrNull(),
+        Tags = draft.Tags.OrNull(),
         Augury = draft.Augury.Map(augury => augury with { JudgedAtUtc = Utc.From(augury.JudgedAtUtc) }).OrNull(),
         PublishedOnUtc = draft.PublishedOnUtc.OrNullable(),
         BurnedAtUtc = draft.BurnedAtUtc.Map(Utc.From).OrNullable(),
@@ -69,6 +72,7 @@ internal sealed record DraftDocument
             GeneratedAtUtc = GeneratedAtUtc,
         },
         Similarity = Optional(Similarity),
+        Tags = Optional(Tags),
         Augury = Optional(Augury),
         PublishedOnUtc = Optional(PublishedOnUtc),
         BurnedAtUtc = Optional(BurnedAtUtc),
