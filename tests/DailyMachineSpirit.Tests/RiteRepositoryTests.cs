@@ -213,6 +213,7 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
 
         Assert.Empty(found);
     }
+
     [Fact]
     public async Task EveryRequest_IsMeasured_ByOperationAndStatusCode()
     {

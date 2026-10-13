@@ -274,6 +274,7 @@ public sealed class SitePagesTests : IAsyncLifetime
 
         Assert.Equal(StatusCodes.Status404NotFound, status);
     }
+
     [Fact]
     public async Task Search_BeforeAnyWords_IsTheFormAlone()
     {
@@ -329,6 +330,7 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.DoesNotContain("<b>nowhere</b>", html);
         Assert.Empty(Titles(html));
     }
+
     [Fact]
     public async Task EveryPage_WhenTheDataCantBeRead_FailsWith503_AndOffersToTryAgain()
     {
