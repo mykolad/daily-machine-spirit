@@ -10,8 +10,9 @@ param ownerPrincipalId string
 @minLength(7)
 param stagingAllowedIp string
 param githubSubjectPrefix string = 'repo:mykolad@2202717/daily-machine-spirit@1406418170'
-// Off by default, so an infrastructure change reaches staging first; production takes it when this is set. Off, a
-// deployment leaves production as it is: nothing deleted, nothing updated.
+// Gates the production module alone: off by default, so a change to an environment's own resources reaches staging
+// first, and production's are left as they are (nothing deleted, nothing updated). The shared resources above (the
+// models, Cosmos DB, the infrastructure identity) are deployed either way, and production uses them too.
 param deployProduction bool = false
 
 var roles = {

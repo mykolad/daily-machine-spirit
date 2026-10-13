@@ -4,8 +4,10 @@ Everything the site runs on in Azure is in Bicep: `main.bicep` creates the resou
 Central) and everything in it. This page covers the few things Bicep can't do: the first deployment, the secret values,
 and what lives outside Azure.
 
-Every infrastructure change goes to staging first: production takes it only with `deployProduction=true` (false by
-default). Production is live since #50.
+Each environment's own resources (its app, plan, storage, vault, database and GitHub identity) go to staging first:
+production's change only with `deployProduction=true` (false by default). The resources both environments share (the
+models' account and deployments, the Cosmos DB account, the infrastructure identity) are deployed every time, so a
+change to them reaches production at once. Production is live since #50.
 
 | Resource | Name | Notes |
 |---|---|---|
@@ -66,6 +68,7 @@ az deployment group create -g machinespirit-rg --name machinespirit --template-f
 Then, once staging works, production: the same two commands with `deployProduction=true` added to `--parameters`. Its
 `what-if` lists production's resources; without the flag they're marked ignored (`*`), and a change meant for
 production doesn't reach it. A change to production alone (its domain, its Cloudflare zone) needs the second step only.
+A change to a shared resource takes effect for both in the first step: look at its `what-if` with production in mind.
 
 (In bash, the same with `\` line breaks and `"$owner"`, `"$ip"`.) When your IP changes, deploy again with the new one.
 
