@@ -79,13 +79,10 @@ if ($logged.data.result.Count -eq 0) {
 }
 Write-Host "Production's logs reach $($loki.name)."
 
-try {
-    Invoke-RestMethod -Uri "$grafana/api/folders/$folderUid" -Headers $headers | Out-Null
-}
-catch {
-    if ($_.Exception.Response.StatusCode -ne [Net.HttpStatusCode]::NotFound) {
-        throw
-    }
+# Looked for among the folders the token sees: asked for by its uid, a folder that doesn't exist yet answers 403 (no
+# permission on it), not 404.
+$folders = Invoke-RestMethod -Uri "$grafana/api/folders?limit=1000" -Headers $headers
+if (-not ($folders | Where-Object { $_.uid -eq $folderUid })) {
     $folder = @{ uid = $folderUid; title = $folderTitle } | ConvertTo-Json
     Invoke-RestMethod -Method Post -Uri "$grafana/api/folders" -Headers $headers -ContentType 'application/json' -Body $folder | Out-Null
     Write-Host "Created the folder $folderTitle."
