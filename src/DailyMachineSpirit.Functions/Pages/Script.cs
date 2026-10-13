@@ -80,14 +80,18 @@ public static class Script
             // Cloudflare keeps the page until votes purge it, up to a minute after them (batched), and the reader's browser
             // keeps its copy a minute too, so a refresh may show the page from before their own vote. So the browser keeps
             // the counts each vote answered, with when the server counted them, and shows them over a page whose counts were
-            // read earlier. Kept for two hours, past the hour Cloudflare keeps a page at most.
+            // read earlier. Kept for two hours, past the hour Cloudflare keeps a page at most, timed by the browser's own
+            // clock (rememberedAt): the server's countedAt only orders counts, as the two clocks may differ by hours.
             const votesKey = 'dms-votes-v1';
             // Every read drops what's past its two hours, so nothing stays for a reader who doesn't vote again.
             const recalled = () => {
               try {
                 const stored = JSON.parse(localStorage.getItem(votesKey) ?? '{}');
                 const entries = Object.entries(stored && typeof stored === 'object' ? stored : {});
-                const fresh = entries.filter(([, entry]) => entry && Date.now() - entry.countedAt < 7200000);
+                const fresh = entries.filter(([, entry]) => {
+                  const age = entry ? Date.now() - entry.rememberedAt : NaN;
+                  return age >= 0 && age < 7200000;
+                });
                 if (fresh.length === 0) localStorage.removeItem(votesKey);
                 else if (fresh.length < entries.length) localStorage.setItem(votesKey, JSON.stringify(Object.fromEntries(fresh)));
                 return Object.fromEntries(fresh);
@@ -100,7 +104,7 @@ public static class Script
                 const all = recalled();
                 // Another tab's vote may have been counted later and answered sooner: the later count stays.
                 if (all[rite] && all[rite].countedAt > answer.countedAt) return;
-                all[rite] = { blessed: answer.blessed, heresy: answer.heresy, countedAt: answer.countedAt };
+                all[rite] = { blessed: answer.blessed, heresy: answer.heresy, countedAt: answer.countedAt, rememberedAt: Date.now() };
                 localStorage.setItem(votesKey, JSON.stringify(all));
               } catch { }
             };
