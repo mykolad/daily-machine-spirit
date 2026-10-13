@@ -282,6 +282,62 @@ public sealed class SitePagesTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Search_BeforeAnyWords_IsTheFormAlone()
+    {
+        await Add(Day, "The Rite of Re-Run");
+
+        var (status, html) = await Searched("", "");
+
+        Assert.Equal(StatusCodes.Status200OK, status);
+        Assert.Contains("<title>Search · The Daily Machine Spirit</title>", html);
+        Assert.Contains("""<form class="search" role="search" action="/search" method="get">""", html);
+        Assert.Contains("""<label for="search-words">Words in the rite</label>""", html);
+        Assert.Contains("""<a href="/search" aria-current="page">Search</a>""", html);
+        Assert.Empty(Titles(html));
+        Assert.DoesNotContain("""<p class="search-count">""", html);
+    }
+
+    [Fact]
+    public async Task Search_ListsTheRitesHoldingTheWords_NewestFirst_AndSaysHowMany()
+    {
+        for (var i = 1; i <= 8; i++)
+        {
+            await Add(Day.AddDays(i - 8), $"Rite {i}");
+        }
+        await Add(Day.AddDays(1), "The Rite of the Warm Cache");
+
+        var (status, first) = await Searched("Re-run thrice", "");
+        var (_, second) = await Searched("Re-run thrice", "4");
+        var (_, single) = await Searched("cache", "");
+
+        Assert.Equal(StatusCodes.Status200OK, status);
+        Assert.Contains("<title>“Re-run thrice”: 9 rites · The Daily Machine Spirit</title>", first);
+        Assert.Contains("""<p class="search-count">9 rites hold “Re-run thrice”.</p>""", first);
+        Assert.Equal(["The Rite of the Warm Cache", "Rite 8", "Rite 7", "Rite 6", "Rite 5", "Rite 4"], Titles(first));
+        Assert.Contains("""href="/search?q=Re-run%20thrice&amp;before=4">Load older rites</a>""", first);
+        Assert.Contains("""value="Re-run thrice" """, first);
+        Assert.Equal(["Rite 3", "Rite 2", "Rite 1"], Titles(second));
+        Assert.Contains("9 rites hold", second);
+        Assert.Contains("No earlier rite holds these words.", second);
+        Assert.Contains("""<p class="search-count">1 rite holds “cache”.</p>""", single);
+        Assert.Equal(["The Rite of the Warm Cache"], Titles(single));
+    }
+
+    [Fact]
+    public async Task Search_ThatFindsNothing_SaysSo_AndEncodesWhatWasTyped()
+    {
+        await Add(Day, "The Rite of Re-Run");
+
+        var (status, html) = await Searched("<b>nowhere</b>", "");
+
+        Assert.Equal(StatusCodes.Status200OK, status);
+        Assert.Contains("No rite holds “&lt;b&gt;nowhere&lt;/b&gt;”.", html);
+        Assert.Contains("""value="&lt;b&gt;nowhere&lt;/b&gt;" """, html);
+        Assert.DoesNotContain("<b>nowhere</b>", html);
+        Assert.Empty(Titles(html));
+    }
+
+    [Fact]
     public async Task EveryPage_WhenTheDataCantBeRead_FailsWith503_AndOffersToTryAgain()
     {
         var missing = new RiteRepository(cosmos.Container.Database.GetContainer("no-such-container"), NullLogger<RiteRepository>.Instance);
@@ -293,7 +349,9 @@ public sealed class SitePagesTests : IAsyncLifetime
 
         var tag = await Read(context => pages.Tag(context.Request, "caches", CancellationToken.None), "/tags/caches", "");
 
-        Assert.All([today, rite, archive, tag], page => Assert.Equal(StatusCodes.Status503ServiceUnavailable, page.Status));
+        var search = await Read(context => pages.Search(context.Request, CancellationToken.None), "/search", "?q=cache");
+
+        Assert.All([today, rite, archive, tag, search], page => Assert.Equal(StatusCodes.Status503ServiceUnavailable, page.Status));
         Assert.Contains("The rite has failed.", today.Html);
         Assert.Contains("""href="/archive?before=4">""", archive.Html);
         Assert.Equal("no-store", archive.CacheControl);
@@ -368,6 +426,13 @@ public sealed class SitePagesTests : IAsyncLifetime
     {
         var query = before.Length == 0 ? "" : $"?before={before}";
         var page = await Read(context => Pages().Tag(context.Request, key, CancellationToken.None), $"/tags/{key}", query);
+        return (page.Status, page.Html);
+    }
+
+    private async Task<(int Status, string Html)> Searched(string words, string before)
+    {
+        var query = QueryString.Create(before.Length == 0 ? [new("q", words)] : new KeyValuePair<string, string?>[] { new("q", words), new("before", before) });
+        var page = await Read(context => Pages().Search(context.Request, CancellationToken.None), "/search", query.Value ?? "");
         return (page.Status, page.Html);
     }
 

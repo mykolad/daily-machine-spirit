@@ -44,6 +44,7 @@ public static class Layout
             <nav aria-label="Main">
             <a href="/"{Current(section == Section.Today)}>Today</a>
             <a href="/archive"{Current(section == Section.Archive)}>Archive</a>
+            <a href="{Paths.Search}"{Current(section == Section.Search)}>Search</a>
             </nav>
             </header>
             <main id="main" tabindex="-1">

@@ -33,3 +33,14 @@ The handoff has no tags. They use the site's tokens, on the dark background like
   decoration; the text says what they are. Each is at least 32px tall, above the 24px WCAG 2.5.8 asks.
 - **A row's tags start with a visually hidden "Filed under",** which the rite card and the Scriptorium say visibly, so
   a screen reader doesn't hear bare words after the counts.
+
+## Search
+
+The handoff has no search. It uses the site's tokens, on the dark background.
+
+- **The field has a visible label** ("Words in the rite") and a `#b6a98f` border, well above the 3:1 WCAG 1.4.11 asks
+  of a control's edge, like the Scriptorium's note fields. The form is a landmark (`role="search"`).
+- **How many rites were found is in the page's title** ("“cache”: 3 rites"), not only on the page: the results are a
+  new page, so the title is what a screen reader reads first, and a live region wouldn't be announced on load.
+- **It works without the script:** a plain form that sends `GET /search?q=`, and "Load older rites" is a link, as in
+  the archive.
