@@ -1,0 +1,151 @@
+{
+  "title": "Daily Machine Spirit",
+  "interval": 300,
+  "rules": [
+    {
+      "uid": "dms-refills-failing",
+      "title": "Refills failing",
+      "condition": "C",
+      "data": [
+        {
+          "refId": "A",
+          "relativeTimeRange": { "from": 3600, "to": 0 },
+          "datasourceUid": "${loki}",
+          "model": {
+            "refId": "A",
+            "queryType": "instant",
+            "expr": "sum(count_over_time({service_name=\"machinespirit-app\"} | scope_name=\"DailyMachineSpirit.Functions.RefillBacklogFunction\" | detected_level=\"error\" [1h]))"
+          }
+        },
+        {
+          "refId": "C",
+          "datasourceUid": "__expr__",
+          "model": { "refId": "C", "type": "threshold", "expression": "A", "conditions": [{ "evaluator": { "type": "gt", "params": [2] } }] }
+        }
+      ],
+      "noDataState": "OK",
+      "execErrState": "Error",
+      "for": "0s",
+      "annotations": {
+        "summary": "Backlog refills failed three times in the last hour.",
+        "description": "Counted from the error each failed try logs, whichever refill it was for: one refill's three tries (ten minutes apart), or failures of separate refills (after publishing, Summon). Either way refills keep failing, and a single passing failure doesn't alert. The logs say why: a model, Jev or Cosmos DB. The backlog shrinks by one a day until refills work again; Summon New Rites in the Scriptorium tries again."
+      }
+    },
+    {
+      "uid": "dms-backlog-empty",
+      "title": "Backlog ran empty",
+      "condition": "C",
+      "data": [
+        {
+          "refId": "A",
+          "relativeTimeRange": { "from": 604800, "to": 0 },
+          "datasourceUid": "${loki}",
+          "model": {
+            "refId": "A",
+            "queryType": "instant",
+            "expr": "sum(count_over_time({service_name=\"machinespirit-app\"} | scope_name=\"DailyMachineSpirit.Functions.Generation.DailyRitePublisher\" | detected_level=\"warn\" [7d]))"
+          }
+        },
+        {
+          "refId": "C",
+          "datasourceUid": "__expr__",
+          "model": { "refId": "C", "type": "threshold", "expression": "A", "conditions": [{ "evaluator": { "type": "gt", "params": [1] } }] }
+        }
+      ],
+      "noDataState": "OK",
+      "execErrState": "Error",
+      "for": "0s",
+      "annotations": {
+        "summary": "Publishing found the backlog empty more than once this week.",
+        "description": "Counted from the warning DailyRitePublisher logs each time. Each time, the day's rite was written on the spot, unmoderated. Refills aren't keeping up: check the Refills failing alert, and summon new rites in the Scriptorium."
+      }
+    },
+    {
+      "uid": "dms-jev-failing",
+      "title": "Jev failing",
+      "condition": "C",
+      "data": [
+        {
+          "refId": "A",
+          "relativeTimeRange": { "from": 86400, "to": 0 },
+          "datasourceUid": "${loki}",
+          "model": {
+            "refId": "A",
+            "queryType": "instant",
+            "expr": "sum(count_over_time({service_name=\"machinespirit-app\"} | scope_name=\"DailyMachineSpirit.Functions.Generation.BacklogRefiller\" | detected_level=\"warn\" [1d]))"
+          }
+        },
+        {
+          "refId": "C",
+          "datasourceUid": "__expr__",
+          "model": { "refId": "C", "type": "threshold", "expression": "A", "conditions": [{ "evaluator": { "type": "gt", "params": [1] } }] }
+        }
+      ],
+      "noDataState": "OK",
+      "execErrState": "Error",
+      "for": "0s",
+      "annotations": {
+        "summary": "Two or more drafts in the last day couldn't be judged.",
+        "description": "Counted from the warning BacklogRefiller logs for each draft Jev couldn't judge; one can be a passing blip, a second in a day isn't (a refill after publishing writes about one draft a day). The drafts still join the backlog, but without a quality or scores, so the Augury puts them last and More rites falls back to the newest. The warnings say why: an expired Jev key, or Jev down."
+      }
+    },
+    {
+      "uid": "dms-errors",
+      "title": "Server errors",
+      "condition": "C",
+      "data": [
+        {
+          "refId": "A",
+          "relativeTimeRange": { "from": 600, "to": 0 },
+          "datasourceUid": "${prometheus}",
+          "model": {
+            "refId": "A",
+            "instant": true,
+            "expr": "(sum(increase(dms_invocation_duration_seconds_count{job=\"machinespirit-app\", function!~\"DailyRite|RefillBacklog\", outcome=~\"5..|failed\"}[10m])) / sum(increase(dms_invocation_duration_seconds_count{job=\"machinespirit-app\", function!~\"DailyRite|RefillBacklog\"}[10m]))) and on() (sum(increase(dms_invocation_duration_seconds_count{job=\"machinespirit-app\", function!~\"DailyRite|RefillBacklog\"}[10m])) >= 10)"
+          }
+        },
+        {
+          "refId": "C",
+          "datasourceUid": "__expr__",
+          "model": { "refId": "C", "type": "threshold", "expression": "A", "conditions": [{ "evaluator": { "type": "gt", "params": [0.05] } }] }
+        }
+      ],
+      "noDataState": "OK",
+      "execErrState": "Error",
+      "for": "10m",
+      "annotations": {
+        "summary": "More than 5% of production's requests failed (5xx) for ten minutes.",
+        "description": "Only counted over at least ten requests in ten minutes, so one failure on a quiet night doesn't alert. A counter's first value in a new process isn't counted, but errors that last ten minutes come many to a process. The dashboard's Traffic row shows which function; its error logs say why (often Cosmos DB)."
+      }
+    },
+    {
+      "uid": "dms-no-telemetry",
+      "title": "No telemetry from production",
+      "condition": "C",
+      "data": [
+        {
+          "refId": "A",
+          "relativeTimeRange": { "from": 93600, "to": 0 },
+          "datasourceUid": "${prometheus}",
+          "model": {
+            "refId": "A",
+            "instant": true,
+            "expr": "count(last_over_time(target_info{job=\"machinespirit-app\"}[26h]))"
+          }
+        },
+        {
+          "refId": "C",
+          "datasourceUid": "__expr__",
+          "model": { "refId": "C", "type": "threshold", "expression": "A", "conditions": [{ "evaluator": { "type": "lt", "params": [1] } }] }
+        }
+      ],
+      "noDataState": "Alerting",
+      "execErrState": "Error",
+      "for": "0s",
+      "annotations": {
+        "summary": "Production has sent no telemetry for 26 hours.",
+        "description": "The app sleeps when nobody visits, but the DailyRite timer wakes it every midnight, so a day of silence means the export is broken (the OtlpHeaders token, revoked or read-only) or the app is down. Every other alert is blind until this is fixed."
+      }
+    }
+  ]
+}
