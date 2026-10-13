@@ -205,8 +205,11 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
     **Eligible for cache**, Edge TTL **Use cache-control header if present, bypass cache if not**. The app's
     `Cache-Control` decides the rest: Today and a rite's page an hour at the edge (`s-maxage`), purged on change, the
     archive a minute, errors and the API never. `cf-cache-status: HIT` on a second request for `/` shows it works.
-  - **A rate limit rule** (Security → WAF → Rate limiting rules): POST requests to `/api/rites/*/vote`, counted by
-    IP, 20 in 10 seconds, blocked for 10 seconds.
+  - **A rate limit rule** (Security → WAF → Rate limiting rules, set up 2026-10-13) for votes and searches (each
+    search reads every rite), counted by IP, 20 in 10 seconds, blocked for 10 seconds. The Free plan has one such rule,
+    so every limited path shares it:
+    `(http.request.uri.path wildcard r"/api/rites/*/vote") or (http.request.uri.path eq "/search")`. With `eq`, the
+    `*` would be taken literally, and match nothing.
 
   Production admits only Cloudflare's address ranges (`cloudflare-ips.json`), so its cache and rate limit can't be gone
   around. **Check Cloudflare's Addresses** (a weekly workflow) opens an issue when Cloudflare publishes different

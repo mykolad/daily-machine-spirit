@@ -27,6 +27,12 @@ public sealed class RitesWithoutScores : IRiteRepository
     public Task<Either<Error, List<Rite>>> GetOlderThan(int number, int count, CancellationToken cancellationToken)
         => rites.GetOlderThan(number, count, cancellationToken);
 
+    public Task<Either<Error, List<Rite>>> Search(IReadOnlyList<string> words, int number, int count, CancellationToken cancellationToken)
+        => rites.Search(words, number, count, cancellationToken);
+
+    public Task<Either<Error, int>> CountFound(IReadOnlyList<string> words, CancellationToken cancellationToken)
+        => rites.CountFound(words, cancellationToken);
+
     public Task<Either<Error, Rite>> Add(Rite rite, CancellationToken cancellationToken) => rites.Add(rite, cancellationToken);
 
     public Task<Either<Error, Rite>> Publish(Guid draftId, DateOnly publishedOnUtc, CancellationToken cancellationToken)
