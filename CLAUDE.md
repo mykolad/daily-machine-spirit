@@ -223,11 +223,16 @@ observability/                    — the Grafana dashboard and alerts, and what
     again.
   - **Refills:** burning the last waiting draft asks for a refill at once (the `backlog-refills` queue), as does
     Summon.
-  - **The page:** plain HTML forms, no script. Each action posts and redirects back to the rite it acted on
-    (`#rite-{id}`), with a message that names it and where it went; after a burn, the message links to the rite in the
-    Ashes, to restore it. It's never cached or indexed, and forms posted from another site are refused
-    (`Sec-Fetch-Site`). The icons are inline and decorative: Lucide's (`Pages/Lucide-LICENSE.txt`), except Summon's
-    sparkle, which is the design's own.
+  - **The page:** plain HTML forms, which work without a script. Each action posts and redirects back to the rite it
+    acted on (`#rite-{id}`, marked `acted`, which glows), with a message that names it and where it went; after a burn,
+    the message links to the rite in the Ashes, to restore it. It's never cached or indexed, and forms posted from
+    another site are refused (`Sec-Fetch-Site`). The icons are inline and decorative: Lucide's
+    (`Pages/Lucide-LICENSE.txt`), except Summon's sparkle, which is the design's own.
+  - **Shown in place** (`ScriptoriumScript`): where scripts run, an action is posted in the background, the new page's
+    calendar replaces the old, and each rite that moved slides from its old place to its new one, so a Scribe sees
+    what changed (an Exalt can reorder the rites the Augury places, too). The status message stays the same element,
+    so it's announced; focus returns to the same button. Anything unexpected (an error, Cloudflare Access wanting a new
+    sign-in) loads `/scriptorium` afresh. Reduced motion: no slide, only the mark.
   - **Access:** `Scriptorium:Enabled` is off by default. Who counts as a Scribe is an `IScribeSignIn`
     (`Scriptorium/SignIn/`), chosen to fail closed (`AddScribeSignIn`):
     - **Cloudflare Access** (`CloudflareAccess:TeamDomain` and `:Audience` set, production): every request must carry

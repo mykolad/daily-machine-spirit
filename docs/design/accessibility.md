@@ -44,3 +44,15 @@ The handoff has no search. It uses the site's tokens, on the dark background.
   new page, so the title is what a screen reader reads first, and a live region wouldn't be announced on load.
 - **It works without the script:** a plain form that sends `GET /search?q=`, and "Load older rites" is a link, as in
   the archive.
+
+## The Scriptorium, shown in place
+
+- **The forms still work without the script,** and the script only changes how the result is shown, never what is
+  sent: the same request, then the page the redirect leads to.
+- **The status message is never replaced, only given new text,** so a screen reader announces it as after a reload: a
+  live region that's removed and added again may not be.
+- **Focus goes where a reload would have left it:** the same button on the rite that moved, else its first button;
+  after a burn, the message, which links to the rite in the Ashes.
+- **Reduced motion** (`prefers-reduced-motion`) turns off the slide and the glow; the rite acted on keeps its amber
+  border, which isn't motion.
+- **One action at a time:** while one is under way, `aria-busy` marks the page, and a second click is ignored until the first is done.
