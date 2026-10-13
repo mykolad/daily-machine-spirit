@@ -3,6 +3,7 @@ using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using DailyMachineSpirit.Data.Entities;
+using DailyMachineSpirit.Functions.Tags;
 using LanguageExt;
 using static LanguageExt.Prelude;
 
@@ -112,6 +113,7 @@ public static partial class ScriptoriumPage
         else
         {
             html.Append($"<p>{view.Calendar.Count} unconsecrated {(view.Calendar.Count == 1 ? "rite waits" : "rites wait")}. The Scribes' order comes first; the Augury orders the rest.</p>");
+            html.Append($"""<p class="meta">{Subjects(view.Calendar.Select(entry => entry.Draft))}</p>""");
             html.Append("""<ol class="calendar">""");
             for (var index = 0; index < view.Calendar.Count; index++)
             {
@@ -192,7 +194,9 @@ public static partial class ScriptoriumPage
                 : $"The Augury: {judged.Quality:P0}")
             .IfNone("Not yet judged by the Augury");
         var placedBy = entry.PlacedByScribes ? """<span class="placed">Placed by the Scribes</span> · """ : string.Empty;
-        html.Append($"""<p class="meta">{placedBy}{Encode(augury)} · written by <span class="nowrap">{Encode(draft.Writing.GeneratedByModel)}</span></p>""");
+        var tags = RiteTags.Of(draft.Similarity);
+        var filedUnder = tags.Count == 0 ? string.Empty : $" · filed under {Encode(string.Join(", ", tags.Select(tag => tag.Label)))}";
+        html.Append($"""<p class="meta">{placedBy}{Encode(augury)}{filedUnder} · written by <span class="nowrap">{Encode(draft.Writing.GeneratedByModel)}</span></p>""");
 
         var reorder = new List<string>();
         if (place > 1)
@@ -277,6 +281,25 @@ public static partial class ScriptoriumPage
             <a class="skip" href="#main">Skip to content</a>
             <header><p class="brand">The Daily Machine Spirit</p></header>
             """);
+    }
+
+    // What the waiting drafts are about, by their tags, so the Scribes see a calendar heavy on one subject.
+    private static string Subjects(IEnumerable<Draft> drafts)
+    {
+        var tagged = drafts.Select(draft => RiteTags.Of(draft.Similarity)).ToList();
+        var counts = tagged
+            .SelectMany(tags => tags)
+            .GroupBy(tag => tag.Label)
+            .OrderByDescending(group => group.Count())
+            .ThenBy(group => group.Key, StringComparer.Ordinal)
+            .Select(group => $"{group.Key} ({group.Count()})")
+            .ToList();
+        var untagged = tagged.Count(tags => tags.Count == 0);
+        if (untagged > 0)
+        {
+            counts.Add($"untagged ({untagged})");
+        }
+        return Encode($"Subjects waiting: {string.Join(", ", counts)}.");
     }
 
     private static string Kind(RiteKind kind) => kind == RiteKind.Prayer ? "A Prayer" : "A Ritual";

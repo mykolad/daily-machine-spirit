@@ -37,4 +37,7 @@ public sealed class RitesWithoutScores : IRiteRepository
 
     public Task<Either<Error, Dictionary<int, float[]>>> GetScoresByRiteNumber(string scoresGeneratorVersion, CancellationToken cancellationToken)
         => Task.FromResult<Either<Error, Dictionary<int, float[]>>>(Error.New("Cosmos didn't answer."));
+
+    public Task<Either<Error, Dictionary<int, RiteSimilarity>>> GetSimilarities(CancellationToken cancellationToken)
+        => Task.FromResult<Either<Error, Dictionary<int, RiteSimilarity>>>(Error.New("Cosmos didn't answer."));
 }

@@ -34,4 +34,7 @@ public interface IRiteRepository
     Task<Either<Error, Unit>> SaveScores(DateOnly publishedOnUtc, RiteSimilarity similarity, CancellationToken cancellationToken);
 
     Task<Either<Error, Dictionary<int, float[]>>> GetScoresByRiteNumber(string scoresGeneratorVersion, CancellationToken cancellationToken);
+
+    /// <summary>Every rite's similarity, by number, whatever made its scores; rites without scores are left out.</summary>
+    Task<Either<Error, Dictionary<int, RiteSimilarity>>> GetSimilarities(CancellationToken cancellationToken);
 }

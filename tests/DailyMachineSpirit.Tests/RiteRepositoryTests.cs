@@ -163,6 +163,26 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task GetSimilarities_ReturnsEveryScoredRite_WhateverMadeItsScores()
+    {
+        var jev = await AddOrFail(MakeRite(new DateOnly(2026, 10, 6), "Judged by Jev"));
+        var other = await AddOrFail(MakeRite(new DateOnly(2026, 10, 7), "Judged by another"));
+        await AddOrFail(MakeRite(new DateOnly(2026, 10, 8), "Unscored"));
+        var createdAt = new DateTime(2026, 10, 7, 0, 1, 0, DateTimeKind.Utc);
+        Ok(await Repository.SaveScores(jev.PublishedOnUtc,
+            new RiteSimilarity { ScoresGeneratorVersion = "jev/q1", Scores = [0.75f, 0.25f], CreatedAtUtc = createdAt }, CancellationToken.None));
+        Ok(await Repository.SaveScores(other.PublishedOnUtc,
+            new RiteSimilarity { ScoresGeneratorVersion = "other/v1", Scores = [1f], CreatedAtUtc = createdAt }, CancellationToken.None));
+
+        var similarities = Ok(await Repository.GetSimilarities(CancellationToken.None));
+
+        Assert.Equal([jev.Number, other.Number], similarities.Keys.Order());
+        Assert.Equal("jev/q1", similarities[jev.Number].ScoresGeneratorVersion);
+        Assert.Equal([0.75f, 0.25f], similarities[jev.Number].Scores);
+        Assert.Equal("other/v1", similarities[other.Number].ScoresGeneratorVersion);
+    }
+
+    [Fact]
     public async Task EveryRequest_IsMeasured_ByOperationAndStatusCode()
     {
         // The meter is shared with tests running alongside, so this looks for its own requests among theirs.
@@ -197,6 +217,7 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
         Assert.True((await missing.Add(MakeRite(date, "Lost"), CancellationToken.None)).IsLeft);
         Assert.True((await missing.SaveScores(date, new RiteSimilarity(), CancellationToken.None)).IsLeft);
         Assert.True((await missing.GetScoresByRiteNumber("jev/v1", CancellationToken.None)).IsLeft);
+        Assert.True((await missing.GetSimilarities(CancellationToken.None)).IsLeft);
     }
 
     [Fact]

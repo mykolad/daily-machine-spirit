@@ -3,9 +3,11 @@ using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Generation;
 using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Scriptorium;
+using LanguageExt;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
+using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Tests;
 
@@ -82,6 +84,9 @@ public sealed class BacklogTestbed : IAsyncLifetime
         => await AddDraft(title, quality, RiteKind.Prayer);
 
     public async Task<Draft> AddDraft(string title, float quality, RiteKind kind)
+        => await AddDraft(title, quality, kind, None);
+
+    public async Task<Draft> AddDraft(string title, float quality, RiteKind kind, Option<RiteSimilarity> similarity)
     {
         var draft = new Draft
         {
@@ -96,6 +101,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
                 GeneratedByModel = Sol,
                 GeneratedAtUtc = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc),
             },
+            Similarity = similarity,
             Augury = new Augury { Quality = quality, JudgedBy = "jev-1.13.0/quality-q1" },
         };
         return Expect.Ok(await Drafts.Add(draft, CancellationToken.None));

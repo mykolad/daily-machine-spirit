@@ -89,7 +89,15 @@ public class RiteRepository : IRiteRepository
                 .WithParameter("@version", scoresGeneratorVersion),
             cancellationToken)).ToDictionary(r => r.Number, r => r.Scores));
 
+    public Task<Either<Error, Dictionary<int, RiteSimilarity>>> GetSimilarities(CancellationToken cancellationToken)
+        => Attempt(async () => (await container.Query<NumberAndSimilarity>(
+            new QueryDefinition("SELECT c.number, c.similarity FROM c WHERE c.type = @type AND IS_OBJECT(c.similarity)")
+                .WithParameter("@type", RiteDocument.RiteType),
+            cancellationToken)).ToDictionary(r => r.Number, r => r.Similarity));
+
     private sealed record NumberAndScores(int Number, float[] Scores);
+
+    private sealed record NumberAndSimilarity(int Number, RiteSimilarity Similarity);
 
     // Saves the rite and takes its number in one batch; when it comes from a draft, the draft is marked published in the
     // same batch, and only if nobody changed it since it was read (its ETag), so a draft is never published twice.
