@@ -40,16 +40,16 @@ public sealed class TagIndex
         try
         {
             // Another request may have read it while this one waited.
-            var now = time.GetUtcNow();
             current = kept;
-            if (now < current.Until)
+            if (time.GetUtcNow() < current.Until)
             {
                 return Lookup(current, tag);
             }
 
             return (await rites.GetSimilarities(cancellationToken)).Map(similarities =>
             {
-                var fresh = new Kept(Index(similarities), now + Lifetime);
+                // From when the read ends, so a slow read doesn't eat into the time it's kept.
+                var fresh = new Kept(Index(similarities), time.GetUtcNow() + Lifetime);
                 kept = fresh;
                 return Lookup(fresh, tag);
             });

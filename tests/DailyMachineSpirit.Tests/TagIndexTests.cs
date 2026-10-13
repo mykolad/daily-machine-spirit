@@ -65,6 +65,25 @@ public sealed class TagIndexTests : IAsyncLifetime
         Assert.Equal(1, scores.Reads);
         Assert.All(answers, answer => Assert.Equal([1], Ok(answer)));
     }
+
+    // A slow read (Cosmos throttling) mustn't leave an index that's already about to expire.
+    [Fact]
+    public async Task Numbers_KeepTheIndex_FromWhenTheReadEnds()
+    {
+        await AddAbout(Day, "caches");
+        var scores = new GatedScores(Repository);
+        var index = new TagIndex(scores, time);
+
+        var slow = index.Numbers(Tag("caches"), CancellationToken.None);
+        time.Advance(TimeSpan.FromMinutes(4));
+        scores.Open();
+        Ok(await slow);
+        time.Advance(TimeSpan.FromMinutes(2));
+        Ok(await index.Numbers(Tag("caches"), CancellationToken.None));
+
+        Assert.Equal(1, scores.Reads);
+    }
+
     [Fact]
     public async Task Numbers_WhenTheScoresCantBeRead_FailAsAnError()
     {
