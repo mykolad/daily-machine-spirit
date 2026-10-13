@@ -35,6 +35,10 @@ var productionDomain = {
   zoneId: ''
 }
 
+// App Service's own service principal (Microsoft.Azure.WebSites, app id abfa0a7c-a6b6-4736-8310-5855508787cd): it
+// imports a domain's certificate from the vault. Its object id differs per tenant: az ad sp show --id <app id>.
+var appServicePrincipalId = '2247c71e-28bc-459c-9559-a0aa439217f4'
+
 var signInGitHubClientIds = {
   staging: 'Ov23liMxz7fLNPla4SU6'
   production: 'Ov23liuQFkbEDRwqBWq6'
@@ -186,6 +190,7 @@ module staging 'modules/environment.bicep' = {
     customDomainCertificate: ''
     cloudflareZoneId: ''
     cloudflareSiteUrl: ''
+    appServicePrincipalId: appServicePrincipalId
   }
 }
 
@@ -217,6 +222,7 @@ module production 'modules/environment.bicep' = if (deployProduction) {
     customDomainCertificate: productionDomain.certificateSecret
     cloudflareZoneId: productionDomain.zoneId
     cloudflareSiteUrl: 'https://${productionDomain.name}'
+    appServicePrincipalId: appServicePrincipalId
   }
 }
 
