@@ -51,8 +51,8 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     [Fact]
     public async Task Page_ShowsWhatEachDraftIsAbout_AndTheCalendarsSubjects()
     {
-        await testbed.AddDraft("The Rite of the Hard Refresh", 0.9f, RiteKind.Ritual, TopicScores.About(("caches", 0.9f)));
-        await testbed.AddDraft("The Litany of Forgotten Names", 0.8f, RiteKind.Prayer, TopicScores.About(("infrastructure", 0.5f), ("caches", 0.45f)));
+        await testbed.AddDraft("The Rite of the Hard Refresh", 0.9f, RiteKind.Ritual, new[] { "caches" });
+        await testbed.AddDraft("The Litany of Forgotten Names", 0.8f, RiteKind.Prayer, new[] { "infrastructure", "caches" });
         await testbed.AddDraft("The Unjudged Rite", 0.7f);
 
         var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);

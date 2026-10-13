@@ -17,4 +17,10 @@ public sealed record Rite
 
     /// <summary>For "More rites"; added after the rite is saved.</summary>
     public Option<RiteSimilarity> Similarity { get; init; }
+
+    /// <summary>
+    /// What it's about, as tag keys from the site's vocabulary (the Functions app's <c>RiteTags</c>), given by its judge
+    /// with the scores. None until then; <c>[]</c> when the judge gave none.
+    /// </summary>
+    public Option<string[]> Tags { get; init; }
 }

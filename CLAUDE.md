@@ -21,7 +21,7 @@ what really happens. Either kind is a **rite** (the design's word, and `Rite` in
 src/DailyMachineSpirit.Functions  — the Functions app (HTTP, timer and queue functions)
   Generation/                     — the backlog and the daily rite: Writing/, Chat/ (the models), Judging/ (Jev)
   Pages/                          — the public pages, rendered on the server (Today, the archive, a rite's page)
-  Tags/                           — rites' tags, read from their similarity scores
+  Tags/                           — the tags' vocabulary, and tagging the rites judged before tags existed
 src/DailyMachineSpirit.Data       — Cosmos DB: entities, documents, repositories
 tests/DailyMachineSpirit.Tests    — xUnit tests (the repository tests run against the Cosmos DB emulator)
 tests/DailyMachineSpirit.SmokeTests — xUnit tests of a deployed app over HTTP (each deployment runs them)
@@ -121,14 +121,17 @@ observability/                    — the Grafana dashboard, and what the app's 
   - Every focusable control sits on the dark background, never on the parchment, so the amber focus ring shows.
   - **More rites** (a rite's own page): the three rites whose similarity scores are closest (cosine, `RelatedRites`),
     topped up with the newest others when there aren't enough scored ones. If it fails, the page goes without it.
-  - **Tags** (`Tags/RiteTags`, #6): read from the same scores, never stored. The scores start with Jev's probability for
-    each topic (`JevQuestions.Topics`), so a rite's tags are the topics at 0.25 or more, the likeliest first, at most two,
-    never "other": no extra request, a fixed vocabulary, and older rites have theirs. Changing the threshold retags
-    every rite at once. Only scores whose version is a Jev model's (`jev-…`) with these questions (`/q1`) give tags.
-    Finding a tag's rites takes every rite's scores, so `TagIndex` keeps the tag → rites index for 5 minutes per
-    instance: tag pages read the scores at most that often, however many readers come. The rite card, the archive's
-    rows and the Scriptorium's drafts show the tags; a row's title link covers the row, so its tag links can sit
-    inside it.
+  - **Tags** (#6): the site's own fixed vocabulary (`Tags/RiteTags`), so there's no `cache` next to `caches`. The
+    judge gives a draft its tags with its scores (`IRiteJudge`), and they're stored with the draft and the rite it
+    becomes (`tags`, a list of keys), so a tag's page is one query, and switching judges keeps every rite's tags.
+    Jev's come from its topic answer (`JevTags`): the topics at 0.25 or more, the likeliest first, at most two, never
+    "other", at no extra cost. The rite card, the archive's rows and the Scriptorium's drafts show them; a row's
+    title link covers the row, so its tag links can sit inside it.
+    - **Rites judged before tags existed** get theirs from their stored scores when the app starts (`TagBackfill`,
+      through `IRiteJudge.TagsFrom`); after the first start there's nothing left to tag. Scores the judge can't read
+      stay untagged.
+    - **Changing how tags are given** (another threshold) applies to new drafts. To retag older ones, remove their
+      `tags` and restart the app.
 - **Votes** (Blessed / Heresy, `Api/VotesFunction`): one per account per rite, which the reader can switch or
   take back, signed in as below. `POST /api/rites/{number}/vote` with `{"vote": "blessed" | "heresy" | null}`, and
   `GET /api/votes?rites=12` for the page to show the reader's own vote pressed.

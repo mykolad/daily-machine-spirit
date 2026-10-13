@@ -2,7 +2,6 @@ using System.Text.RegularExpressions;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Pages;
-using DailyMachineSpirit.Functions.Tags;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -130,7 +129,7 @@ public sealed class SitePagesTests : IAsyncLifetime
             new RiteSimilarity { ScoresGeneratorVersion = "jev/q1", Scores = [1f, 0f], CreatedAtUtc = DateTime.UtcNow },
             CancellationToken.None));
         var failing = new RitesWithoutScores(Repository);
-        var pages = new SitePages(failing, new TagIndex(failing, time), time, NullLogger<SitePages>.Instance);
+        var pages = new SitePages(failing, time, NullLogger<SitePages>.Instance);
 
         var page = await Read(context => pages.Rite(context.Request, "2", CancellationToken.None));
 
@@ -217,8 +216,8 @@ public sealed class SitePagesTests : IAsyncLifetime
     {
         await Add(Day.AddDays(-1), "Litany of the Clean Cache");
         await Add(Day, "The Rite of Re-Run");
-        await Score(Day.AddDays(-1), ("caches", 0.7f), ("restarts", 0.3f));
-        await Score(Day, ("caches", 0.7f), ("restarts", 0.3f));
+        await Tag(Day.AddDays(-1), "caches", "restarts");
+        await Tag(Day, "caches", "restarts");
 
         var (_, today) = await Today("");
         var (_, own) = await Rite("2");
@@ -236,7 +235,7 @@ public sealed class SitePagesTests : IAsyncLifetime
         for (var i = 1; i <= 9; i++)
         {
             await Add(Day.AddDays(i - 9), $"Rite {i}");
-            await Score(Day.AddDays(i - 9), (i == 5 ? "builds" : "caches", 0.9f));
+            await Tag(Day.AddDays(i - 9), i == 5 ? "builds" : "caches");
         }
 
         var (status, first) = await Tagged("caches", "");
@@ -258,7 +257,7 @@ public sealed class SitePagesTests : IAsyncLifetime
     public async Task Tag_WithoutRites_SaysSo_AndOffersTheOtherSubjects()
     {
         await Add(Day, "The Rite of Re-Run");
-        await Score(Day, ("caches", 0.9f));
+        await Tag(Day, "caches");
 
         var (status, html) = await Tagged("security", "");
 
@@ -286,7 +285,7 @@ public sealed class SitePagesTests : IAsyncLifetime
     public async Task EveryPage_WhenTheDataCantBeRead_FailsWith503_AndOffersToTryAgain()
     {
         var missing = new RiteRepository(cosmos.Container.Database.GetContainer("no-such-container"), NullLogger<RiteRepository>.Instance);
-        var pages = new SitePages(missing, new TagIndex(missing, time), time, NullLogger<SitePages>.Instance);
+        var pages = new SitePages(missing, time, NullLogger<SitePages>.Instance);
 
         var today = await Read(context => pages.Today(context.Request, "", CancellationToken.None));
         var rite = await Read(context => pages.Rite(context.Request, "1", CancellationToken.None));
@@ -312,7 +311,7 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.DoesNotContain("<b>Bold</b>", page.Html);
     }
 
-    private SitePages Pages() => new(Repository, new TagIndex(Repository, time), time, NullLogger<SitePages>.Instance);
+    private SitePages Pages() => new(Repository, time, NullLogger<SitePages>.Instance);
 
     private RiteRepository Repository => new(cosmos.Container, NullLogger<RiteRepository>.Instance);
 
@@ -363,8 +362,8 @@ public sealed class SitePagesTests : IAsyncLifetime
     private static List<string> Titles(string html)
         => Regex.Matches(html, """<a class="row-title" href="/r/\d+">(.*?)</a>""").Select(match => match.Groups[1].Value).ToList();
 
-    private async Task Score(DateOnly day, params (string Topic, float Probability)[] topics)
-        => Ok(await Repository.SaveScores(day, TopicScores.About(topics), CancellationToken.None));
+    private async Task Tag(DateOnly day, params string[] tags)
+        => Ok(await Repository.SaveTags(day, tags, CancellationToken.None));
 
     private async Task Add(DateOnly day, string title)
         => Ok(await Repository.Add(new Rite

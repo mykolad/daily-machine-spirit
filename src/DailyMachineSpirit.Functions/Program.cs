@@ -58,7 +58,6 @@ builder.Services.AddSingleton(_ => CosmosClients.Create(cosmos));
 builder.Services.AddSingleton(services =>
     services.GetRequiredService<CosmosClient>().GetContainer(cosmos.Database, RiteRepository.ContainerName));
 builder.Services.AddSingleton<IRiteRepository, RiteRepository>();
-builder.Services.AddSingleton<TagIndex>();
 builder.Services.AddSingleton<IDraftRepository, DraftRepository>();
 builder.Services.AddSingleton<IScriptoriumRepository, ScriptoriumRepository>();
 builder.Services.AddSingleton<IVoteRepository, VoteRepository>();
@@ -69,6 +68,8 @@ builder.Services.Configure<JevOptions>(builder.Configuration.GetSection(JevOptio
 var openAI = builder.Configuration.GetSection(AzureOpenAIOptions.SectionName).Get<AzureOpenAIOptions>() ?? new AzureOpenAIOptions();
 builder.Services.AddSingleton<IChatClients>(_ => new AzureOpenAIChatClients(new Uri(openAI.Endpoint)));
 builder.Services.AddHttpClient<IRiteJudge, JevJudge>(http => http.Timeout = TimeSpan.FromSeconds(30));
+// Tags the rites judged before tags existed, once per start (nothing left after the first).
+builder.Services.AddHostedService<TagBackfill>();
 builder.Services.AddTransient<RiteWriter>();
 builder.Services.AddTransient<BacklogRefiller>();
 builder.Services.AddTransient<DailyRitePublisher>();

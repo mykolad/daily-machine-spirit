@@ -38,6 +38,12 @@ public sealed class RitesWithoutScores : IRiteRepository
     public Task<Either<Error, Dictionary<int, float[]>>> GetScoresByRiteNumber(string scoresGeneratorVersion, CancellationToken cancellationToken)
         => Task.FromResult<Either<Error, Dictionary<int, float[]>>>(Error.New("Cosmos didn't answer."));
 
-    public Task<Either<Error, Dictionary<int, RiteSimilarity>>> GetSimilarities(CancellationToken cancellationToken)
-        => Task.FromResult<Either<Error, Dictionary<int, RiteSimilarity>>>(Error.New("Cosmos didn't answer."));
+    public Task<Either<Error, List<Rite>>> GetTagged(string tag, int number, int count, CancellationToken cancellationToken)
+        => rites.GetTagged(tag, number, count, cancellationToken);
+
+    public Task<Either<Error, List<Rite>>> GetUntagged(CancellationToken cancellationToken)
+        => rites.GetUntagged(cancellationToken);
+
+    public Task<Either<Error, Unit>> SaveTags(DateOnly publishedOnUtc, string[] tags, CancellationToken cancellationToken)
+        => rites.SaveTags(publishedOnUtc, tags, cancellationToken);
 }

@@ -194,7 +194,7 @@ public static partial class ScriptoriumPage
                 : $"The Augury: {judged.Quality:P0}")
             .IfNone("Not yet judged by the Augury");
         var placedBy = entry.PlacedByScribes ? """<span class="placed">Placed by the Scribes</span> · """ : string.Empty;
-        var tags = RiteTags.Of(draft.Similarity);
+        var tags = RiteTags.Of(draft.Tags);
         var filedUnder = tags.Count == 0 ? string.Empty : $" · filed under {Encode(string.Join(", ", tags.Select(tag => tag.Label)))}";
         html.Append($"""<p class="meta">{placedBy}{Encode(augury)}{filedUnder} · written by <span class="nowrap">{Encode(draft.Writing.GeneratedByModel)}</span></p>""");
 
@@ -286,7 +286,7 @@ public static partial class ScriptoriumPage
     // What the waiting drafts are about, by their tags, so the Scribes see a calendar heavy on one subject.
     private static string Subjects(IEnumerable<Draft> drafts)
     {
-        var tagged = drafts.Select(draft => RiteTags.Of(draft.Similarity)).ToList();
+        var tagged = drafts.Select(draft => RiteTags.Of(draft.Tags)).ToList();
         var counts = tagged
             .SelectMany(tags => tags)
             .GroupBy(tag => tag.Label)

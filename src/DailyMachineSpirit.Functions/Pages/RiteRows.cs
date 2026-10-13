@@ -20,7 +20,7 @@ public static class RiteRows
         {
             // The title is the row's link, stretched over the whole row, so the tags can be links of their own: a link
             // can't hold another. It comes first among the row's links, where the script moves focus.
-            var tags = RiteTags.Of(rite.Similarity);
+            var tags = RiteTags.Of(rite.Tags);
             var tagLinks = tags.Count == 0
                 ? string.Empty
                 : $"""<span class="row-tags"><span class="sr-only">Filed under </span>{TagLinks.Render(tags)}</span>""";
