@@ -274,6 +274,7 @@ public sealed class SitePagesTests : IAsyncLifetime
 
         Assert.Equal(StatusCodes.Status404NotFound, status);
     }
+
     [Fact]
     public async Task EveryPage_WhenTheDataCantBeRead_FailsWith503_AndOffersToTryAgain()
     {
