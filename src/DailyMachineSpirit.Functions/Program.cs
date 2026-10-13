@@ -6,6 +6,7 @@ using DailyMachineSpirit.Functions.Generation.Judging;
 using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Scriptorium;
 using DailyMachineSpirit.Functions.Scriptorium.SignIn;
+using DailyMachineSpirit.Functions.Tags;
 using DailyMachineSpirit.Functions.Telemetry;
 using DailyMachineSpirit.Functions.Voters;
 using Microsoft.Azure.Cosmos;
@@ -67,6 +68,8 @@ builder.Services.Configure<JevOptions>(builder.Configuration.GetSection(JevOptio
 var openAI = builder.Configuration.GetSection(AzureOpenAIOptions.SectionName).Get<AzureOpenAIOptions>() ?? new AzureOpenAIOptions();
 builder.Services.AddSingleton<IChatClients>(_ => new AzureOpenAIChatClients(new Uri(openAI.Endpoint)));
 builder.Services.AddHttpClient<IRiteJudge, JevJudge>(http => http.Timeout = TimeSpan.FromSeconds(30));
+// Tags the rites judged before tags existed, once per start (nothing left after the first).
+builder.Services.AddHostedService<TagBackfill>();
 builder.Services.AddTransient<RiteWriter>();
 builder.Services.AddTransient<BacklogRefiller>();
 builder.Services.AddTransient<DailyRitePublisher>();

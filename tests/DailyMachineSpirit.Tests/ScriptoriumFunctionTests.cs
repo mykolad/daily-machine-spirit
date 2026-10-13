@@ -47,6 +47,20 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Equal("DENY", request.HttpContext.Response.Headers.XFrameOptions.ToString());
     }
 
+    // So the Scribes see what the calendar covers before it's published.
+    [Fact]
+    public async Task Page_ShowsWhatEachDraftIsAbout_AndTheCalendarsSubjects()
+    {
+        await testbed.AddDraft("The Rite of the Hard Refresh", 0.9f, RiteKind.Ritual, new[] { "caches" });
+        await testbed.AddDraft("The Litany of Forgotten Names", 0.8f, RiteKind.Prayer, new[] { "infrastructure", "caches" });
+        await testbed.AddDraft("The Unjudged Rite", 0.7f);
+
+        var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+
+        Assert.Contains("Subjects waiting: Caches (2), Infrastructure (1), untagged (1).", html);
+        Assert.Contains(" · filed under Infrastructure, Caches · written by", html);
+    }
+
     [Fact]
     public async Task Page_WithAnEmptyBacklog_SaysSo_AndOffersToSummon()
     {

@@ -21,6 +21,7 @@ what really happens. Either kind is a **rite** (the design's word, and `Rite` in
 src/DailyMachineSpirit.Functions  — the Functions app (HTTP, timer and queue functions)
   Generation/                     — the backlog and the daily rite: Writing/, Chat/ (the models), Judging/ (Jev)
   Pages/                          — the public pages, rendered on the server (Today, the archive, a rite's page)
+  Tags/                           — the tags' vocabulary, and tagging the rites judged before tags existed
 src/DailyMachineSpirit.Data       — Cosmos DB: entities, documents, repositories
 tests/DailyMachineSpirit.Tests    — xUnit tests (the repository tests run against the Cosmos DB emulator)
 tests/DailyMachineSpirit.SmokeTests — xUnit tests of a deployed app over HTTP (each deployment runs them)
@@ -115,12 +116,23 @@ observability/                    — the Grafana dashboard and alerts, and what
   - The tab's icon is the logo's cog, inline in each page (the Scriptorium's too) as an SVG data URI (`Svg.Favicon`):
     no request for it, and browsers don't ask for `/favicon.ico`.
   - Routes: `/` (Today: the newest rite), `/archive` (`?before=<number>` for older pages, which the archive also
-    loads in place as the reader nears the end), `/r/<number>`. A catch-all
-    route takes `/` and answers every unknown address with the 404 page; more specific routes win over it.
+    loads in place as the reader nears the end), `/r/<number>`, `/tags/<key>` (a tag's rites, paged like the archive).
+    A catch-all route takes `/` and answers every unknown address with the 404 page; more specific routes win over it.
   - Everything a model wrote goes through `Html.Encode` (`Html.WithInlineCode` for text with `backticks`).
   - Every focusable control sits on the dark background, never on the parchment, so the amber focus ring shows.
   - **More rites** (a rite's own page): the three rites whose similarity scores are closest (cosine, `RelatedRites`),
     topped up with the newest others when there aren't enough scored ones. If it fails, the page goes without it.
+  - **Tags** (#6): the site's own fixed vocabulary (`Tags/RiteTags`), so there's no `cache` next to `caches`. The
+    judge gives a draft its tags with its scores (`IRiteJudge`), and they're stored with the draft and the rite it
+    becomes (`tags`, a list of keys), so a tag's page is one query, and switching judges keeps every rite's tags.
+    Jev's come from its topic answer (`JevTags`): the topics at 0.25 or more, the likeliest first, at most two, never
+    "other", at no extra cost. The rite card, the archive's rows and the Scriptorium's drafts show them; a row's
+    title link covers the row, so its tag links can sit inside it.
+    - **Rites judged before tags existed** get theirs from their stored scores when the app starts (`TagBackfill`,
+      through `IRiteJudge.TagsFrom`); after the first start there's nothing left to tag. Scores the judge can't read
+      stay untagged.
+    - **Changing how tags are given** (another threshold) applies to new drafts. To retag older ones, remove their
+      `tags` and restart the app.
 - **Votes** (Blessed / Heresy, `Api/VotesFunction`): one per account per rite, which the reader can switch or
   take back, signed in as below. `POST /api/rites/{number}/vote` with `{"vote": "blessed" | "heresy" | null}`, and
   `GET /api/votes?rites=12` for the page to show the reader's own vote pressed.
@@ -265,10 +277,10 @@ repository tests. For a deployment it also packages the app (the `app` artifact,
 - Both call `deploy.yml`, which deploys the package as the GitHub environment's identity (OIDC: the environment's
   `AZURE_*` variables hold ids, not secrets), one deployment per environment at a time. Then:
   - **Smoke tests** (`tests/DailyMachineSpirit.SmokeTests`, published into the package, so a package is always checked
-    by its own): `/healthz` reports the new commit, and Today, the archive, a rite, the 404 page and a font answer as
-    they should. They read the app's address and expected version from `SMOKE_TEST_BASE_URL` and `SMOKE_TEST_VERSION`,
-    so they can also run from your machine against staging. They call the app's own address (production's past
-    Cloudflare's cache), and both apps admit only some addresses (staging its owner, production Cloudflare), so the
+    by its own): `/healthz` reports the new commit, and Today, the archive, a rite, a tag's page, the 404 page and a font
+    answer as they should. They read the app's address and expected version from `SMOKE_TEST_BASE_URL` and
+    `SMOKE_TEST_VERSION`, so they can also run from your machine against staging. They call the app's own address
+    (production's past Cloudflare's cache), and both apps admit only some addresses (staging its owner, production Cloudflare), so the
     workflow adds the runner's address to the access rules for the tests (`smoke-tests`) and removes it afterwards,
     even when the run fails or is cancelled.
   - **Rollback:** when the smoke tests fail, the package of the newest successful Deploy Master run goes back and is

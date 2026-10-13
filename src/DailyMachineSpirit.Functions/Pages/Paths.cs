@@ -11,6 +11,10 @@ public static class Paths
 
     public static string ArchiveBefore(int number) => $"{Archive}?before={number}";
 
+    public static string Tag(string key) => $"/tags/{key}";
+
+    public static string TagBefore(string key, int number) => $"{Tag(key)}?before={number}";
+
     public static string SignIn(string returnTo) => $"/auth/github?return={Uri.EscapeDataString(returnTo)}";
 
     public static string SignOutFrom(string returnTo) => $"/auth/signout?return={Uri.EscapeDataString(returnTo)}";

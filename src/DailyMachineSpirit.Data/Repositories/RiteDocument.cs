@@ -41,6 +41,9 @@ internal sealed record RiteDocument
     // Null when missing: the JSON serializer doesn't know Option, so this is the one place a rite's null lives.
     public RiteSimilarity? Similarity { get; init; }
 
+    // Null until its judge tagged it: rites judged before tags existed get theirs later (TagBackfill).
+    public string[]? Tags { get; init; }
+
     public static string IdFor(DateOnly publishedOnUtc) => publishedOnUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
     public static RiteDocument From(Rite rite, int number) => new()
@@ -57,6 +60,7 @@ internal sealed record RiteDocument
         BlessedVotes = rite.BlessedCount,
         HeresyVotes = rite.HeresyCount,
         Similarity = rite.Similarity.Map(Utc.From).OrNull(),
+        Tags = rite.Tags.OrNull(),
     };
 
     public Rite ToRite() => new()
@@ -75,5 +79,6 @@ internal sealed record RiteDocument
         BlessedCount = BlessedVotes,
         HeresyCount = HeresyVotes,
         Similarity = Optional(Similarity),
+        Tags = Optional(Tags),
     };
 }

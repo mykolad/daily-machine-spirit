@@ -21,3 +21,15 @@ Proposal.dc.html`, `scriptorium-icons.md`): icons, grouped buttons, folded notes
   text field, so the field has a visually hidden `<label>` too.
 - **Exalt and Humble are a `role="group"` named "Reorder"**, so a screen reader announces the pair as one set of
   controls.
+
+## Tags
+
+The handoff has no tags. They use the site's tokens, on the dark background like every other control.
+
+- **An archive row's link is its title, stretched over the row,** instead of the whole row being one link: a link can't
+  hold the row's tag links. The row still takes a click anywhere and shows the focus ring around the whole row when its
+  title has focus (`:has`). A screen reader now hears the title as the link's name, not the whole row.
+- **Tag links are `#d9b874` (the link colour) on the page or a row,** well above 4.5:1 on both. Their pill border is
+  decoration; the text says what they are. Each is at least 32px tall, above the 24px WCAG 2.5.8 asks.
+- **A row's tags start with a visually hidden "Filed under",** which the rite card and the Scriptorium say visibly, so
+  a screen reader doesn't hear bare words after the counts.

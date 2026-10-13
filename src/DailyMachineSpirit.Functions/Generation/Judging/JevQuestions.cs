@@ -13,6 +13,9 @@ public static class JevQuestions
     /// <summary>Like <see cref="QuestionSet"/>, for the quality question alone, so changing it keeps the similarity scores.</summary>
     public const string QualityQuestion = "quality-q1";
 
+    // Every Jev model's name starts with it (jev-1.13.0), so another judge's version can't pass for Jev's.
+    private const string ModelPrefix = "jev-";
+
     public static readonly IReadOnlyList<KeyValuePair<string, string>> Topics =
     [
         new("builds", "builds, compilers, CI pipelines, failing or flaky checks"),
@@ -54,6 +57,11 @@ public static class JevQuestions
     ];
 
     public static string Version(string model) => $"{model}/{QuestionSet}";
+
+    /// <summary>Whether scores of this version are Jev's answers to these questions, whichever Jev model gave them.</summary>
+    public static bool IsVersion(string scoresGeneratorVersion)
+        => scoresGeneratorVersion.StartsWith(ModelPrefix, StringComparison.Ordinal)
+            && scoresGeneratorVersion.EndsWith($"/{QuestionSet}", StringComparison.Ordinal);
 
     public static string QualityVersion(string model) => $"{model}/{QualityQuestion}";
 }

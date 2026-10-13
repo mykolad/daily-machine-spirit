@@ -26,8 +26,8 @@ public sealed class JevJudge : IRiteJudge
     }
 
     /// <summary>
-    /// The draft with its similarity scores (the topic probabilities, then the act probabilities) and its quality; the
-    /// draft as it was while Jev is off.
+    /// The draft with its similarity scores (the topic probabilities, then the act probabilities), its tags and its
+    /// quality; the draft as it was while Jev is off.
     /// </summary>
     public async Task<Either<Error, Draft>> Judge(Draft draft, CancellationToken cancellationToken)
     {
@@ -75,14 +75,16 @@ public sealed class JevJudge : IRiteJudge
             }
 
             var now = time.GetUtcNow().UtcDateTime;
+            var similarity = new RiteSimilarity
+            {
+                ScoresGeneratorVersion = JevQuestions.Version(jev.Model),
+                Scores = [.. Probabilities(topic, JevQuestions.Topics), .. Probabilities(act, JevQuestions.Acts)],
+                CreatedAtUtc = now,
+            };
             return draft with
             {
-                Similarity = new RiteSimilarity
-                {
-                    ScoresGeneratorVersion = JevQuestions.Version(jev.Model),
-                    Scores = [.. Probabilities(topic, JevQuestions.Topics), .. Probabilities(act, JevQuestions.Acts)],
-                    CreatedAtUtc = now,
-                },
+                Similarity = similarity,
+                Tags = TagsFrom(similarity),
                 Augury = new Augury
                 {
                     Quality = JevQuestions.Qualities.Sum(q => Probability(quality, q.Key) * q.Quality),
@@ -97,6 +99,8 @@ public sealed class JevJudge : IRiteJudge
             return Error.New(ex);
         }
     }
+
+    public Option<string[]> TagsFrom(RiteSimilarity similarity) => JevTags.From(similarity);
 
     private static object Question(string instructions, IReadOnlyList<KeyValuePair<string, string>> options)
         => new { type = "choice", instructions, criteria = options.ToDictionary(o => o.Key, o => o.Value) };

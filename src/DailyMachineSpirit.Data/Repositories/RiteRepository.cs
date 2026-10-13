@@ -89,6 +89,29 @@ public class RiteRepository : IRiteRepository
                 .WithParameter("@version", scoresGeneratorVersion),
             cancellationToken)).ToDictionary(r => r.Number, r => r.Scores));
 
+    public Task<Either<Error, List<Rite>>> GetTagged(string tag, int number, int count, CancellationToken cancellationToken)
+        => Attempt(async () => (await container.Query<RiteDocument>(
+            new QueryDefinition("SELECT TOP @count * FROM c WHERE c.type = @type AND ARRAY_CONTAINS(c.tags, @tag) AND c.number < @number ORDER BY c.number DESC")
+                .WithParameter("@count", count)
+                .WithParameter("@type", RiteDocument.RiteType)
+                .WithParameter("@tag", tag)
+                .WithParameter("@number", number),
+            cancellationToken)).Select(document => document.ToRite()).ToList());
+
+    public Task<Either<Error, List<Rite>>> GetUntagged(CancellationToken cancellationToken)
+        => Attempt(async () => (await container.Query<RiteDocument>(
+            new QueryDefinition("SELECT * FROM c WHERE c.type = @type AND IS_OBJECT(c.similarity) AND NOT IS_ARRAY(c.tags)")
+                .WithParameter("@type", RiteDocument.RiteType),
+            cancellationToken)).Select(document => document.ToRite()).ToList());
+
+    public Task<Either<Error, Unit>> SaveTags(DateOnly publishedOnUtc, string[] tags, CancellationToken cancellationToken)
+        => Attempt(async () =>
+        {
+            await container.PatchItemAsync<RiteDocument>(RiteDocument.IdFor(publishedOnUtc), SharedPartitionKey,
+                [PatchOperation.Set("/tags", tags)], cancellationToken: cancellationToken);
+            return unit;
+        });
+
     private sealed record NumberAndScores(int Number, float[] Scores);
 
     // Saves the rite and takes its number in one batch; when it comes from a draft, the draft is marked published in the

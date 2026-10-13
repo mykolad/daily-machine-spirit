@@ -154,9 +154,9 @@ public static class Script
             }));
           }
 
-          // The archive loads older rites as the reader nears the end, by fetching the next page the "Load older rites"
-          // link points to and taking its rows. The link stays: a keyboard follows it here too, and focus moves to the
-          // first new rite. Without the script, it's an ordinary link to that page.
+          // The archive (and a tag's page) loads older rites as the reader nears the end, by fetching the next page the
+          // "Load older rites" link points to and taking its rows. The link stays: a keyboard follows it here too, and
+          // focus moves to the first new rite. Without the script, it's an ordinary link to that page.
           const rows = document.querySelector('.rows');
           const more = document.querySelector('.archive-more');
           if (rows && more) {
