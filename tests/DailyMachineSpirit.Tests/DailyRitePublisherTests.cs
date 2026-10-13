@@ -61,6 +61,7 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
     public async Task PublishToday_WithAnEmptyBacklog_WritesTheRiteOnTheSpot()
     {
         testbed.Models.Answers(Sol, Answer("Written on the spot"));
+        using var empty = testbed.Probe.Collect<long>("dms.backlog.empty");
 
         var published = Ok(await testbed.Publisher().PublishToday(CancellationToken.None));
 
@@ -69,6 +70,7 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
         Assert.Equal("Written on the spot", rite.Writing.Title);
         Assert.True(rite.Similarity.IsSome);
         Assert.Empty(await testbed.Waiting());
+        Assert.Single(empty.GetMeasurementSnapshot());
     }
 
     [Fact]

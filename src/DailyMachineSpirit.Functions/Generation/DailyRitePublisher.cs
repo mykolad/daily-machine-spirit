@@ -67,9 +67,13 @@ public sealed class DailyRitePublisher
                 Some: draft => Task.FromResult(Right<Error, Draft>(draft)),
                 // An empty backlog never leaves a day without its rite: one is written on the spot. The calendar is read
                 // again afterwards, since a refill running meanwhile may have saved a better draft.
-                None: () => refiller.AddDraft([], cancellationToken)
-                    .BindAsync(_ => TopOfTheCalendar(cancellationToken))
-                    .BindAsync(again => again.ToEither(Error.New("The backlog is still empty after writing a draft.")))));
+                None: () =>
+                {
+                    metrics.BacklogEmpty();
+                    return refiller.AddDraft([], cancellationToken)
+                        .BindAsync(_ => TopOfTheCalendar(cancellationToken))
+                        .BindAsync(again => again.ToEither(Error.New("The backlog is still empty after writing a draft.")));
+                }));
 
     // The Scribes' order is read before the waiting drafts, so every draft it places is among them, as in the Scriptorium:
     // a draft that arrives and is anointed in between is simply not in this snapshot, rather than placed but unknown.
