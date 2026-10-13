@@ -32,7 +32,7 @@ var productionDomain = {
   name: 'dailymachinespirit.fyi'
   certificateSecret: 'dailymachinespirit-origin'
   // Cloudflare dashboard → the domain → Overview → Zone ID; not secret. The app purges the zone's cached pages with it.
-  zoneId: ''
+  zoneId: '143ab86fe8cf72cb735e20bfaac6ebcc'
 }
 
 // App Service's own service principal (Microsoft.Azure.WebSites, app id abfa0a7c-a6b6-4736-8310-5855508787cd): it
