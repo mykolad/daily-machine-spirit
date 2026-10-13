@@ -5,8 +5,7 @@ Central) and everything in it. This page covers the few things Bicep can't do: t
 and what lives outside Azure.
 
 Every infrastructure change goes to staging first: production takes it only with `deployProduction=true` (false by
-default). Production is live since #50; its daily publishing is held until launch (`publishesDaily` in
-`resources.bicep`).
+default). Production is live since #50.
 
 | Resource | Name | Notes |
 |---|---|---|
