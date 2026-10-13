@@ -1,0 +1,47 @@
+name: Let the runner in
+description: >
+  Adds this runner's address to the app's access rules (rule smoke-tests), so the smoke tests can reach an app that
+  admits only some addresses, and waits until the rule is in force. shut-runner-out removes it again.
+
+inputs:
+  resource-group:
+    required: true
+  app:
+    required: true
+  base-url:
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # A rule left by a runner that died is replaced here, and an infrastructure deployment removes it too: Bicep sets the
+    # rules whole.
+    - shell: bash
+      env:
+        RESOURCE_GROUP: ${{ inputs.resource-group }}
+        APP: ${{ inputs.app }}
+        BASE_URL: ${{ inputs.base-url }}
+      run: |
+        ip=$(curl -s -m 20 https://api.ipify.org)
+        az functionapp config access-restriction remove -g "$RESOURCE_GROUP" -n "$APP" --rule-name smoke-tests -o none \
+          2>/dev/null || true
+        az functionapp config access-restriction add -g "$RESOURCE_GROUP" -n "$APP" --rule-name smoke-tests \
+          --action Allow --ip-address "$ip/32" --priority 300 -o none
+        # The rule reaches the app's front ends one by one: wait until ten requests in a row get past it. A 403 or no
+        # answer at all starts the count again. Any other answer counts, even an error: whether the app is healthy is
+        # for the smoke tests to judge, so a broken app still fails them and is rolled back.
+        admitted=0
+        deadline=$((SECONDS + 180))
+        while (( admitted < 10 && SECONDS < deadline )); do
+          status=$(curl -s -m 15 -o /dev/null -w '%{http_code}' "$BASE_URL/healthz" || true)
+          if [[ -n $status && $status != 000 && $status != 403 ]]; then
+            admitted=$((admitted + 1))
+          else
+            admitted=0
+            sleep 3
+          fi
+        done
+        if (( admitted < 10 )); then
+          echo "::error title=Access rule::$APP still doesn't answer the runner reliably after three minutes."
+          exit 1
+        fi

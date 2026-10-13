@@ -3,6 +3,10 @@ name: Deploy
 # One deployment of the Functions app, shared by Deploy Master and Deploy Branch to Staging: the package Build and Test
 # made in the same run, then smoke tests, and the last good master's package back if they fail. It signs in to Azure as
 # the environment's GitHub identity (OIDC, no secrets), which may change that one app and nothing else (infra/).
+#
+# Two jobs, so a run's graph shows a rollback as a step of its own: deploy (with the smoke tests), then rollback, which
+# runs only when the smoke tests failed. One deployment per environment at a time is the caller's to ensure (its job's
+# concurrency), so no other deployment comes between the two.
 on:
   workflow_call:
     inputs:
@@ -42,20 +46,20 @@ jobs:
   deploy:
     name: deploy
     runs-on: ubuntu-latest
-    # Above the worst case, so the rollback and the clean-up of the runner's rule always get their turn: two deploys, the
-    # three-minute wait for the access rule, and two smoke test runs of up to ten minutes each (DeployedApp's waits and
-    # retries) come to about 36 minutes.
-    timeout-minutes: 45
+    # Above the worst case, so the clean-up of the runner's rule always gets its turn: the deploy, the three-minute wait
+    # for the access rule, and up to ten minutes of smoke tests (DeployedApp's waits and retries).
+    timeout-minutes: 25
     environment: ${{ inputs.environment }}
-    # One deployment per environment at a time, in the order they arrive. A newer one waits rather than cancelling one
-    # half done, and the queue keeps every waiting deployment: by default GitHub keeps only the newest, so a branch
-    # deployment could knock out a merge's.
-    concurrency:
-      group: deploy-${{ inputs.environment }}
-      cancel-in-progress: false
-      queue: max
+    outputs:
+      # Only a failure of the smoke tests themselves rolls back, not a run that never got to them.
+      smoke: ${{ steps.smoke.outcome }}
 
     steps:
+      # The shared steps for the runner's access rule.
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/actions
+
       - name: Download the package
         run: gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name app --dir package
 
@@ -79,35 +83,13 @@ jobs:
           package: package/publish
           sku: flexconsumption
 
-      # Removed again near the end, even when the run fails or is cancelled. A rule left by a runner that died is replaced
-      # here, and an infrastructure deployment removes it too: Bicep sets the rules whole.
       - name: Let the runner in
-        id: let-in
         if: ${{ inputs.restricts-addresses }}
-        run: |
-          ip=$(curl -s -m 20 https://api.ipify.org)
-          az functionapp config access-restriction remove -g "$RESOURCE_GROUP" -n "$APP" --rule-name smoke-tests -o none \
-            2>/dev/null || true
-          az functionapp config access-restriction add -g "$RESOURCE_GROUP" -n "$APP" --rule-name smoke-tests \
-            --action Allow --ip-address "$ip/32" --priority 300 -o none
-          # The rule reaches the app's front ends one by one: wait until ten requests in a row get past it. A 403 or no
-          # answer at all starts the count again. Any other answer counts, even an error: whether the app is healthy is
-          # for the smoke tests to judge, so a broken app still fails them and is rolled back.
-          admitted=0
-          deadline=$((SECONDS + 180))
-          while (( admitted < 10 && SECONDS < deadline )); do
-            status=$(curl -s -m 15 -o /dev/null -w '%{http_code}' "$BASE_URL/healthz" || true)
-            if [[ -n $status && $status != 000 && $status != 403 ]]; then
-              admitted=$((admitted + 1))
-            else
-              admitted=0
-              sleep 3
-            fi
-          done
-          if (( admitted < 10 )); then
-            echo "::error title=Access rule::$APP still doesn't answer the runner reliably after three minutes."
-            exit 1
-          fi
+        uses: ./.github/actions/let-runner-in
+        with:
+          resource-group: ${{ env.RESOURCE_GROUP }}
+          app: ${{ inputs.app-name }}
+          base-url: ${{ inputs.base-url }}
 
       - name: Smoke tests
         id: smoke
@@ -116,11 +98,54 @@ jobs:
           SMOKE_TEST_VERSION: ${{ inputs.version }}
         run: dotnet test package/smoke-tests/DailyMachineSpirit.SmokeTests.dll --logger "console;verbosity=normal"
 
-      # Only when the app failed its smoke tests, not when they couldn't run. The newest master that passed its own smoke
-      # tests: Deploy Master succeeds only then. Its package is kept 90 days.
+      # Even when the run fails or is cancelled, and on a deployment that failed before letting its runner in: a rule left
+      # by a runner that died goes too.
+      - name: Shut the runner out
+        if: ${{ always() && inputs.restricts-addresses }}
+        uses: ./.github/actions/shut-runner-out
+        with:
+          resource-group: ${{ env.RESOURCE_GROUP }}
+          app: ${{ inputs.app-name }}
+
+      # Says what happened to the app, which isn't always what failed: a failed sign-in never reached it, and a failed
+      # clean-up comes after tests that passed.
+      - name: Summary
+        if: ${{ always() }}
+        env:
+          OUTCOME: ${{ job.status }}
+          DEPLOYED: ${{ steps.deploy.outcome }}
+          SMOKE: ${{ steps.smoke.outcome }}
+        run: |
+          if [ "$OUTCOME" = success ]; then
+            message="Deployed \`$VERSION\` to $APP; the smoke tests passed."
+          elif [ "$DEPLOYED" != success ]; then
+            message="\`$VERSION\` wasn't deployed to $APP: the run failed before or while deploying it."
+          elif [ "$SMOKE" = success ]; then
+            message="Deployed \`$VERSION\` to $APP and the smoke tests passed, but a later step failed: see the run."
+          elif [ "$SMOKE" = failure ]; then
+            message="\`$VERSION\` failed its smoke tests on $APP: the rollback job puts the last good master back."
+          else
+            message="Deployed \`$VERSION\` to $APP, but the smoke tests couldn't run, so it isn't rolled back: see the run."
+          fi
+          echo "$message" >> "$GITHUB_STEP_SUMMARY"
+
+  # The newest master that passed its own smoke tests (Deploy Master succeeds only then), whose package is kept 90 days.
+  # It succeeds when that package is back and passes its own smoke tests; the run still fails, by the deploy job.
+  rollback:
+    name: rollback
+    needs: deploy
+    if: ${{ failure() && needs.deploy.outputs.smoke == 'failure' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/actions
+
       - name: Find the last good package
         id: last-good
-        if: ${{ failure() && steps.smoke.outcome == 'failure' }}
         run: |
           run=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow deploy-master.yml --branch master --status success \
             --limit 1 --json databaseId --jq '.[0].databaseId // empty')
@@ -131,65 +156,65 @@ jobs:
           gh run download "$run" --repo "$GITHUB_REPOSITORY" --name app --dir last-good
           echo "version=$(cat last-good/version.txt)" >> "$GITHUB_OUTPUT"
 
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
       - name: Roll back
         id: rollback
-        if: ${{ failure() && steps.last-good.outcome == 'success' }}
         uses: Azure/functions-action@v1
         with:
           app-name: ${{ inputs.app-name }}
           package: last-good/publish
           sku: flexconsumption
 
-      - name: Smoke tests after the rollback
-        id: rollback-checked
-        if: ${{ failure() && steps.rollback.outcome == 'success' }}
+      # This job's runner has an address of its own.
+      - name: Let the runner in
+        if: ${{ inputs.restricts-addresses }}
+        uses: ./.github/actions/let-runner-in
+        with:
+          resource-group: ${{ env.RESOURCE_GROUP }}
+          app: ${{ inputs.app-name }}
+          base-url: ${{ inputs.base-url }}
+
+      # The last good package's own smoke tests, which match what it serves.
+      - name: Smoke tests
+        id: smoke
         env:
           LAST_GOOD: ${{ steps.last-good.outputs.version }}
           SMOKE_TEST_BASE_URL: ${{ inputs.base-url }}
           SMOKE_TEST_VERSION: ${{ steps.last-good.outputs.version }}
         run: |
-          # The last good package's own smoke tests, which match what it serves.
           dotnet test last-good/smoke-tests/DailyMachineSpirit.SmokeTests.dll --logger "console;verbosity=normal"
           echo "::error title=Rolled back::$VERSION failed its smoke tests, so $APP runs $LAST_GOOD again."
 
-      # On every deployment of an app that restricts addresses, even one that failed before letting its runner in: a rule
-      # left by a runner that died goes too.
       - name: Shut the runner out
         if: ${{ always() && inputs.restricts-addresses }}
-        run: |
-          rules=$(az functionapp config access-restriction show -g "$RESOURCE_GROUP" -n "$APP" \
-            --query "ipSecurityRestrictions[?name=='smoke-tests'].name" -o tsv)
-          if [ -n "$rules" ]; then
-            az functionapp config access-restriction remove -g "$RESOURCE_GROUP" -n "$APP" --rule-name smoke-tests -o none
-          fi
+        uses: ./.github/actions/shut-runner-out
+        with:
+          resource-group: ${{ env.RESOURCE_GROUP }}
+          app: ${{ inputs.app-name }}
 
-      # Says what happened to the app, which isn't always what failed: a failed sign-in never reached it, and a failed
-      # clean-up comes after tests that passed.
       - name: Summary
         if: ${{ always() }}
         env:
-          OUTCOME: ${{ job.status }}
-          DEPLOYED: ${{ steps.deploy.outcome }}
-          SMOKE: ${{ steps.smoke.outcome }}
           LAST_GOOD: ${{ steps.last-good.outputs.version }}
           REDEPLOYED: ${{ steps.rollback.outcome }}
-          ROLLBACK: ${{ steps.rollback-checked.outcome }}
+          CHECKED: ${{ steps.smoke.outcome }}
         run: |
-          if [ "$OUTCOME" = success ]; then
-            message="Deployed \`$VERSION\` to $APP; the smoke tests passed."
-          elif [ "$DEPLOYED" != success ]; then
-            message="\`$VERSION\` wasn't deployed to $APP: the run failed before or while deploying it."
-          elif [ "$SMOKE" = success ]; then
-            message="Deployed \`$VERSION\` to $APP and the smoke tests passed, but a later step failed: see the run."
-          elif [ "$SMOKE" != failure ]; then
-            message="Deployed \`$VERSION\` to $APP, but the smoke tests couldn't run, so it wasn't rolled back: see the run."
-          elif [ "$ROLLBACK" = success ]; then
-            message="\`$VERSION\` failed its smoke tests on $APP, which was rolled back to \`$LAST_GOOD\`."
-          elif [ "$REDEPLOYED" = failure ]; then
-            message="\`$VERSION\` failed its smoke tests on $APP, and deploying \`$LAST_GOOD\` back failed too: check the app."
-          elif [ -n "$LAST_GOOD" ]; then
-            message="\`$VERSION\` failed its smoke tests on $APP, and so did \`$LAST_GOOD\` after rolling back to it: check the app."
+          if [ "$CHECKED" = success ]; then
+            message="$APP was rolled back to \`$LAST_GOOD\`, which passed its smoke tests."
+          elif [ -z "$LAST_GOOD" ]; then
+            message="$APP wasn't rolled back: there was no last good package to put back. Check the app."
+          elif [ "$REDEPLOYED" != success ]; then
+            message="Deploying \`$LAST_GOOD\` back to $APP failed: check the app."
           else
-            message="\`$VERSION\` failed its smoke tests on $APP, and it wasn't rolled back: see the run."
+            message="$APP runs \`$LAST_GOOD\` again, but it failed its smoke tests too: check the app."
           fi
           echo "$message" >> "$GITHUB_STEP_SUMMARY"

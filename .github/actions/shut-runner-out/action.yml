@@ -1,0 +1,23 @@
+name: Shut the runner out
+description: >
+  Removes the smoke-tests access rule let-runner-in added, whoever's it is: a rule left by a runner that died goes too.
+
+inputs:
+  resource-group:
+    required: true
+  app:
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        RESOURCE_GROUP: ${{ inputs.resource-group }}
+        APP: ${{ inputs.app }}
+      run: |
+        rules=$(az functionapp config access-restriction show -g "$RESOURCE_GROUP" -n "$APP" \
+          --query "ipSecurityRestrictions[?name=='smoke-tests'].name" -o tsv)
+        if [ -n "$rules" ]; then
+          az functionapp config access-restriction remove -g "$RESOURCE_GROUP" -n "$APP" --rule-name smoke-tests -o none
+        fi

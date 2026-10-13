@@ -302,4 +302,5 @@ repository tests. For a deployment it also packages the app (the `app` artifact,
     owner, production Cloudflare), so the workflow adds the runner's address to the access rules for the tests
     (`smoke-tests`) and removes it afterwards, even when the run fails or is cancelled.
   - **Rollback:** when the smoke tests fail, the package of the newest successful Deploy Master run goes back and is
-    smoke-tested, and the run fails.
+    smoke-tested, and the run fails. It's a job of its own (`staging / rollback`, skipped when nothing failed), so the
+    run's graph shows it; the environment's lock (the calling job's `concurrency`) holds across both jobs.
