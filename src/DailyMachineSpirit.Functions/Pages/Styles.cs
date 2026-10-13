@@ -37,6 +37,7 @@ public static class Styles
         nav a[aria-current=page]{background:rgba(201,162,90,.16)}
         nav a:hover{background:rgba(201,162,90,.22);color:#ede3cf}
         main{width:100%;flex:1;display:flex;flex-direction:column;align-items:center}
+        main:focus-visible{outline:none}
         .masthead{display:flex;flex-direction:column;align-items:center;gap:14px;margin-bottom:clamp(32px,5vw,52px)}
         .masthead-rule{max-width:100%;height:auto}
         .masthead h1{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:clamp(32px,6vw,58px);line-height:1.05;letter-spacing:.04em;text-wrap:balance}

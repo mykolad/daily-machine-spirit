@@ -44,3 +44,9 @@ The handoff has no search. It uses the site's tokens, on the dark background.
   new page, so the title is what a screen reader reads first, and a live region wouldn't be announced on load.
 - **It works without the script:** a plain form that sends `GET /search?q=`, and "Load older rites" is a link, as in
   the archive.
+
+## The main region
+
+- **`<main>` shows no focus ring.** It takes focus (`tabindex="-1"`) only so "Skip to content" can move focus to it, and
+  isn't a control. A click inside it focuses it too, and a reload restored that focus with the amber ring around the
+  whole page for a moment. Its first link or button still shows the ring, as every control does.
