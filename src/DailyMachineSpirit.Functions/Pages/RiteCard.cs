@@ -13,7 +13,9 @@ public static class RiteCard
 
     /// <param name="ownPage">On its own page the title is the page's h1 and the text can be copied; on Today the
     /// masthead is the h1.</param>
-    public static string Render(Rite rite, bool ownPage)
+    /// <param name="countedAt">When the rite's counts were read, no later: the script trusts a vote made since over the
+    /// page, which a cache may have kept from before it.</param>
+    public static string Render(Rite rite, bool ownPage, DateTimeOffset countedAt)
     {
         var heading = ownPage ? "h1" : "h2";
         var kind = rite.Writing.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL";
@@ -58,7 +60,7 @@ public static class RiteCard
             </div>
             </section>
             <div class="actions">
-            <div class="reactions" role="group" aria-label="Reactions" data-rite="{rite.Number}">
+            <div class="reactions" role="group" aria-label="Reactions" data-rite="{rite.Number}" data-counted-at="{countedAt.ToUnixTimeMilliseconds()}">
             <button type="button" class="button reaction reaction-blessed" data-reaction="blessed" aria-pressed="false">{Svg.FlameIcon}<span>Blessed</span><span class="count">{Html.Count(rite.BlessedCount)}</span></button>
             <button type="button" class="button reaction reaction-heresy" data-reaction="heresy" aria-pressed="false">{Svg.SkullIcon}<span>Heresy</span><span class="count">{Html.Count(rite.HeresyCount)}</span></button>
             </div>

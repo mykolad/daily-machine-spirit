@@ -120,6 +120,16 @@ observability/                    — the Grafana dashboard, and what the app's 
   - Every focusable control sits on the dark background, never on the parchment, so the amber focus ring shows.
   - **More rites** (a rite's own page): the three rites whose similarity scores are closest (cosine, `RelatedRites`),
     topped up with the newest others when there aren't enough scored ones. If it fails, the page goes without it.
+  - **Cached until they change** (#37): browsers keep a page a minute, and Cloudflare keeps Today and a rite's page an
+    hour (`s-maxage`, `EdgeLifetime.UntilPurged`), so their requests rarely reach the app. Whatever changes them purges
+    them (`IPageCache`, `CloudflarePageCache`): a saved vote purges its rite's page and Today
+    (`Paths.ShowingVotesOf`), a new rite purges Today. The archive, which no purge can find, stays a minute. A purge
+    never fails the change: it's logged and counted (`dms.pages.purges`), and the page refreshes within the hour.
+    Settings: `Cloudflare:ZoneId`, `:SiteUrl`, `:ApiToken` (a token that may only purge the zone); without them
+    (staging, a local run) nothing is purged.
+  - **The voter's own counts survive a cached page:** the vote answers with the counts and when they were counted
+    (`countedAt`), the page carries when its counts were read (`data-counted-at`, taken before reading), and the script
+    keeps each vote's answer for two hours in `localStorage` (`dms-votes-v1`), showing it over an older page.
 - **Votes** (Blessed / Heresy, `Api/VotesFunction`): one per account per rite, which the reader can switch or
   take back, signed in as below. `POST /api/rites/{number}/vote` with `{"vote": "blessed" | "heresy" | null}`, and
   `GET /api/votes?rites=12` for the page to show the reader's own vote pressed.

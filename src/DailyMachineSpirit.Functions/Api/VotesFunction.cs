@@ -3,6 +3,8 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
+using DailyMachineSpirit.Functions.Caching;
+using DailyMachineSpirit.Functions.Pages;
 using DailyMachineSpirit.Functions.Voters;
 using LanguageExt;
 using Microsoft.AspNetCore.Http;
@@ -31,12 +33,16 @@ public sealed class VotesFunction
 
     private readonly IVoteRepository votes;
     private readonly VoterSession session;
+    private readonly IPageCache pages;
+    private readonly TimeProvider time;
     private readonly ILogger<VotesFunction> logger;
 
-    public VotesFunction(IVoteRepository votes, VoterSession session, ILogger<VotesFunction> logger)
+    public VotesFunction(IVoteRepository votes, VoterSession session, IPageCache pages, TimeProvider time, ILogger<VotesFunction> logger)
     {
         this.votes = votes;
         this.session = session;
+        this.pages = pages;
+        this.time = time;
         this.logger = logger;
     }
 
@@ -72,9 +78,17 @@ public sealed class VotesFunction
         }
 
         var voterKey = voter.IfNone(string.Empty);
-        return (await votes.Vote(number, voterKey, vote, cancellationToken)).Match(
+        var saved = await votes.Vote(number, voterKey, vote, cancellationToken);
+        // Taken after the save: any page whose counts were read later has this vote (see Script).
+        var countedAt = time.GetUtcNow().ToUnixTimeMilliseconds();
+        if (saved.Exists(counts => counts.IsSome))
+        {
+            // Not the request's token: a reader who leaves mid-vote has still changed the pages everyone else sees.
+            await pages.Purge(Paths.ShowingVotesOf(number), CancellationToken.None);
+        }
+        return saved.Match(
             Right: counts => counts.Match<IActionResult>(
-                Some: saved => new OkObjectResult(new { blessed = saved.Blessed, heresy = saved.Heresy, vote = Name(vote) }),
+                Some: shown => new OkObjectResult(new { blessed = shown.Blessed, heresy = shown.Heresy, vote = Name(vote), countedAt }),
                 None: () => new NotFoundResult()),
             Left: error =>
             {

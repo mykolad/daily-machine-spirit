@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
 using static DailyMachineSpirit.Tests.Expect;
 using static LanguageExt.Prelude;
 
@@ -22,6 +23,8 @@ public sealed class VotesTests : IAsyncLifetime
     private const string Reader = "reader-key";
 
     private readonly CosmosTestContainer cosmos = new();
+    private readonly FakePageCache pages = new();
+    private readonly FakeTimeProvider time = new(DateTimeOffset.FromUnixTimeMilliseconds(1_791_600_000_000));
     private readonly VoterSession session = new(
         Options.Create(new VoterOptions
         {
@@ -163,7 +166,18 @@ public sealed class VotesTests : IAsyncLifetime
         var (status, body) = await Post(Function(), 1, """{"vote":"blessed"}""", "application/json", SignedIn());
 
         Assert.Equal(StatusCodes.Status200OK, status);
-        Assert.Equal("""{"blessed":1,"heresy":0,"vote":"blessed"}""", body);
+        Assert.Equal("""{"blessed":1,"heresy":0,"vote":"blessed","countedAt":1791600000000}""", body);
+    }
+
+    // The cached pages that show the rite's counts: its own, and Today.
+    [Fact]
+    public async Task Post_PurgesThePagesShowingTheCounts()
+    {
+        await AddRite();
+
+        await Post(Function(), 1, """{"vote":"blessed"}""", "application/json", SignedIn());
+
+        Assert.Equal(["/", "/r/1"], Assert.Single(pages.Purges));
     }
 
     [Fact]
@@ -174,7 +188,7 @@ public sealed class VotesTests : IAsyncLifetime
 
         var (_, body) = await Post(Function(), 1, """{"vote":null}""", "application/json", SignedIn());
 
-        Assert.Equal("""{"blessed":0,"heresy":0,"vote":null}""", body);
+        Assert.Equal("""{"blessed":0,"heresy":0,"vote":null,"countedAt":1791600000000}""", body);
     }
 
     [Theory]
@@ -226,6 +240,7 @@ public sealed class VotesTests : IAsyncLifetime
         var (status, _) = await Post(Function(), 9, """{"vote":"heresy"}""", "application/json", SignedIn());
 
         Assert.Equal(StatusCodes.Status404NotFound, status);
+        Assert.Empty(pages.Purges);
     }
 
     [Fact]
@@ -234,6 +249,7 @@ public sealed class VotesTests : IAsyncLifetime
         var (status, _) = await Post(MissingData(), 1, """{"vote":"heresy"}""", "application/json", SignedIn());
 
         Assert.Equal(StatusCodes.Status503ServiceUnavailable, status);
+        Assert.Empty(pages.Purges);
     }
 
     [Fact]
@@ -267,10 +283,10 @@ public sealed class VotesTests : IAsyncLifetime
 
     private VoteRepository Repository => new(cosmos.Container);
 
-    private VotesFunction Function() => new(Repository, session, NullLogger<VotesFunction>.Instance);
+    private VotesFunction Function() => new(Repository, session, pages, time, NullLogger<VotesFunction>.Instance);
 
     private VotesFunction MissingData()
-        => new(new VoteRepository(cosmos.Container.Database.GetContainer("no-such-container")), session, NullLogger<VotesFunction>.Instance);
+        => new(new VoteRepository(cosmos.Container.Database.GetContainer("no-such-container")), session, pages, time, NullLogger<VotesFunction>.Instance);
 
     private string SignedIn() => $"{VoterSession.CookieName}={session.Issue(session.VoterKeyFor("github", "583231"))}";
 

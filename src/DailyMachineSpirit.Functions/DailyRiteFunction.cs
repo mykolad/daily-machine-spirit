@@ -1,4 +1,6 @@
+using DailyMachineSpirit.Functions.Caching;
 using DailyMachineSpirit.Functions.Generation;
+using DailyMachineSpirit.Functions.Pages;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -12,12 +14,14 @@ public sealed class DailyRiteFunction
     public const string Schedule = "0 0 0 * * *";
 
     private readonly DailyRitePublisher publisher;
+    private readonly IPageCache pages;
     private readonly IOptions<GenerationOptions> options;
     private readonly ILogger<DailyRiteFunction> logger;
 
-    public DailyRiteFunction(DailyRitePublisher publisher, IOptions<GenerationOptions> options, ILogger<DailyRiteFunction> logger)
+    public DailyRiteFunction(DailyRitePublisher publisher, IPageCache pages, IOptions<GenerationOptions> options, ILogger<DailyRiteFunction> logger)
     {
         this.publisher = publisher;
+        this.pages = pages;
         this.options = options;
         this.logger = logger;
     }
@@ -40,6 +44,11 @@ public sealed class DailyRiteFunction
         }
 
         var result = await publisher.PublishToday(cancellationToken);
+        if (result.Exists(published => published.IsNew))
+        {
+            // Today showed yesterday's rite (or the slumbering page), kept at the edge until purged.
+            await pages.Purge([Paths.Today], cancellationToken);
+        }
         return result.Match(
             Right: published =>
             {

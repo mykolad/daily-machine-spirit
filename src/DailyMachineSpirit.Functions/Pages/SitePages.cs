@@ -42,8 +42,8 @@ public sealed class SitePages
         var now = time.GetUtcNow();
         return (await rites.GetNewest(1, cancellationToken)).Match(
             Right: newest => newest.HeadOrNone().Match(
-                Some: rite => Page(request, StatusCodes.Status200OK, TodayPage.Render(rite, now)),
-                None: () => Page(request, StatusCodes.Status200OK, TodayPage.Slumbering(now))),
+                Some: rite => Page(request, StatusCodes.Status200OK, TodayPage.Render(rite, now), EdgeLifetime.UntilPurged),
+                None: () => Page(request, StatusCodes.Status200OK, TodayPage.Slumbering(now), EdgeLifetime.UntilPurged)),
             Left: error => Failed(request, error));
     }
 
@@ -58,10 +58,13 @@ public sealed class SitePages
             return Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(id));
         }
 
+        // Taken before the counts are read: a vote saved later can't be on the page, which the script needs to know.
+        var now = time.GetUtcNow();
         var found = (await rites.GetByNumbers([number], cancellationToken)).Map(matches => matches.HeadOrNone());
         return await found.Match<Task<IActionResult>>(
             Right: rite => rite.Match<Task<IActionResult>>(
-                Some: async shown => Page(request, StatusCodes.Status200OK, RitePage.Render(shown, await MoreRites(shown, cancellationToken))),
+                Some: async shown => Page(request, StatusCodes.Status200OK,
+                    RitePage.Render(shown, await MoreRites(shown, cancellationToken), now), EdgeLifetime.UntilPurged),
                 None: () => Task.FromResult<IActionResult>(Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(id)))),
             Left: error => Task.FromResult(Failed(request, error)));
     }
@@ -121,11 +124,18 @@ public sealed class SitePages
         return Page(request, StatusCodes.Status503ServiceUnavailable, StatePages.Failed($"{request.Path}{request.QueryString}"));
     }
 
-    private static ContentResult Page(HttpRequest request, int status, string html)
+    private static ContentResult Page(HttpRequest request, int status, string html) => Page(request, status, html, EdgeLifetime.Brief);
+
+    // Browsers keep a page a minute either way. Cloudflare keeps Today and a rite's page an hour, since the app purges
+    // them when they change (a vote, a new rite: Paths.ShowingVotesOf), so it reads the database only after a change; the
+    // hour is the most a page can be stale if a purge fails. The archive, which no purge can find, stays a minute there
+    // too.
+    private static ContentResult Page(HttpRequest request, int status, string html, EdgeLifetime edge)
     {
         var headers = request.HttpContext.Response.Headers;
-        // A rite never changes once published, and Today changes once a day: a minute's cache costs nothing.
-        headers.CacheControl = status == StatusCodes.Status200OK ? "public, max-age=60" : "no-store";
+        headers.CacheControl = status != StatusCodes.Status200OK ? "no-store"
+            : edge == EdgeLifetime.UntilPurged ? "public, max-age=60, s-maxage=3600"
+            : "public, max-age=60";
         headers.XContentTypeOptions = "nosniff";
         headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
         return new ContentResult { Content = html, ContentType = "text/html; charset=utf-8", StatusCode = status };

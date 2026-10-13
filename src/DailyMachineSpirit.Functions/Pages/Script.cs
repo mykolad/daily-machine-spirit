@@ -77,6 +77,28 @@ public static class Script
               b.setAttribute('aria-pressed', String(b.dataset.reaction === vote));
               b.querySelector('.count').textContent = shown[b.dataset.reaction].toLocaleString('en');
             });
+            // Cloudflare keeps the page until a vote purges it, but the reader's browser may still have the copy from
+            // before their own vote (for a minute), or a purge may have failed. So the browser keeps the counts each vote
+            // answered, with when the server counted them, and shows them over a page whose counts were read earlier. Kept
+            // for two hours, past the hour Cloudflare keeps a page at most.
+            const votesKey = 'dms-votes-v1';
+            const recalled = () => {
+              try {
+                const all = JSON.parse(localStorage.getItem(votesKey) ?? '{}');
+                return all && typeof all === 'object' ? all : {};
+              } catch { return {}; }
+            };
+            // Never throws: the vote is saved by now, whatever storage holds.
+            const remember = (answer) => {
+              if (typeof answer.countedAt !== 'number') return;
+              try {
+                const all = Object.fromEntries(Object.entries(recalled()).filter(([, entry]) => entry && Date.now() - entry.countedAt < 7200000));
+                all[rite] = { blessed: answer.blessed, heresy: answer.heresy, countedAt: answer.countedAt };
+                localStorage.setItem(votesKey, JSON.stringify(all));
+              } catch { }
+            };
+            const kept = recalled()[rite];
+            if (kept && typeof kept.blessed === 'number' && typeof kept.heresy === 'number' && kept.countedAt >= Number(reactions.dataset.countedAt)) show(null, kept);
             let reader = { available: false, signedIn: false, vote: null, voteLoaded: false };
             const showReader = () => statuses.forEach((s) => { s.hidden = !reader.available || s.dataset.signedIn !== String(reader.signedIn); });
             // The signed-in reader's own vote. Until it has loaded, the page doesn't know whether a click sets a vote or
@@ -144,7 +166,9 @@ public static class Script
                 if (!response.ok) throw new Error(String(response.status));
                 // Saved: from here on the vote counts, even if the answer can't be read.
                 reader.vote = vote;
-                show(vote, await response.json().catch(() => hoped));
+                const answer = await response.json().catch(() => null);
+                if (answer) remember(answer);
+                show(vote, answer ?? hoped);
               } catch {
                 show(previous, before);
                 say('Your vote wasn’t recorded. Try again.');
@@ -227,7 +251,8 @@ public static class Script
             const text = minutes >= 60 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m` : `${minutes}m`;
             countdowns.forEach((element) => { element.textContent = text; });
           };
-          if (countdowns.length > 0) setInterval(tick, 30000);
+          // Ticked at once too: a cached page may have been rendered up to an hour ago.
+          if (countdowns.length > 0) { tick(); setInterval(tick, 30000); }
         })();
         """;
 }
