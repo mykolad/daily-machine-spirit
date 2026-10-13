@@ -27,8 +27,8 @@
       "execErrState": "Error",
       "for": "0s",
       "annotations": {
-        "summary": "A backlog refill failed all three tries in the last hour.",
-        "description": "RefillBacklog tries a message three times, ten minutes apart, so a passing failure doesn't alert. Counted from the error each failed try logs. The logs say why: a model, Jev or Cosmos DB. The backlog shrinks by one a day until refills work again; Summon New Rites in the Scriptorium tries again."
+        "summary": "Backlog refills failed three times in the last hour.",
+        "description": "Counted from the error each failed try logs, whichever refill it was for: one refill's three tries (ten minutes apart), or failures of separate refills (after publishing, Summon). Either way refills keep failing, and a single passing failure doesn't alert. The logs say why: a model, Jev or Cosmos DB. The backlog shrinks by one a day until refills work again; Summon New Rites in the Scriptorium tries again."
       }
     },
     {

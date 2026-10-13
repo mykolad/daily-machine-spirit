@@ -4,8 +4,9 @@
 
 .DESCRIPTION
     Run by hand after changing the file (observability/README.md). Applying it twice changes nothing: every rule keeps
-    its uid. The rules stay editable in Grafana; export them back over the file afterwards, so the repository stays the
-    truth. Notifications follow the stack's default notification policy (its default contact point emails the owner).
+    its uid. The rules stay editable in Grafana; -Export writes them back over the file afterwards, so the repository
+    stays the truth. Notifications follow the stack's default notification policy (its default contact point emails the
+    owner).
 
     It first checks that production's metrics and logs both reach the stack: the rules would otherwise watch nothing,
     and stay silent.
@@ -15,12 +16,18 @@
 
 .PARAMETER TokenPath
     A file holding a Grafana service account token (role Editor). The token is read from it and never printed.
+
+.PARAMETER Export
+    Instead of applying the file, write the group as Grafana has it back over the file, in the form the script reads.
+    Grafana's own export (More → Export) is file provisioning's format, which this script doesn't read.
 #>
 param(
     [Parameter(Mandatory)]
     [string] $GrafanaUrl,
 
-    [string] $TokenPath = (Join-Path $HOME '.machinespirit' 'grafana-alerts-token.txt')
+    [string] $TokenPath = (Join-Path $HOME '.machinespirit' 'grafana-alerts-token.txt'),
+
+    [switch] $Export
 )
 
 $ErrorActionPreference = 'Stop'
@@ -37,6 +44,24 @@ $prometheus = $dataSources | Where-Object { $_.type -eq 'prometheus' -and $_.nam
 $loki = $dataSources | Where-Object { $_.type -eq 'loki' -and $_.name -like 'grafanacloud-*-logs' } | Select-Object -First 1
 if (-not $prometheus -or -not $loki) {
     throw "The stack's grafanacloud-*-prom and grafanacloud-*-logs data sources aren't both in $grafana."
+}
+
+$groupTitle = (Get-Content -Path $rulesPath -Raw | ConvertFrom-Json).title
+$groupName = [Uri]::EscapeDataString($groupTitle)
+$groupUri = "$grafana/api/v1/provisioning/folder/$folderUid/rule-groups/$groupName"
+
+if ($Export) {
+    $group = Invoke-RestMethod -Uri $groupUri -Headers $headers
+    # Only what the file keeps: the script adds the folder, group and organisation, and Grafana its ids and timestamps.
+    $file = [ordered]@{
+        title = $group.title
+        interval = $group.interval
+        rules = @($group.rules | Select-Object -Property * -ExcludeProperty id, orgID, folderUID, ruleGroup, updated, provenance)
+    }
+    $json = ($file | ConvertTo-Json -Depth 20).Replace($prometheus.uid, '${prometheus}').Replace($loki.uid, '${loki}')
+    Set-Content -Path $rulesPath -Value $json
+    Write-Host "Exported $($file.rules.Count) alert rules from $folderTitle / $groupTitle to $rulesPath."
+    return
 }
 
 $query = [Uri]::EscapeDataString('count(last_over_time(target_info{job="machinespirit-app"}[1d]))')
@@ -76,7 +101,6 @@ $group | Add-Member -NotePropertyName folderUid -NotePropertyValue $folderUid
 $body = $group | ConvertTo-Json -Depth 20
 
 # Without X-Disable-Provenance, rules put through the API can't be edited in Grafana's UI.
-$groupName = [Uri]::EscapeDataString($group.title)
-Invoke-RestMethod -Method Put -Uri "$grafana/api/v1/provisioning/folder/$folderUid/rule-groups/$groupName" `
+Invoke-RestMethod -Method Put -Uri $groupUri `
     -Headers ($headers + @{ 'X-Disable-Provenance' = 'true' }) -ContentType 'application/json' -Body $body | Out-Null
 Write-Host "Applied $($group.rules.Count) alert rules to $folderTitle / $($group.title)."

@@ -37,9 +37,10 @@ stack's default notification policy (the default contact point emails the stack'
    reaches the stack, then creates the **Daily Machine Spirit** folder if needed and replaces the group's rules. Running
    it again changes nothing.
 
-The rules stay editable in Grafana (**Alerting → Alert rules**). After changing one there, export the group (**More →
-Export**, JSON) back over the file, keeping its form: `${prometheus}` and `${loki}` for the data sources' uids, without the
-`folderUID`, `ruleGroup` and `orgID` the script adds.
+The rules stay editable in Grafana (**Alerting → Alert rules**). After changing one there, run the script with `-Export`:
+it writes the group back over the file in the form the script reads, with `${prometheus}` and `${loki}` for the data
+sources' uids and without what the script and Grafana add (`folderUID`, `ruleGroup`, `orgID`, ids, timestamps).
+Grafana's own **More → Export** writes another format (file provisioning), which the script can't read.
 
 ## The metrics
 
