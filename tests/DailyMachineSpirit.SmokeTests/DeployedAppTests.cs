@@ -34,7 +34,7 @@ public sealed partial class DeployedAppTests
     public async Task Archive_Answers()
         => AssertAnswers(await app.Get("/archive"), HttpStatusCode.OK, $"<title>The Archive · {SiteName}</title>");
 
-    // The one page that reads every rite's scores: a query of its own for the deployed database to answer.
+    // Its query (rites by a stored tag) is its own, so the deployed database answers it too.
     [Fact]
     public async Task ATagsPage_Answers()
         => AssertAnswers(await app.Get("/tags/builds"), HttpStatusCode.OK, $"<title>Filed under Builds · {SiteName}</title>");
