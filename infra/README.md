@@ -73,7 +73,6 @@ production doesn't reach it. A change to production alone (its domain, its Cloud
 
 Bicep creates the vaults but never their values. Put each value in a file outside the repository and set it from there,
 so it stays out of your shell history. `-o none` matters: without it, `az keyvault secret set` prints the value back.
-Production's vault exists only from launch (`deployProduction`); set its secrets then.
 
 | Secret | Used for | The app reads it from |
 |---|---|---|
