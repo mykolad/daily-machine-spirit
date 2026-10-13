@@ -8,7 +8,8 @@ namespace DailyMachineSpirit.Functions.Tags;
 /// <summary>
 /// Which rites have each tag. Finding them takes every rite's scores, so the index is kept for <see cref="Lifetime"/>:
 /// each instance reads the scores at most that often, however many readers open tag pages. A rite published meanwhile
-/// joins its tags' pages within that time. A failed read isn't kept, so the next request tries again.
+/// joins its tags' pages within that time. Requests that find it expired wait for one read together, and a failed
+/// read isn't kept, so the next request tries again.
 /// </summary>
 public sealed class TagIndex
 {
@@ -16,6 +17,7 @@ public sealed class TagIndex
 
     private readonly IRiteRepository rites;
     private readonly TimeProvider time;
+    private readonly SemaphoreSlim reading = new(1, 1);
     // Replaced whole, never changed: a request on another thread sees the old index or the new one, both complete.
     private volatile Kept kept = new(new Dictionary<string, List<int>>(), DateTimeOffset.MinValue);
 
@@ -28,19 +30,34 @@ public sealed class TagIndex
     /// <summary>The numbers of the rites with this tag, the newest first.</summary>
     public async Task<Either<Error, List<int>>> Numbers(Tag tag, CancellationToken cancellationToken)
     {
-        var now = time.GetUtcNow();
         var current = kept;
-        if (now < current.Until)
+        if (time.GetUtcNow() < current.Until)
         {
             return Lookup(current, tag);
         }
 
-        return (await rites.GetSimilarities(cancellationToken)).Map(similarities =>
+        await reading.WaitAsync(cancellationToken);
+        try
         {
-            var fresh = new Kept(Index(similarities), now + Lifetime);
-            kept = fresh;
-            return Lookup(fresh, tag);
-        });
+            // Another request may have read it while this one waited.
+            var now = time.GetUtcNow();
+            current = kept;
+            if (now < current.Until)
+            {
+                return Lookup(current, tag);
+            }
+
+            return (await rites.GetSimilarities(cancellationToken)).Map(similarities =>
+            {
+                var fresh = new Kept(Index(similarities), now + Lifetime);
+                kept = fresh;
+                return Lookup(fresh, tag);
+            });
+        }
+        finally
+        {
+            reading.Release();
+        }
     }
 
     private static Dictionary<string, List<int>> Index(Dictionary<int, RiteSimilarity> similarities)
