@@ -50,6 +50,21 @@ public sealed class TagIndexTests : IAsyncLifetime
         Assert.Equal([2, 1], readAgain);
     }
 
+    // A popular tag page whose index just expired mustn't send every waiting request to Cosmos.
+    [Fact]
+    public async Task Numbers_AskedTogether_ShareOneRead()
+    {
+        await AddAbout(Day, "caches");
+        var scores = new GatedScores(Repository);
+        var index = new TagIndex(scores, time);
+
+        var asked = Enumerable.Range(0, 5).Select(_ => index.Numbers(Tag("caches"), CancellationToken.None)).ToList();
+        scores.Open();
+        var answers = await Task.WhenAll(asked);
+
+        Assert.Equal(1, scores.Reads);
+        Assert.All(answers, answer => Assert.Equal([1], Ok(answer)));
+    }
     [Fact]
     public async Task Numbers_WhenTheScoresCantBeRead_FailAsAnError()
     {
