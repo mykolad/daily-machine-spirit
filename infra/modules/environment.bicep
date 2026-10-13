@@ -31,12 +31,15 @@ param cloudflareAccessAudience string
 param customDomain string
 @description('The name of the vault secret holding the Cloudflare Origin CA certificate for the domain, a PFX (infra/README.md).')
 param customDomainCertificate string
+@description('The object id, in this tenant, of the App Service service principal (Microsoft.Azure.WebSites): it imports the domain certificate.')
+param appServicePrincipalId string
 @description('The GitHub OAuth app readers sign in with to vote (GitHubOptions); empty until it exists. Not the deploy identity.')
 param signInGitHubClientId string
 @description('Where GitHub sends readers back after signing in: exactly the OAuth app\'s callback URL.')
 param signInCallbackUrl string
 
 var keyVaultSecretsOfficer = 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7'
+var keyVaultSecretsUser = '4633458b-17de-408a-b874-0445c86b69e6'
 var appName = '${prefix}-app${nameSuffix}'
 var databaseName = '${prefix}${nameSuffix}'
 var deploymentContainer = 'deployments'
@@ -346,14 +349,30 @@ resource githubTrust 'Microsoft.ManagedIdentity/userAssignedIdentities/federated
   }
 }
 
-// The domain, through Cloudflare: Cloudflare's Origin CA certificate, imported from the vault by the app's own identity
-// (Key Vault Secrets User, appAccess), and bound to the name. Azure checks the domain's asuid TXT record first, so the
-// DNS comes before this (infra/README.md).
+// The domain, through Cloudflare: Cloudflare's Origin CA certificate, imported from the vault and bound to the name.
+// Azure checks the domain's asuid TXT record first, so the DNS comes before this (infra/README.md). The import is done
+// by App Service itself (its Microsoft.Azure.WebSites service principal), not the app's identity. That principal serves
+// every App Service app in the tenant, so it may read this one secret, not the vault's others (the voter keys, tokens).
+resource certificateSecret 'Microsoft.KeyVault/vaults/secrets@2024-11-01' existing = if (!empty(customDomain)) {
+  parent: vault
+  name: customDomainCertificate
+}
+
+resource appServiceReadsCertificate 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(customDomain)) {
+  scope: certificateSecret
+  name: guid(certificateSecret.id, appServicePrincipalId, keyVaultSecretsUser)
+  properties: {
+    principalId: appServicePrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', keyVaultSecretsUser)
+  }
+}
+
 resource domainCertificate 'Microsoft.Web/sites/certificates@2024-11-01' = if (!empty(customDomain)) {
   parent: app
   name: customDomainCertificate
   location: location
-  dependsOn: [appAccess]
+  dependsOn: [appServiceReadsCertificate]
   properties: {
     keyVaultId: vault.id
     keyVaultSecretName: customDomainCertificate
