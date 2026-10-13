@@ -201,7 +201,8 @@ observability/                    — the Grafana dashboard and alerts, and what
   - **A new environment starts with an empty backlog,** so its first midnight writes a rite on the spot, unmoderated.
     To have moderated rites from the first day (production), summon a refill before the first midnight.
   - **Daily publishing can be held** (`Generation:PublishDaily`, `publishesDaily` in `resources.bicep`): off, the timer
-    neither publishes nor refills, while the Scriptorium still summons drafts. Production has it off until launch.
+    neither publishes nor refills, while the Scriptorium still summons drafts. Both environments publish (production since
+    launch, #35).
   - **Writing:** `RiteWriter` asks `gpt-6-sol` for a `RiteContent` (JSON schema output), up to 3 times, then
     `gpt-6-luna` (`Generation:Models`). An answer that's empty, too long, uses a forbidden name or writes code outside
     backticks (`UnquotedCode`) is asked for again, never cut.
