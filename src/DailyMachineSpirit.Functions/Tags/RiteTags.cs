@@ -50,8 +50,7 @@ public static class RiteTags
 
     public static List<Tag> Of(Option<RiteSimilarity> similarity)
         => similarity
-            .Filter(scores => scores.ScoresGeneratorVersion.EndsWith($"/{JevQuestions.QuestionSet}", StringComparison.Ordinal)
-                && scores.Scores.Length >= JevQuestions.Topics.Count)
+            .Filter(scores => JevQuestions.IsVersion(scores.ScoresGeneratorVersion) && scores.Scores.Length >= JevQuestions.Topics.Count)
             .Map(scores => Topics
                 .Where(topic => scores.Scores[topic.Score] >= MinProbability)
                 .OrderByDescending(topic => scores.Scores[topic.Score])

@@ -1,6 +1,6 @@
 namespace DailyMachineSpirit.Functions.Pages;
 
-/// <summary>The pages for when there's no rite to show: a failure, or a link to a rite that doesn't exist.</summary>
+/// <summary>The pages for when there's no rite to show: a failure, or a link to a rite or a subject that doesn't exist.</summary>
 public static class StatePages
 {
     /// <summary>The data couldn't be read (served as 503). "Try again" reloads the same address.</summary>
@@ -22,6 +22,21 @@ public static class StatePages
             <p class="state-eyebrow">ERROR 404</p>
             <h1>No such rite exists.</h1>
             <p class="state-body">There is no litany with the id “{Html.Encode(id)}”. It was never written, or the link was copied wrong.</p>
+            <div class="state-actions">
+            <a class="button button-primary" href="{Paths.Today}">Read today’s litany</a>
+            <a class="button button-outline" href="{Paths.Archive}">Browse the Archive</a>
+            </div>
+            </div>
+            """);
+
+    /// <param name="key">The tag the address named, shown back as it was typed.</param>
+    public static string NoSuchTag(string key)
+        => Layout.Page("No such subject", "No such subject.", Section.Other, $"""
+            <div class="state">
+            {Svg.AwakeSkull}
+            <p class="state-eyebrow">ERROR 404</p>
+            <h1>No such subject.</h1>
+            <p class="state-body">No rite is filed under “{Html.Encode(key)}”. The link was copied wrong, or the subject was never one of ours.</p>
             <div class="state-actions">
             <a class="button button-primary" href="{Paths.Today}">Read today’s litany</a>
             <a class="button button-outline" href="{Paths.Archive}">Browse the Archive</a>

@@ -124,9 +124,11 @@ observability/                    — the Grafana dashboard, and what the app's 
   - **Tags** (`Tags/RiteTags`, #6): read from the same scores, never stored. The scores start with Jev's probability for
     each topic (`JevQuestions.Topics`), so a rite's tags are the topics at 0.25 or more, the likeliest first, at most two,
     never "other": no extra request, a fixed vocabulary, and older rites have theirs. Changing the threshold retags
-    every rite at once. A tag's page reads every rite's scores (a few hundred small documents) to find its rites. The
-    rite card, the archive's rows and the Scriptorium's drafts show them; a row's title link covers the row, so its
-    tag links can sit inside it.
+    every rite at once. Only scores whose version is a Jev model's (`jev-…`) with these questions (`/q1`) give tags.
+    Finding a tag's rites takes every rite's scores, so `TagIndex` keeps the tag → rites index for 5 minutes per
+    instance: tag pages read the scores at most that often, however many readers come. The rite card, the archive's
+    rows and the Scriptorium's drafts show the tags; a row's title link covers the row, so its tag links can sit
+    inside it.
 - **Votes** (Blessed / Heresy, `Api/VotesFunction`): one per account per rite, which the reader can switch or
   take back, signed in as below. `POST /api/rites/{number}/vote` with `{"vote": "blessed" | "heresy" | null}`, and
   `GET /api/votes?rites=12` for the page to show the reader's own vote pressed.
