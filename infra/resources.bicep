@@ -208,9 +208,9 @@ module production 'modules/environment.bicep' = if (deployProduction) {
     aiAccountName: ai.name
     ownerPrincipalId: ownerPrincipalId
     githubSubjectPrefix: githubSubjectPrefix
-    // Off until launch (#35): no rite is published before readers can reach the site and a Scribe can choose it. The
-    // Scriptorium can still summon drafts, so the backlog is ready on launch day.
-    publishesDaily: false
+    // On since launch (#35). Turned off, the timer publishes nothing (the Scriptorium still summons drafts), and the
+    // daily check (check-todays-rite.yml) stops looking.
+    publishesDaily: true
     // Only behind Cloudflare Access (productionAccess): the app checks Access's token on every Scriptorium request.
     scriptoriumEnabled: true
     scriptoriumWithoutSignIn: false
