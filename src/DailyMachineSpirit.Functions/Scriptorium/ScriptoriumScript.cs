@@ -60,7 +60,9 @@ public static class ScriptoriumScript
               document.title = page.title;
 
               const acted = main.querySelector('.acted');
-              const burned = pressed?.endsWith('/burn') ?? false;
+              // A burn can be refused (a note too long, a calendar changed meanwhile), so it counts only when the rite
+              // is in the Ashes now.
+              const burned = (pressed?.endsWith('/burn') ?? false) && (acted?.classList.contains('ash') ?? false);
               history.replaceState(null, '', response.url + (acted && !burned ? `#${acted.id}` : ''));
 
               // Each rite that moved starts where it was and slides to its new place (First, Last, Invert, Play).
