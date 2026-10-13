@@ -73,6 +73,8 @@ production doesn't reach it. A change to production alone (its domain, its Cloud
 
 Bicep creates the vaults but never their values. Put each value in a file outside the repository and set it from there,
 so it stays out of your shell history. `-o none` matters: without it, `az keyvault secret set` prints the value back.
+Each environment has its own vault: the commands below set staging's (`machinespirit-kv-staging`); production's
+are the same with `--vault-name machinespirit-kv`.
 
 | Secret | Used for | The app reads it from |
 |---|---|---|
