@@ -1,5 +1,6 @@
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
+using DailyMachineSpirit.Functions.Tags;
 using LanguageExt;
 using LanguageExt.Common;
 using Microsoft.AspNetCore.Http;
@@ -11,8 +12,9 @@ using static LanguageExt.Prelude;
 namespace DailyMachineSpirit.Functions.Pages;
 
 /// <summary>
-/// The public pages, rendered on the server: Today (<c>/</c>), the archive (<c>/archive</c>) and a rite's own page
-/// (<c>/r/&lt;number&gt;</c>). Any other address gets the 404 page.
+/// The public pages, rendered on the server: Today (<c>/</c>), the archive (<c>/archive</c>), a rite's own page
+/// (<c>/r/&lt;number&gt;</c>), a tag's (<c>/tags/&lt;key&gt;</c>) and search (<c>/search</c>). Any other
+/// address gets the 404 page.
 /// </summary>
 public sealed class SitePages
 {
@@ -42,8 +44,8 @@ public sealed class SitePages
         var now = time.GetUtcNow();
         return (await rites.GetNewest(1, cancellationToken)).Match(
             Right: newest => newest.HeadOrNone().Match(
-                Some: rite => Page(request, StatusCodes.Status200OK, TodayPage.Render(rite, now)),
-                None: () => Page(request, StatusCodes.Status200OK, TodayPage.Slumbering(now))),
+                Some: rite => Page(request, StatusCodes.Status200OK, TodayPage.Render(rite, now), EdgeLifetime.UntilPurged),
+                None: () => Page(request, StatusCodes.Status200OK, TodayPage.Slumbering(now), EdgeLifetime.UntilPurged)),
             Left: error => Failed(request, error));
     }
 
@@ -58,10 +60,14 @@ public sealed class SitePages
             return Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(id));
         }
 
+        // Taken before the counts are read, so it errs toward the voter: for a vote saved during the read, the script shows
+        // that vote's answer, which has the vote, rather than counts that might not.
+        var now = time.GetUtcNow();
         var found = (await rites.GetByNumbers([number], cancellationToken)).Map(matches => matches.HeadOrNone());
         return await found.Match<Task<IActionResult>>(
             Right: rite => rite.Match<Task<IActionResult>>(
-                Some: async shown => Page(request, StatusCodes.Status200OK, RitePage.Render(shown, await MoreRites(shown, cancellationToken))),
+                Some: async shown => Page(request, StatusCodes.Status200OK,
+                    RitePage.Render(shown, await MoreRites(shown, cancellationToken), now), EdgeLifetime.UntilPurged),
                 None: () => Task.FromResult<IActionResult>(Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(id)))),
             Left: error => Task.FromResult(Failed(request, error)));
     }
@@ -83,9 +89,70 @@ public sealed class SitePages
         return page.Match(
             Right: found =>
             {
-                var shown = found.Take(ArchivePage.PageSize).ToList();
-                var olderThan = found.Count > ArchivePage.PageSize ? Some(shown[^1].Number) : Option<int>.None;
+                var (shown, olderThan) = OnePage(found);
                 return Page(request, StatusCodes.Status200OK, ArchivePage.Render(shown, olderThan));
+            },
+            Left: error => Failed(request, error));
+    }
+
+    /// <summary>
+    /// A tag's rites, paged like the archive, Today's rite included: one query for the page, as the rites' tags are
+    /// stored with them.
+    /// </summary>
+    [Function("Tag")]
+    public Task<IActionResult> Tag(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "tags/{key}")] HttpRequest request,
+        string key,
+        CancellationToken cancellationToken)
+        => RiteTags.Find(key).Match(
+            Some: tag => TaggedRites(request, tag, cancellationToken),
+            None: () => Task.FromResult<IActionResult>(Page(request, StatusCodes.Status404NotFound, StatePages.NoSuchTag(key))));
+
+    /// <summary>
+    /// The rites holding every word the reader typed (<c>?q=</c>), paged like the archive, Today's rite included. The
+    /// words are never logged: a failure logs the path alone.
+    /// </summary>
+    [Function("Search")]
+    public async Task<IActionResult> Search(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "search")] HttpRequest request,
+        CancellationToken cancellationToken)
+    {
+        var typed = SearchWords.Typed(request.Query["q"]);
+        var words = SearchWords.From(typed);
+        if (words.Count == 0)
+        {
+            return Page(request, StatusCodes.Status200OK, SearchPage.Render(typed, None));
+        }
+
+        var before = int.TryParse(request.Query["before"], out var number) && number > 0 ? number : int.MaxValue;
+        var found = await rites.Search(words, before, ArchivePage.PageSize + 1, cancellationToken)
+            .BindAsync(page => Counted(words, before, page, cancellationToken));
+        return found.Match(
+            Right: results => Page(request, StatusCodes.Status200OK, SearchPage.Render(typed, results)),
+            Left: error => Failed(request, error));
+    }
+
+    // A first page that holds every result is its own count; only longer searches ask Cosmos to count.
+    private async Task<Either<Error, SearchResults>> Counted(
+        IReadOnlyList<string> words, int before, List<Rite> page, CancellationToken cancellationToken)
+    {
+        var (shown, olderThan) = OnePage(page);
+        var count = before == int.MaxValue && olderThan.IsNone
+            ? Right<Error, int>(page.Count)
+            : await rites.CountFound(words, cancellationToken);
+        return count.Map(found => new SearchResults(found, shown, olderThan));
+    }
+
+    // Like the archive, a page and one rite more, to know whether there are older ones.
+    private async Task<IActionResult> TaggedRites(HttpRequest request, Tag tag, CancellationToken cancellationToken)
+    {
+        var before = int.TryParse(request.Query["before"], out var number) && number > 0 ? number : int.MaxValue;
+        var page = await rites.GetTagged(tag.Key, before, ArchivePage.PageSize + 1, cancellationToken);
+        return page.Match(
+            Right: found =>
+            {
+                var (shown, olderThan) = OnePage(found);
+                return Page(request, StatusCodes.Status200OK, TagPage.Render(tag, shown, olderThan, isFirstPage: before == int.MaxValue));
             },
             Left: error => Failed(request, error));
     }
@@ -115,17 +182,30 @@ public sealed class SitePages
             });
     }
 
+    // Newest first, read one beyond a page: the extra one says there are older ones, and the next page starts below the
+    // last one shown.
+    private static (List<Rite> Shown, Option<int> OlderThan) OnePage(IReadOnlyList<Rite> newestFirst)
+    {
+        var shown = newestFirst.Take(ArchivePage.PageSize).ToList();
+        return (shown, newestFirst.Count > ArchivePage.PageSize ? Some(shown[^1].Number) : Option<int>.None);
+    }
+
     private IActionResult Failed(HttpRequest request, Error error)
     {
         logger.LogError(error.ToException(), "The page {Path} couldn't be served: {Reason}", request.Path.Value, error.Message);
         return Page(request, StatusCodes.Status503ServiceUnavailable, StatePages.Failed($"{request.Path}{request.QueryString}"));
     }
 
-    private static ContentResult Page(HttpRequest request, int status, string html)
+    private static ContentResult Page(HttpRequest request, int status, string html) => Page(request, status, html, EdgeLifetime.Brief);
+
+    // An address with a query string (/?utm_source=...) stays brief whatever its page: Cloudflare caches each one apart,
+    // and purges name only the plain address.
+    private static ContentResult Page(HttpRequest request, int status, string html, EdgeLifetime edge)
     {
         var headers = request.HttpContext.Response.Headers;
-        // A rite never changes once published, and Today changes once a day: a minute's cache costs nothing.
-        headers.CacheControl = status == StatusCodes.Status200OK ? "public, max-age=60" : "no-store";
+        headers.CacheControl = status != StatusCodes.Status200OK ? "no-store"
+            : request.QueryString.HasValue ? EdgeLifetime.Brief.CacheControl
+            : edge.CacheControl;
         headers.XContentTypeOptions = "nosniff";
         headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
         return new ContentResult { Content = html, ContentType = "text/html; charset=utf-8", StatusCode = status };

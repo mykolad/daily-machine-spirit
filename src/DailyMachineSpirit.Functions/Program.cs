@@ -1,11 +1,13 @@
 using DailyMachineSpirit.Data;
 using DailyMachineSpirit.Data.Repositories;
+using DailyMachineSpirit.Functions.Caching;
 using DailyMachineSpirit.Functions.Generation;
 using DailyMachineSpirit.Functions.Generation.Chat;
 using DailyMachineSpirit.Functions.Generation.Judging;
 using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Scriptorium;
 using DailyMachineSpirit.Functions.Scriptorium.SignIn;
+using DailyMachineSpirit.Functions.Tags;
 using DailyMachineSpirit.Functions.Telemetry;
 using DailyMachineSpirit.Functions.Voters;
 using Microsoft.Azure.Cosmos;
@@ -67,6 +69,8 @@ builder.Services.Configure<JevOptions>(builder.Configuration.GetSection(JevOptio
 var openAI = builder.Configuration.GetSection(AzureOpenAIOptions.SectionName).Get<AzureOpenAIOptions>() ?? new AzureOpenAIOptions();
 builder.Services.AddSingleton<IChatClients>(_ => new AzureOpenAIChatClients(new Uri(openAI.Endpoint)));
 builder.Services.AddHttpClient<IRiteJudge, JevJudge>(http => http.Timeout = TimeSpan.FromSeconds(30));
+// Tags the rites judged before tags existed, once per start (nothing left after the first).
+builder.Services.AddHostedService<TagBackfill>();
 builder.Services.AddTransient<RiteWriter>();
 builder.Services.AddTransient<BacklogRefiller>();
 builder.Services.AddTransient<DailyRitePublisher>();
@@ -81,5 +85,12 @@ builder.Services.Configure<GitHubOptions>(builder.Configuration.GetSection(GitHu
 builder.Services.Configure<VoterOptions>(builder.Configuration.GetSection(VoterOptions.SectionName));
 builder.Services.AddHttpClient<ISignInProvider, GitHubSignIn>(http => http.Timeout = TimeSpan.FromSeconds(10));
 builder.Services.AddSingleton<VoterSession>();
+
+// Cloudflare keeps the pages until they change; votes (batched, once a minute) and publishing purge them (production only).
+builder.Services.Configure<CloudflareOptions>(builder.Configuration.GetSection(CloudflareOptions.SectionName));
+builder.Services.AddHttpClient(CloudflarePageCache.HttpClientName, http => http.Timeout = TimeSpan.FromSeconds(10));
+builder.Services.AddSingleton<IPageCache, CloudflarePageCache>();
+builder.Services.AddSingleton<PurgeBatcher>();
+builder.Services.AddHostedService(services => services.GetRequiredService<PurgeBatcher>());
 
 builder.Build().Run();

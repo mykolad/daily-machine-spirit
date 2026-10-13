@@ -17,6 +17,8 @@ public sealed record Draft
     /// <summary>Copied to the rite when it's published, for "More rites".</summary>
     public Option<RiteSimilarity> Similarity { get; init; }
 
+    public Option<string[]> Tags { get; init; }
+
     public Option<Augury> Augury { get; init; }
 
     public Option<DateOnly> PublishedOnUtc { get; init; }
@@ -28,5 +30,6 @@ public sealed record Draft
         PublishedOnUtc = publishedOnUtc,
         Writing = Writing,
         Similarity = Similarity,
+        Tags = Tags,
     };
 }

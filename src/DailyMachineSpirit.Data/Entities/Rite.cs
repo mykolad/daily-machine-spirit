@@ -17,4 +17,6 @@ public sealed record Rite
 
     /// <summary>For "More rites"; added after the rite is saved.</summary>
     public Option<RiteSimilarity> Similarity { get; init; }
+
+    public Option<string[]> Tags { get; init; }
 }

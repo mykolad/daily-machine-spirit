@@ -163,6 +163,73 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task GetTagged_FindsTheTagsRites_NewestFirst_APageAtATime()
+    {
+        var first = await AddOrFail(MakeRite(new DateOnly(2026, 10, 5), "First") with { Tags = new[] { "caches", "restarts" } });
+        await AddOrFail(MakeRite(new DateOnly(2026, 10, 6), "Builds only") with { Tags = new[] { "builds" } });
+        var third = await AddOrFail(MakeRite(new DateOnly(2026, 10, 7), "Third") with { Tags = new[] { "caches" } });
+        await AddOrFail(MakeRite(new DateOnly(2026, 10, 8), "Untagged"));
+
+        var page = Ok(await Repository.GetTagged("caches", int.MaxValue, 10, CancellationToken.None));
+        var older = Ok(await Repository.GetTagged("caches", third.Number, 10, CancellationToken.None));
+
+        Assert.Equal([third.Number, first.Number], page.Select(rite => rite.Number));
+        Assert.Equal(Some(new[] { "caches" }), page[0].Tags);
+        Assert.Equal([first.Number], older.Select(rite => rite.Number));
+    }
+
+    [Fact]
+    public async Task GetUntagged_FindsScoredRitesWithoutTags_UntilTheirTagsAreSaved()
+    {
+        var scored = await AddOrFail(MakeRite(new DateOnly(2026, 10, 5), "Scored"));
+        await AddOrFail(MakeRite(new DateOnly(2026, 10, 6), "Unscored"));
+        var judged = await AddOrFail(MakeRite(new DateOnly(2026, 10, 7), "Judged with none") with { Tags = new string[0] });
+        var similarity = new RiteSimilarity { ScoresGeneratorVersion = "jev/q1", Scores = [1f], CreatedAtUtc = new DateTime(2026, 10, 5, 0, 1, 0, DateTimeKind.Utc) };
+        Ok(await Repository.SaveScores(scored.PublishedOnUtc, similarity, CancellationToken.None));
+        Ok(await Repository.SaveScores(judged.PublishedOnUtc, similarity, CancellationToken.None));
+
+        var untagged = Ok(await Repository.GetUntagged(CancellationToken.None));
+        Ok(await Repository.SaveTags(scored.PublishedOnUtc, ["data"], CancellationToken.None));
+        var afterwards = Ok(await Repository.GetUntagged(CancellationToken.None));
+
+        Assert.Equal([scored.Number], untagged.Select(rite => rite.Number));
+        Assert.Empty(afterwards);
+        Assert.Equal(Some(new[] { "data" }), Ok(await Repository.GetByNumbers([scored.Number], CancellationToken.None))[0].Tags);
+    }
+
+    [Fact]
+    public async Task Search_FindsRitesHoldingEveryWord_InAnyPart_IgnoringCase_NewestFirst()
+    {
+        var inTitle = await AddOrFail(MakeRite(new DateOnly(2026, 10, 5), "The Litany of the Warm CACHE"));
+        await AddOrFail(MakeRite(new DateOnly(2026, 10, 6), "The Rite of Re-Run"));
+        var inTruth = await AddOrFail(MakeRite(new DateOnly(2026, 10, 7), "The Vigil") with
+        {
+            Writing = MakeRite(new DateOnly(2026, 10, 7), "The Vigil").Writing with { HereticalTruth = "Your cache was stale; re-run cleared it." },
+        });
+
+        var cache = Ok(await Repository.Search(["cache"], int.MaxValue, 10, CancellationToken.None));
+        var both = Ok(await Repository.Search(["Cache", "STALE"], int.MaxValue, 10, CancellationToken.None));
+        var older = Ok(await Repository.Search(["cache"], inTruth.Number, 10, CancellationToken.None));
+
+        Assert.Equal([inTruth.Number, inTitle.Number], cache.Select(rite => rite.Number));
+        Assert.Equal([inTruth.Number], both.Select(rite => rite.Number));
+        Assert.Equal([inTitle.Number], older.Select(rite => rite.Number));
+        Assert.Equal(2, Ok(await Repository.CountFound(["cache"], CancellationToken.None)));
+        Assert.Equal(0, Ok(await Repository.CountFound(["cache", "nowhere"], CancellationToken.None)));
+    }
+
+    // A reader's words are parameters: quotes and query syntax in them are only text to look for.
+    [Fact]
+    public async Task Search_TakesWordsAsTextOnly()
+    {
+        await AddOrFail(MakeRite(new DateOnly(2026, 10, 5), "The Rite of Re-Run"));
+
+        var found = Ok(await Repository.Search(["') OR true OR CONTAINS(c.title, '"], int.MaxValue, 10, CancellationToken.None));
+
+        Assert.Empty(found);
+    }
+
+    [Fact]
     public async Task EveryRequest_IsMeasured_ByOperationAndStatusCode()
     {
         // The meter is shared with tests running alongside, so this looks for its own requests among theirs.
@@ -197,6 +264,11 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
         Assert.True((await missing.Add(MakeRite(date, "Lost"), CancellationToken.None)).IsLeft);
         Assert.True((await missing.SaveScores(date, new RiteSimilarity(), CancellationToken.None)).IsLeft);
         Assert.True((await missing.GetScoresByRiteNumber("jev/v1", CancellationToken.None)).IsLeft);
+        Assert.True((await missing.GetTagged("caches", int.MaxValue, 6, CancellationToken.None)).IsLeft);
+        Assert.True((await missing.GetUntagged(CancellationToken.None)).IsLeft);
+        Assert.True((await missing.SaveTags(date, ["caches"], CancellationToken.None)).IsLeft);
+        Assert.True((await missing.Search(["cache"], int.MaxValue, 6, CancellationToken.None)).IsLeft);
+        Assert.True((await missing.CountFound(["cache"], CancellationToken.None)).IsLeft);
     }
 
     [Fact]

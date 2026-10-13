@@ -77,6 +77,35 @@ public static class Script
               b.setAttribute('aria-pressed', String(b.dataset.reaction === vote));
               b.querySelector('.count').textContent = shown[b.dataset.reaction].toLocaleString('en');
             });
+            // Cloudflare keeps the page until votes purge it, up to a minute after them (batched), and the reader's browser
+            // keeps its copy a minute too, so a refresh may show the page from before their own vote. So the browser keeps
+            // the counts each vote answered, with when the server counted them, and shows them over a page whose counts were
+            // read earlier. Kept for two hours, past the hour Cloudflare keeps a page at most.
+            const votesKey = 'dms-votes-v1';
+            // Every read drops what's past its two hours, so nothing stays for a reader who doesn't vote again.
+            const recalled = () => {
+              try {
+                const stored = JSON.parse(localStorage.getItem(votesKey) ?? '{}');
+                const entries = Object.entries(stored && typeof stored === 'object' ? stored : {});
+                const fresh = entries.filter(([, entry]) => entry && Date.now() - entry.countedAt < 7200000);
+                if (fresh.length === 0) localStorage.removeItem(votesKey);
+                else if (fresh.length < entries.length) localStorage.setItem(votesKey, JSON.stringify(Object.fromEntries(fresh)));
+                return Object.fromEntries(fresh);
+              } catch { return {}; }
+            };
+            // Never throws: the vote is saved by now, whatever storage holds.
+            const remember = (answer) => {
+              if (typeof answer.countedAt !== 'number') return;
+              try {
+                const all = recalled();
+                // Another tab's vote may have been counted later and answered sooner: the later count stays.
+                if (all[rite] && all[rite].countedAt > answer.countedAt) return;
+                all[rite] = { blessed: answer.blessed, heresy: answer.heresy, countedAt: answer.countedAt };
+                localStorage.setItem(votesKey, JSON.stringify(all));
+              } catch { }
+            };
+            const kept = recalled()[rite];
+            if (kept && typeof kept.blessed === 'number' && typeof kept.heresy === 'number' && kept.countedAt >= Number(reactions.dataset.countedAt)) show(null, kept);
             let reader = { available: false, signedIn: false, vote: null, voteLoaded: false };
             const showReader = () => statuses.forEach((s) => { s.hidden = !reader.available || s.dataset.signedIn !== String(reader.signedIn); });
             // The signed-in reader's own vote. Until it has loaded, the page doesn't know whether a click sets a vote or
@@ -144,7 +173,9 @@ public static class Script
                 if (!response.ok) throw new Error(String(response.status));
                 // Saved: from here on the vote counts, even if the answer can't be read.
                 reader.vote = vote;
-                show(vote, await response.json().catch(() => hoped));
+                const answer = await response.json().catch(() => null);
+                if (answer) remember(answer);
+                show(vote, answer ?? hoped);
               } catch {
                 show(previous, before);
                 say('Your vote wasn’t recorded. Try again.');
@@ -154,9 +185,9 @@ public static class Script
             }));
           }
 
-          // The archive loads older rites as the reader nears the end, by fetching the next page the "Load older rites"
-          // link points to and taking its rows. The link stays: a keyboard follows it here too, and focus moves to the
-          // first new rite. Without the script, it's an ordinary link to that page.
+          // The archive (and a tag's page) loads older rites as the reader nears the end, by fetching the next page the
+          // "Load older rites" link points to and taking its rows. The link stays: a keyboard follows it here too, and
+          // focus moves to the first new rite. Without the script, it's an ordinary link to that page.
           const rows = document.querySelector('.rows');
           const more = document.querySelector('.archive-more');
           if (rows && more) {
@@ -227,7 +258,8 @@ public static class Script
             const text = minutes >= 60 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m` : `${minutes}m`;
             countdowns.forEach((element) => { element.textContent = text; });
           };
-          if (countdowns.length > 0) setInterval(tick, 30000);
+          // Ticked at once too: a cached page may have been rendered up to an hour ago.
+          if (countdowns.length > 0) { tick(); setInterval(tick, 30000); }
         })();
         """;
 }

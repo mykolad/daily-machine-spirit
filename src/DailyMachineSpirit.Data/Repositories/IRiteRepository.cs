@@ -18,6 +18,15 @@ public interface IRiteRepository
     Task<Either<Error, List<Rite>>> GetOlderThan(int number, int count, CancellationToken cancellationToken);
 
     /// <summary>
+    /// The rites numbered below <paramref name="number"/> whose title, text or Heretical Truth holds every one of
+    /// <paramref name="words"/>, ignoring case, the newest first: a page of search results.
+    /// </summary>
+    Task<Either<Error, List<Rite>>> Search(IReadOnlyList<string> words, int number, int count, CancellationToken cancellationToken);
+
+    /// <summary>How many rites <see cref="Search"/> finds in all.</summary>
+    Task<Either<Error, int>> CountFound(IReadOnlyList<string> words, CancellationToken cancellationToken);
+
+    /// <summary>
     /// The saved rite, with the next number; <see cref="RiteRepository.DayAlreadyHasRite"/> when that day already has one,
     /// so two generations for the same day can't both save.
     /// </summary>
@@ -34,4 +43,12 @@ public interface IRiteRepository
     Task<Either<Error, Unit>> SaveScores(DateOnly publishedOnUtc, RiteSimilarity similarity, CancellationToken cancellationToken);
 
     Task<Either<Error, Dictionary<int, float[]>>> GetScoresByRiteNumber(string scoresGeneratorVersion, CancellationToken cancellationToken);
+
+    /// <summary>The rites with this tag numbered below <paramref name="number"/>, the newest first: a page of the tag's.</summary>
+    Task<Either<Error, List<Rite>>> GetTagged(string tag, int number, int count, CancellationToken cancellationToken);
+
+    /// <summary>The rites judged before tags existed: with scores, without tags.</summary>
+    Task<Either<Error, List<Rite>>> GetUntagged(CancellationToken cancellationToken);
+
+    Task<Either<Error, Unit>> SaveTags(DateOnly publishedOnUtc, string[] tags, CancellationToken cancellationToken);
 }

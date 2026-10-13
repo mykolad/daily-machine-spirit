@@ -1,4 +1,5 @@
 using DailyMachineSpirit.Data.Entities;
+using DailyMachineSpirit.Functions.Tags;
 
 namespace DailyMachineSpirit.Functions.Pages;
 
@@ -13,7 +14,9 @@ public static class RiteCard
 
     /// <param name="ownPage">On its own page the title is the page's h1 and the text can be copied; on Today the
     /// masthead is the h1.</param>
-    public static string Render(Rite rite, bool ownPage)
+    /// <param name="countedAt">When the rite's counts were read, no later: the script trusts a vote made since over the
+    /// page, which a cache may have kept from before it.</param>
+    public static string Render(Rite rite, bool ownPage, DateTimeOffset countedAt)
     {
         var heading = ownPage ? "h1" : "h2";
         var kind = rite.Writing.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL";
@@ -24,6 +27,8 @@ public static class RiteCard
         var copyButton = ownPage
             ? $"""<button type="button" class="button button-ghost" data-copy="text" data-url="{url}" data-text="{Html.Encode(copyText)}">{Svg.CopyIcon}Copy text</button>"""
             : string.Empty;
+        var tags = RiteTags.Of(rite.Tags);
+        var filedUnder = tags.Count == 0 ? string.Empty : $"""<p class="tags">Filed under {TagLinks.Render(tags)}</p>""";
         return $"""
             <div class="rite">
             <article class="parchment" aria-labelledby="rite-title">
@@ -58,7 +63,7 @@ public static class RiteCard
             </div>
             </section>
             <div class="actions">
-            <div class="reactions" role="group" aria-label="Reactions" data-rite="{rite.Number}">
+            <div class="reactions" role="group" aria-label="Reactions" data-rite="{rite.Number}" data-counted-at="{countedAt.ToUnixTimeMilliseconds()}">
             <button type="button" class="button reaction reaction-blessed" data-reaction="blessed" aria-pressed="false">{Svg.FlameIcon}<span>Blessed</span><span class="count">{Html.Count(rite.BlessedCount)}</span></button>
             <button type="button" class="button reaction reaction-heresy" data-reaction="heresy" aria-pressed="false">{Svg.SkullIcon}<span>Heresy</span><span class="count">{Html.Count(rite.HeresyCount)}</span></button>
             </div>
@@ -67,6 +72,7 @@ public static class RiteCard
             </div>
             <div class="vote-status" data-signed-in="false" hidden><a href="{Html.Encode(Paths.SignIn(here))}">Sign in with GitHub</a> to vote<span class="vote-privacy">Only a one-way key made from your account's id is kept: never your name, email or GitHub token.</span></div>
             <div class="vote-status" data-signed-in="true" hidden>Voting with your GitHub account · <form method="post" action="{Html.Encode(Paths.SignOutFrom(here))}"><button type="submit" class="text-button">Sign out</button></form></div>
+            {filedUnder}
             """;
     }
 

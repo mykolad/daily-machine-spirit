@@ -14,4 +14,9 @@ public interface IDraftRepository
 
     /// <summary>The drafts that can still be published, in no particular order (the Augury orders them).</summary>
     Task<Either<Error, List<Draft>>> GetWaiting(CancellationToken cancellationToken);
+
+    /// <summary>The drafts judged before tags existed: with scores, without tags. Whatever their state.</summary>
+    Task<Either<Error, List<Draft>>> GetUntagged(CancellationToken cancellationToken);
+
+    Task<Either<Error, Unit>> SaveTags(Guid draftId, string[] tags, CancellationToken cancellationToken);
 }
