@@ -58,9 +58,36 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.Contains("Your test depends on <code>timing</code>.", html);
         Assert.Contains("Next litany in", html);
         Assert.Contains("""<span>Blessed</span><span class="count">0</span>""", html);
-        Assert.DoesNotContain("Litany of the Clean Cache", html);
         Assert.DoesNotContain("Copy text", html);
         Assert.DoesNotContain("Filed under", html);
+    }
+
+    [Fact]
+    public async Task Today_OffersTheFourRitesBeforeIt_NewestFirst()
+    {
+        for (var daysAgo = 5; daysAgo >= 0; daysAgo--)
+        {
+            await Add(Day.AddDays(-daysAgo), $"Rite {6 - daysAgo}");
+        }
+
+        var (_, html) = await Today("");
+
+        Assert.Contains("""<h2 class="rite-title" id="rite-title">Rite 6</h2>""", html);
+        var recent = Regex.Matches(html, """<a class="recent-card" href="(/r/\d+)">\s*<span class="recent-kicker">([^<]+)</span>\s*<span class="recent-title">([^<]+)</span>""")
+            .Select(card => $"{card.Groups[1].Value} {card.Groups[2].Value} {card.Groups[3].Value}");
+        Assert.Equal(
+            ["/r/5 A RITUAL · 8 OCT Rite 5", "/r/4 A RITUAL · 7 OCT Rite 4", "/r/3 A RITUAL · 6 OCT Rite 3", "/r/2 A RITUAL · 5 OCT Rite 2"],
+            recent);
+    }
+
+    [Fact]
+    public async Task Today_OnTheFirstDay_HasNoRecentRites()
+    {
+        await Add(Day, "The Rite of Re-Run");
+
+        var (_, html) = await Today("");
+
+        Assert.DoesNotContain("Recent rites", html);
     }
 
     [Fact]
@@ -224,8 +251,8 @@ public sealed class SitePagesTests : IAsyncLifetime
         var (_, archive) = await Archive("");
 
         const string links = """<a class="tag" href="/tags/caches">Caches</a> <a class="tag" href="/tags/restarts">Restarts</a>""";
-        Assert.Contains($"""<p class="tags">Filed under {links}</p>""", today);
-        Assert.Contains($"""<p class="tags">Filed under {links}</p>""", own);
+        Assert.Contains($"""<p class="tags"><span class="margin-label">Filed under</span> {links}</p>""", today);
+        Assert.Contains($"""<p class="tags"><span class="margin-label">Filed under</span> {links}</p>""", own);
         Assert.Contains($"""<span class="row-tags"><span class="sr-only">Filed under </span>{links}</span>""", archive);
     }
 

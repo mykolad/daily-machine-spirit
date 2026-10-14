@@ -45,10 +45,11 @@ public sealed class SitePages
             return Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(path));
         }
 
+        // Today's rite and the ones before it, in one read. A new rite purges Today, which is the only time they change.
         var now = time.GetUtcNow();
-        return (await rites.GetNewest(1, cancellationToken)).Match(
+        return (await rites.GetNewest(1 + TodayPage.RecentShown, cancellationToken)).Match(
             Right: newest => newest.HeadOrNone().Match(
-                Some: rite => Page(request, StatusCodes.Status200OK, TodayPage.Render(rite, now), EdgeLifetime.UntilPurged),
+                Some: rite => Page(request, StatusCodes.Status200OK, TodayPage.Render(rite, newest.Skip(1).ToList(), now), EdgeLifetime.UntilPurged),
                 None: () => Page(request, StatusCodes.Status200OK, TodayPage.Slumbering(now), EdgeLifetime.UntilPurged)),
             Left: error => Failed(request, error));
     }
