@@ -10,7 +10,7 @@ public static class RitePage
     public static string Render(Rite rite, IReadOnlyList<Rite> more, DateTimeOffset countedAt)
         => Layout.Page(rite.Writing.Title, Html.FirstLine(rite.Writing.Text.Replace("`", string.Empty)), Section.Other, $"""
             <a class="back" href="{Paths.Archive}">{Svg.BackIcon}Back to the Archive</a>
-            {RiteCard.Render(rite, ownPage: true, countedAt)}
+            {RiteCard.Render(rite, ownPage: true, countedAt, marginNotes: string.Empty)}
             {MoreRites(more)}
             """);
 

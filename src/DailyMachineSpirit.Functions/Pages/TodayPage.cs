@@ -1,10 +1,14 @@
+using System.Text;
 using DailyMachineSpirit.Data.Entities;
 
 namespace DailyMachineSpirit.Functions.Pages;
 
-/// <summary>The home page: the masthead, the newest rite and the countdown to the next.</summary>
+/// <summary>The home page: the masthead, the newest rite, the countdown to the next, and the rites before it.</summary>
 public static class TodayPage
 {
+    /// <summary>How many rites before today's the page shows.</summary>
+    public const int RecentShown = 4;
+
     private const string Tagline = "In the grim darkness of the far future, no one reads the code.";
 
     private const string Masthead = $"""
@@ -15,15 +19,23 @@ public static class TodayPage
         </div>
         """;
 
-    public static string Render(Rite rite, DateTimeOffset now)
-        => Layout.Page(string.Empty, Html.FirstLine(rite.Writing.Text.Replace("`", string.Empty)), Section.Today, $"""
+    /// <param name="recent">The rites before today's, newest first; the section is left out when there are none.</param>
+    public static string Render(Rite rite, IReadOnlyList<Rite> recent, DateTimeOffset now)
+    {
+        var countdown = Countdown.ToNextRite(now);
+        // On a wide screen the countdown moves to the left margin, and the line under the actions (with its candles)
+        // hides, so one countdown shows at a time.
+        var marginCountdown = $"""<div class="margin-countdown"><p class="margin-label">Next litany in</p><p class="margin-value" data-countdown>{countdown}</p></div>""";
+        return Layout.Page(string.Empty, Html.FirstLine(rite.Writing.Text.Replace("`", string.Empty)), Section.Today, $"""
             {Masthead}
-            {RiteCard.Render(rite, ownPage: false, countedAt: now)}
+            {RiteCard.Render(rite, ownPage: false, countedAt: now, marginNotes: marginCountdown)}
             <div class="countdown">
-            <div class="countdown-line">{Svg.CandleLeft}<p>Next litany in <span class="amber" data-countdown>{Countdown.ToNextRite(now)}</span></p>{Svg.CandleRight}</div>
-            <p class="countdown-note">A new rite is published every day at 00:00 UTC. <a href="{Paths.Archive}">Browse the Archive</a></p>
+            <div class="countdown-line">{Svg.CandleLeft}<p>Next litany in <span class="amber" data-countdown>{countdown}</span></p>{Svg.CandleRight}</div>
+            <p class="countdown-note">A new rite is published every day at 00:00 UTC.</p>
             </div>
+            {Recent(recent)}
             """);
+    }
 
     /// <summary>Before the first rite: the Machine Spirit sleeps until midnight.</summary>
     public static string Slumbering(DateTimeOffset now)
@@ -35,4 +47,34 @@ public static class TodayPage
             <p class="state-body">The first litany arrives in <strong class="amber" data-countdown>{Countdown.ToNextRite(now)}</strong>.</p>
             </div>
             """);
+
+    // Small parchments, kind and day and title alone: enough to pick one, and the archive is a link away. Each card is
+    // one link, its focus ring outside it on the dark ground.
+    private static string Recent(IReadOnlyList<Rite> recent)
+    {
+        if (recent.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var cards = new StringBuilder();
+        foreach (var other in recent)
+        {
+            cards.Append($"""
+                <li><a class="recent-card" href="{Paths.Rite(other.Number)}">
+                <span class="recent-kicker">A {(other.Writing.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL")} · {Html.DayAndMonth(other.PublishedOnUtc)}</span>
+                <span class="recent-title">{Html.Encode(other.Writing.Title)}</span>
+                {Svg.SmallSeal}
+                </a></li>
+                """);
+        }
+
+        return $"""
+            <section class="recent" aria-labelledby="recent-rites">
+            <h2 id="recent-rites">Recent rites</h2>
+            <ul class="recent-list">{cards}</ul>
+            <a class="recent-archive" href="{Paths.Archive}">Open the Archive<span aria-hidden="true"> →</span></a>
+            </section>
+            """;
+    }
 }

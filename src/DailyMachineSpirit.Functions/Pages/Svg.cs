@@ -46,6 +46,23 @@ public static class Svg
 
     public const string CandleRight = $"""<svg class="candle candle-late" viewBox="0 0 20 44" width="20" height="44" fill="none" aria-hidden="true">{Flame}</svg>""";
 
+    // The wide screen's candles, one beside the rite in each margin: outlined, so they stay behind the page rather than
+    // compete with it. Only the flame moves (Styles).
+    private const string AltarCandlePaths =
+        """<path class="altar-flame" d="M12 4C15 9 15 13 12 16C9 13 9 9 12 4Z" fill="#f0b45a" stroke="#f0b45a"></path><path d="M12 16V20"></path><rect x="7" y="20" width="10" height="34" rx="1.5"></rect><path d="M3 56H21"></path>""";
+
+    public const string AltarCandles =
+        $"""<span class="altar altar-left" aria-hidden="true"><svg viewBox="0 0 24 60" width="48" height="120" fill="none" stroke="#84662c" stroke-width="1.4" stroke-linecap="round">{AltarCandlePaths}</svg></span><span class="altar altar-right" aria-hidden="true"><svg viewBox="0 0 24 60" width="48" height="120" fill="none" stroke="#84662c" stroke-width="1.4" stroke-linecap="round">{AltarCandlePaths}</svg></span>""";
+
+    // Circuit traces running in from the screen's edges on wide screens, drawn at half size (strokes 1.3px, dots 5px once
+    // doubled). The right one is the same kind of drawing, mirrored by the stylesheet.
+    public const string Traces =
+        """<span class="traces traces-left" aria-hidden="true"><svg viewBox="0 0 200 475" width="400" height="950" fill="none" stroke="#2f2820" stroke-width=".65"><path d="M0 90H60L80 110V260L100 280H140"></path><path d="M0 150H30L50 170V360L70 380H120"></path><path d="M0 330H40L60 310V220"></path><path d="M0 430H90L105 415H160"></path><circle cx="140" cy="280" r="2.5" fill="#2f2820"></circle><circle cx="120" cy="380" r="2.5" fill="#2f2820"></circle><circle cx="60" cy="220" r="2.5" fill="#2f2820"></circle><circle cx="160" cy="415" r="2.5" fill="#2f2820"></circle></svg></span><span class="traces traces-right" aria-hidden="true"><svg viewBox="0 0 200 475" width="400" height="950" fill="none" stroke="#2f2820" stroke-width=".65"><path d="M0 120H50L70 140V300L90 320H150"></path><path d="M0 200H25L45 220V400L60 415H110"></path><path d="M0 60H80L95 75H130"></path><circle cx="150" cy="320" r="2.5" fill="#2f2820"></circle><circle cx="110" cy="415" r="2.5" fill="#2f2820"></circle><circle cx="130" cy="75" r="2.5" fill="#2f2820"></circle></svg></span>""";
+
+    // The wax seal without its glyph, small enough for a recent rite's card.
+    public const string SmallSeal =
+        """<svg viewBox="0 0 64 64" width="32" height="32" aria-hidden="true"><circle cx="32" cy="32" r="27" fill="#8f2a20"></circle><circle cx="32" cy="32" r="28" fill="none" stroke="#8f2a20" stroke-width="5" stroke-dasharray="4 5" stroke-linecap="round"></circle><circle cx="32" cy="32" r="19" fill="none" stroke="#6b1c14" stroke-width="2.5"></circle></svg>""";
+
     public const string SleepingSkull =
         """<svg viewBox="0 0 96 96" width="96" height="96" fill="none" aria-hidden="true"><path d="M20 46a28 28 0 0 1 56 0" stroke="#84662c" stroke-width="4"></path><path d="M48 22c-14 0-24 10-24 23 0 8 4 13 9 16v9a3 3 0 0 0 3 3h24a3 3 0 0 0 3-3v-9c5-3 9-8 9-16 0-13-10-23-24-23z" fill="#b6a98f"></path><path d="M34 48h10M52 48h10" stroke="#100e0b" stroke-width="3.5" stroke-linecap="round"></path><path d="M48 54l-3 5h6z" fill="#100e0b"></path><path d="M42 66v6M48 66v6M54 66v6" stroke="#100e0b" stroke-width="2"></path><rect x="14" y="42" width="10" height="18" rx="5" fill="#84662c"></rect><rect x="72" y="42" width="10" height="18" rx="5" fill="#84662c"></rect><text x="74" y="22" font-family="JetBrains Mono, monospace" font-size="12" fill="#84662c">z z</text></svg>""";
 

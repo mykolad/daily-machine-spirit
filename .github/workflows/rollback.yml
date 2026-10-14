@@ -1,0 +1,148 @@
+name: Roll Back
+
+# Puts an app back on the newest master that passed its own smoke tests (Deploy Master succeeds only then), whose
+# package is kept 90 days, and smoke-tests it with that package's own tests. Called after a deploy whose smoke tests
+# failed (deploy.yml), as a job of its own: in the run's graph, a rollback is where the run ends. It succeeds when that
+# package is back and passes its tests; the run still fails, by the deploy that failed.
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: The GitHub environment, which holds the Azure identity's ids (staging or production).
+        type: string
+        required: true
+      app-name:
+        type: string
+        required: true
+      base-url:
+        description: Where the smoke tests reach the app.
+        type: string
+        required: true
+      version:
+        description: The version that failed its smoke tests, for the run's annotations.
+        type: string
+        required: true
+      restricts-addresses:
+        description: The app admits only some addresses (staging its owner, production Cloudflare), so the runner's is added for the smoke tests.
+        type: boolean
+        required: true
+      test-voter-vault:
+        description: Where the smoke tests read the secret that signs a test voter's cookie, as in deploy.yml; empty for no voting.
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+  id-token: write
+  actions: read
+
+env:
+  RESOURCE_GROUP: machinespirit-rg
+  APP: ${{ inputs.app-name }}
+  BASE_URL: ${{ inputs.base-url }}
+  VERSION: ${{ inputs.version }}
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  rollback:
+    name: rollback
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/actions
+
+      - name: Find the last good package
+        id: last-good
+        run: |
+          run=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow deploy-master.yml --branch master --status success \
+            --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          if [ -z "$run" ]; then
+            echo "::error title=Rollback::No successful Deploy Master run with a package to roll back to."
+            exit 1
+          fi
+          gh run download "$run" --repo "$GITHUB_REPOSITORY" --name app --dir last-good
+          echo "version=$(cat last-good/version.txt)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Roll back
+        id: rollback
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ inputs.app-name }}
+          package: last-good/publish
+          sku: flexconsumption
+
+      # This job's runner has an address of its own.
+      - name: Let the runner in
+        if: ${{ inputs.restricts-addresses }}
+        uses: ./.github/actions/let-runner-in
+        with:
+          resource-group: ${{ env.RESOURCE_GROUP }}
+          app: ${{ inputs.app-name }}
+          base-url: ${{ inputs.base-url }}
+
+      # The last good package's smoke tests may vote as a test voter too (deploy.yml); the value is masked in the log.
+      - name: Read the test voter's secret
+        if: ${{ inputs.test-voter-vault != '' }}
+        env:
+          VAULT: ${{ inputs.test-voter-vault }}
+        run: |
+          secret=$(az keyvault secret show --vault-name "$VAULT" --name VoterSessionSecret --query value -o tsv)
+          echo "::add-mask::$secret"
+          echo "SMOKE_TEST_VOTER_SESSION_SECRET=$secret" >> "$GITHUB_ENV"
+
+      # The last good package's own smoke tests, which match what it serves. Either way the run's annotations say what
+      # the app runs now: the version that failed, rolled back (an error, as the run fails), or a rollback that failed too.
+      - name: Smoke tests
+        id: smoke
+        env:
+          LAST_GOOD: ${{ steps.last-good.outputs.version }}
+          SMOKE_TEST_BASE_URL: ${{ inputs.base-url }}
+          SMOKE_TEST_VERSION: ${{ steps.last-good.outputs.version }}
+        run: |
+          if dotnet test last-good/smoke-tests/DailyMachineSpirit.SmokeTests.dll --logger "console;verbosity=normal"; then
+            echo "::error title=Rolled back::$VERSION failed its smoke tests, so $APP runs $LAST_GOOD again."
+          else
+            echo "::error title=Rollback failed::$APP runs $LAST_GOOD again, but it failed its smoke tests too: check the app."
+            exit 1
+          fi
+
+      - name: Shut the runner out
+        if: ${{ always() && inputs.restricts-addresses }}
+        uses: ./.github/actions/shut-runner-out
+        with:
+          resource-group: ${{ env.RESOURCE_GROUP }}
+          app: ${{ inputs.app-name }}
+
+      - name: Summary
+        if: ${{ always() }}
+        env:
+          LAST_GOOD: ${{ steps.last-good.outputs.version }}
+          REDEPLOYED: ${{ steps.rollback.outcome }}
+          CHECKED: ${{ steps.smoke.outcome }}
+        run: |
+          if [ "$CHECKED" = success ]; then
+            message="$APP was rolled back to \`$LAST_GOOD\`, which passed its smoke tests."
+          elif [ -z "$LAST_GOOD" ]; then
+            message="$APP wasn't rolled back: there was no last good package to put back. Check the app."
+          elif [ "$REDEPLOYED" != success ]; then
+            message="Deploying \`$LAST_GOOD\` back to $APP failed: check the app."
+          elif [ "$CHECKED" = failure ]; then
+            message="$APP runs \`$LAST_GOOD\` again, but it failed its smoke tests too: check the app."
+          else
+            message="$APP runs \`$LAST_GOOD\` again, but its smoke tests couldn't run (the runner wasn't let in): see the run."
+          fi
+          echo "$message" >> "$GITHUB_STEP_SUMMARY"
