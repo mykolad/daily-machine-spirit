@@ -125,6 +125,11 @@ observability/                    — the Grafana dashboard and alerts, and what
   - Every focusable control sits on the dark background, never on the parchment, so the amber focus ring shows.
   - **More rites** (a rite's own page): the three rites whose similarity scores are closest (cosine, `RelatedRites`),
     topped up with the newest others when there aren't enough scored ones. If it fails, the page goes without it.
+  - **Recent rites** (Today): the four before today's, read with it in one query, so a new rite's purge of Today
+    refreshes them too.
+  - **Wide screens** (1280px and up) give the rite margins: the countdown and tags on the left, the votes on the right,
+    nothing the parchment already says. The markup stays in reading order and the stylesheet places it
+    (`docs/design/accessibility.md`).
   - **Cached until they change** (#37): browsers keep a page a minute, and Cloudflare keeps Today and a rite's page an
     hour (`s-maxage`, `EdgeLifetime.UntilPurged`), so their requests rarely reach the app. Whatever changes them purges
     them (`IPageCache`, `CloudflarePageCache`): a saved vote adds its rite's page and Today

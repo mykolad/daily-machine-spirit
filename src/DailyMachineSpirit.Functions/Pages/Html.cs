@@ -57,6 +57,9 @@ public static class Html
     /// <summary>"9 Oct 2026".</summary>
     public static string ShortDate(DateOnly day) => day.ToString("d MMM yyyy", CultureInfo.InvariantCulture);
 
+    /// <summary>"13 OCT", for a recent rite's kicker.</summary>
+    public static string DayAndMonth(DateOnly day) => day.ToString("d MMM", CultureInfo.InvariantCulture).ToUpperInvariant();
+
     /// <summary>"2,310".</summary>
     public static string Count(int count) => count.ToString("N0", CultureInfo.InvariantCulture);
 

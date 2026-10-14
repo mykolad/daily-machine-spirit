@@ -7,6 +7,11 @@ namespace DailyMachineSpirit.Functions.Pages;
 /// A rite as Today and its own page show it: the parchment, the wax seal that hides the Heretical Truth, and the
 /// actions under it. Every focusable control sits on the dark background, where the amber focus ring shows.
 /// </summary>
+/// <remarks>
+/// On a wide screen (<see cref="Styles"/>) the page gets margins: the votes move to the right one, and the left one
+/// holds the margin notes and the tags. Nothing there repeats what the parchment says (its number, its date). The markup
+/// stays in reading order, page first, and the stylesheet places it: a reader hears the rite before its margins.
+/// </remarks>
 public static class RiteCard
 {
     // The purity seal's paper strip, chosen by the rite's number so a rite always wears the same one.
@@ -16,7 +21,9 @@ public static class RiteCard
     /// masthead is the h1.</param>
     /// <param name="countedAt">When the rite's counts were read, no later: the script trusts a vote made since over the
     /// page, which a cache may have kept from before it.</param>
-    public static string Render(Rite rite, bool ownPage, DateTimeOffset countedAt)
+    /// <param name="marginNotes">What the left margin shows above the tags on a wide screen (Today's countdown), or
+    /// empty.</param>
+    public static string Render(Rite rite, bool ownPage, DateTimeOffset countedAt, string marginNotes)
     {
         var heading = ownPage ? "h1" : "h2";
         var kind = rite.Writing.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL";
@@ -28,8 +35,17 @@ public static class RiteCard
             ? $"""<button type="button" class="button button-ghost" data-copy="text" data-url="{url}" data-text="{Html.Encode(copyText)}">{Svg.CopyIcon}Copy text</button>"""
             : string.Empty;
         var tags = RiteTags.Of(rite.Tags);
-        var filedUnder = tags.Count == 0 ? string.Empty : $"""<p class="tags">Filed under {TagLinks.Render(tags)}</p>""";
+        var filedUnder = tags.Count == 0 ? string.Empty : $"""<p class="tags"><span class="margin-label">Filed under</span> {TagLinks.Render(tags)}</p>""";
+        var margin = marginNotes.Length == 0 && filedUnder.Length == 0
+            ? string.Empty
+            : $"""
+                <aside class="marginalia" aria-label="About this rite">
+                {marginNotes}
+                {filedUnder}
+                </aside>
+                """;
         return $"""
+            <div class="hero">
             <div class="rite">
             <article class="parchment" aria-labelledby="rite-title">
             <span class="rule-outer" aria-hidden="true"></span><span class="rule-inner" aria-hidden="true"></span>
@@ -63,16 +79,24 @@ public static class RiteCard
             </div>
             </section>
             <div class="actions">
+            <div class="faithful">
+            <p class="margin-label" aria-hidden="true">The faithful say</p>
             <div class="reactions" role="group" aria-label="Reactions" data-rite="{rite.Number}" data-counted-at="{countedAt.ToUnixTimeMilliseconds()}">
             <button type="button" class="button reaction reaction-blessed" data-reaction="blessed" aria-pressed="false">{Svg.FlameIcon}<span>Blessed</span><span class="count">{Html.Count(rite.BlessedCount)}</span></button>
             <button type="button" class="button reaction reaction-heresy" data-reaction="heresy" aria-pressed="false">{Svg.SkullIcon}<span>Heresy</span><span class="count">{Html.Count(rite.HeresyCount)}</span></button>
             </div>
+            <div class="vote-status" data-signed-in="false" hidden><a href="{Html.Encode(Paths.SignIn(here))}">Sign in with GitHub</a> to vote<span class="vote-privacy">Only a one-way key made from your account's id is kept: never your name, email or GitHub token.</span></div>
+            <div class="vote-status" data-signed-in="true" hidden>Voting with your GitHub account · <form method="post" action="{Html.Encode(Paths.SignOutFrom(here))}"><button type="submit" class="text-button">Sign out</button></form></div>
+            </div>
+            <div class="sharing">
             <button type="button" class="button button-ghost" data-copy="link" data-url="{url}">{Svg.LinkIcon}Share link</button>
             {copyButton}
             </div>
-            <div class="vote-status" data-signed-in="false" hidden><a href="{Html.Encode(Paths.SignIn(here))}">Sign in with GitHub</a> to vote<span class="vote-privacy">Only a one-way key made from your account's id is kept: never your name, email or GitHub token.</span></div>
-            <div class="vote-status" data-signed-in="true" hidden>Voting with your GitHub account · <form method="post" action="{Html.Encode(Paths.SignOutFrom(here))}"><button type="submit" class="text-button">Sign out</button></form></div>
-            {filedUnder}
+            </div>
+            {margin}
+            {Svg.AltarCandles}
+            {Svg.Traces}
+            </div>
             """;
     }
 
