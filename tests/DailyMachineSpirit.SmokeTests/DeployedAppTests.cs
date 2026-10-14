@@ -78,8 +78,8 @@ public sealed partial class DeployedAppTests
         Assert.True(page.Status == HttpStatusCode.Unauthorized, $"{page.Path} answered {(int)page.Status}, not 401.");
     }
 
-    // The whole way a signed-in reader votes, past the routing and the sign-in that unit tests skip: the vote counts, the
-    // page can load it, and taking it back leaves the counts as they were. Signed in as the test voter (staging only).
+    // The whole way a signed-in reader votes, past the routing and the sign-in that unit tests skip: the vote counts,
+    // the page can load it, and taking it back leaves the counts as they were. As the test voter (staging only).
     [TestVoterFact]
     public async Task ASignedInReader_VotesAndTakesTheVoteBack()
     {
@@ -118,7 +118,8 @@ public sealed partial class DeployedAppTests
             Headers = { { "Cookie", $"{TestVoter.CookieName}={cookie}" } },
             Content = JsonContent.Create(new { vote }),
         });
-        Assert.True(page.Status == HttpStatusCode.OK, $"Voting {vote ?? "nothing"} answered {(int)page.Status}: {page.Text}");
+        Assert.True(page.Status == HttpStatusCode.OK,
+            $"Voting {vote ?? "nothing"} answered {(int)page.Status}: {page.Text}");
         return JsonSerializer.Deserialize<JsonElement>(page.Text);
     }
 

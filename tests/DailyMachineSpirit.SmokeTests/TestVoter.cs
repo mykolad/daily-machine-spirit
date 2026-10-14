@@ -15,8 +15,9 @@ public static class TestVoter
     public const string SecretVariable = "SMOKE_TEST_VOTER_SESSION_SECRET";
     public const string CookieName = "dms-voter";
 
-    // Not an HMAC of an account like a real reader's key, so no reader ever has it: SHA-256 of a name, in the same form.
-    private static readonly string VoterKey = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes("smoke-test voter")));
+    // Not an HMAC of an account like a real reader's key, so no reader ever has it: a SHA-256, in the same form.
+    private static readonly string VoterKey =
+        Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes("smoke-test voter")));
 
     public static bool IsAvailable => Environment.GetEnvironmentVariable(SecretVariable) is { Length: > 0 };
 
@@ -27,7 +28,8 @@ public static class TestVoter
             ?? throw new InvalidOperationException($"Set {SecretVariable} to vote as the test voter.");
         var expires = DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
         var signed = $"{VoterKey}.{expires}";
-        var signature = Base64Url.EncodeToString(HMACSHA256.HashData(Encoding.UTF8.GetBytes(secret), Encoding.UTF8.GetBytes(signed)));
+        var signature = Base64Url.EncodeToString(
+            HMACSHA256.HashData(Encoding.UTF8.GetBytes(secret), Encoding.UTF8.GetBytes(signed)));
         return $"{signed}.{signature}";
     }
 }
