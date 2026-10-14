@@ -219,7 +219,9 @@ jobs:
             message="$APP wasn't rolled back: there was no last good package to put back. Check the app."
           elif [ "$REDEPLOYED" != success ]; then
             message="Deploying \`$LAST_GOOD\` back to $APP failed: check the app."
-          else
+          elif [ "$CHECKED" = failure ]; then
             message="$APP runs \`$LAST_GOOD\` again, but it failed its smoke tests too: check the app."
+          else
+            message="$APP runs \`$LAST_GOOD\` again, but its smoke tests couldn't run (the runner wasn't let in): see the run."
           fi
           echo "$message" >> "$GITHUB_STEP_SUMMARY"
