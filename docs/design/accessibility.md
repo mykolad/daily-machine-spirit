@@ -51,6 +51,20 @@ The handoff has no search. It uses the site's tokens, on the dark background.
   isn't a control. A click inside it focuses it too, and a reload restored that focus with the amber ring around the
   whole page for a moment. Its first link or button still shows the ring, as every control does.
 
+## The Scriptorium, shown in place
+
+- **The forms still work without the script,** and the script only changes how the result is shown, never what is
+  sent: the same request, then the page the redirect leads to.
+- **The status message is never replaced, only given new text,** so a screen reader announces it as after a reload: a
+  live region that's removed and added again may not be.
+- **Focus stays where the Scribe is working:** the same button on the rite that moved, else its first button. After a
+  burn, the first button of the rite that took its place, without scrolling away; the message, with its link to the
+  rite in the Ashes, is announced all the same.
+- **Reduced motion** (`prefers-reduced-motion`) turns off the slide and the glow; the rite acted on keeps its amber
+  border, which isn't motion.
+- **One action at a time:** while one is under way, `aria-busy` marks the page, and a second click is ignored until
+  the first is done.
+
 ## The wide screen
 
 The handoff's desktop update (`Desktop Options.dc.html`, 2a, 2b, 2g, 2h): margins beside the page from 1280px, a glow

@@ -139,7 +139,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Equal(good.Id, first.Draft.Id);
         Assert.Contains($"{done} “Good”", html);
         Assert.Contains(first.PublishesOnUtc.ToString("ddd d MMM", CultureInfo.InvariantCulture) + ".", html);
-        Assert.Contains($"""<article class="rite" id="rite-{good.Id:D}" """, html);
+        Assert.Contains($"""<article class="rite acted" id="rite-{good.Id:D}" """, html);
     }
 
     [Fact]
@@ -168,7 +168,35 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var html = Html(await function.Page(Following(response.Result), CancellationToken.None), 200);
 
         Assert.Contains($"""Consigned “Burned” to the flames. <a href="#rite-{burned.Id:D}">Restore it from the Ashes</a>.""", html);
-        Assert.Contains($"""<article class="rite ash" id="rite-{burned.Id:D}" """, html);
+        Assert.Contains($"""<article class="rite ash acted" id="rite-{burned.Id:D}" """, html);
+    }
+
+    // So the Scribe's eye finds where it went, with or without the script that slides it there.
+    [Fact]
+    public async Task AfterAnAction_TheRiteItWasOnIsMarked_AndNoOther()
+    {
+        await testbed.AddDraft("First", 0.9f);
+        var exalted = await testbed.AddDraft("Second", 0.5f);
+        var function = Function(enabled: true);
+
+        var response = await function.Decide(Post(""), exalted.Id, "exalt", CancellationToken.None);
+        var html = Html(await function.Page(Following(response.Result), CancellationToken.None), 200);
+        var before = Html(await function.Page(Get(""), CancellationToken.None), 200);
+
+        Assert.Contains($"""<article class="rite acted" id="rite-{exalted.Id:D}" """, html);
+        Assert.Single(html.Split("class=\"rite acted\"").Skip(1));
+        Assert.DoesNotContain("class=\"rite acted\"", before);
+    }
+
+    // The forms work without it; with it, an action is shown in place.
+    [Fact]
+    public async Task Page_CarriesTheScriptThatShowsActionsInPlace()
+    {
+        await testbed.AddDraft("First", 0.9f);
+
+        var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+
+        Assert.Contains($"<script>{ScriptoriumScript.Js}</script>", html);
     }
 
     [Fact]
