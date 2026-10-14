@@ -26,6 +26,10 @@ on:
         description: The app admits only some addresses (staging its owner, production Cloudflare), so the runner's is added for the smoke tests.
         type: boolean
         required: true
+      test-voter-vault:
+        description: Where the smoke tests read the secret that signs a test voter's cookie, to vote and take the vote back; empty for no voting (production, whose counts are public).
+        type: string
+        default: ''
     outputs:
       smoke:
         description: The smoke tests' outcome (success, failure, or skipped when the run failed before them).
@@ -75,6 +79,18 @@ jobs:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # The secret that signs the sign-in cookie, so the smoke tests can sign one for their test voter. The identity may
+      # read this one secret (infra/), and the value is masked in the run's log. Before deploying, so a failed read
+      # leaves the app as it was, instead of a deployment the smoke tests never checked and nothing rolls back.
+      - name: Read the test voter's secret
+        if: ${{ inputs.test-voter-vault != '' }}
+        env:
+          VAULT: ${{ inputs.test-voter-vault }}
+        run: |
+          secret=$(az keyvault secret show --vault-name "$VAULT" --name VoterSessionSecret --query value -o tsv)
+          echo "::add-mask::$secret"
+          echo "SMOKE_TEST_VOTER_SESSION_SECRET=$secret" >> "$GITHUB_ENV"
 
       - name: Deploy
         id: deploy

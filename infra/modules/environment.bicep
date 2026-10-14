@@ -41,6 +41,8 @@ param signInCallbackUrl string
 param cloudflareZoneId string
 @description('The address of the site in that zone, e.g. https://example.com.')
 param cloudflareSiteUrl string
+@description('Whether the smoke tests vote as a test voter here, reading the session secret as the GitHub deploy identity. Never in production, whose counts are public.')
+param smokeTestsVote bool
 
 var keyVaultSecretsOfficer = 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7'
 var keyVaultSecretsUser = '4633458b-17de-408a-b874-0445c86b69e6'
@@ -364,6 +366,23 @@ resource githubTrust 'Microsoft.ManagedIdentity/userAssignedIdentities/federated
     issuer: 'https://token.actions.githubusercontent.com'
     subject: '${githubSubjectPrefix}:environment:${environmentName}'
     audiences: ['api://AzureADTokenExchange']
+  }
+}
+
+// The smoke tests vote and take the vote back as a test voter, with a cookie they sign themselves (CLAUDE.md,
+// "Deploying"): the deploy identity may read the secret that signs it, and no other secret in the vault.
+resource voterSessionSecret 'Microsoft.KeyVault/vaults/secrets@2024-11-01' existing = if (smokeTestsVote) {
+  parent: vault
+  name: 'VoterSessionSecret'
+}
+
+resource githubReadsVoterSessionSecret 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (smokeTestsVote) {
+  scope: voterSessionSecret
+  name: guid(voterSessionSecret.id, githubDeployer.id, keyVaultSecretsUser)
+  properties: {
+    principalId: githubDeployer.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', keyVaultSecretsUser)
   }
 }
 

@@ -230,11 +230,17 @@ observability/                    — the Grafana dashboard and alerts, and what
     again.
   - **Refills:** burning the last waiting draft asks for a refill at once (the `backlog-refills` queue), as does
     Summon.
-  - **The page:** plain HTML forms, no script. Each action posts and redirects back to the rite it acted on
-    (`#rite-{id}`), with a message that names it and where it went; after a burn, the message links to the rite in the
-    Ashes, to restore it. It's never cached or indexed, and forms posted from another site are refused
-    (`Sec-Fetch-Site`). The icons are inline and decorative: Lucide's (`Pages/Lucide-LICENSE.txt`), except Summon's
-    sparkle, which is the design's own.
+  - **The page:** plain HTML forms, which work without a script. Each action posts and redirects back to the rite it
+    acted on (`#rite-{id}`, marked `acted`, which glows), with a message that names it and where it went; after a burn,
+    the message links to the rite in the Ashes, to restore it. It's never cached or indexed, and forms posted from
+    another site are refused (`Sec-Fetch-Site`). The icons are inline and decorative: Lucide's
+    (`Pages/Lucide-LICENSE.txt`), except Summon's sparkle, which is the design's own.
+  - **Shown in place** (`ScriptoriumScript`): where scripts run, an action is posted in the background, the new page's
+    calendar replaces the old, and each rite that moved slides from its old place to its new one, so a Scribe sees
+    what changed (an Exalt can reorder the rites the Augury places, too). The status message stays the same element,
+    so it's announced; focus returns to the same button (after a burn, to the rite now in its place in the calendar,
+    which the Augury may have reordered, without scrolling away). Anything unexpected (an error, Cloudflare Access wanting a new sign-in) loads `/scriptorium`
+    afresh. Reduced motion: no slide, only the mark.
   - **Access:** `Scriptorium:Enabled` is off by default. Who counts as a Scribe is an `IScribeSignIn`
     (`Scriptorium/SignIn/`), chosen to fail closed (`AddScribeSignIn`):
     - **Cloudflare Access** (`CloudflareAccess:TeamDomain` and `:Audience` set, production): every request must carry
@@ -309,6 +315,12 @@ repository tests. For a deployment it also packages the app (the `app` artifact,
     the app's own address (production's past Cloudflare's cache), and both apps admit only some addresses (staging its
     owner, production Cloudflare), so the workflow adds the runner's address to the access rules for the tests
     (`smoke-tests`) and removes it afterwards, even when the run fails or is cancelled.
+  - **A test voter, on staging only:** the smoke tests also sign in as a test voter (`TestVoter`), vote Blessed on the
+    newest rite, load the vote as the page does, and take it back, leaving the counts as they were. They sign the
+    voter's cookie themselves, with the session secret the workflow reads from staging's vault
+    (`test-voter-vault`; staging's GitHub identity may read that one secret, `infra/`). Production gets no secret, so
+    the test is skipped there: its counts are public. A staging rollback reads the secret too, for the last good
+    package's own vote test.
   - **Rollback:** when the smoke tests fail, the package of the newest successful Deploy Master run goes back and is
     smoke-tested, and the run fails. It's a job of its own beside the deploy (`rollback.yml`, called as `roll back
     staging` or `roll back production`, skipped when nothing failed), so the run's graph shows a rollback as where the

@@ -39,6 +39,7 @@ jobs:
       base-url: https://machinespirit-app-staging.azurewebsites.net
       version: ${{ needs.build-and-test.outputs.version }}
       restricts-addresses: true
+      test-voter-vault: machinespirit-kv-staging
 
   # Only when staging's smoke tests themselves failed, as a job beside the deploy (like Deploy Master's).
   rollback-staging:
@@ -58,3 +59,4 @@ jobs:
       base-url: https://machinespirit-app-staging.azurewebsites.net
       version: ${{ needs.build-and-test.outputs.version }}
       restricts-addresses: true
+      test-voter-vault: machinespirit-kv-staging

@@ -26,6 +26,10 @@ on:
         description: The app admits only some addresses (staging its owner, production Cloudflare), so the runner's is added for the smoke tests.
         type: boolean
         required: true
+      test-voter-vault:
+        description: Where the smoke tests read the secret that signs a test voter's cookie, as in deploy.yml; empty for no voting.
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -89,6 +93,16 @@ jobs:
           resource-group: ${{ env.RESOURCE_GROUP }}
           app: ${{ inputs.app-name }}
           base-url: ${{ inputs.base-url }}
+
+      # The last good package's smoke tests may vote as a test voter too (deploy.yml); the value is masked in the log.
+      - name: Read the test voter's secret
+        if: ${{ inputs.test-voter-vault != '' }}
+        env:
+          VAULT: ${{ inputs.test-voter-vault }}
+        run: |
+          secret=$(az keyvault secret show --vault-name "$VAULT" --name VoterSessionSecret --query value -o tsv)
+          echo "::add-mask::$secret"
+          echo "SMOKE_TEST_VOTER_SESSION_SECRET=$secret" >> "$GITHUB_ENV"
 
       # The last good package's own smoke tests, which match what it serves. Either way the run's annotations say what
       # the app runs now: the version that failed, rolled back (an error, as the run fails), or a rollback that failed too.
