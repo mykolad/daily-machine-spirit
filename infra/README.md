@@ -4,7 +4,7 @@ Everything the site runs on in Azure is in Bicep: `main.bicep` creates the resou
 Central) and everything in it. This page covers the few things Bicep can't do: the first deployment, the secret values,
 and what lives outside Azure.
 
-Each environment's own resources (its app, plan, storage, vault, database and GitHub identity) go to staging first:
+Each environment's own resources (its app, plan, storage, vault, database and GitHub identity) change in staging first;
 production's change only with `deployProduction=true` (false by default). The resources both environments share (the
 models' account and deployments, the Cosmos DB account, the infrastructure identity) are deployed every time, so a
 change to them reaches production at once. Production is live since #50.
