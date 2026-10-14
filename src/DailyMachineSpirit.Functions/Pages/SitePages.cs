@@ -18,6 +18,8 @@ namespace DailyMachineSpirit.Functions.Pages;
 /// </summary>
 public sealed class SitePages
 {
+    public const string CatchAllName = "ZzToday";
+
     private readonly IRiteRepository rites;
     private readonly TimeProvider time;
     private readonly ILogger<SitePages> logger;
@@ -29,8 +31,10 @@ public sealed class SitePages
         this.logger = logger;
     }
 
-    // The catch-all route also takes "/": more specific routes (healthz, archive, r/…) win over it.
-    [Function("Today")]
+    // The catch-all route also takes "/". The Functions host tries the routes in the order of their functions' names and
+    // takes the first that matches, not the most specific, so this one's name sorts after every other: named "Today", it
+    // took /api/votes from Votes. FunctionRoutesTests keeps it last.
+    [Function(CatchAllName)]
     public async Task<IActionResult> Today(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "{*path}")] HttpRequest request,
         string? path,

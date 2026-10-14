@@ -27,6 +27,11 @@ jobs:
   staging:
     name: staging
     needs: build-and-test
+    # The same lock as Deploy Master's staging job: one deployment of staging at a time, its rollback included.
+    concurrency:
+      group: deploy-staging
+      cancel-in-progress: false
+      queue: max
     uses: ./.github/workflows/deploy.yml
     with:
       environment: staging

@@ -118,7 +118,9 @@ observability/                    — the Grafana dashboard and alerts, and what
   - Routes: `/` (Today: the newest rite), `/archive` (`?before=<number>` for older pages, which the archive also
     loads in place as the reader nears the end), `/r/<number>`, `/tags/<key>` (a tag's rites, paged like the archive),
     `/search?q=<words>` (paged the same way).
-    A catch-all route takes `/` and answers every unknown address with the 404 page; more specific routes win over it.
+    A catch-all route takes `/` and answers every unknown address with the 404 page. The Functions host tries routes in
+    the order of their functions' names, first match wins, so the catch-all's name sorts last (`ZzToday`): any other
+    route whose function's name sorted after it would never be reached (`FunctionRoutesTests`).
   - Everything a model wrote goes through `Html.Encode` (`Html.WithInlineCode` for text with `backticks`).
   - Every focusable control sits on the dark background, never on the parchment, so the amber focus ring shows.
   - **More rites** (a rite's own page): the three rites whose similarity scores are closest (cosine, `RelatedRites`),
@@ -302,11 +304,12 @@ repository tests. For a deployment it also packages the app (the `app` artifact,
 - Both call `deploy.yml`, which deploys the package as the GitHub environment's identity (OIDC: the environment's
   `AZURE_*` variables hold ids, not secrets), one deployment per environment at a time. Then:
   - **Smoke tests** (`tests/DailyMachineSpirit.SmokeTests`, published into the package, so a package is always checked
-    by its own): `/healthz` reports the new commit, and Today, the archive, a rite, a tag's page, a search, the 404
-    page and a font answer as they should. They read the app's address and expected version from
+    by its own): `/healthz` reports the new commit, and Today, the archive, a rite, a tag's page, a search, the votes
+    API, the 404 page and a font answer as they should. They read the app's address and expected version from
     `SMOKE_TEST_BASE_URL` and `SMOKE_TEST_VERSION`, so they can also run from your machine against staging. They call
     the app's own address (production's past Cloudflare's cache), and both apps admit only some addresses (staging its
     owner, production Cloudflare), so the workflow adds the runner's address to the access rules for the tests
     (`smoke-tests`) and removes it afterwards, even when the run fails or is cancelled.
   - **Rollback:** when the smoke tests fail, the package of the newest successful Deploy Master run goes back and is
-    smoke-tested, and the run fails.
+    smoke-tested, and the run fails. It's a job of its own (`staging / rollback`, skipped when nothing failed), so the
+    run's graph shows it; the environment's lock (the calling job's `concurrency`) holds across both jobs.

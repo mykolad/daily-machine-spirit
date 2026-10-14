@@ -1,8 +1,9 @@
 name: Deploy Master
 
 # Every merge to master is built and tested again (a flaky pass on its PR doesn't reach staging), packaged once, and
-# that package is deployed to staging, smoke-tested, and rolled back if the smoke tests fail. Only when staging passed
-# does the same package go to production, smoke-tested and rolled back the same way: no approval, staging is the gate.
+# that package is deployed to staging, smoke-tested, and rolled back if the smoke tests fail (each environment's deploy
+# and rollback are jobs of their own: staging / deploy, staging / rollback). Only when staging passed does the same
+# package go to production, smoke-tested and rolled back the same way: no approval, staging is the gate.
 on:
   push:
     branches: [master]
@@ -29,6 +30,13 @@ jobs:
   staging:
     name: staging
     needs: build-and-test
+    # One deployment per environment at a time, its deploy and rollback jobs together, in the order they arrive. A newer
+    # one waits rather than cancelling one half done, and the queue keeps every waiting deployment: by default GitHub
+    # keeps only the newest, so a branch deployment could knock out a merge's.
+    concurrency:
+      group: deploy-staging
+      cancel-in-progress: false
+      queue: max
     uses: ./.github/workflows/deploy.yml
     with:
       environment: staging
@@ -42,6 +50,11 @@ jobs:
   production:
     name: production
     needs: [build-and-test, staging]
+    # As staging's.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+      queue: max
     uses: ./.github/workflows/deploy.yml
     with:
       environment: production

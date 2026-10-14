@@ -4,8 +4,10 @@ Everything the site runs on in Azure is in Bicep: `main.bicep` creates the resou
 Central) and everything in it. This page covers the few things Bicep can't do: the first deployment, the secret values,
 and what lives outside Azure.
 
-Production is off until launch (`deployProduction`, false by default): staging comes first. The production names below
-are what it gets then.
+Each environment's own resources (its app, plan, storage, vault, database and GitHub identity) change in staging first;
+production's change only with `deployProduction=true` (false by default). The resources both environments share (the
+models' account and deployments, the Cosmos DB account, the infrastructure identity) are deployed every time, so a
+change to them reaches production at once. Production is live since #50.
 
 | Resource | Name | Notes |
 |---|---|---|
@@ -46,13 +48,13 @@ az deployment sub create --location swedencentral --name machinespirit --templat
 
 The Cosmos DB free tier can only be chosen when the account is created, and a subscription gets one free account.
 
-At launch, add `deployProduction=true` to the same command, and the launch PR makes `true` the default. Once production
-exists, a deployment without it leaves production alone: nothing is deleted, but nothing there is updated either.
+Add `deployProduction=true` to create production too (it was, with #50). A deployment without it leaves production as
+it is: nothing there is deleted, but nothing is updated either.
 
 ## Later changes
 
 Into the existing group, with `resources.bicep`: that's all the infrastructure identity (Owner of this group only) can do,
-so a deploy workflow will use the same command. Preview first with `what-if`:
+so a deploy workflow will use the same command. Staging first, previewed with `what-if`:
 
 ```powershell
 $owner = az ad signed-in-user show --query id -o tsv
@@ -63,13 +65,19 @@ az deployment group create -g machinespirit-rg --name machinespirit --template-f
   --parameters ownerPrincipalId=$owner stagingAllowedIp=$ip
 ```
 
+Then, once staging works, production: the same two commands with `deployProduction=true` added to `--parameters`. Its
+`what-if` lists production's resources; without the flag they're marked ignored (`*`), and a change meant for
+production doesn't reach it. A change to production alone (its domain, its Cloudflare zone) needs the second step only.
+A change to a shared resource takes effect for both in the first step: look at its `what-if` with production in mind.
+
 (In bash, the same with `\` line breaks and `"$owner"`, `"$ip"`.) When your IP changes, deploy again with the new one.
 
 ## Secrets
 
 Bicep creates the vaults but never their values. Put each value in a file outside the repository and set it from there,
 so it stays out of your shell history. `-o none` matters: without it, `az keyvault secret set` prints the value back.
-Production's vault exists only from launch (`deployProduction`); set its secrets then.
+Each environment has its own vault: the commands below set staging's (`machinespirit-kv-staging`); production's
+are the same with `--vault-name machinespirit-kv`.
 
 | Secret | Used for | The app reads it from |
 |---|---|---|
@@ -163,6 +171,19 @@ az functionapp restart -g machinespirit-rg -n machinespirit-app
 Purges are counted (`dms.pages.purges`, `purged` or `failed`); a failed one is also logged, and the page refreshes
 within the hour.
 
+**After a deployment that changes every page** (the navigation, the styles, the footer), purge everything by hand: a
+deployment purges nothing, so Today and the rites' pages would show the old version for up to an hour. Either in the
+dashboard (**Caching → Configuration → Purge Everything**), or with the same token, which also shows it still works:
+
+```powershell
+$token = (Get-Content -Path $HOME\.machinespirit\cloudflare-purge-token.txt -Raw).Trim()
+(Invoke-RestMethod -Method Post -Uri https://api.cloudflare.com/client/v4/zones/143ab86fe8cf72cb735e20bfaac6ebcc/purge_cache `
+  -Headers @{ Authorization = "Bearer $token" } -ContentType application/json -Body '{"purge_everything":true}').success
+```
+
+It prints `True`. The next request for each page then reaches the app once; browsers keep their copy a minute at most
+(the Cache Rule's Browser TTL).
+
 ## Deploying the app
 
 GitHub Actions deploys the app (`.github/workflows/`), signed in as the environment's GitHub identity:
@@ -202,9 +223,12 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
     `customDomainVerificationId`, which Azure checks before binding the domain.
   - **A Cache Rule** (Caching → Cache Rules), after the purge is set up (Secrets): hostname equals
     `dailymachinespirit.fyi` and the URI path doesn't start with `/api/`, `/auth/`, `/scriptorium` or `/healthz`;
-    **Eligible for cache**, Edge TTL **Use cache-control header if present, bypass cache if not**. The app's
-    `Cache-Control` decides the rest: Today and a rite's page an hour at the edge (`s-maxage`), purged on change, the
-    archive a minute, errors and the API never. `cf-cache-status: HIT` on a second request for `/` shows it works.
+    **Eligible for cache**, Edge TTL **Use cache-control header if present, bypass cache if not**, Browser TTL
+    **Respect origin TTL**. The app's `Cache-Control` decides the rest: Today and a rite's page an hour at the edge
+    (`s-maxage`), purged on change, the archive a minute, errors and the API never; browsers a minute (`max-age`).
+    Without Respect origin TTL, Cloudflare raises `max-age` to the zone's Browser Cache TTL (4 hours by default), and
+    a purge never reaches a browser's copy. `cf-cache-status: HIT` on a second request for `/` shows it works, and
+    its `cache-control` should read `public, max-age=60, s-maxage=3600`.
   - **A rate limit rule** (Security → WAF → Rate limiting rules, set up 2026-10-13) for votes and searches (each
     search reads every rite), counted by IP, 20 in 10 seconds, blocked for 10 seconds. The Free plan has one such rule,
     so every limited path shares it:
