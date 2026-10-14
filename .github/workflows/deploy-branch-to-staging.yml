@@ -27,12 +27,31 @@ jobs:
   staging:
     name: staging
     needs: build-and-test
-    # The same lock as Deploy Master's staging job: one deployment of staging at a time, its rollback included.
+    # The same lock as Deploy Master's staging job: one deployment of staging at a time.
     concurrency:
       group: deploy-staging
       cancel-in-progress: false
       queue: max
     uses: ./.github/workflows/deploy.yml
+    with:
+      environment: staging
+      app-name: machinespirit-app-staging
+      base-url: https://machinespirit-app-staging.azurewebsites.net
+      version: ${{ needs.build-and-test.outputs.version }}
+      restricts-addresses: true
+
+  # Only when staging's smoke tests themselves failed, as a job beside the deploy (like Deploy Master's).
+  rollback-staging:
+    name: roll back staging
+    needs: [build-and-test, staging]
+    if: ${{ failure() && needs.staging.outputs.smoke == 'failure' }}
+    # Staging's lock again: between the two jobs it's free for a moment, so another deployment of staging started just
+    # then could come first, and this would put master back over it.
+    concurrency:
+      group: deploy-staging
+      cancel-in-progress: false
+      queue: max
+    uses: ./.github/workflows/rollback.yml
     with:
       environment: staging
       app-name: machinespirit-app-staging

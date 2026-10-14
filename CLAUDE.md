@@ -125,6 +125,11 @@ observability/                    — the Grafana dashboard and alerts, and what
   - Every focusable control sits on the dark background, never on the parchment, so the amber focus ring shows.
   - **More rites** (a rite's own page): the three rites whose similarity scores are closest (cosine, `RelatedRites`),
     topped up with the newest others when there aren't enough scored ones. If it fails, the page goes without it.
+  - **Recent rites** (Today): the four before today's, read with it in one query, so a new rite's purge of Today
+    refreshes them too.
+  - **Wide screens** (1280px and up) give the rite margins: the countdown and tags on the left, the votes on the right,
+    nothing the parchment already says. The markup stays in reading order and the stylesheet places it
+    (`docs/design/accessibility.md`).
   - **Cached until they change** (#37): browsers keep a page a minute, and Cloudflare keeps Today and a rite's page an
     hour (`s-maxage`, `EdgeLifetime.UntilPurged`), so their requests rarely reach the app. Whatever changes them purges
     them (`IPageCache`, `CloudflarePageCache`): a saved vote adds its rite's page and Today
@@ -311,5 +316,7 @@ repository tests. For a deployment it also packages the app (the `app` artifact,
     owner, production Cloudflare), so the workflow adds the runner's address to the access rules for the tests
     (`smoke-tests`) and removes it afterwards, even when the run fails or is cancelled.
   - **Rollback:** when the smoke tests fail, the package of the newest successful Deploy Master run goes back and is
-    smoke-tested, and the run fails. It's a job of its own (`staging / rollback`, skipped when nothing failed), so the
-    run's graph shows it; the environment's lock (the calling job's `concurrency`) holds across both jobs.
+    smoke-tested, and the run fails. It's a job of its own beside the deploy (`rollback.yml`, called as `roll back
+    staging` or `roll back production`, skipped when nothing failed), so the run's graph shows a rollback as where the
+    run ends: production follows staging's deploy alone. Both jobs take the environment's lock (their `concurrency`),
+    which is free for a moment between them.

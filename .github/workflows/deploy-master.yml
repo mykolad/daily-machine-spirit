@@ -30,9 +30,9 @@ jobs:
   staging:
     name: staging
     needs: build-and-test
-    # One deployment per environment at a time, its deploy and rollback jobs together, in the order they arrive. A newer
-    # one waits rather than cancelling one half done, and the queue keeps every waiting deployment: by default GitHub
-    # keeps only the newest, so a branch deployment could knock out a merge's.
+    # One deployment per environment at a time, in the order they arrive. A newer one waits rather than cancelling one
+    # half done, and the queue keeps every waiting deployment: by default GitHub keeps only the newest, so a branch
+    # deployment could knock out a merge's.
     concurrency:
       group: deploy-staging
       cancel-in-progress: false
@@ -45,8 +45,28 @@ jobs:
       version: ${{ needs.build-and-test.outputs.version }}
       restricts-addresses: true
 
-  # The same package, once staging ran it and passed its smoke tests (a failed staging job, rolled back or not, stops
-  # here). Smoke-tested on the app's own address, past Cloudflare's cache, so they test what was just deployed.
+  # Only when staging's smoke tests themselves failed. A job beside the deploy, not after it, so the run's graph shows a
+  # staging rollback as where the run ends: production follows the deploy alone, and only when it passed.
+  rollback-staging:
+    name: roll back staging
+    needs: [build-and-test, staging]
+    if: ${{ failure() && needs.staging.outputs.smoke == 'failure' }}
+    # Staging's lock again. Between the two jobs it's free for a moment, so a Deploy Branch to Staging started just then
+    # could come first, and this would put master back over it; Deploy Master runs never overlap (concurrency above).
+    concurrency:
+      group: deploy-staging
+      cancel-in-progress: false
+      queue: max
+    uses: ./.github/workflows/rollback.yml
+    with:
+      environment: staging
+      app-name: machinespirit-app-staging
+      base-url: https://machinespirit-app-staging.azurewebsites.net
+      version: ${{ needs.build-and-test.outputs.version }}
+      restricts-addresses: true
+
+  # The same package, once staging ran it and passed its smoke tests (a failed staging deploy, rolled back or not,
+  # stops here). Smoke-tested on the app's own address, past Cloudflare's cache, so they test what was just deployed.
   production:
     name: production
     needs: [build-and-test, staging]
@@ -56,6 +76,22 @@ jobs:
       cancel-in-progress: false
       queue: max
     uses: ./.github/workflows/deploy.yml
+    with:
+      environment: production
+      app-name: machinespirit-app
+      base-url: https://machinespirit-app.azurewebsites.net
+      version: ${{ needs.build-and-test.outputs.version }}
+      restricts-addresses: true
+
+  rollback-production:
+    name: roll back production
+    needs: [build-and-test, production]
+    if: ${{ failure() && needs.production.outputs.smoke == 'failure' }}
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+      queue: max
+    uses: ./.github/workflows/rollback.yml
     with:
       environment: production
       app-name: machinespirit-app

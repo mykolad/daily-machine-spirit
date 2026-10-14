@@ -62,4 +62,24 @@ The handoff has no search. It uses the site's tokens, on the dark background.
   rite in the Ashes, is announced all the same.
 - **Reduced motion** (`prefers-reduced-motion`) turns off the slide and the glow; the rite acted on keeps its amber
   border, which isn't motion.
-- **One action at a time:** while one is under way, `aria-busy` marks the page, and a second click is ignored until the first is done.
+- **One action at a time:** while one is under way, `aria-busy` marks the page, and a second click is ignored until
+  the first is done.
+
+## The wide screen
+
+The handoff's desktop update (`Desktop Options.dc.html`, 2a, 2b, 2g, 2h): margins beside the page from 1280px, a glow
+and candles behind it, and the recent rites under Today.
+
+- **The margins don't repeat the parchment.** The handoff's left margin had the rite's number and date, which the
+  parchment already shows; a screen reader would hear them twice. The left margin holds the countdown and the tags
+  instead, the right one the votes.
+- **The markup stays in reading order:** the rite, the seal and the truth, then the votes, the share link and the
+  margin notes. The stylesheet places them in the margins, so a keyboard goes from the seal to the votes, then on.
+- **One countdown at a time.** The margin's and the line under the actions are both in the page; the one not shown is
+  `display: none`, so a screen reader reads one.
+- **The votes' margin label ("The faithful say") is hidden from screen readers:** the votes are already a group named
+  "Reactions".
+- **A recent rite's kicker is 12px, not the handoff's 10px:** the smallest label on the site, and still red on
+  parchment at 7.9:1. Each card is one link, and its focus ring falls outside it on the dark ground.
+- **The circuit traces stay in the space outside the margins,** cut off where the margins begin, so they never pass
+  behind text; they show from 1440px, where that space is wide enough to see them.
