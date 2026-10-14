@@ -35,9 +35,10 @@ public static class ScriptoriumScript
             main.setAttribute('aria-busy', 'true');
             const pressed = actionOf(button);
             const before = positions();
-            // The rite that takes a burned one's place in the list (or the one above, when it was the last), for focus.
-            const row = form.closest('li');
-            const neighbour = (row?.nextElementSibling ?? row?.previousElementSibling)?.querySelector('article')?.id;
+            // Where a burned rite stood in the calendar, for focus. Not its neighbour: the Augury orders what's left anew,
+            // so the rite after it before the burn needn't be the one in its place after.
+            const row = form.closest('ol.calendar > li');
+            const place = row ? [...row.parentElement.children].indexOf(row) : -1;
             try {
               const response = await fetch(button?.formAction || form.action, {
                 method: 'POST',
@@ -79,9 +80,12 @@ public static class ScriptoriumScript
               }
 
               // Focus stays where the Scribe is working: the same button on the rite, else its first one. After a burn,
-              // the rite that took the burned one's place, so the page doesn't jump away from it; the message (with
-              // its link to restore the rite) is announced all the same.
-              const burnedNeighbour = burned && neighbour ? document.getElementById(neighbour) : null;
+              // the rite now in the burned one's place (the last, when it was the last), so the page doesn't jump away
+              // from it; the message (with its link to restore the rite) is announced all the same.
+              const calendar = [...main.querySelectorAll('ol.calendar > li')];
+              const burnedNeighbour = burned && place >= 0
+                ? (calendar[place] ?? calendar.at(-1))?.querySelector('article') ?? null
+                : null;
               const again = burned ? burnedNeighbour?.querySelector('button')
                 : [...main.querySelectorAll('button')].find((other) => actionOf(other) === pressed)
                   ?? acted?.querySelector('button');
