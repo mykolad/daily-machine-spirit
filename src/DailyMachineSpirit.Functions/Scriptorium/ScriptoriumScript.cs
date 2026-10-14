@@ -40,7 +40,9 @@ public static class ScriptoriumScript
             const row = form.closest('ol.calendar > li');
             const place = row ? [...row.parentElement.children].indexOf(row) : -1;
             try {
-              const response = await fetch(button?.formAction || form.action, {
+              // Not the button's formAction: without the attribute, that's the page's own address (Summon's and the
+              // Augury's buttons have none).
+              const response = await fetch(pressed ?? form.action, {
                 method: 'POST',
                 body: new URLSearchParams(new FormData(form, button)),
               });
@@ -93,9 +95,14 @@ public static class ScriptoriumScript
               (again ?? status).focus({ preventScroll: true });
               // Once the rite has arrived, it's brought into view. Not awaited: a hidden tab pauses the slide, and the
               // page mustn't stay busy until it's shown again.
-              const shown = burned ? burnedNeighbour : again && acted;
-              arrived.then(() => (shown || status)
-                .scrollIntoView({ block: 'nearest', behavior: reduced.matches ? 'auto' : 'smooth' }));
+              const card = burned ? burnedNeighbour : again && acted;
+              arrived.then(() => {
+                // A rite taller than the window (a short one, or zoomed in) can't be shown whole, and 'nearest' leaves
+                // it where it is: then its focused button is shown instead.
+                const shown = !card ? status
+                  : card.getBoundingClientRect().height <= innerHeight ? card : again ?? status;
+                shown.scrollIntoView({ block: 'nearest', behavior: reduced.matches ? 'auto' : 'smooth' });
+              });
             } catch {
               // Whether the action happened isn't known (Cloudflare Access may want a new sign-in, or the network
               // failed): the page as it is now says.
