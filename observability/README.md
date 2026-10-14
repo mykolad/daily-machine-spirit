@@ -6,9 +6,15 @@ Each environment is its own service, named after its Functions app (`machinespir
 ## The dashboard
 
 `grafana/daily-machine-spirit.json`: traffic, Cosmos DB, the daily rite and the backlog, .NET and logs. To add or update it, in
-Grafana: **Dashboards → New → Import**, upload the file, and pick the stack's Prometheus and Loki data sources. It keeps
-its uid, so importing a newer version replaces the old one. Change it in Grafana if you like, then export it (Share →
-Export, without "Export for sharing externally") back over this file, so the repository stays the truth.
+Grafana: **Dashboards → New → Import**, and upload the file. It keeps its uid, so importing a newer version replaces the
+old one. Change it in Grafana if you like, then export it (Share → Export, without "Export for sharing externally") back
+over this file, so the repository stays the truth.
+
+- **Its Metrics and Logs pickers offer only the stack's `grafanacloud-*-prom` and `grafanacloud-*-logs`,** as
+  `tools/grafana-alerts.ps1` picks them. The stack has other Loki data sources (alert-state history, usage insights)
+  that sort first: an unfiltered picker can choose one of them, and the log panels then show no data.
+- **A regular expression in a LogQL query goes in backticks** (`` scope_name=~`Generation\..*` ``): in double quotes,
+  `\.` is an escape LogQL doesn't know, and the query fails to parse.
 
 ## The alerts
 
