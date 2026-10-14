@@ -304,5 +304,10 @@ repository tests. For a deployment it also packages the app (the `app` artifact,
     the app's own address (production's past Cloudflare's cache), and both apps admit only some addresses (staging its
     owner, production Cloudflare), so the workflow adds the runner's address to the access rules for the tests
     (`smoke-tests`) and removes it afterwards, even when the run fails or is cancelled.
+  - **A test voter, on staging only:** the smoke tests also sign in as a test voter (`TestVoter`), vote Blessed on the
+    newest rite, load the vote as the page does, and take it back, leaving the counts as they were. They sign the
+    voter's cookie themselves, with the session secret the workflow reads from staging's vault
+    (`test-voter-vault`; staging's GitHub identity may read that one secret, `infra/`). Production gets no secret, so
+    the test is skipped there: its counts are public.
   - **Rollback:** when the smoke tests fail, the package of the newest successful Deploy Master run goes back and is
     smoke-tested, and the run fails.

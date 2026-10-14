@@ -191,6 +191,7 @@ module staging 'modules/environment.bicep' = {
     cloudflareZoneId: ''
     cloudflareSiteUrl: ''
     appServicePrincipalId: appServicePrincipalId
+    smokeTestsVote: true
   }
 }
 
@@ -223,6 +224,8 @@ module production 'modules/environment.bicep' = if (deployProduction) {
     cloudflareZoneId: productionDomain.zoneId
     cloudflareSiteUrl: 'https://${productionDomain.name}'
     appServicePrincipalId: appServicePrincipalId
+    // A test vote would show in the public counts.
+    smokeTestsVote: false
   }
 }
 

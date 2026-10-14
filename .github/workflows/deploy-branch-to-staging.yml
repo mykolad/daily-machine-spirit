@@ -34,3 +34,4 @@ jobs:
       base-url: https://machinespirit-app-staging.azurewebsites.net
       version: ${{ needs.build-and-test.outputs.version }}
       restricts-addresses: true
+      test-voter-vault: machinespirit-kv-staging

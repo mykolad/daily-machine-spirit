@@ -61,17 +61,21 @@ public sealed class DeployedApp : IAsyncLifetime
         throw new InvalidOperationException($"/healthz didn't report version {Version} within three minutes: {lastAnswer}");
     }
 
-    public async Task<Page> Get(string path)
+    public Task<Page> Get(string path) => Send(() => new HttpRequestMessage(HttpMethod.Get, path));
+
+    /// <param name="request">Makes the request: a request can be sent only once, and a refused one is tried again.</param>
+    public async Task<Page> Send(Func<HttpRequestMessage> request)
     {
         for (var attempt = 1; ; attempt++)
         {
             var isLastTry = attempt == Tries;
             try
             {
-                using var response = await http.GetAsync(path);
+                using var message = request();
+                using var response = await http.SendAsync(message);
                 if (response.StatusCode != HttpStatusCode.Forbidden || isLastTry)
                 {
-                    return new Page(path, response.StatusCode, await response.Content.ReadAsByteArrayAsync());
+                    return new Page(message.RequestUri?.ToString() ?? string.Empty, response.StatusCode, await response.Content.ReadAsByteArrayAsync());
                 }
             }
             catch (Exception ex) when ((ex is HttpRequestException or TaskCanceledException) && !isLastTry)

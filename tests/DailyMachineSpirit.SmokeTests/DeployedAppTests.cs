@@ -1,4 +1,6 @@
 using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Xunit.Abstractions;
 
@@ -76,9 +78,60 @@ public sealed partial class DeployedAppTests
         Assert.True(page.Status == HttpStatusCode.Unauthorized, $"{page.Path} answered {(int)page.Status}, not 401.");
     }
 
+    // The whole way a signed-in reader votes, past the routing and the sign-in that unit tests skip: the vote counts, the
+    // page can load it, and taking it back leaves the counts as they were. Signed in as the test voter (staging only).
+    [TestVoterFact]
+    public async Task ASignedInReader_VotesAndTakesTheVoteBack()
+    {
+        var rite = TodaysRite().Match((await app.Get("/")).Text);
+        if (!rite.Success)
+        {
+            output.WriteLine("No rite published yet, so there's nothing to vote on.");
+            return;
+        }
+        var number = rite.Groups["number"].Value;
+        var cookie = TestVoter.Cookie();
+
+        // A run stopped halfway may have left the test voter's vote: taking it back first starts from none.
+        var before = await Vote(number, cookie, null);
+        var blessed = await Vote(number, cookie, "blessed");
+        var loaded = await ReadersVotes(number, cookie);
+        var taken = await Vote(number, cookie, null);
+
+        Assert.Equal("blessed", blessed.GetProperty("vote").GetString());
+        Assert.Equal(before.GetProperty("blessed").GetInt32() + 1, blessed.GetProperty("blessed").GetInt32());
+        Assert.Equal(before.GetProperty("heresy").GetInt32(), blessed.GetProperty("heresy").GetInt32());
+        Assert.Equal("blessed", loaded.GetProperty(number).GetString());
+        Assert.Equal(JsonValueKind.Null, taken.GetProperty("vote").ValueKind);
+        Assert.Equal(before.GetProperty("blessed").GetInt32(), taken.GetProperty("blessed").GetInt32());
+    }
+
     [Fact]
     public async Task Fonts_AreServed()
         => AssertAnswers(await app.Get("/fonts/cinzel.woff2"), HttpStatusCode.OK, "wOF2");
+
+    // As the page's script votes: JSON, with the sign-in cookie. The answer has the counts and the vote now.
+    private async Task<JsonElement> Vote(string number, string cookie, string? vote)
+    {
+        var page = await app.Send(() => new HttpRequestMessage(HttpMethod.Post, $"/api/rites/{number}/vote")
+        {
+            Headers = { { "Cookie", $"{TestVoter.CookieName}={cookie}" } },
+            Content = JsonContent.Create(new { vote }),
+        });
+        Assert.True(page.Status == HttpStatusCode.OK, $"Voting {vote ?? "nothing"} answered {(int)page.Status}: {page.Text}");
+        return JsonSerializer.Deserialize<JsonElement>(page.Text);
+    }
+
+    // What the page asks to show the reader's own vote pressed.
+    private async Task<JsonElement> ReadersVotes(string number, string cookie)
+    {
+        var page = await app.Send(() => new HttpRequestMessage(HttpMethod.Get, $"/api/votes?rites={number}")
+        {
+            Headers = { { "Cookie", $"{TestVoter.CookieName}={cookie}" } },
+        });
+        Assert.True(page.Status == HttpStatusCode.OK, $"{page.Path} answered {(int)page.Status}: {page.Text}");
+        return JsonSerializer.Deserialize<JsonElement>(page.Text);
+    }
 
     private static void AssertAnswers(Page page, HttpStatusCode status, string containing)
     {

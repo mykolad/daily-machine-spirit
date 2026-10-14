@@ -36,6 +36,7 @@ jobs:
       base-url: https://machinespirit-app-staging.azurewebsites.net
       version: ${{ needs.build-and-test.outputs.version }}
       restricts-addresses: true
+      test-voter-vault: machinespirit-kv-staging
 
   # The same package, once staging ran it and passed its smoke tests (a failed staging job, rolled back or not, stops
   # here). Smoke-tested on the app's own address, past Cloudflare's cache, so they test what was just deployed.
