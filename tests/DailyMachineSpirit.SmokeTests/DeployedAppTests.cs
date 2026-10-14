@@ -66,6 +66,16 @@ public sealed partial class DeployedAppTests
     public async Task UnknownAddress_AnswersWithTheNotFoundPage()
         => AssertAnswers(await app.Get("/smoke-test-no-such-page"), HttpStatusCode.NotFound, $"<title>No such rite exists · {SiteName}</title>");
 
+    // An API route reaches its own function, not the catch-all's 404 page (which took /api/votes once): without a
+    // sign-in, the reader's votes are refused.
+    [Fact]
+    public async Task TheReadersVotes_AreAskedOfTheVotesApi()
+    {
+        var page = await app.Get("/api/votes?rites=1");
+
+        Assert.True(page.Status == HttpStatusCode.Unauthorized, $"{page.Path} answered {(int)page.Status}, not 401.");
+    }
+
     [Fact]
     public async Task Fonts_AreServed()
         => AssertAnswers(await app.Get("/fonts/cinzel.woff2"), HttpStatusCode.OK, "wOF2");
