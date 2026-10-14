@@ -94,9 +94,20 @@ public sealed partial class DeployedAppTests
 
         // A run stopped halfway may have left the test voter's vote: taking it back first starts from none.
         var before = await Vote(number, cookie, null);
-        var blessed = await Vote(number, cookie, "blessed");
-        var loaded = await ReadersVotes(number, cookie);
-        var taken = await Vote(number, cookie, null);
+        JsonElement blessed;
+        JsonElement loaded;
+        JsonElement taken;
+        // Taken back even when voting or loading fails: the vote may be saved all the same, and a later run takes back
+        // only the newest rite's.
+        try
+        {
+            blessed = await Vote(number, cookie, "blessed");
+            loaded = await ReadersVotes(number, cookie);
+        }
+        finally
+        {
+            taken = await Vote(number, cookie, null);
+        }
 
         Assert.Equal("blessed", blessed.GetProperty("vote").GetString());
         Assert.Equal(before.GetProperty("blessed").GetInt32() + 1, blessed.GetProperty("blessed").GetInt32());

@@ -80,6 +80,18 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
+      # The secret that signs the sign-in cookie, so the smoke tests can sign one for their test voter. The identity may
+      # read this one secret (infra/), and the value is masked in the run's log. Before deploying, so a failed read
+      # leaves the app as it was, instead of a deployment the smoke tests never checked and nothing rolls back.
+      - name: Read the test voter's secret
+        if: ${{ inputs.test-voter-vault != '' }}
+        env:
+          VAULT: ${{ inputs.test-voter-vault }}
+        run: |
+          secret=$(az keyvault secret show --vault-name "$VAULT" --name VoterSessionSecret --query value -o tsv)
+          echo "::add-mask::$secret"
+          echo "SMOKE_TEST_VOTER_SESSION_SECRET=$secret" >> "$GITHUB_ENV"
+
       - name: Deploy
         id: deploy
         uses: Azure/functions-action@v1
@@ -95,17 +107,6 @@ jobs:
           resource-group: ${{ env.RESOURCE_GROUP }}
           app: ${{ inputs.app-name }}
           base-url: ${{ inputs.base-url }}
-
-      # The secret that signs the sign-in cookie, so the smoke tests can sign one for their test voter. The identity may
-      # read this one secret (infra/), and the value is masked in the run's log.
-      - name: Read the test voter's secret
-        if: ${{ inputs.test-voter-vault != '' }}
-        env:
-          VAULT: ${{ inputs.test-voter-vault }}
-        run: |
-          secret=$(az keyvault secret show --vault-name "$VAULT" --name VoterSessionSecret --query value -o tsv)
-          echo "::add-mask::$secret"
-          echo "SMOKE_TEST_VOTER_SESSION_SECRET=$secret" >> "$GITHUB_ENV"
 
       - name: Smoke tests
         id: smoke
