@@ -59,6 +59,8 @@ public static partial class ScriptoriumPage
         .text code { background: #2b2117; color: #f0d58c; }
         .meta, .when, .optional { color: #b6a98f; }
         .meta { margin: 0 0 12px; font-size: 15px; }
+        .tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+        .tag { padding: 2px 12px; border-radius: 999px; border: 1px solid rgba(201,162,90,.45); font: 600 14px/1.5 Figtree, sans-serif; color: #d9b874; }
         .fold summary { cursor: pointer; padding: 10px 0; font-weight: 600; color: #cdbd9e; }
         .fold summary .icon { width: 16px; height: 16px; vertical-align: -2px; margin: 0 4px; }
         textarea { width: 100%; background: #100e0b; color: #ede3cf; border: 1px solid #b6a98f; border-radius: 12px; padding: 8px 12px; font: 16px/1.4 Figtree, sans-serif; margin-bottom: 8px; }
@@ -102,11 +104,11 @@ public static partial class ScriptoriumPage
             <div class="section-head">
             <h2 id="calendar-heading">The Liturgical Calendar</h2>
             <div class="actions">
-            <form method="post" action="/scriptorium/summon"><button class="primary">{ScriptoriumIcons.Summon}Summon New Rites</button></form>
+            <form method="post" action="/scriptorium/summon"><button title="{Encode(About("summon"))}" class="primary">{ScriptoriumIcons.Summon}Summon New Rites</button></form>
             """);
         if (view.Calendar.Any(entry => entry.PlacedByScribes))
         {
-            html.Append($"""<form method="post" action="/scriptorium/augury"><button class="outline">{ScriptoriumIcons.Augury}Let the Augury Decide</button></form>""");
+            html.Append($"""<form method="post" action="/scriptorium/augury"><button title="{Encode(About("augury"))}" class="outline">{ScriptoriumIcons.Augury}Let the Augury Decide</button></form>""");
         }
         html.Append("</div></div>");
 
@@ -200,9 +202,7 @@ public static partial class ScriptoriumPage
                 : $"The Augury: {judged.Quality:P0}")
             .IfNone("Not yet judged by the Augury");
         var placedBy = entry.PlacedByScribes ? """<span class="placed">Placed by the Scribes</span> · """ : string.Empty;
-        var tags = RiteTags.Of(draft.Tags);
-        var filedUnder = tags.Count == 0 ? string.Empty : $" · filed under {Encode(string.Join(", ", tags.Select(tag => tag.Label)))}";
-        html.Append($"""<p class="meta">{placedBy}{Encode(augury)}{filedUnder} · written by <span class="nowrap">{Encode(draft.Writing.GeneratedByModel)}</span></p>""");
+        html.Append($"""<p class="meta">{placedBy}{Encode(augury)} · written by <span class="nowrap">{Encode(draft.Writing.GeneratedByModel)}</span></p>""");
 
         var reorder = new List<string>();
         if (place > 1)
@@ -238,6 +238,14 @@ public static partial class ScriptoriumPage
     private static void RiteBody(StringBuilder html, Draft draft, string id)
     {
         html.Append($"""<h3 id="title-{id}">{WithCode(draft.Writing.Title)}</h3>""");
+        // Under the title, where an eye matches them against the calendar's subjects above. Not links: following one
+        // would leave the Scriptorium for the public tag page.
+        var tags = RiteTags.Of(draft.Tags);
+        if (tags.Count > 0)
+        {
+            var labels = string.Concat(tags.Select(tag => $"""<span class="tag">{Encode(tag.Label)}</span>"""));
+            html.Append($"""<p class="tags"><span class="visually-hidden">Filed under </span>{labels}</p>""");
+        }
         html.Append($"""<p class="text">{WithCode(draft.Writing.Text)}</p>""");
         html.Append($"""<p class="truth"><span class="truth-label">Heretical Truth</span> {WithCode(draft.Writing.HereticalTruth)}</p>""");
     }
@@ -258,7 +266,20 @@ public static partial class ScriptoriumPage
 
     // Each button names the rite for screen readers, since every entry has the same buttons.
     private static string Button(string id, string title, string action, string icon, string label, string style)
-        => $"""<button class="{style}" formaction="/scriptorium/drafts/{id}/{action}">{icon}{label}<span class="visually-hidden">: {Encode(title)}</span></button>""";
+        => $"""<button title="{Encode(About(action))}" class="{style}" formaction="/scriptorium/drafts/{id}/{action}">{icon}{label}<span class="visually-hidden">: {Encode(title)}</span></button>""";
+
+    // What an action does, shown when the pointer rests on its button: the names are the rite's own words, and a Scribe
+    // who acts once a month needn't remember what "Let the Augury Decide" means. Each place in the calendar is a day.
+    private static string About(string action) => action switch
+    {
+        "summon" => "Writes new drafts in the background until the calendar is full again. Look again in a few minutes.",
+        "augury" => "Forgets the Scribes' order: the Augury orders every waiting rite again, by quality and variety.",
+        "anoint" => "Makes this rite the next one published, ahead of the Augury's picks.",
+        "exalt" => "Moves this rite one day earlier. It and every rite above it then keep the Scribes' order.",
+        "humble" => "Moves this rite one day later, swapping it with the next; both then keep the Scribes' order.",
+        "burn" => "Takes this rite out of the calendar, into the Ashes. Nothing is deleted: it can be restored.",
+        _ => "Puts this rite back in the calendar, where the Augury places it.",
+    };
 
     // On an altar, as the archive's heading is (Pages.AltarHeading): the glow behind it, and candles beside it on a wide
     // screen. The script replaces it with the rest of the page after an action, which changes nothing in it.

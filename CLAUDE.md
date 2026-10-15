@@ -236,7 +236,10 @@ observability/                    — the Grafana dashboard and alerts, and what
     acted on (`#rite-{id}`, marked `acted`, which glows), with a message that names it and where it went; after a burn,
     the message links to the rite in the Ashes, to restore it. It's never cached or indexed, and forms posted from
     another site are refused (`Sec-Fetch-Site`). The icons are inline and decorative: Lucide's
-    (`Pages/Lucide-LICENSE.txt`), except Summon's sparkle, which is the design's own.
+    (`Pages/Lucide-LICENSE.txt`), except Summon's sparkle, which is the design's own. Each action's button says what it
+    does in its `title`, the browser's own tooltip on hover: a reminder for the Scribes, chosen over a custom tooltip
+    for being simple (the labels themselves stay the rite's names). Each draft's tags show as chips under its title,
+    to match against the calendar's subjects.
   - **Shown in place** (`ScriptoriumScript`): where scripts run, an action is posted in the background, the new page's
     calendar replaces the old, and each rite that moved slides from its old place to its new one, so a Scribe sees
     what changed (an Exalt can reorder the rites the Augury places, too). The status message stays the same element,
