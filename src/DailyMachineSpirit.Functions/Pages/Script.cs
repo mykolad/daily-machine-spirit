@@ -377,13 +377,14 @@ public static class Script
             // As the server reads them (SearchWords): each word once, without quotes around it, at most six.
             const wordsOf = (typed) => [...new Set(typed.toLowerCase().split(/\s+/)
               .map((word) => word.replace(/^["`'“”‘’]+|["`'“”‘’]+$/g, '')).filter(Boolean))].slice(0, 6);
-            // The text with every word found in a <mark>; built from text nodes, so nothing a model wrote is HTML here.
+            // The text with every word found in a <mark>, overlapping ones joined (as Highlight does on the server); built
+            // from text nodes, so nothing a model wrote is HTML here.
             const marked = (text, words) => {
               const lower = text.toLowerCase();
               const ranges = words
                 .flatMap((word) => {
                   const found = [];
-                  for (let at = lower.indexOf(word); at >= 0; at = lower.indexOf(word, at + word.length)) found.push([at, at + word.length]);
+                  for (let at = lower.indexOf(word); at >= 0; at = lower.indexOf(word, at + 1)) found.push([at, at + word.length]);
                   return found;
                 })
                 .sort((a, b) => a[0] - b[0])
