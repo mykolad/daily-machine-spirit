@@ -46,6 +46,11 @@ public sealed partial class DeployedAppTests
     public async Task Search_Answers()
         => AssertAnswers(await app.Get("/archive?q=machine"), HttpStatusCode.OK, "<title>“machine”: ");
 
+    // What the nav's search field matches as the reader types: every rite's words, from the deployed database.
+    [Fact]
+    public async Task TheSearchIndex_Answers()
+        => AssertAnswers(await app.Get("/api/rites"), HttpStatusCode.OK, "\"number\":");
+
     // Search was a page of its own: links to it lead to the Archive's search (the client follows the redirect).
     [Fact]
     public async Task TheOldSearchAddress_LeadsToTheArchivesSearch()
