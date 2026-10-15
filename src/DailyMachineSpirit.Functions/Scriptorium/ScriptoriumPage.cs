@@ -25,7 +25,8 @@ public static partial class ScriptoriumPage
         footer { max-width: 600px; margin: 0 auto; padding: 0 16px 48px; text-align: center; }
         .motto { margin: 0 0 8px; font: 700 16px Cinzel, serif; letter-spacing: .08em; color: #c9a25a; }
         .disclaimer { margin: 0; font: 400 14px/1.6 Figtree, sans-serif; color: #b6a98f; }
-        .brand { margin: 0; font: 700 16px Cinzel, serif; letter-spacing: .04em; color: #c9a25a; }
+        .brand { display: inline-flex; align-items: center; gap: 10px; padding: 4px 8px 4px 0; font: 700 16px Cinzel, serif; letter-spacing: .04em; color: #c9a25a; text-decoration: none; }
+        .brand:hover { color: #f0d59a; }
         h1 { font: 700 clamp(30px, 4.4vw, 46px)/1.1 Cinzel, serif; margin: 24px 0 8px; }
         h2 { font: 700 26px/1.2 Cinzel, serif; margin: 0; }
         h3 { font: 700 21px/1.2 Cinzel, serif; margin: 6px 0 8px; }
@@ -303,7 +304,7 @@ public static partial class ScriptoriumPage
             <body>
             <a class="skip" href="#main">Skip to content</a>
             <div class="frame">
-            <header><p class="brand">The Daily Machine Spirit</p></header>
+            <header><a class="brand" href="/">{Pages.Svg.BrandCog}The Daily Machine Spirit</a></header>
             """);
     }
 

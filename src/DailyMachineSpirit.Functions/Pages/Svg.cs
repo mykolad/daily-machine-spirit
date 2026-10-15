@@ -15,7 +15,7 @@ public static class Svg
     private const string Flame =
         """<ellipse cx="10" cy="9" rx="4" ry="7.5" fill="#f0b45a"></ellipse><rect x="4" y="18" width="12" height="26" rx="3" fill="#e9dcbc"></rect>""";
 
-    public const string BrandCog = $"""<svg viewBox="0 0 64 64" width="28" height="28" aria-hidden="true">{CogPaths}</svg>""";
+    public const string BrandCog = $"""<svg aria-hidden="true" focusable="false" viewBox="0 0 64 64" width="28" height="28">{CogPaths}</svg>""";
 
     // The tab's icon: the cog on the site's background, a little inset so the rounded corners don't clip its teeth. Inline
     // as a data URI, so it costs no request; and with an icon declared, browsers stop asking for /favicon.ico, which
