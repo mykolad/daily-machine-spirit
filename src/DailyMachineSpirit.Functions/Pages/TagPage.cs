@@ -19,9 +19,7 @@ public static class TagPage
             : $"No earlier rite is filed under {label}.";
         var others = RiteTags.All.Where(other => other != tag);
         return Layout.Page($"Filed under {tag.Label}", about, Section.Other, $"""
-            <h1 class="archive-title">Filed under {label}</h1>
-            <p class="archive-subtitle">{Html.Encode(about)}</p>
-            <div class="archive-divider">{Svg.BrassDivider}</div>
+            {AltarHeading.Render($"Filed under {label}", Html.Encode(about))}
             {RiteRows.Render(rites, olderThan.Map(number => Paths.TagBefore(tag.Key, number)), end)}
             <section class="subjects" aria-labelledby="subjects">
             <h2 id="subjects">Other subjects</h2>

@@ -129,7 +129,9 @@ observability/                    — the Grafana dashboard and alerts, and what
     refreshes them too.
   - **Wide screens** (1280px and up) give the rite margins: the countdown and tags on the left, the votes on the right,
     nothing the parchment already says. The markup stays in reading order and the stylesheet places it
-    (`docs/design/accessibility.md`).
+    (`docs/design/accessibility.md`). The archive, a tag's page and the Scriptorium put their heading on the same
+    altar (`AltarHeading`): candles beside it, the glow behind, the traces beyond. The candles and traces are
+    `Styles.Altar`, which the Scriptorium's own stylesheet includes.
   - **Cached until they change** (#37): browsers keep a page a minute, and Cloudflare keeps Today and a rite's page an
     hour (`s-maxage`, `EdgeLifetime.UntilPurged`), so their requests rarely reach the app. Whatever changes them purges
     them (`IPageCache`, `CloudflarePageCache`): a saved vote adds its rite's page and Today
