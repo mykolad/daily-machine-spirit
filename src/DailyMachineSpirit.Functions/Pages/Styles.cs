@@ -226,14 +226,14 @@ public static class Styles
         .nav-find:not(.open) .nav-find-field{visibility:hidden}
         .nav-find-field:focus-visible{outline:none}
         .nav-find-field::placeholder{color:#8f8068;opacity:1}
-        .nav-find-drop{position:absolute;top:calc(100% + 8px);right:0;z-index:30;width:400px;max-width:calc(100vw - 32px);padding:8px;border-radius:14px;background:#ebdfc2;color:#2b2117;text-align:left;box-shadow:0 14px 30px rgba(0,0,0,.55)}
+        .nav-find-drop{position:absolute;top:calc(100% + 8px);right:0;z-index:30;width:400px;max-width:calc(100vw - 32px);max-height:calc(100dvh - 96px);overflow-y:auto;overscroll-behavior:contain;padding:8px;border-radius:14px;background:#ebdfc2;color:#2b2117;text-align:left;box-shadow:0 14px 30px rgba(0,0,0,.55),inset 0 0 0 4px #ebdfc2,inset 0 0 0 5px #8f2a20}
         .nav-find-drop[hidden]{display:none}
-        .nav-find-drop::before{content:'';position:absolute;inset:4px;border:1px solid #8f2a20;border-radius:8px;pointer-events:none}
         .nav-find-drop :focus-visible{outline-color:#8f2a20;outline-offset:2px}
         .nav-find-label{margin:0;padding:8px 12px 4px;font-family:'EB Garamond',serif;font-style:italic;font-size:15px;color:#5c4a33}
         .nav-find-none{margin:0;padding:4px 12px 8px;font-family:'EB Garamond',serif;font-size:17px;line-height:1.4}
         .nav-find-drop [role=option]{position:relative;display:flex;flex-direction:column;justify-content:center;gap:2px;min-height:44px;padding:10px 12px;border-radius:6px;text-decoration:none}
-        .nav-find-drop [role=option]:hover,.nav-find-drop [aria-selected=true]{background:#dfcda2}
+        .nav-find-drop [role=option]:hover{background:#dfcda2}
+        .nav-find-drop [aria-selected=true]{background:#dfcda2;outline:2px solid #8f2a20;outline-offset:-2px}
         .nav-find-title{font-family:Cinzel,serif;font-weight:700;font-size:16px;line-height:1.25;color:#8f2a20}
         .nav-find-meta{font-weight:600;font-size:13px;color:#5c4a33}
         .nav-find-all{position:relative;display:flex;align-items:center;min-height:44px;margin-top:4px;padding:8px 12px;border-top:1px solid rgba(143,42,32,.25);font-weight:600;font-size:14px;color:#8f2a20;text-decoration:none}

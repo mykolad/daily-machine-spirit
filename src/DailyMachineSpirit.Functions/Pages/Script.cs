@@ -331,7 +331,8 @@ public static class Script
               show('');
             };
             field.addEventListener('keydown', (event) => {
-              if (event.key !== 'Escape' || field.value === '') return;
+              // Escape while an input method composes a word cancels the word, not the search.
+              if (event.isComposing || event.key !== 'Escape' || field.value === '') return;
               event.preventDefault();
               clear();
             });
@@ -413,8 +414,13 @@ public static class Script
               const options = [...list.children];
               active = options.length === 0 ? -1 : next;
               options.forEach((option, place) => option.setAttribute('aria-selected', String(place === active)));
-              if (active >= 0) input.setAttribute('aria-activedescendant', options[active].id);
-              else input.removeAttribute('aria-activedescendant');
+              if (active >= 0) {
+                input.setAttribute('aria-activedescendant', options[active].id);
+                // Focus stays in the field, so the browser won't bring the chosen rite into view by itself.
+                options[active].scrollIntoView({ block: 'nearest' });
+              } else {
+                input.removeAttribute('aria-activedescendant');
+              }
             };
             const showDrop = (shown) => {
               drop.hidden = !shown;
@@ -507,6 +513,8 @@ public static class Script
               typing = setTimeout(suggest, 150);
             });
             input.addEventListener('keydown', (event) => {
+              // Keys an input method uses while it composes a word (Enter picks its candidate) aren't the field's.
+              if (event.isComposing) return;
               const count = list.children.length;
               if (event.key === 'ArrowDown' && count > 0) {
                 event.preventDefault();

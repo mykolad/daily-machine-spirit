@@ -71,7 +71,9 @@ month, with Today's masthead, margins and altar, and search as the Archive filte
   `aria-activedescendant` through the suggestions, so focus stays in the field. Enter opens the chosen rite (or
   searches the Archive when none is chosen), Escape closes the field, clears it and returns focus to the icon, and a
   click or a tab elsewhere closes it. A polite live region says how many rites were found ("3 rites mention “cache”").
-  Each suggestion is at least 44px tall. Without the script the icon is a link to the Archive's field.
+  Each suggestion is at least 44px tall. The chosen one has a red outline as well as its shade (the shade alone is
+  1.18:1), and it scrolls into view when the drop-down is cut short (zoomed in, a keyboard on screen); keys an input
+  method uses while composing a word are left to it. Without the script the icon is a link to the Archive's field.
 - **The drop-down's count line is ink-muted, not brass-dim,** for the same 4.05:1 reason as the sheet's.
 - **The Archive's results follow the typing without moving focus:** the field stays focused while the rows are
   swapped, and the line under the heading ("3 rites mention it") is announced in a live region. Escape and the clear
