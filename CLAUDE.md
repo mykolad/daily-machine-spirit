@@ -116,22 +116,29 @@ observability/                    — the Grafana dashboard and alerts, and what
   - The tab's icon is the logo's cog, inline in each page (the Scriptorium's too) as an SVG data URI (`Svg.Favicon`):
     no request for it, and browsers don't ask for `/favicon.ico`.
   - Routes: `/` (Today: the newest rite), `/archive` (`?before=<number>` for older pages, which the archive also
-    loads in place as the reader nears the end), `/r/<number>`, `/tags/<key>` (a tag's rites, paged like the archive),
-    `/search?q=<words>` (paged the same way).
+    loads in place as the reader nears the end; `?q=<words>` for search), `/r/<number>`, `/tags/<key>` (a tag's rites,
+    paged like the archive). `/search?q=` redirects to `/archive?q=` for good.
     A catch-all route takes `/` and answers every unknown address with the 404 page. The Functions host tries routes in
     the order of their functions' names, first match wins, so the catch-all's name sorts last (`ZzToday`): any other
     route whose function's name sorted after it would never be reached (`FunctionRoutesTests`).
   - Everything a model wrote goes through `Html.Encode` (`Html.WithInlineCode` for text with `backticks`).
-  - Every focusable control sits on the dark background, never on the parchment, so the amber focus ring shows.
+  - Every focusable control sits on the dark background, where the amber focus ring shows, except on the Archive's
+    parchment sheet, whose rows, field and tag links get a red ring (`docs/design/accessibility.md`).
   - **More rites** (a rite's own page): the three rites whose similarity scores are closest (cosine, `RelatedRites`),
     topped up with the newest others when there aren't enough scored ones. If it fails, the page goes without it.
   - **Recent rites** (Today): the four before today's, read with it in one query, so a new rite's purge of Today
     refreshes them too.
   - **Wide screens** (1280px and up) give the rite margins: the countdown and tags on the left, the votes on the right,
     nothing the parchment already says. The markup stays in reading order and the stylesheet places it
-    (`docs/design/accessibility.md`). The archive, a tag's page and the Scriptorium put their heading on the same
-    altar (`AltarHeading`): candles beside it, the glow behind, the traces beyond. The candles and traces are
-    `Styles.Altar`, which the Scriptorium's own stylesheet includes.
+    (`docs/design/accessibility.md`). The Scriptorium puts its heading on the same altar: candles beside it, the glow
+    behind, the traces beyond. The candles and traces are `Styles.Altar`, which the Scriptorium's own stylesheet
+    includes.
+  - **The Archive** (`ArchivePage`, `ArchiveSheet`, `ArchiveRows`): Today's masthead, then one parchment sheet of rows
+    under a rubric per month, 20 to a page, with Today's margins and altar. The left margin counts the rites kept and
+    when they began, the right one indexes the months (`RiteRepository.GetDays`, numbers and days only); a month's link
+    starts the Archive at that month (`?before=`), so it works without the script and however far back. The script
+    loads the next page into the month it belongs to. A tag's page is the same sheet, with the other subjects in the
+    right margin.
   - **Cached until they change** (#37): browsers keep a page a minute, and Cloudflare keeps Today and a rite's page an
     hour (`s-maxage`, `EdgeLifetime.UntilPurged`), so their requests rarely reach the app. Whatever changes them purges
     them (`IPageCache`, `CloudflarePageCache`): a saved vote adds its rite's page and Today
@@ -156,10 +163,13 @@ observability/                    — the Grafana dashboard and alerts, and what
       stay untagged.
     - **Changing how tags are given** (another threshold) applies to new drafts. To retag older ones, remove their
       `tags` and restart the app.
-  - **Search** (`SitePages.Search`, #7): the rites holding every word typed (at most 6, quotes ignored) in their title,
-    text or Heretical Truth, ignoring case, newest first. A plain `CONTAINS` over a few hundred rites (each word a query
-    parameter); Cosmos's full-text index can take over when that grows. The words are never logged, and how many rites
-    were found is in the page's title, which a screen reader reads when the results load. Cloudflare rate-limits it.
+  - **Search** (`/archive?q=`, #7): the Archive filtered to the rites holding every word typed (at most 6, quotes
+    ignored) in their title, text or Heretical Truth, ignoring case, newest first, Today's too. Each row marks the words
+    (`Highlight`) and shows the words around the first match (`RowLine`), from the truth when only it holds them. A
+    plain `CONTAINS` over a few hundred rites (each word a query parameter), plus their numbers and days for the count
+    and the month index (`FindDays`); Cosmos's full-text index can take over when that grows. The words are never
+    logged, and how many rites were found is in the page's title, which a screen reader reads when the results load.
+    Cloudflare rate-limits it. The nav's search icon leads to the Archive's field.
 - **Votes** (Blessed / Heresy, `Api/VotesFunction`): one per account per rite, which the reader can switch or
   take back, signed in as below. `POST /api/rites/{number}/vote` with `{"vote": "blessed" | "heresy" | null}`, and
   `GET /api/votes?rites=12` for the page to show the reader's own vote pressed.
@@ -314,7 +324,7 @@ repository tests. For a deployment it also packages the app (the `app` artifact,
 - Both call `deploy.yml`, which deploys the package as the GitHub environment's identity (OIDC: the environment's
   `AZURE_*` variables hold ids, not secrets), one deployment per environment at a time. Then:
   - **Smoke tests** (`tests/DailyMachineSpirit.SmokeTests`, published into the package, so a package is always checked
-    by its own): `/healthz` reports the new commit, and Today, the archive, a rite, a tag's page, a search, the votes
+    by its own): `/healthz` reports the new commit, and Today, the archive, a rite, a tag's page, a search (and the old address), the votes
     API, the 404 page and a font answer as they should. They read the app's address and expected version from
     `SMOKE_TEST_BASE_URL` and `SMOKE_TEST_VERSION`, so they can also run from your machine against staging. They call
     the app's own address (production's past Cloudflare's cache), and both apps admit only some addresses (staging its

@@ -13,8 +13,8 @@ namespace DailyMachineSpirit.Functions.Pages;
 
 /// <summary>
 /// The public pages, rendered on the server: Today (<c>/</c>), the archive (<c>/archive</c>), a rite's own page
-/// (<c>/r/&lt;number&gt;</c>), a tag's (<c>/tags/&lt;key&gt;</c>) and search (<c>/search</c>). Any other
-/// address gets the 404 page.
+/// (<c>/r/&lt;number&gt;</c>) and a tag's (<c>/tags/&lt;key&gt;</c>); search is the archive's (<c>/archive?q=</c>).
+/// Any other address gets the 404 page.
 /// </summary>
 public sealed class SitePages
 {
@@ -80,24 +80,46 @@ public sealed class SitePages
     /// <summary>
     /// Pages by number, newest first: <c>?before=&lt;number&gt;</c> starts below that number. The first page leaves
     /// out the newest rite, which Today shows: only the day's own rite is ever published, so the highest number is also
-    /// the newest date. One rite more than a page is read, to know whether there are older ones.
+    /// the newest date. One rite more than a page is read, to know whether there are older ones. With <c>?q=</c>, the
+    /// rites holding every word the reader typed instead, Today's included; the words are never logged (a failure logs
+    /// the path alone).
     /// </summary>
     [Function("Archive")]
     public async Task<IActionResult> Archive(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "archive")] HttpRequest request,
         CancellationToken cancellationToken)
     {
+        var now = time.GetUtcNow();
+        var typed = SearchWords.Typed(request.Query["q"]);
+        var words = SearchWords.From(typed);
         var isFirstPage = !int.TryParse(request.Query["before"], out var before) || before < 1;
-        var page = isFirstPage
-            ? (await rites.GetOlderThan(int.MaxValue, ArchivePage.PageSize + 2, cancellationToken)).Map(found => found.Skip(1).ToList())
-            : await rites.GetOlderThan(before, ArchivePage.PageSize + 1, cancellationToken);
-        return page.Match(
-            Right: found =>
-            {
-                var (shown, olderThan) = OnePage(found);
-                return Page(request, StatusCodes.Status200OK, ArchivePage.Render(shown, olderThan));
-            },
+        if (words.Count > 0)
+        {
+            var found = await rites.FindDays(words, cancellationToken)
+                .BindAsync(days => rites.Search(words, isFirstPage ? int.MaxValue : before, ArchivePage.PageSize + 1, cancellationToken)
+                    .MapAsync(page => Results(days, page)));
+            return found.Match(
+                Right: results => Page(request, StatusCodes.Status200OK, ArchivePage.Results(typed, words, results, now)),
+                Left: error => Failed(request, error));
+        }
+
+        var archive = await rites.GetDays(cancellationToken)
+            .BindAsync(async days => (await (isFirstPage
+                    ? rites.GetOlderThan(int.MaxValue, ArchivePage.PageSize + 2, cancellationToken).MapAsync(found => found.Skip(1).ToList())
+                    : rites.GetOlderThan(before, ArchivePage.PageSize + 1, cancellationToken)))
+                .Map(page => (Days: days, Page: OnePage(page))));
+        return archive.Match(
+            Right: found => Page(request, StatusCodes.Status200OK, ArchivePage.Render(found.Page.Shown, found.Page.OlderThan, found.Days, now)),
             Left: error => Failed(request, error));
+    }
+
+    /// <summary>The old search page's address, kept for links to it: search is the Archive's now.</summary>
+    [Function("Search")]
+    public IActionResult Search(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "search")] HttpRequest request)
+    {
+        var typed = SearchWords.Typed(request.Query["q"]);
+        return new RedirectResult(typed.Length == 0 ? Paths.Archive : Paths.ArchiveSearch(typed), permanent: true);
     }
 
     /// <summary>
@@ -113,53 +135,25 @@ public sealed class SitePages
             Some: tag => TaggedRites(request, tag, cancellationToken),
             None: () => Task.FromResult<IActionResult>(Page(request, StatusCodes.Status404NotFound, StatePages.NoSuchTag(key))));
 
-    /// <summary>
-    /// The rites holding every word the reader typed (<c>?q=</c>), paged like the archive, Today's rite included. The
-    /// words are never logged: a failure logs the path alone.
-    /// </summary>
-    [Function("Search")]
-    public async Task<IActionResult> Search(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "search")] HttpRequest request,
-        CancellationToken cancellationToken)
-    {
-        var typed = SearchWords.Typed(request.Query["q"]);
-        var words = SearchWords.From(typed);
-        if (words.Count == 0)
-        {
-            return Page(request, StatusCodes.Status200OK, SearchPage.Render(typed, None));
-        }
-
-        var before = int.TryParse(request.Query["before"], out var number) && number > 0 ? number : int.MaxValue;
-        var found = await rites.Search(words, before, ArchivePage.PageSize + 1, cancellationToken)
-            .BindAsync(page => Counted(words, before, page, cancellationToken));
-        return found.Match(
-            Right: results => Page(request, StatusCodes.Status200OK, SearchPage.Render(typed, results)),
-            Left: error => Failed(request, error));
-    }
-
-    // A first page that holds every result is its own count; only longer searches ask Cosmos to count.
-    private async Task<Either<Error, SearchResults>> Counted(
-        IReadOnlyList<string> words, int before, List<Rite> page, CancellationToken cancellationToken)
-    {
-        var (shown, olderThan) = OnePage(page);
-        var count = before == int.MaxValue && olderThan.IsNone
-            ? Right<Error, int>(page.Count)
-            : await rites.CountFound(words, cancellationToken);
-        return count.Map(found => new SearchResults(found, shown, olderThan));
-    }
-
     // Like the archive, a page and one rite more, to know whether there are older ones.
     private async Task<IActionResult> TaggedRites(HttpRequest request, Tag tag, CancellationToken cancellationToken)
     {
+        var now = time.GetUtcNow();
         var before = int.TryParse(request.Query["before"], out var number) && number > 0 ? number : int.MaxValue;
         var page = await rites.GetTagged(tag.Key, before, ArchivePage.PageSize + 1, cancellationToken);
         return page.Match(
             Right: found =>
             {
                 var (shown, olderThan) = OnePage(found);
-                return Page(request, StatusCodes.Status200OK, TagPage.Render(tag, shown, olderThan, isFirstPage: before == int.MaxValue));
+                return Page(request, StatusCodes.Status200OK, TagPage.Render(tag, shown, olderThan, isFirstPage: before == int.MaxValue, now));
             },
             Left: error => Failed(request, error));
+    }
+
+    private static SearchResults Results(List<RiteDay> found, List<Rite> page)
+    {
+        var (shown, olderThan) = OnePage(page);
+        return new SearchResults(found, shown, olderThan);
     }
 
     // The rites closest to this one by their scores, topped up with the newest others when there aren't enough scored

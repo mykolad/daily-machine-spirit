@@ -9,7 +9,7 @@ public static class Layout
     // it, hide (the votes with their margin's label).
     private const string NoScriptCss = ".truth[hidden]{display:block}.seal,[data-copy],.faithful{display:none}";
 
-    // Every page but Today, which has the masthead instead.
+    // Every page but Today and the Archive, which have the masthead instead.
     private const string Brand = $"<a class=\"brand\" href=\"/\">{Svg.BrandCog}{SiteName}</a>";
 
     /// <param name="title">The page's own title, or empty for Today, whose title is the site's name.</param>
@@ -41,11 +41,11 @@ public static class Layout
             <div class="frame">
             <div class="page">
             <header class="site-header">
-            {(section == Section.Today ? string.Empty : Brand)}
+            {(section is Section.Today or Section.Archive ? string.Empty : Brand)}
             <nav aria-label="Main">
             <a href="/"{Current(section == Section.Today)}>Today</a>
             <a href="/archive"{Current(section == Section.Archive)}>Archive</a>
-            <a href="{Paths.Search}"{Current(section == Section.Search)}>Search</a>
+            <a class="nav-search" href="{Paths.Archive}#archive-search" aria-label="Search">{Svg.SearchIcon}</a>
             </nav>
             </header>
             <main id="main" tabindex="-1">

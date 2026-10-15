@@ -23,8 +23,11 @@ public interface IRiteRepository
     /// </summary>
     Task<Either<Error, List<Rite>>> Search(IReadOnlyList<string> words, int number, int count, CancellationToken cancellationToken);
 
-    /// <summary>How many rites <see cref="Search"/> finds in all.</summary>
-    Task<Either<Error, int>> CountFound(IReadOnlyList<string> words, CancellationToken cancellationToken);
+    /// <summary>The number and day of every rite <see cref="Search"/> finds, on every page, the newest first.</summary>
+    Task<Either<Error, List<RiteDay>>> FindDays(IReadOnlyList<string> words, CancellationToken cancellationToken);
+
+    /// <summary>Every rite's number and day, the newest first: what the archive counts and indexes by month.</summary>
+    Task<Either<Error, List<RiteDay>>> GetDays(CancellationToken cancellationToken);
 
     /// <summary>
     /// The saved rite, with the next number; <see cref="RiteRepository.DayAlreadyHasRite"/> when that day already has one,

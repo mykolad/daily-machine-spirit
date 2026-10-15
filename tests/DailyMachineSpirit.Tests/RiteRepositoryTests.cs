@@ -103,6 +103,17 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task GetDays_ListsEveryRitesNumberAndDay_NewestFirst()
+    {
+        var first = await AddOrFail(MakeRite(new DateOnly(2026, 9, 30), "September"));
+        var second = await AddOrFail(MakeRite(new DateOnly(2026, 10, 1), "October"));
+
+        var days = Ok(await Repository.GetDays(CancellationToken.None));
+
+        Assert.Equal([new RiteDay(second.Number, new DateOnly(2026, 10, 1)), new RiteDay(first.Number, new DateOnly(2026, 9, 30))], days);
+    }
+
+    [Fact]
     public async Task Timestamps_ComeBackAsUtc_EvenWhenGivenAsLocalTime()
     {
         var utc = new DateTime(2026, 10, 7, 0, 0, 5, DateTimeKind.Utc);
@@ -214,8 +225,8 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
         Assert.Equal([inTruth.Number, inTitle.Number], cache.Select(rite => rite.Number));
         Assert.Equal([inTruth.Number], both.Select(rite => rite.Number));
         Assert.Equal([inTitle.Number], older.Select(rite => rite.Number));
-        Assert.Equal(2, Ok(await Repository.CountFound(["cache"], CancellationToken.None)));
-        Assert.Equal(0, Ok(await Repository.CountFound(["cache", "nowhere"], CancellationToken.None)));
+        Assert.Equal([new RiteDay(inTruth.Number, inTruth.PublishedOnUtc), new RiteDay(inTitle.Number, inTitle.PublishedOnUtc)], Ok(await Repository.FindDays(["cache"], CancellationToken.None)));
+        Assert.Empty(Ok(await Repository.FindDays(["cache", "nowhere"], CancellationToken.None)));
     }
 
     // A reader's words are parameters: quotes and query syntax in them are only text to look for.
@@ -268,7 +279,8 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
         Assert.True((await missing.GetUntagged(CancellationToken.None)).IsLeft);
         Assert.True((await missing.SaveTags(date, ["caches"], CancellationToken.None)).IsLeft);
         Assert.True((await missing.Search(["cache"], int.MaxValue, 6, CancellationToken.None)).IsLeft);
-        Assert.True((await missing.CountFound(["cache"], CancellationToken.None)).IsLeft);
+        Assert.True((await missing.FindDays(["cache"], CancellationToken.None)).IsLeft);
+        Assert.True((await missing.GetDays(CancellationToken.None)).IsLeft);
     }
 
     [Fact]

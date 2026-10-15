@@ -29,21 +29,43 @@ The handoff has no tags. They use the site's tokens, on the dark background like
 - **An archive row's link is its title, stretched over the row,** instead of the whole row being one link: a link can't
   hold the row's tag links. The row still takes a click anywhere and shows the focus ring around the whole row when its
   title has focus (`:has`). A screen reader now hears the title as the link's name, not the whole row.
-- **Tag links are `#d9b874` (the link colour) on the page or a row,** well above 4.5:1 on both. Their pill border is
-  decoration; the text says what they are. Each is at least 32px tall, above the 24px WCAG 2.5.8 asks.
+- **Tag links are `#d9b874` (the link colour) on the dark page,** well above 4.5:1; on the Archive's parchment rows
+  they're rubric red (see below). Their pill border is decoration; the text says what they are. Each is at least 28px
+  tall, above the 24px WCAG 2.5.8 asks.
 - **A row's tags start with a visually hidden "Filed under",** which the rite card and the Scriptorium say visibly, so
   a screen reader doesn't hear bare words after the counts.
 
-## Search
+## The Archive and search
 
-The handoff has no search. It uses the site's tokens, on the dark background.
+The handoff's search and Archive update (`Search Options.dc.html`, 3a, 4a–4d): one parchment sheet of rows grouped by
+month, with Today's masthead, margins and altar, and search as the Archive filtered by `?q=`.
 
-- **The field has a visible label** ("Words in the rite") and a `#b6a98f` border, well above the 3:1 WCAG 1.4.11 asks
-  of a control's edge, like the Scriptorium's note fields. The form is a landmark (`role="search"`).
-- **How many rites were found is in the page's title** ("“cache”: 3 rites"), not only on the page: the results are a
-  new page, so the title is what a screen reader reads first, and a live region wouldn't be announced on load.
-- **It works without the script:** a plain form that sends `GET /search?q=`, and "Load older rites" is a link, as in
-  the archive.
+- **Controls on the parchment get a red focus ring** (`#8f2a20`, 6.3:1 on parchment), the handoff's one exception to
+  "every control sits on the dark background": the amber ring is too faint there. The rows, the search field, its
+  clear button and the tag links all live on the sheet.
+- **The sheet's quiet text is `#5c4a33` (ink-muted), not the handoff's brass-dim `#84662c`:** brass-dim is 4.05:1 on
+  parchment, below the 4.5:1 that text this size needs; ink-muted is 6.4:1. That's the line under the heading, the
+  dates, the counts and the field's placeholder.
+- **The search field's edge is the full rubric red,** not the handoff's 45% rubric: that faint edge is under the 3:1
+  WCAG 1.4.11 asks of a control's boundary, and the field's light fill alone barely differs from the parchment. The
+  field is named "Search the Archive" (`aria-label`), and the form is a landmark (`role="search"`).
+- **The plain Archive has no kicker:** the handoff's "THE ARCHIVE" over the heading "The Archive" says the same thing
+  twice, and a screen reader would hear it twice. Search keeps its kicker ("Search the Archive"), which says something
+  the heading (the words sought) doesn't.
+- **A month's year is in Roman numerals for the eye** ("October MMXXVI"); a screen reader hears "October 2026" from
+  hidden text, as the numerals are hidden from it. Each month in the index says "13 rites", not a bare "13".
+- **Tags stay on the rows** (the handoff dropped them), as red pills on the parchment, each at least 28px tall, above the
+  24px WCAG 2.5.8 asks. A row's link is still its title, stretched over the row, so the tag links can sit inside it.
+- **What a rite was found by shows in its row:** the words are marked in the title and in a line around the first one;
+  a rite found by its Heretical Truth alone shows the words around them there, after "Heretical Truth:".
+- **How many rites were found is in the page's title** ("“cache”: 3 rites"), as before: a search is a new page, so the
+  title is what a screen reader reads first.
+- **It works without the script:** the field is a plain form that sends `GET /archive?q=`, its clear button and "Clear
+  search" are links to `/archive`, and "Load older rites" and "More results" are links. The old `/search?q=` address
+  redirects there for good.
+- **The margins say nothing the sheet says:** the Archive's left margin counts every rite kept and when they began, the
+  right one indexes the months. Below 1280px there are no margins, and the count moves into the line under the heading;
+  only one of the two is ever displayed, so a screen reader hears one.
 
 ## The main region
 
@@ -83,7 +105,7 @@ and candles behind it, and the recent rites under Today.
   parchment at 7.9:1. Each card is one link, and its focus ring falls outside it on the dark ground.
 - **The circuit traces stay in the space outside the margins,** cut off where the margins begin, so they never pass
   behind text; they show from 1440px, where that space is wide enough to see them.
-- **The archive, a tag's page and the Scriptorium have the same altar, not new content.** The handoff drew only Today;
-  these pages put their heading between two candles (from 1280px), with the glow behind it and the traces beyond, and
-  nothing in the margins to read: there's nothing these pages would say there that they don't say already. The
+- **The Scriptorium has the same altar, not new content.** The handoff drew only Today (and later the Archive); the
+  Scriptorium puts its heading between two candles (from 1280px), with the glow behind it and the traces beyond, and
+  nothing in the margins to read: there's nothing it would say there that it doesn't say already. The
   candles and traces are hidden from screen readers, and the flames stop under reduced motion.

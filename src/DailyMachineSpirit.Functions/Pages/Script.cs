@@ -189,12 +189,20 @@ public static class Script
             }));
           }
 
-          // The archive (and a tag's page) loads older rites as the reader nears the end, by fetching the next page the
-          // "Load older rites" link points to and taking its rows. The link stays: a keyboard follows it here too, and
-          // focus moves to the first new rite. Without the script, it's an ordinary link to that page.
-          const rows = document.querySelector('.rows');
+          // The archive (and search results, and a tag's page) loads older rites as the reader nears the end, by fetching
+          // the next page the "Load older rites" link points to and taking its rows. The link stays: a keyboard follows
+          // it here too, and focus moves to the first new rite. Without the script, it's an ordinary link to that page.
+          const months = document.querySelector('.months');
           const more = document.querySelector('.archive-more');
-          if (rows && more) {
+          // Each month's rows go under its rubric: a page can start in the middle of the month the last one ended in,
+          // whose rubric is here already.
+          const takeRows = (page) => [...page.querySelectorAll('.months > .month')].flatMap((month) => {
+            const here = document.getElementById(month.querySelector('.month-rubric').id)?.closest('.month');
+            if (!here) return [...months.appendChild(document.importNode(month, true)).querySelectorAll('.rows > li')];
+            const rows = here.querySelector('.rows');
+            return [...month.querySelectorAll('.rows > li')].map((row) => rows.appendChild(document.importNode(row, true)));
+          });
+          if (months && more) {
             let loading = false;
             // A keyboard user who follows the link while scrolling already started a load still gets focus moved.
             let focusWhenLoaded = false;
@@ -203,7 +211,7 @@ public static class Script
             const announcer = document.createElement('div');
             announcer.className = 'sr-only';
             announcer.setAttribute('role', 'status');
-            rows.after(announcer);
+            months.after(announcer);
             const observer = new IntersectionObserver((entries) => {
               const link = more.querySelector('a');
               if (link && entries.some((entry) => entry.isIntersecting)) loadOlder(link, false);
@@ -225,7 +233,7 @@ public static class Script
                 const response = await fetch(link.href);
                 if (!response.ok) throw new Error(String(response.status));
                 const page = new DOMParser().parseFromString(await response.text(), 'text/html');
-                const added = [...page.querySelectorAll('.rows > li')].map((row) => rows.appendChild(document.importNode(row, true)));
+                const added = takeRows(page);
                 const next = page.querySelector('.archive-more');
                 // A keyboard user may have tabbed onto the link while scrolling loaded: replacing it mustn't drop focus.
                 focusWhenLoaded ||= more.contains(document.activeElement);
