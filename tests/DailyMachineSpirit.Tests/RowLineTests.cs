@@ -39,6 +39,17 @@ public class RowLineTests
         Assert.EndsWith("…", line);
     }
 
+    // The cut before 90 characters would come before the long name the match is in: the line runs on to its end.
+    [Fact]
+    public void For_AMatchNearTheStart_InALongWord_IsNeverCutOff()
+    {
+        const string text = "O Spirit, bless the `Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions` before the build is done and green.";
+
+        var (line, _) = RowLine.For(Rite(text, "Truth."), ["Microsoft"]);
+
+        Assert.Equal("O Spirit, bless the Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions…", line);
+    }
+
     [Fact]
     public void For_AMatchInTheTitleAlone_ShowsTheOpeningWords()
         => Assert.Equal(("Delete node_modules and pray.", false), RowLine.For(Rite("Delete `node_modules` and pray.", "It was stale.", "The Warm Cache"), ["cache"]));

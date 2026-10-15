@@ -21,10 +21,12 @@ public static class TagPage
             ? $"No rite is filed under {label} yet."
             : $"No earlier rite is filed under {label}.";
         var others = RiteTags.All.Where(other => other != tag);
-        var margins = $"""
+        var left = $"""
             <aside class="marginalia" aria-label="About this page">
             {ArchiveSheet.Countdown(now)}
             </aside>
+            """;
+        var right = $"""
             <section class="other-subjects" aria-labelledby="subjects">
             <h2 id="subjects">Other subjects</h2>
             <p class="tags">{TagLinks.Render(others)}</p>
@@ -37,6 +39,7 @@ public static class TagPage
             search: string.Empty,
             body: ArchiveRows.Months(rites, []),
             below: ArchiveRows.More(olderThan.Map(number => Paths.TagBefore(tag.Key, number)), "Load older rites", end),
-            margins: margins));
+            left: left,
+            right: right));
     }
 }

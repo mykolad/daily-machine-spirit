@@ -20,13 +20,14 @@ public static class Highlight
     private static IEnumerable<(int Start, int End)> Occurrences(string text, string word)
     {
         for (var start = text.IndexOf(word, StringComparison.OrdinalIgnoreCase); start >= 0;
-             start = text.IndexOf(word, start + word.Length, StringComparison.OrdinalIgnoreCase))
+             start = text.IndexOf(word, start + 1, StringComparison.OrdinalIgnoreCase))
         {
             yield return (start, start + word.Length);
         }
     }
 
-    // Words can overlap or touch ("cache" in "cached", "re" and "run" in "rerun"): one mark covers them, not two nested.
+    // Words can overlap or touch ("cache" in "cached", "re" and "run" in "rerun", "ana" twice in "banana"): one mark
+    // covers them, not two nested.
     private static List<(int Start, int End)> Merged(IEnumerable<(int Start, int End)> ranges)
     {
         var merged = new List<(int Start, int End)>();
