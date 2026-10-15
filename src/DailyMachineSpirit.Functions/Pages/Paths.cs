@@ -7,8 +7,6 @@ public static class Paths
 
     public const string Archive = "/archive";
 
-    public const string Search = "/search";
-
     public static string Rite(int number) => $"/r/{number}";
 
     public static string ArchiveBefore(int number) => $"{Archive}?before={number}";
@@ -17,9 +15,10 @@ public static class Paths
 
     public static string TagBefore(string key, int number) => $"{Tag(key)}?before={number}";
 
-    public static string SearchFor(string typed) => $"{Search}?q={Uri.EscapeDataString(typed)}";
+    /// <summary>The Archive's search results for what the reader typed.</summary>
+    public static string ArchiveSearch(string typed) => $"{Archive}?q={Uri.EscapeDataString(typed)}";
 
-    public static string SearchBefore(string typed, int number) => $"{SearchFor(typed)}&before={number}";
+    public static string ArchiveSearchBefore(string typed, int number) => $"{ArchiveSearch(typed)}&before={number}";
 
     /// <summary>
     /// The cached pages that show a rite's counts and change with its votes: its own, and Today, which shows the newest

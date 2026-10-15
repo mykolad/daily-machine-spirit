@@ -1,0 +1,70 @@
+using System.Text;
+using DailyMachineSpirit.Data.Entities;
+using DailyMachineSpirit.Functions.Tags;
+using LanguageExt;
+
+namespace DailyMachineSpirit.Functions.Pages;
+
+/// <summary>
+/// Rites as the Archive's page lists them, under a rubric per month: the Archive, search results and a tag's page.
+/// "Load older rites" is a plain link to the next page, so it works without a script and with a keyboard; with it, the
+/// page loads the next rows in place (<see cref="Script"/>), into the month they belong to.
+/// </summary>
+public static class ArchiveRows
+{
+    /// <param name="words">What a search looks for, marked wherever it's found; none for the Archive.</param>
+    public static string Months(IReadOnlyList<Rite> rites, IReadOnlyList<string> words)
+    {
+        var html = new StringBuilder("""<div class="months">""");
+        foreach (var month in rites.GroupBy(rite => (rite.PublishedOnUtc.Year, rite.PublishedOnUtc.Month)))
+        {
+            var (year, number) = month.Key;
+            var rubric = new ArchiveMonth(year, number, month.Count(), month.Max(rite => rite.Number));
+            // The year in Roman numerals is for the eye; a screen reader says it as a number.
+            html.Append($"""
+                <section class="month" aria-labelledby="{rubric.Anchor}">
+                <h2 class="month-rubric" id="{rubric.Anchor}"><span>{rubric.MonthName} <span aria-hidden="true">{RomanNumeral.Of(year)}</span><span class="sr-only">{year}</span></span></h2>
+                <ol class="rows">
+                """);
+            foreach (var rite in month)
+            {
+                html.Append(Row(rite, words));
+            }
+            html.Append("</ol></section>");
+        }
+        return html.Append("</div>").ToString();
+    }
+
+    /// <param name="older">The next page, or None when these are the oldest.</param>
+    /// <param name="moreLabel">The link's words ("Load older rites").</param>
+    /// <param name="end">Said instead of the link at the end.</param>
+    public static string More(Option<string> older, string moreLabel, string end)
+        => $"""<div class="archive-more">{older.Match(
+            Some: href => $"""<a class="button button-outline" href="{Html.Encode(href)}">{moreLabel}</a>""",
+            None: () => $"""<p class="archive-end">{end}</p>""")}</div>""";
+
+    // The title is the row's link, stretched over the whole row, so the tags can be links of their own: a link can't
+    // hold another. It comes first among the row's links, where the script moves focus.
+    private static string Row(Rite rite, IReadOnlyList<string> words)
+    {
+        var (line, fromTruth) = words.Count == 0 ? (RowLine.Opening(rite), false) : RowLine.For(rite, words);
+        var tags = RiteTags.Of(rite.Tags);
+        var tagLinks = tags.Count == 0
+            ? string.Empty
+            : $"""<span class="row-tags"><span class="sr-only">Filed under </span>{TagLinks.Render(tags)}</span>""";
+        return $"""
+            <li class="row">
+            <span class="row-meta"><time class="row-date" datetime="{Html.IsoDate(rite.PublishedOnUtc)}">{Html.DayAndMonth(rite.PublishedOnUtc)}</time><span class="kind">{(rite.Writing.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL")}</span></span>
+            <span class="row-main"><a class="row-title" href="{Paths.Rite(rite.Number)}">{Highlight.Of(rite.Writing.Title, words)}</a><span class="row-line">{(fromTruth ? """<span class="row-truth">Heretical Truth:</span> """ : string.Empty)}{Highlight.Of(line, words)}</span>{Counts(rite)}{tagLinks}</span>
+            </li>
+            """;
+    }
+
+    // Each count only when there is one, and no line at all for a rite nobody has voted on.
+    private static string Counts(Rite rite)
+    {
+        var counts = (rite.BlessedCount > 0 ? $"<span>{Svg.SmallFlameIcon}Blessed {Html.Count(rite.BlessedCount)}</span>" : string.Empty)
+            + (rite.HeresyCount > 0 ? $"<span>{Svg.SmallSkullIcon}Heresy {Html.Count(rite.HeresyCount)}</span>" : string.Empty);
+        return counts.Length == 0 ? string.Empty : $"""<span class="row-counts">{counts}</span>""";
+    }
+}

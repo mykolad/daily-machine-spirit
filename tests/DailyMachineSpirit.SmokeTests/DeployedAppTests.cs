@@ -44,6 +44,11 @@ public sealed partial class DeployedAppTests
     // A query of its own, over the rites' text, for the deployed database to answer.
     [Fact]
     public async Task Search_Answers()
+        => AssertAnswers(await app.Get("/archive?q=machine"), HttpStatusCode.OK, "<title>“machine”: ");
+
+    // Search was a page of its own: links to it lead to the Archive's search (the client follows the redirect).
+    [Fact]
+    public async Task TheOldSearchAddress_LeadsToTheArchivesSearch()
         => AssertAnswers(await app.Get("/search?q=machine"), HttpStatusCode.OK, "<title>“machine”: ");
 
     // Today's rite rather than one from the archive, which leaves today's out.

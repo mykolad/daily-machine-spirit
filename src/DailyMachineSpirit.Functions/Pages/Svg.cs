@@ -51,8 +51,13 @@ public static class Svg
     private const string AltarCandlePaths =
         """<path class="altar-flame" d="M12 4C15 9 15 13 12 16C9 13 9 9 12 4Z" fill="#f0b45a" stroke="#f0b45a"></path><path d="M12 16V20"></path><rect x="7" y="20" width="10" height="34" rx="1.5"></rect><path d="M3 56H21"></path>""";
 
-    public const string AltarCandles =
-        $"""<span class="altar altar-left" aria-hidden="true"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 60" width="48" height="120" fill="none" stroke="#84662c" stroke-width="1.4" stroke-linecap="round">{AltarCandlePaths}</svg></span><span class="altar altar-right" aria-hidden="true"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 60" width="48" height="120" fill="none" stroke="#84662c" stroke-width="1.4" stroke-linecap="round">{AltarCandlePaths}</svg></span>""";
+    public const string AltarCandleLeft =
+        $"""<span class="altar altar-left" aria-hidden="true"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 60" width="48" height="120" fill="none" stroke="#84662c" stroke-width="1.4" stroke-linecap="round">{AltarCandlePaths}</svg></span>""";
+
+    public const string AltarCandleRight =
+        $"""<span class="altar altar-right" aria-hidden="true"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 60" width="48" height="120" fill="none" stroke="#84662c" stroke-width="1.4" stroke-linecap="round">{AltarCandlePaths}</svg></span>""";
+
+    public const string AltarCandles = AltarCandleLeft + AltarCandleRight;
 
     // Circuit traces running in from the screen's edges on wide screens, drawn at half size (strokes 1.3px, dots 5px once
     // doubled). The right one is the same kind of drawing, mirrored by the stylesheet.
@@ -88,6 +93,13 @@ public static class Svg
 
     public const string CopyIcon =
         """<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="13" height="13" x="9" y="9" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>""";
+
+    // Lucide's search and x, for the search fields: their colour comes from the stylesheet.
+    public const string SearchIcon =
+        """<svg aria-hidden="true" focusable="false" class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg>""";
+
+    public const string ClearIcon =
+        """<svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>""";
 
     public const string BackIcon =
         """<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>""";

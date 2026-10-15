@@ -9,16 +9,6 @@ public static class TodayPage
     /// <summary>How many rites before today's the page shows.</summary>
     public const int RecentShown = 4;
 
-    private const string Tagline = "In the grim darkness of the far future, no one reads the code.";
-
-    private const string Masthead = $"""
-        <div class="masthead">
-        {Svg.MastheadRule}
-        <h1>The Daily Machine Spirit</h1>
-        <p class="tagline">{Tagline}</p>
-        </div>
-        """;
-
     /// <param name="recent">The rites before today's, newest first; the section is left out when there are none.</param>
     public static string Render(Rite rite, IReadOnlyList<Rite> recent, DateTimeOffset now)
     {
@@ -27,7 +17,7 @@ public static class TodayPage
         // hides, so one countdown shows at a time.
         var marginCountdown = $"""<div class="margin-countdown"><p class="margin-label">Next litany in</p><p class="margin-value" data-countdown>{countdown}</p></div>""";
         return Layout.Page(string.Empty, Html.FirstLine(rite.Writing.Text.Replace("`", string.Empty)), Section.Today, $"""
-            {Masthead}
+            {Masthead.Render(isHeading: true)}
             {RiteCard.Render(rite, ownPage: false, countedAt: now, marginNotes: marginCountdown)}
             <div class="countdown">
             <div class="countdown-line">{Svg.CandleLeft}<p>Next litany in <span class="amber" data-countdown>{countdown}</span></p>{Svg.CandleRight}</div>
@@ -39,8 +29,8 @@ public static class TodayPage
 
     /// <summary>Before the first rite: the Machine Spirit sleeps until midnight.</summary>
     public static string Slumbering(DateTimeOffset now)
-        => Layout.Page(string.Empty, Tagline, Section.Today, $"""
-            {Masthead}
+        => Layout.Page(string.Empty, Masthead.Tagline, Section.Today, $"""
+            {Masthead.Render(isHeading: true)}
             <div class="state">
             {Svg.SleepingSkull}
             <h2>The Machine Spirit slumbers.</h2>

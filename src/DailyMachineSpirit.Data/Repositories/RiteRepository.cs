@@ -63,8 +63,16 @@ public class RiteRepository : IRiteRepository
                 .WithParameter("@number", number),
             cancellationToken)).Select(document => document.ToRite()).ToList());
 
-    public Task<Either<Error, int>> CountFound(IReadOnlyList<string> words, CancellationToken cancellationToken)
-        => Attempt(async () => (await container.Query<int>(Holding(words, "SELECT VALUE COUNT(1) FROM c", string.Empty), cancellationToken)).Sum());
+    public Task<Either<Error, List<RiteDay>>> FindDays(IReadOnlyList<string> words, CancellationToken cancellationToken)
+        => Attempt(async () => await container.Query<RiteDay>(
+            Holding(words, "SELECT c.number, c.publishedOnUtc FROM c", "ORDER BY c.number DESC"),
+            cancellationToken));
+
+    public Task<Either<Error, List<RiteDay>>> GetDays(CancellationToken cancellationToken)
+        => Attempt(async () => await container.Query<RiteDay>(
+            new QueryDefinition("SELECT c.number, c.publishedOnUtc FROM c WHERE c.type = @type ORDER BY c.number DESC")
+                .WithParameter("@type", RiteDocument.RiteType),
+            cancellationToken));
 
     public Task<Either<Error, Rite>> Add(Rite rite, CancellationToken cancellationToken)
         => AttemptEither(() => Save(rite, None, cancellationToken));

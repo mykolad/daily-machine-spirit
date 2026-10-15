@@ -195,37 +195,73 @@ public sealed class SitePagesTests : IAsyncLifetime
     [Fact]
     public async Task Archive_LeavesOutTodaysRite_AndPagesOlderOnes()
     {
-        for (var daysAgo = 8; daysAgo >= 0; daysAgo--)
-        {
-            await Add(Day.AddDays(-daysAgo), $"Rite {9 - daysAgo}");
-        }
+        await AddRites(23);
 
         var (status, first) = await Archive("");
         var (_, second) = await Archive("3");
 
         Assert.Equal(StatusCodes.Status200OK, status);
-        Assert.DoesNotContain(">Rite 9<", first);
-        Assert.Equal(["Rite 8", "Rite 7", "Rite 6", "Rite 5", "Rite 4", "Rite 3"], Titles(first));
+        Assert.DoesNotContain(">Rite 23<", first);
+        Assert.Equal(Enumerable.Range(3, 20).Reverse().Select(n => $"Rite {n}"), Titles(first));
         Assert.Contains("""href="/archive?before=3">Load older rites""", first);
         Assert.Equal(["Rite 2", "Rite 1"], Titles(second));
         Assert.Contains("The archive ends here.", second);
     }
 
+    // The rows sit under a rubric per month (the year in Roman numerals, said as a number); the margins count the rites
+    // and index the months, each link starting the Archive at its month.
     [Fact]
-    public async Task Archive_ShowsEachRitesVotes()
+    public async Task Archive_GroupsItsRitesByMonth_CountsThem_AndIndexesTheMonths()
     {
+        // 17 September to 9 October: Today's is the 23rd, the Archive's newest the 22nd.
+        await AddRites(23);
+
+        var (_, html) = await Archive("");
+
+        Assert.Contains("""<h2 class="month-rubric" id="m-2026-10"><span>October <span aria-hidden="true">MMXXVI</span><span class="sr-only">2026</span></span></h2>""", html);
+        Assert.Contains("""<h2 class="month-rubric" id="m-2026-09">""", html);
+        Assert.Contains("""<p class="margin-number">23</p>""", html);
+        Assert.Contains("17 September 2026", html);
+        Assert.Contains("""<span class="sub-narrow">22 rites, newest first.</span>""", html);
+        Assert.Contains("""<a href="/archive#m-2026-10"><span>October 2026</span><span class="month-count">8<span class="sr-only"> rites</span></span></a>""", html);
+        Assert.Contains("""<a href="/archive?before=15#m-2026-09"><span>September 2026</span><span class="month-count">14<span class="sr-only"> rites</span></span></a>""", html);
+        Assert.Contains("""<p class="site-name">The Daily Machine Spirit</p>""", html);
+        Assert.Contains("""<h1 class="sheet-title">The Archive</h1>""", html);
+    }
+
+    // Its own field, a plain form; the nav's search icon leads to it, and there's no Search tab.
+    [Fact]
+    public async Task Archive_HasItsOwnSearchField()
+    {
+        await Add(Day, "The Rite of Re-Run");
+
+        var (_, html) = await Archive("");
+
+        Assert.Contains("""<form class="sheet-search" role="search" action="/archive" method="get">""", html);
+        Assert.Contains("""name="q" value="" aria-label="Search the Archive" placeholder="Search the Archive" """, html);
+        Assert.DoesNotContain("Clear search", html);
+        Assert.Contains("""<a class="nav-search" href="/archive#archive-search" aria-label="Search">""", html);
+        Assert.DoesNotContain(">Search</a>", html);
+    }
+
+    // Each count only when there is one: no line at all for a rite nobody has voted on.
+    [Fact]
+    public async Task Archive_ShowsEachRitesVotes_OnlyThoseCast()
+    {
+        await Add(Day.AddDays(-2), "The Unvoted Vigil");
         await Add(Day.AddDays(-1), "Litany of the Clean Cache");
         await Add(Day, "The Rite of Re-Run");
         var votes = new VoteRepository(cosmos.Container);
-        foreach (var (voter, vote) in new[] { ("a", Reaction.Blessed), ("b", Reaction.Blessed), ("c", Reaction.Blessed), ("d", Reaction.Heresy) })
+        foreach (var (voter, vote) in new[] { ("a", Reaction.Blessed), ("b", Reaction.Blessed), ("c", Reaction.Blessed) })
         {
-            Ok(await votes.Vote(1, voter, Some(vote), CancellationToken.None));
+            Ok(await votes.Vote(2, voter, Some(vote), CancellationToken.None));
         }
 
         var (_, html) = await Archive("");
 
-        Assert.Contains("3 Blessed", html);
-        Assert.Contains("1 Heresy", html);
+        Assert.Contains("Blessed 3</span></span>", html);
+        Assert.DoesNotContain("Heresy 0", html);
+        Assert.Single(Regex.Matches(html, """<span class="row-counts">"""));
     }
 
     [Fact]
@@ -259,10 +295,10 @@ public sealed class SitePagesTests : IAsyncLifetime
     [Fact]
     public async Task Tag_ListsItsRites_NewestFirst_TodaysToo_APageAtATime()
     {
-        for (var i = 1; i <= 9; i++)
+        for (var i = 1; i <= 23; i++)
         {
-            await Add(Day.AddDays(i - 9), $"Rite {i}");
-            await Tag(Day.AddDays(i - 9), i == 5 ? "builds" : "caches");
+            await Add(Day.AddDays(i - 23), $"Rite {i}");
+            await Tag(Day.AddDays(i - 23), i == 5 ? "builds" : "caches");
         }
 
         var (status, first) = await Tagged("caches", "");
@@ -270,9 +306,10 @@ public sealed class SitePagesTests : IAsyncLifetime
         var (_, beyond) = await Tagged("caches", "1");
 
         Assert.Equal(StatusCodes.Status200OK, status);
-        Assert.Contains("""<h1 class="archive-title">Filed under Caches</h1>""", first);
+        Assert.Contains("""<p class="sheet-kicker">Filed under</p>""", first);
+        Assert.Contains("""<h1 class="sheet-title">Caches</h1>""", first);
         Assert.Contains("Rites about caches, temporary files, clean installs, leftover state, newest first.", first);
-        Assert.Equal(["Rite 9", "Rite 8", "Rite 7", "Rite 6", "Rite 4", "Rite 3"], Titles(first));
+        Assert.Equal(Enumerable.Range(3, 21).Reverse().Where(n => n != 5).Select(n => $"Rite {n}"), Titles(first));
         Assert.Contains("""<a class="button button-outline" href="/tags/caches?before=3">Load older rites</a>""", first);
         Assert.Equal(["Rite 2", "Rite 1"], Titles(second));
         Assert.Contains("No earlier rite is filed under Caches.", second);
@@ -308,29 +345,29 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.Contains($"No rite is filed under “{key}”.", html);
     }
 
-    [Fact]
-    public async Task Search_BeforeAnyWords_IsTheFormAlone()
+    // Search is the Archive's now: links to the old page still arrive, with the words.
+    [Theory]
+    [InlineData("?q=Re-run%20thrice", "/archive?q=Re-run%20thrice")]
+    [InlineData("?q=cache&before=4", "/archive?q=cache&before=4")]
+    [InlineData("?q=cache&before=nonsense", "/archive?q=cache")]
+    [InlineData("?q=", "/archive")]
+    [InlineData("", "/archive")]
+    public void Search_LeadsToTheArchive_ForGood(string query, string archive)
     {
-        await Add(Day, "The Rite of Re-Run");
+        var context = new DefaultHttpContext();
+        context.Request.Path = "/search";
+        context.Request.QueryString = new QueryString(query);
 
-        var (status, html) = await Searched("", "");
+        var redirect = Assert.IsType<RedirectResult>(Pages().Search(context.Request));
 
-        Assert.Equal(StatusCodes.Status200OK, status);
-        Assert.Contains("<title>Search · The Daily Machine Spirit</title>", html);
-        Assert.Contains("""<form class="search" role="search" action="/search" method="get">""", html);
-        Assert.Contains("""<label for="search-words">Words in the rite</label>""", html);
-        Assert.Contains("""<a href="/search" aria-current="page">Search</a>""", html);
-        Assert.Empty(Titles(html));
-        Assert.DoesNotContain("""<p class="search-count">""", html);
+        Assert.True(redirect.Permanent);
+        Assert.Equal(archive, redirect.Url);
     }
 
     [Fact]
-    public async Task Search_ListsTheRitesHoldingTheWords_NewestFirst_AndSaysHowMany()
+    public async Task Archive_WithWords_ListsTheRitesHoldingThem_NewestFirst_TodaysToo_AndSaysHowMany()
     {
-        for (var i = 1; i <= 8; i++)
-        {
-            await Add(Day.AddDays(i - 8), $"Rite {i}");
-        }
+        await AddRites(22);
         await Add(Day.AddDays(1), "The Rite of the Warm Cache");
 
         var (status, first) = await Searched("Re-run thrice", "");
@@ -338,29 +375,47 @@ public sealed class SitePagesTests : IAsyncLifetime
         var (_, single) = await Searched("cache", "");
 
         Assert.Equal(StatusCodes.Status200OK, status);
-        Assert.Contains("<title>“Re-run thrice”: 9 rites · The Daily Machine Spirit</title>", first);
-        Assert.Contains("""<p class="search-count">9 rites hold “Re-run thrice”.</p>""", first);
-        Assert.Equal(["The Rite of the Warm Cache", "Rite 8", "Rite 7", "Rite 6", "Rite 5", "Rite 4"], Titles(first));
-        Assert.Contains("""href="/search?q=Re-run%20thrice&amp;before=4">Load older rites</a>""", first);
+        Assert.Contains("<title>“Re-run thrice”: 23 rites · The Daily Machine Spirit</title>", first);
+        Assert.Contains("""<h1 class="sheet-title">“Re-run thrice”</h1>""", first);
+        Assert.Contains("""<p class="sheet-sub">23 rites mention it, newest first.</p>""", first);
+        Assert.Equal(["The Rite of the Warm Cache", .. Enumerable.Range(4, 19).Reverse().Select(n => $"Rite {n}")], Titles(first));
+        Assert.Contains("""href="/archive?q=Re-run%20thrice&amp;before=4">More results</a>""", first);
         Assert.Contains("""value="Re-run thrice" """, first);
+        Assert.Contains("""<a class="sheet-clear" href="/archive" aria-label="Clear search">""", first);
+        Assert.Contains("Press <mark>Re-run</mark> <mark>thrice</mark>, intoning it passed locally", first);
         Assert.Equal(["Rite 3", "Rite 2", "Rite 1"], Titles(second));
-        Assert.Contains("9 rites hold", second);
-        Assert.Contains("No earlier rite holds these words.", second);
-        Assert.Contains("""<p class="search-count">1 rite holds “cache”.</p>""", single);
-        Assert.Equal(["The Rite of the Warm Cache"], Titles(single));
+        Assert.Contains("No more rites mention it.", second);
+        Assert.Contains("""<p class="sheet-sub">1 rite mentions it.</p>""", single);
+        Assert.Contains("The Rite of the Warm <mark>Cache</mark>", single);
+        Assert.Contains("""<a href="/archive?q=cache#m-2026-10">""", single);
+    }
+
+    // A rite found by its Heretical Truth alone shows the words around them there, so the reader sees why.
+    [Fact]
+    public async Task Archive_WithWordsOnlyInATruth_ShowsTheTruthsWords()
+    {
+        await Add(Day, "The Rite of Re-Run");
+
+        var (_, html) = await Searched("timing", "");
+
+        Assert.Contains("""<span class="row-line"><span class="row-truth">Heretical Truth:</span> Your test depends on <mark>timing</mark>.</span>""", html);
     }
 
     [Fact]
-    public async Task Search_ThatFindsNothing_SaysSo_AndEncodesWhatWasTyped()
+    public async Task Archive_WithWordsFoundNowhere_SaysSo_AndEncodesWhatWasTyped()
     {
         await Add(Day, "The Rite of Re-Run");
 
         var (status, html) = await Searched("<b>nowhere</b>", "");
 
         Assert.Equal(StatusCodes.Status200OK, status);
-        Assert.Contains("No rite holds “&lt;b&gt;nowhere&lt;/b&gt;”.", html);
+        Assert.Contains("""<h1 class="sheet-title">“&lt;b&gt;nowhere&lt;/b&gt;”</h1>""", html);
+        Assert.Contains("No rite mentions it.", html);
+        Assert.Contains("The Machine Spirit keeps its silence.", html);
+        Assert.Contains("""<a class="sheet-button" href="/archive">Browse the whole Archive</a>""", html);
         Assert.Contains("""value="&lt;b&gt;nowhere&lt;/b&gt;" """, html);
         Assert.DoesNotContain("<b>nowhere</b>", html);
+        Assert.DoesNotContain("""<aside class="month-index" """, html);
         Assert.Empty(Titles(html));
     }
 
@@ -376,7 +431,7 @@ public sealed class SitePagesTests : IAsyncLifetime
 
         var tag = await Read(context => pages.Tag(context.Request, "caches", CancellationToken.None), "/tags/caches", "");
 
-        var search = await Read(context => pages.Search(context.Request, CancellationToken.None), "/search", "?q=cache");
+        var search = await Read(context => pages.Archive(context.Request, CancellationToken.None), "/archive", "?q=cache");
 
         Assert.All([today, rite, archive, tag, search], page => Assert.Equal(StatusCodes.Status503ServiceUnavailable, page.Status));
         Assert.Contains("The rite has failed.", today.Html);
@@ -459,7 +514,7 @@ public sealed class SitePagesTests : IAsyncLifetime
     private async Task<(int Status, string Html)> Searched(string words, string before)
     {
         var query = QueryString.Create(before.Length == 0 ? [new("q", words)] : new KeyValuePair<string, string?>[] { new("q", words), new("before", before) });
-        var page = await Read(context => Pages().Search(context.Request, CancellationToken.None), "/search", query.Value ?? "");
+        var page = await Read(context => Pages().Archive(context.Request, CancellationToken.None), "/archive", query.Value ?? "");
         return (page.Status, page.Html);
     }
 
@@ -480,9 +535,20 @@ public sealed class SitePagesTests : IAsyncLifetime
     private static List<string> MoreTitles(string html)
         => html.Split("""<span class="more-title">""").Skip(1).Select(part => part[..part.IndexOf("</span>", StringComparison.Ordinal)]).ToList();
 
-    // The archive rows' titles, in order.
+    // The archive rows' titles, in order, without a search's marks.
     private static List<string> Titles(string html)
-        => Regex.Matches(html, """<a class="row-title" href="/r/\d+">(.*?)</a>""").Select(match => match.Groups[1].Value).ToList();
+        => Regex.Matches(html, """<a class="row-title" href="/r/\d+">(.*?)</a>""")
+            .Select(match => match.Groups[1].Value.Replace("<mark>", string.Empty).Replace("</mark>", string.Empty))
+            .ToList();
+
+    // "Rite 1" to "Rite <count>", a day apart, the last on Day: Today's.
+    private async Task AddRites(int count)
+    {
+        for (var i = 1; i <= count; i++)
+        {
+            await Add(Day.AddDays(i - count), $"Rite {i}");
+        }
+    }
 
     private async Task Tag(DateOnly day, params string[] tags)
         => Ok(await Repository.SaveTags(day, tags, CancellationToken.None));
