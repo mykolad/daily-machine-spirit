@@ -35,6 +35,8 @@ public sealed class RitesWithoutScores : IRiteRepository
 
     public Task<Either<Error, List<RiteDay>>> GetDays(CancellationToken cancellationToken) => rites.GetDays(cancellationToken);
 
+    public Task<Either<Error, List<Rite>>> GetWritings(CancellationToken cancellationToken) => rites.GetWritings(cancellationToken);
+
     public Task<Either<Error, Rite>> Add(Rite rite, CancellationToken cancellationToken) => rites.Add(rite, cancellationToken);
 
     public Task<Either<Error, Rite>> Publish(Guid draftId, DateOnly publishedOnUtc, CancellationToken cancellationToken)

@@ -281,6 +281,7 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
         Assert.True((await missing.Search(["cache"], int.MaxValue, 6, CancellationToken.None)).IsLeft);
         Assert.True((await missing.FindDays(["cache"], CancellationToken.None)).IsLeft);
         Assert.True((await missing.GetDays(CancellationToken.None)).IsLeft);
+        Assert.True((await missing.GetWritings(CancellationToken.None)).IsLeft);
     }
 
     [Fact]

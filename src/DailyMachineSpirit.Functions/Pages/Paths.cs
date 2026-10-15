@@ -7,6 +7,9 @@ public static class Paths
 
     public const string Archive = "/archive";
 
+    /// <summary>Every rite's words, which the nav's search field matches as the reader types.</summary>
+    public const string RiteIndex = "/api/rites";
+
     public static string Rite(int number) => $"/r/{number}";
 
     public static string ArchiveBefore(int number) => $"{Archive}?before={number}";
