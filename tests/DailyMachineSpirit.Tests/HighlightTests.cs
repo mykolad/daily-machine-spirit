@@ -9,6 +9,7 @@ public class HighlightTests
     [InlineData("A cached rite", new[] { "cache", "cached" }, "A <mark>cached</mark> rite")]
     [InlineData("Rerun it", new[] { "re", "run" }, "<mark>Rerun</mark> it")]
     [InlineData("Press Re-run thrice", new[] { "re-run", "thrice" }, "Press <mark>Re-run</mark> <mark>thrice</mark>")]
+    [InlineData("banana", new[] { "ana" }, "b<mark>anana</mark>")]
     [InlineData("Nothing here", new[] { "cache" }, "Nothing here")]
     [InlineData("No words", new string[0], "No words")]
     public void Of_MarksEveryOccurrence_IgnoringCase_JoiningOverlaps(string text, string[] words, string expected)

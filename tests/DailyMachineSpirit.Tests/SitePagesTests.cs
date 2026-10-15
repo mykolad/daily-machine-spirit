@@ -348,6 +348,8 @@ public sealed class SitePagesTests : IAsyncLifetime
     // Search is the Archive's now: links to the old page still arrive, with the words.
     [Theory]
     [InlineData("?q=Re-run%20thrice", "/archive?q=Re-run%20thrice")]
+    [InlineData("?q=cache&before=4", "/archive?q=cache&before=4")]
+    [InlineData("?q=cache&before=nonsense", "/archive?q=cache")]
     [InlineData("?q=", "/archive")]
     [InlineData("", "/archive")]
     public void Search_LeadsToTheArchive_ForGood(string query, string archive)

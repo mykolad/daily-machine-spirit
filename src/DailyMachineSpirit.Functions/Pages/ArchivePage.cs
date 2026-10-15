@@ -29,16 +29,16 @@ public static class ArchivePage
         var since = days.LastOrNone().Match(
             Some: oldest => ArchiveSheet.Note("Since", $"""<p class="margin-since">{Html.LongDate(oldest.PublishedOnUtc)}</p>"""),
             None: () => string.Empty);
-        var margins = $"""
+        var left = $"""
             <aside class="marginalia" aria-label="About the Archive">
             {ArchiveSheet.Note("Rites kept", $"""<p class="margin-number">{Html.Count(days.Count)}</p>""")}
             {since}
             {ArchiveSheet.Countdown(now)}
             </aside>
-            {ArchiveSheet.MonthIndex(months, month => first.Exists(number => number == month.Newest)
-                ? $"{Paths.Archive}#{month.Anchor}"
-                : $"{Paths.ArchiveBefore(month.Newest + 1)}#{month.Anchor}")}
             """;
+        var right = ArchiveSheet.MonthIndex(months, month => first.Exists(number => number == month.Newest)
+            ? $"{Paths.Archive}#{month.Anchor}"
+            : $"{Paths.ArchiveBefore(month.Newest + 1)}#{month.Anchor}");
         return Layout.Page("The Archive", Description, Section.Archive, $"""
             {Masthead.Render(isHeading: false)}
             {ArchiveSheet.Render(
@@ -48,7 +48,8 @@ public static class ArchivePage
                 search: ArchiveSheet.Search(string.Empty),
                 body: ArchiveRows.Months(rites, []),
                 below: ArchiveRows.More(olderThan.Map(Paths.ArchiveBefore), "Load older rites", "The archive ends here. Earlier knowledge is lost."),
-                margins: margins)}
+                left: left,
+                right: right)}
             """);
     }
 
@@ -76,17 +77,17 @@ public static class ArchivePage
         var below = found == 0
             ? string.Empty
             : ArchiveRows.More(results.OlderThan.Map(number => Paths.ArchiveSearchBefore(typed, number)), "More results", "No more rites mention it.");
-        var margins = $"""
+        var left = $"""
             <aside class="marginalia" aria-label="About this search">
             {ArchiveSheet.Note("Sought", $"""<p class="margin-sought">{Html.Encode(quoted)}</p>""")}
             {ArchiveSheet.Note("Found", $"""<p class="margin-number">{Rites(found)}</p>""")}
             <a class="margin-clear" href="{Paths.Archive}">Clear search</a>
             {ArchiveSheet.Countdown(now)}
             </aside>
-            {ArchiveSheet.MonthIndex(ArchiveMonth.Of(results.Found), month => first.Exists(number => number == month.Newest)
-                ? $"{Paths.ArchiveSearch(typed)}#{month.Anchor}"
-                : $"{Paths.ArchiveSearchBefore(typed, month.Newest + 1)}#{month.Anchor}")}
             """;
+        var right = ArchiveSheet.MonthIndex(ArchiveMonth.Of(results.Found), month => first.Exists(number => number == month.Newest)
+            ? $"{Paths.ArchiveSearch(typed)}#{month.Anchor}"
+            : $"{Paths.ArchiveSearchBefore(typed, month.Newest + 1)}#{month.Anchor}");
         // The count is in the title too, which a screen reader reads first when the results load.
         return Layout.Page($"{quoted}: {(found == 0 ? "no rites" : Rites(found))}", Description, Section.Archive, $"""
             {Masthead.Render(isHeading: false)}
@@ -97,7 +98,8 @@ public static class ArchivePage
                 search: ArchiveSheet.Search(typed),
                 body: body,
                 below: below,
-                margins: margins)}
+                left: left,
+                right: right)}
             """);
     }
 

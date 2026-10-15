@@ -51,8 +51,13 @@ public static class Svg
     private const string AltarCandlePaths =
         """<path class="altar-flame" d="M12 4C15 9 15 13 12 16C9 13 9 9 12 4Z" fill="#f0b45a" stroke="#f0b45a"></path><path d="M12 16V20"></path><rect x="7" y="20" width="10" height="34" rx="1.5"></rect><path d="M3 56H21"></path>""";
 
-    public const string AltarCandles =
-        $"""<span class="altar altar-left" aria-hidden="true"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 60" width="48" height="120" fill="none" stroke="#84662c" stroke-width="1.4" stroke-linecap="round">{AltarCandlePaths}</svg></span><span class="altar altar-right" aria-hidden="true"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 60" width="48" height="120" fill="none" stroke="#84662c" stroke-width="1.4" stroke-linecap="round">{AltarCandlePaths}</svg></span>""";
+    public const string AltarCandleLeft =
+        $"""<span class="altar altar-left" aria-hidden="true"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 60" width="48" height="120" fill="none" stroke="#84662c" stroke-width="1.4" stroke-linecap="round">{AltarCandlePaths}</svg></span>""";
+
+    public const string AltarCandleRight =
+        $"""<span class="altar altar-right" aria-hidden="true"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 60" width="48" height="120" fill="none" stroke="#84662c" stroke-width="1.4" stroke-linecap="round">{AltarCandlePaths}</svg></span>""";
+
+    public const string AltarCandles = AltarCandleLeft + AltarCandleRight;
 
     // Circuit traces running in from the screen's edges on wide screens, drawn at half size (strokes 1.3px, dots 5px once
     // doubled). The right one is the same kind of drawing, mirrored by the stylesheet.

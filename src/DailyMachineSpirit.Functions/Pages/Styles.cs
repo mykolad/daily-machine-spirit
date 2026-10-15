@@ -184,7 +184,8 @@ public static class Styles
         .sheet .row:has(.row-title:focus-visible){outline:2px solid #8f2a20;outline-offset:2px}
         .row-meta{display:flex;align-items:baseline;gap:10px}
         .row-date{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:12px;color:#5c4a33}
-        .kind{font-family:Cinzel,serif;font-weight:700;font-size:10px;letter-spacing:.2em;color:#8f2a20}
+        .kind{font-family:Cinzel,serif;font-weight:700;font-size:13px;letter-spacing:.16em;color:#c9a25a}
+        .row .kind{font-size:10px;letter-spacing:.2em;color:#8f2a20}
         .row-main{min-width:0;display:flex;flex-direction:column;gap:2px}
         .row-title{font-family:Cinzel,serif;font-weight:700;font-size:17px;line-height:1.2;color:#8f2a20;text-decoration:none}
         .row-title:hover{color:#8f2a20}
@@ -204,6 +205,7 @@ public static class Styles
         .sheet-button{display:inline-flex;align-items:center;min-height:44px;padding:8px 20px;border:1px solid #8f2a20;border-radius:999px;font-weight:600;font-size:15px;color:#8f2a20;text-decoration:none}
         .sheet-button:hover{background:#e0d0a8;color:#8f2a20}
         .archive-hero .marginalia,.month-index{display:none}
+        .side{display:contents}
         .archive-loading{width:100%;display:flex;flex-direction:column;gap:12px;margin-top:12px}
         .skeleton-row{height:118px;border-radius:20px;background:#1a1612}
         .archive-more{display:flex;justify-content:center;padding-top:28px}
@@ -264,7 +266,11 @@ public static class Styles
         .hero>.sheet{grid-column:2;grid-row:1}
         .hero>.archive-more{grid-column:2;grid-row:2}
         .archive-hero .marginalia{display:flex}
-        .archive-hero .altar{align-self:start;margin-top:440px}
+        .side{grid-row:1;align-self:start;display:flex;flex-direction:column;gap:56px;margin-top:80px}
+        .side-left{grid-column:1}
+        .side-right{grid-column:3}
+        .side>.marginalia,.side>.month-index,.side>.other-subjects{margin-top:0}
+        .side>.altar{align-self:center}
         .sub-wide{display:inline}
         .sub-narrow{display:none}
         .margin-number{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:32px;line-height:1.1;color:#ede3cf}

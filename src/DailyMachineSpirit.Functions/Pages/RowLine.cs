@@ -18,7 +18,7 @@ public static class RowLine
     private const int After = 50;
 
     /// <summary>The opening words, cut at the last word before 84 characters.</summary>
-    public static string Opening(Rite rite) => Clip(Plain(rite.Writing.Text), FirstLineLength);
+    public static string Opening(Rite rite) => Clip(Plain(rite.Writing.Text), FirstLineLength, 0);
 
     /// <summary>
     /// Around the first word found in the text; else the opening words when the title holds the words, and the words
@@ -30,13 +30,13 @@ public static class RowLine
         var inText = FirstMatch(text, words);
         if (inText.IsSome || FirstMatch(rite.Writing.Title, words).IsSome)
         {
-            return (inText.Match(Some: match => Around(text, match), None: () => Clip(text, FirstLineLength)), false);
+            return (inText.Match(Some: match => Around(text, match), None: () => Clip(text, FirstLineLength, 0)), false);
         }
 
         var truth = Plain(rite.Writing.HereticalTruth);
         return FirstMatch(truth, words).Match(
             Some: match => (Around(truth, match), true),
-            None: () => (Clip(text, FirstLineLength), false));
+            None: () => (Clip(text, FirstLineLength, 0), false));
     }
 
     private static Option<(int Start, int Length)> FirstMatch(string text, IReadOnlyList<string> words)
@@ -52,7 +52,7 @@ public static class RowLine
     {
         if (match.Start < NearStart)
         {
-            return Clip(text, NearStartLength);
+            return Clip(text, NearStartLength, match.Start + match.Length - 1);
         }
 
         // From the first word that starts after 30 characters before the match, to the last word that ends before 50
@@ -65,8 +65,10 @@ public static class RowLine
         return $"{(start > 0 ? "…" : string.Empty)}{cut}{(end < text.Length ? "…" : string.Empty)}";
     }
 
-    // The text up to the last whole word before the length, without the punctuation it ended on, then "…".
-    private static string Clip(string text, int length)
+    // The text up to the last whole word before the length, without the punctuation it ended on, then "…". The cut comes
+    // no sooner than the end of the word holding the character at keep: a match must never be cut off (a long name in
+    // backticks can run past the length).
+    private static string Clip(string text, int length, int keep)
     {
         if (text.Length <= length)
         {
@@ -74,7 +76,8 @@ public static class RowLine
         }
 
         var space = text.LastIndexOf(' ', length);
-        return $"{TrimEndPunctuation(text[..(space > 0 ? space : length)])}…";
+        var cut = space >= keep && space > 0 ? space : text.IndexOf(' ', Math.Max(keep, 1));
+        return cut < 0 ? text : $"{TrimEndPunctuation(text[..cut])}…";
     }
 
     private static string TrimEndPunctuation(string text) => text.TrimEnd().TrimEnd(',', '.', ';', ':', '!', '?', '—', '–', '-').TrimEnd();

@@ -13,8 +13,9 @@ public static class ArchiveSheet
     /// <param name="search">The sheet's own search field, or empty.</param>
     /// <param name="body">The rows, or what's said when there are none.</param>
     /// <param name="below">What follows the sheet: the link to older rites, or the end.</param>
-    /// <param name="margins">The asides beside the sheet on a wide screen.</param>
-    public static string Render(string kicker, string heading, string sub, string search, string body, string below, string margins)
+    /// <param name="left">The left margin on a wide screen.</param>
+    /// <param name="right">The right margin on a wide screen, or empty.</param>
+    public static string Render(string kicker, string heading, string sub, string search, string body, string below, string left, string right)
         => $"""
             <div class="hero archive-hero">
             <div class="sheet">
@@ -29,8 +30,14 @@ public static class ArchiveSheet
             </div>
             </div>
             {below}
-            {margins}
-            {Svg.AltarCandles}
+            <div class="side side-left">
+            {left}
+            {Svg.AltarCandleLeft}
+            </div>
+            <div class="side side-right">
+            {right}
+            {Svg.AltarCandleRight}
+            </div>
             {Svg.Traces}
             </div>
             """;

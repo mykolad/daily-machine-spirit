@@ -119,7 +119,11 @@ public sealed class SitePages
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "search")] HttpRequest request)
     {
         var typed = SearchWords.Typed(request.Query["q"]);
-        return new RedirectResult(typed.Length == 0 ? Paths.Archive : Paths.ArchiveSearch(typed), permanent: true);
+        // A link to a later page of results keeps its place.
+        var archive = typed.Length == 0 ? Paths.Archive
+            : int.TryParse(request.Query["before"], out var before) && before > 0 ? Paths.ArchiveSearchBefore(typed, before)
+            : Paths.ArchiveSearch(typed);
+        return new RedirectResult(archive, permanent: true);
     }
 
     /// <summary>
