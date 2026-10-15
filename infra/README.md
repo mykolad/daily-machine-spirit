@@ -222,18 +222,20 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
   - **DNS**: a proxied CNAME `@` → `machinespirit-app.azurewebsites.net`, and a TXT record `asuid` with the app's
     `customDomainVerificationId`, which Azure checks before binding the domain.
   - **A Cache Rule** (Caching → Cache Rules), after the purge is set up (Secrets): hostname equals
-    `dailymachinespirit.fyi` and the URI path doesn't start with `/api/`, `/auth/`, `/scriptorium` or `/healthz`;
+    `dailymachinespirit.fyi`, and either the URI path doesn't start with `/api/`, `/auth/`, `/scriptorium` or `/healthz`,
+    or it equals `/api/rites` (the search field's index, kept until a new rite purges it, the only public API cached);
     **Eligible for cache**, Edge TTL **Use cache-control header if present, bypass cache if not**, Browser TTL
-    **Respect origin TTL**. The app's `Cache-Control` decides the rest: Today and a rite's page an hour at the edge
-    (`s-maxage`), purged on change, the archive a minute, errors and the API never; browsers a minute (`max-age`).
-    Without Respect origin TTL, Cloudflare raises `max-age` to the zone's Browser Cache TTL (4 hours by default), and
-    a purge never reaches a browser's copy. `cf-cache-status: HIT` on a second request for `/` shows it works, and
+    **Respect origin TTL**. The app's `Cache-Control` decides the rest: Today, a rite's page and the search index an
+    hour at the edge (`s-maxage`), purged on change, the archive a minute, errors and the rest of the API never;
+    browsers a minute (`max-age`). Without Respect origin TTL, Cloudflare raises `max-age` to the zone's Browser Cache
+    TTL (4 hours by default), and a purge never reaches a browser's copy. `cf-cache-status: HIT` on a second request for `/` shows it works, and
     its `cache-control` should read `public, max-age=60, s-maxage=3600`.
   - **A rate limit rule** (Security → WAF → Rate limiting rules, set up 2026-10-13) for votes and searches (each
-    search reads every rite), counted by IP, 20 in 10 seconds, blocked for 10 seconds. The Free plan has one such rule,
-    so every limited path shares it:
-    `(http.request.uri.path wildcard r"/api/rites/*/vote") or (http.request.uri.path eq "/search")`. With `eq`, the
-    `*` would be taken literally, and match nothing.
+    search reads every rite; the Archive's field searches as the reader types, a request per pause), counted by IP, 20
+    in 10 seconds, blocked for 10 seconds. The Free plan has one such rule, so every limited path shares it:
+    `(http.request.uri.path wildcard r"/api/rites/*/vote") or (http.request.uri.path eq "/archive" and
+    http.request.uri.query contains "q=")`. With `eq`, the `*` would be taken literally, and match nothing. The nav's
+    suggestions are matched in the browser, so they need no limit.
 
   Production admits only Cloudflare's address ranges (`cloudflare-ips.json`), so its cache and rate limit can't be gone
   around. **Check Cloudflare's Addresses** (a weekly workflow) opens an issue when Cloudflare publishes different

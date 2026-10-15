@@ -49,7 +49,19 @@ public sealed partial class DeployedAppTests
     // What the nav's search field matches as the reader types: every rite's words, from the deployed database.
     [Fact]
     public async Task TheSearchIndex_Answers()
-        => AssertAnswers(await app.Get("/api/rites"), HttpStatusCode.OK, "\"number\":");
+    {
+        var page = await app.Get("/api/rites");
+
+        Assert.True(page.Status == HttpStatusCode.OK, $"{page.Path} answered {(int)page.Status}, not 200.");
+        // A new environment has no rite yet, and its index is rightly empty.
+        var index = JsonSerializer.Deserialize<JsonElement>(page.Text);
+        Assert.Equal(JsonValueKind.Array, index.ValueKind);
+        foreach (var rite in index.EnumerateArray().Take(1))
+        {
+            Assert.True(rite.GetProperty("number").GetInt32() > 0, $"{page.Path}'s first rite has no number.");
+            Assert.False(string.IsNullOrEmpty(rite.GetProperty("title").GetString()), $"{page.Path}'s first rite has no title.");
+        }
+    }
 
     // Search was a page of its own: links to it lead to the Archive's search (the client follows the redirect).
     [Fact]

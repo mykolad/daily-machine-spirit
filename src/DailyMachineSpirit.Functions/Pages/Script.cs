@@ -252,12 +252,16 @@ public static class Script
               // that worked: after a failure the link stays for the reader to try again, not a loop.
               watchOlder();
             } catch {
-              announcer.textContent = '';
-              say('Older rites couldn’t be loaded. Try again.');
+              if (search === searches) {
+                announcer.textContent = '';
+                say('Older rites couldn’t be loaded. Try again.');
+              }
             } finally {
               placeholders.remove();
               loading = false;
               focusWhenLoaded = false;
+              // A search replaced the rows meanwhile: its link may be in view already, waiting for this load to end.
+              if (search !== searches) watchOlder();
             }
           };
           // Ctrl, Cmd, Shift or a middle click: the browser opens the page in a new tab or window, as it should.
@@ -416,10 +420,11 @@ public static class Script
               drop.hidden = !shown;
               input.setAttribute('aria-expanded', String(shown));
             };
+            // Closed, or typed on, while the rites were loading: the next suggestions are on their way, or none are wanted.
+            const outdated = (typed) => !box.classList.contains('open') || input.value.trim() !== typed;
             const suggest = async () => {
               const typed = input.value.trim();
               const words = wordsOf(typed);
-              all.href = typed ? `/archive?q=${encodeURIComponent(typed)}#archive-search` : '/archive#archive-search';
               if (words.length === 0) {
                 list.replaceChildren();
                 choose(-1);
@@ -433,8 +438,7 @@ public static class Script
                   return response.json();
                 });
                 const index = await rites;
-                // Typed on meanwhile: the next suggestions are on their way.
-                if (input.value.trim() !== typed) return;
+                if (outdated(typed)) return;
                 const found = index.filter((rite) => {
                   const words2 = `${rite.title}\n${rite.text}\n${rite.truth}`.toLowerCase();
                   return words.every((word) => words2.includes(word));
@@ -463,6 +467,7 @@ public static class Script
               } catch {
                 // Tried again on the next keystroke; meanwhile the Archive can still search.
                 rites = undefined;
+                if (outdated(typed)) return;
                 label.textContent = 'The rites couldn’t be loaded.';
                 none.hidden = true;
                 list.replaceChildren();
@@ -491,7 +496,13 @@ public static class Script
             };
             opener.addEventListener('click', () => (box.classList.contains('open') ? input.focus() : open()));
             box.querySelector('.nav-find-close').addEventListener('click', () => close(true));
+            // At once, so Enter and "Search all" search what's typed now, and no suggestion for older words can be opened;
+            // only the suggestions wait for a pause.
             input.addEventListener('input', () => {
+              const typed = input.value.trim();
+              all.href = typed ? `/archive?q=${encodeURIComponent(typed)}#archive-search` : '/archive#archive-search';
+              list.replaceChildren();
+              choose(-1);
               clearTimeout(typing);
               typing = setTimeout(suggest, 150);
             });
