@@ -58,7 +58,8 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
 
         Assert.Contains("Subjects waiting: Caches (2), Infrastructure (1), untagged (1).", html);
-        Assert.Contains(" · filed under Infrastructure, Caches · written by", html);
+        Assert.Contains("""Forgotten Names</h3><p class="tags"><span class="visually-hidden">Filed under </span><span class="tag">Infrastructure</span><span class="tag">Caches</span></p>""", html);
+        Assert.DoesNotContain("filed under Infrastructure", html);
     }
 
     [Fact]
@@ -260,9 +261,9 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
 
         var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
 
-        Assert.Contains($"""<button class="primary" formaction="/scriptorium/drafts/{top.Id:D}/anoint">""", html);
+        Assert.Contains($""" class="primary" formaction="/scriptorium/drafts/{top.Id:D}/anoint">""", html);
         Assert.Contains("""<span class="pair" role="group" aria-label="Reorder">""", html);
-        Assert.Contains($"""<button class="danger burn" formaction="/scriptorium/drafts/{top.Id:D}/burn">""", html);
+        Assert.Contains($""" class="danger burn" formaction="/scriptorium/drafts/{top.Id:D}/burn">""", html);
         Assert.Contains("Let the Augury Decide", html);
         var buttons = Regex.Matches(html, "<button[^>]*>(.{0,120})").Select(match => match.Groups[1].Value).ToList();
         Assert.Equal(9, buttons.Count);
@@ -270,6 +271,25 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.All(Regex.Matches(html, "<svg[^>]*>"), icon => Assert.Contains("""aria-hidden="true" focusable="false" """, icon.Value));
         Assert.Equal(3, html.Split("""<details class="fold">""").Length - 1);
         Assert.Equal(3, html.Split("""<label class="visually-hidden" for="note-""").Length - 1);
+    }
+
+    // A Scribe who acts once a month needn't remember what each of the rite's names means.
+    [Fact]
+    public async Task Page_SaysWhatEachActionDoes_WhereThePointerRests()
+    {
+        await testbed.AddDraft("Excellent", 0.95f);
+        var top = await testbed.AddDraft("Good", 0.7f);
+        var burned = await testbed.AddDraft("Burned", 0.3f);
+        Ok(await testbed.Scribes().Burn(burned.Id, "", CancellationToken.None));
+        Ok(await testbed.Scribes().Anoint(top.Id, "", CancellationToken.None));
+
+        var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+
+        var buttons = Regex.Matches(html, "<button[^>]*>").Select(match => match.Value).ToList();
+        Assert.Equal(9, buttons.Count);
+        Assert.All(buttons, button => Assert.Matches("""^<button title="[^"]{20,}" """, button));
+        Assert.Contains("""<button title="Forgets the Scribes&#39; order: the Augury orders every waiting rite again, by quality and variety." class="outline">""", html);
+        Assert.Contains($"""<button title="Takes this rite out of the calendar, into the Ashes. Nothing is deleted: it can be restored." class="danger burn" formaction="/scriptorium/drafts/{top.Id:D}/burn">""", html);
     }
 
     [Fact]
