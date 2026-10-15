@@ -83,3 +83,7 @@ and candles behind it, and the recent rites under Today.
   parchment at 7.9:1. Each card is one link, and its focus ring falls outside it on the dark ground.
 - **The circuit traces stay in the space outside the margins,** cut off where the margins begin, so they never pass
   behind text; they show from 1440px, where that space is wide enough to see them.
+- **The archive, a tag's page and the Scriptorium have the same altar, not new content.** The handoff drew only Today;
+  these pages put their heading between two candles (from 1280px), with the glow behind it and the traces beyond, and
+  nothing in the margins to read: there's nothing these pages would say there that they don't say already. The
+  candles and traces are hidden from screen readers, and the flames stop under reduced motion.
