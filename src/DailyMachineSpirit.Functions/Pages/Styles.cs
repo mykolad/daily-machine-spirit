@@ -130,7 +130,7 @@ public static class Styles
         .candle ellipse{transform-box:fill-box;transform-origin:50% 100%;animation:flicker 2.4s ease-in-out infinite}
         .candle-late ellipse{animation-duration:3.1s;animation-delay:.7s}
         @keyframes flicker{0%,100%{transform:scaleY(1)}40%{transform:scaleY(.86) skewX(3deg)}70%{transform:scaleY(1.05) skewX(-2deg)}}
-        .margin-countdown,.altar,.traces{display:none}
+        .margin-countdown{display:none}
         .recent{width:100%;margin-top:44px;display:flex;flex-direction:column;align-items:center;gap:18px}
         .recent h2{display:flex;align-items:center;gap:16px;margin:0;font-family:Cinzel,serif;font-weight:700;font-size:18px;letter-spacing:.2em;text-transform:uppercase;color:#c9a25a}
         .recent h2::before,.recent h2::after{content:'';width:clamp(40px,12vw,100px);height:1px;background:#84662c}
@@ -232,6 +232,25 @@ public static class Styles
         .tags .margin-label{flex-basis:100%;margin-bottom:0}
         .countdown{margin-top:28px}
         .countdown-line{display:none}
+        }
+        """ + Altar + """
+        @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+        """;
+
+    /// <summary>
+    /// The wide screen's decoration, which the Scriptorium shares (its stylesheet is its own): a candle in each margin of
+    /// a three-column grid (Today's rite, or an altar heading), from 1280px, and circuit traces in the space outside it,
+    /// from 1440px, where that space is wide enough to see them. An altar heading has the glow behind it at every width.
+    /// The candles' glow reaches past the screen's edge, so the page's frame clips it (<c>overflow-x: clip</c>).
+    /// </summary>
+    public const string Altar = """
+        .altar,.traces{display:none}
+        .altar-head{position:relative;width:100%}
+        .altar-head::before{content:'';position:absolute;left:50%;top:100%;z-index:-1;width:600px;height:920px;transform:translate(-50%,-50%);background:radial-gradient(ellipse 300px 460px,#2b2117 0%,#18140f 55%,rgba(16,14,11,0) 100%);pointer-events:none}
+        @media (min-width:700px){.altar-head::before{width:1520px;height:1280px;background:radial-gradient(ellipse 760px 640px,#2b2117 0%,#18140f 55%,rgba(16,14,11,0) 100%)}}
+        @media (min-width:1280px){
+        .altar-head{--gap:clamp(32px,3vw,60px);--width:min(100vw - 48px,1220px + 2*var(--gap));display:grid;grid-template-columns:minmax(0,1fr) minmax(0,740px) minmax(0,1fr);column-gap:var(--gap);width:var(--width);margin-inline:calc((100% - var(--width))/2)}
+        .altar-head>:first-child{grid-column:2;grid-row:1}
         .altar{display:block;position:relative;grid-row:1;align-self:end;justify-self:center;line-height:0}
         .altar-left{grid-column:1}
         .altar-right{grid-column:3}
@@ -242,12 +261,12 @@ public static class Styles
         @keyframes altar-flicker{0%,100%{transform:scaleY(1)}40%{transform:scaleY(.93) skewX(1.5deg)}70%{transform:scaleY(1.025) skewX(-1deg)}}
         @media (min-width:1440px){
         .traces{display:block;position:absolute;top:-240px;z-index:-1;width:calc(50vw - 50%);height:950px;overflow:hidden;pointer-events:none}
+        .altar-head .traces{top:-120px}
         .traces-left{right:100%}
         .traces-right{left:100%}
         .traces svg{position:absolute;top:0}
         .traces-left svg{left:0}
         .traces-right svg{right:0;transform:scaleX(-1)}
         }
-        @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
         """;
 }
