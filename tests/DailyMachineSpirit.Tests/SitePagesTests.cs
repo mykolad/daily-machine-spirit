@@ -229,6 +229,43 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.Contains("""<h1 class="sheet-title">The Archive</h1>""", html);
     }
 
+    // Today's frame on the sheet: the double rule, the corners, code in the margins, hidden from screen readers; and each
+    // row's number, which a screen reader hears as "Rite 2".
+    [Fact]
+    public async Task Archive_SheetHasTodaysFrame_AndNumbersItsRows()
+    {
+        await Add(Day.AddDays(-1), "Litany of the Clean Cache");
+        await Add(Day, "The Rite of Re-Run");
+
+        var (_, html) = await Archive("");
+
+        Assert.Contains("""<span class="rule-outer" aria-hidden="true"></span><span class="rule-inner" aria-hidden="true"></span>""", html);
+        Assert.Contains("""<svg class="corner corner-tl" """, html);
+        Assert.Contains("""<span class="margin-text margin-left" aria-hidden="true">4E 4F 54 48 49 4E 47 20 49 53 20 46 4F 52 47 4F 54 54 45 4E · """, html);
+        Assert.Contains("""<span class="margin-text margin-right" aria-hidden="true">01001011 01000101 01010000 01010100 · """, html);
+        Assert.Contains("""<span class="row-number"><span aria-hidden="true">NO. </span><span class="sr-only">Rite </span>1</span>""", html);
+    }
+
+    // The seal hangs from the sheet where the Archive ends, and only there: not over a page with older rites below, nor
+    // at the end of a search or a tag's rites.
+    [Fact]
+    public async Task Archive_EndsWithItsSeal_OnItsLastPageOnly()
+    {
+        await AddRites(23);
+        await Tag(Day, "caches");
+
+        var (_, first) = await Archive("");
+        var (_, last) = await Archive("3");
+        var (_, searched) = await Searched("Re-run", "4");
+        var (_, tagged) = await Tagged("caches", "");
+
+        Assert.DoesNotContain("""<div class="archive-seal" """, first);
+        Assert.Contains("""<div class="archive-seal" aria-hidden="true">""", last);
+        Assert.Contains("""<span class="purity-strip">Read by no one since</span>""", last);
+        Assert.Contains("The archive ends here.", last);
+        Assert.All([searched, tagged], html => Assert.DoesNotContain("""<div class="archive-seal" """, html));
+    }
+
     // Its own field, a plain form; the nav's search icon leads to it, and there's no Search tab.
     [Fact]
     public async Task Archive_HasItsOwnSearchField()
