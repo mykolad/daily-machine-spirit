@@ -20,4 +20,10 @@ public sealed record RiteWriting
     public string GeneratedByModel { get; init; } = string.Empty;
 
     public DateTime GeneratedAtUtc { get; init; }
+
+    /// <summary>
+    /// A Scribe amended the words (by hand, or by asking a model to rewrite them) before they were published.
+    /// <see cref="GeneratedByModel"/> still names the model that wrote the first version. Nothing says which Scribe.
+    /// </summary>
+    public bool Edited { get; init; }
 }

@@ -28,6 +28,10 @@ public class DraftRepository : IDraftRepository
         => Attempt(async () => (await container.ReadOrNone<DraftDocument>(DraftDocument.IdFor(draftId), cancellationToken))
             .Map(found => found.Document.ToDraft()));
 
+    public Task<Either<Error, Option<(Draft Draft, string ETag)>>> GetWithETag(Guid draftId, CancellationToken cancellationToken)
+        => Attempt(async () => (await container.ReadOrNone<DraftDocument>(DraftDocument.IdFor(draftId), cancellationToken))
+            .Map(found => (found.Document.ToDraft(), found.ETag)));
+
     public Task<Either<Error, List<Draft>>> GetWaiting(CancellationToken cancellationToken)
         => Attempt(async () => (await container.Query<DraftDocument>(
             new QueryDefinition("SELECT * FROM c WHERE c.type = @type AND c.state = @state")

@@ -61,7 +61,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
             Drafts,
             Rites,
             Scriptorium,
-            new RiteWriter(Models, options, Time, Probe.Metrics, NullLogger<RiteWriter>.Instance),
+            Writer(options),
             Jev.NewJudge(Time, JevApiKey),
             options,
             Probe.Metrics,
@@ -71,6 +71,9 @@ public sealed class BacklogTestbed : IAsyncLifetime
     public DailyRitePublisher Publisher() => new(Rites, Drafts, Scriptorium, Refiller(), Time, Probe.Metrics, NullLogger<DailyRitePublisher>.Instance);
 
     public Scribes Scribes() => new(Drafts, Rites, Scriptorium, Time);
+
+    public Amendments Amendments()
+        => new(Drafts, Scriptorium, Jev.NewJudge(Time, JevApiKey), Writer(Options.Create(new GenerationOptions { RetryDelaySeconds = 0 })), Time, NullLogger<Amendments>.Instance);
 
     /// <summary>Scribes whose every read fails, as when Cosmos is down: the container doesn't exist.</summary>
     public Scribes ScribesWithoutCosmos()
@@ -121,6 +124,8 @@ public sealed class BacklogTestbed : IAsyncLifetime
                 GeneratedAtUtc = day.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
             },
         }, CancellationToken.None));
+
+    private RiteWriter Writer(IOptions<GenerationOptions> options) => new(Models, options, Time, Probe.Metrics, NullLogger<RiteWriter>.Instance);
 
     public async Task<List<Draft>> Waiting() => Expect.Ok(await Drafts.GetWaiting(CancellationToken.None));
 

@@ -4,7 +4,7 @@ namespace DailyMachineSpirit.Functions.Scriptorium;
 /// The Scriptorium's button icons (design handoff, scriptorium-icons.md), inline: decorative, since every button keeps
 /// its label. They're drawn in the button's text colour, so they keep its contrast. Lucide's
 /// (<c>Pages/Lucide-LICENSE.txt</c>), except the sparkle, which is the design's own. The design has no icon for Let the
-/// Augury Decide, so it gets Lucide's eye.
+/// Augury Decide, so it gets Lucide's eye; amending a draft gets the note's pencil, and saving it a check.
 /// </summary>
 public static class ScriptoriumIcons
 {
@@ -29,4 +29,6 @@ public static class ScriptoriumIcons
     public const string Augury = $"""{Open}<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>""";
 
     public const string Note = $"""{Open}<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>""";
+
+    public const string Save = $"""{Open}<path d="M20 6 9 17l-5-5"/></svg>""";
 }

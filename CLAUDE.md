@@ -224,7 +224,7 @@ observability/                    — the Grafana dashboard and alerts, and what
     launch, #35).
   - **Writing:** `RiteWriter` asks `gpt-6-sol` for a `RiteContent` (JSON schema output), up to 3 times, then
     `gpt-6-luna` (`Generation:Models`). An answer that's empty, too long, uses a forbidden name or writes code outside
-    backticks (`UnquotedCode`) is asked for again, never cut.
+    backticks (`UnquotedCode`) is asked for again, never cut (`RiteChecks`, which a Scribe's amendment passes too).
   - **Judging:** an `IRiteJudge` judges each draft (`JevJudge` for now, swappable like the models): its similarity
     scores for "More rites" and its quality for the Augury, in one request. A draft that can't be judged still joins
     the backlog, without scores. "Scores" are always the similarity scores, never the quality.
@@ -232,8 +232,14 @@ observability/                    — the Grafana dashboard and alerts, and what
     reference in Azure; empty turns Jev off), and optionally `Generation:*` (`GenerationOptions`).
 - **The Scriptorium** (`/scriptorium`, `Scriptorium/`): where the **Scribes** (moderators) shape the Liturgical Calendar.
   - **Actions:** **Anoint** (next to be published), **Exalt** / **Humble** (up or down one), **Consign to the Flames**
-    (burn: the draft is hidden, never deleted), **Restore from the Ashes**, **Summon New Rites** (a refill), and **Let
-    the Augury Decide** (forget the Scribes' order).
+    (burn: the draft is hidden, never deleted), **Restore from the Ashes**, **Summon New Rites** (a refill), **Let
+    the Augury Decide** (forget the Scribes' order), and **Amend** (#8, `Amendments`, its own page): change a waiting
+    draft's words by hand, or ask the writer to rewrite them as the Scribe's note says (`RiteWriter.Rewrite`; the
+    rewrite fills the form, unsaved, for the Scribe to read first). Saved words pass what a model's answer must
+    (`RiteChecks`) and are judged again (scores, quality and tags describe what will be published; if the judge fails,
+    the draft waits unjudged). The draft keeps `GeneratedByModel` and gets `Edited`, carried into the rite; nothing
+    says which Scribe. The save is guarded by the draft's ETag, read with the page, and records an `Amend` decision
+    with the words as they were. The amending page posts plain forms, without the calendar's script.
   - **The Scribes' order** (the `placements` document) comes first; the Augury orders the rest. Moving a draft places
     everything above it too, so the order stays what the Scribes saw.
   - **Every action is a lesson:** it saves a `ScribeDecision` with the draft as it was, the Augury's place and quality

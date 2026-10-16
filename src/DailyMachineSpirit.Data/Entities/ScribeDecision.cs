@@ -49,4 +49,6 @@ public enum ScribeAction
     Burn,
     /// <summary>Restored it from the ashes.</summary>
     Restore,
+    /// <summary>Amended its words (by hand or by a model's rewrite): the decision keeps them as they were.</summary>
+    Amend,
 }

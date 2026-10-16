@@ -78,6 +78,7 @@ builder.Services.AddTransient<DailyRitePublisher>();
 // The Scriptorium: the Scribes' page.
 builder.Services.Configure<ScriptoriumOptions>(builder.Configuration.GetSection(ScriptoriumOptions.SectionName));
 builder.Services.AddTransient<Scribes>();
+builder.Services.AddTransient<Amendments>();
 builder.Services.AddScribeSignIn(builder.Configuration);
 
 // Readers sign in to vote, with each provider set up (GitHub for now); separate from the Scriptorium's sign-in.
