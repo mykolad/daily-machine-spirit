@@ -251,6 +251,9 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
   - **Its Application Audience (AUD) tag** and the team domain (Settings → Team domain) are in `productionAccess` in
     `resources.bicep`: neither is secret, and there every deployment keeps them. Without both, production's
     Scriptorium lets nobody in.
+  - **The Scribes' names** for the Scriptorium's record (#9) are in `productionAccess.scribes` too, by each Scribe's
+    Access id: the User ID in Access controls → Users (the token's `sub`), whose last six characters the record shows
+    for a Scribe without a name. Add one, then deploy the infrastructure.
 - **GitHub**: one environment per deploy identity, holding its ids as variables (`AZURE_CLIENT_ID` from
   `githubClientIds` in the deployment's outputs, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`). `staging` exists;
   `production` and `infrastructure` come with their workflows.

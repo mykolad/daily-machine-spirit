@@ -14,7 +14,8 @@ public sealed record Placements(List<Guid> Order, Option<string> ETag);
 
 /// <summary>
 /// What the Scribes change: their order of the drafts, and which drafts are burned. Each change is saved in one batch
-/// with the <see cref="ScribeDecision"/> that records it, so the lessons for the Augury never miss a change or invent one.
+/// with the <see cref="ScribeDecision"/> that records it and its <see cref="AuditEntry"/>, so neither the lessons for the
+/// Augury nor the record (#9) can miss a change or invent one.
 /// Every call returns its failure as an <see cref="Error"/>, never throws one.
 /// </summary>
 public interface IScriptoriumRepository
@@ -27,7 +28,7 @@ public interface IScriptoriumRepository
     /// the drafts it passes as well as the one moved, and an order built on a draft that's gone would mislead.
     /// </summary>
     Task<Either<Error, Unit>> SavePlacements(
-        Placements placements, Option<ScribeDecision> decision, IReadOnlyCollection<Guid> mustStillWait, CancellationToken cancellationToken);
+        Placements placements, Option<ScribeDecision> decision, IReadOnlyCollection<Guid> mustStillWait, AuditEntry audit, CancellationToken cancellationToken);
 
     /// <summary>
     /// Moves a draft from one state to another (burning, restoring), and saves <paramref name="placements"/> with it when
@@ -40,6 +41,7 @@ public interface IScriptoriumRepository
         DraftState to,
         ScribeDecision decision,
         Option<Placements> placements,
+        AuditEntry audit,
         CancellationToken cancellationToken);
 
     /// <summary>
@@ -47,7 +49,7 @@ public interface IScriptoriumRepository
     /// (<paramref name="etag"/>, from <see cref="IDraftRepository.GetWithETag"/>): else
     /// <see cref="ScriptoriumRepository.ChangedMeanwhile"/>, as when another Scribe amended, burned or published it since.
     /// </summary>
-    Task<Either<Error, Unit>> Amend(Draft amended, string etag, ScribeDecision decision, CancellationToken cancellationToken);
+    Task<Either<Error, Unit>> Amend(Draft amended, string etag, ScribeDecision decision, AuditEntry audit, CancellationToken cancellationToken);
 
     /// <summary>Burned drafts, the most recently burned first.</summary>
     Task<Either<Error, List<Draft>>> GetBurned(int count, CancellationToken cancellationToken);
@@ -76,7 +78,7 @@ public class ScriptoriumRepository : IScriptoriumRepository
                 None: () => new Placements([], None)));
 
     public Task<Either<Error, Unit>> SavePlacements(
-        Placements placements, Option<ScribeDecision> decision, IReadOnlyCollection<Guid> mustStillWait, CancellationToken cancellationToken)
+        Placements placements, Option<ScribeDecision> decision, IReadOnlyCollection<Guid> mustStillWait, AuditEntry audit, CancellationToken cancellationToken)
         => AttemptEither(async () =>
         {
             var batch = WithPlacements(container.CreateTransactionalBatch(SharedPartitionKey), placements);
@@ -84,6 +86,7 @@ public class ScriptoriumRepository : IScriptoriumRepository
             batch = decision.Match(
                 Some: made => batch.CreateItem(ScribeDecisionDocument.From(made)),
                 None: () => batch);
+            batch = batch.CreateItem(AuditEntryDocument.From(audit));
             return await Execute(batch, cancellationToken);
         });
 
@@ -93,6 +96,7 @@ public class ScriptoriumRepository : IScriptoriumRepository
         DraftState to,
         ScribeDecision decision,
         Option<Placements> placements,
+        AuditEntry audit,
         CancellationToken cancellationToken)
         => AttemptEither(async () =>
         {
@@ -109,20 +113,22 @@ public class ScriptoriumRepository : IScriptoriumRepository
                         };
                         var batch = container.CreateTransactionalBatch(SharedPartitionKey)
                             .ReplaceItem(changed.Id, changed, new TransactionalBatchItemRequestOptions { IfMatchEtag = found.ETag })
-                            .CreateItem(ScribeDecisionDocument.From(decision));
+                            .CreateItem(ScribeDecisionDocument.From(decision))
+                            .CreateItem(AuditEntryDocument.From(audit));
                         batch = placements.Match(Some: order => WithPlacements(batch, order), None: () => batch);
                         return (await Execute(batch, cancellationToken)).Map(_ => changed.ToDraft());
                     },
                     None: () => Task.FromResult(Left<Error, Draft>(ChangedMeanwhile)));
         });
 
-    public Task<Either<Error, Unit>> Amend(Draft amended, string etag, ScribeDecision decision, CancellationToken cancellationToken)
+    public Task<Either<Error, Unit>> Amend(Draft amended, string etag, ScribeDecision decision, AuditEntry audit, CancellationToken cancellationToken)
         => AttemptEither(async () =>
         {
             var document = DraftDocument.From(amended);
             var batch = container.CreateTransactionalBatch(SharedPartitionKey)
                 .ReplaceItem(document.Id, document, new TransactionalBatchItemRequestOptions { IfMatchEtag = etag })
-                .CreateItem(ScribeDecisionDocument.From(decision));
+                .CreateItem(ScribeDecisionDocument.From(decision))
+                .CreateItem(AuditEntryDocument.From(audit));
             return await Execute(batch, cancellationToken);
         });
 

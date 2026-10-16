@@ -52,12 +52,16 @@ public sealed class CloudflareAccessSignIn : IScribeSignIn
         this.logger = logger;
     }
 
-    public async Task<bool> IsScribe(HttpRequest request, CancellationToken cancellationToken)
+    /// <summary>
+    /// The Scribe's Access id (the token's <c>sub</c>), stable for as long as their Access identity is. The record (#9)
+    /// keeps it rather than their email, and the Scriptorium shows it by a name from its settings.
+    /// </summary>
+    public async Task<Option<string>> Scribe(HttpRequest request, CancellationToken cancellationToken)
     {
         var token = request.Headers[TokenHeader].ToString();
         if (token.Length == 0)
         {
-            return false;
+            return None;
         }
 
         var validation = await GetOrFetchKeys(maxAge: KeysKeptFor, cancellationToken)
@@ -70,12 +74,16 @@ public sealed class CloudflareAccessSignIn : IScribeSignIn
 
         // Refusals are counted, not logged: the app's address is public, so anyone can send tokens, and a log line for
         // each would let them flood the logs. The reason is the check that failed, never the token itself.
-        var isScribe = validation.Exists(result => result.IsValid);
-        if (!isScribe)
+        // A valid token names its Scribe: one that doesn't would leave the record without anyone to name, so it's refused.
+        var scribe = validation.ToOption()
+            .Filter(result => result.IsValid)
+            .Bind(result => Optional(result.Claims.TryGetValue("sub", out var sub) ? sub as string : null))
+            .Filter(sub => sub.Length > 0);
+        if (scribe.IsNone)
         {
-            metrics.ScribeRefused(RefusalReason(validation));
+            metrics.ScribeRefused(validation.Exists(result => result.IsValid) ? "no-subject" : RefusalReason(validation));
         }
-        return isScribe;
+        return scribe;
     }
 
     private Task<TokenValidationResult> Validate(string token, JsonWebKeySet signingKeys)

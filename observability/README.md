@@ -58,7 +58,7 @@ Grafana's own **More → Export** writes another format (file provisioning), whi
 | `dms_generation_answers_total` | `model`, `outcome` | the models' answers: `accepted`, `refused` (broke a rule), `failed` |
 | `dms_rites_published_total` | `kind`, `model` | rites published |
 | `dms_judging_runs_total` | `outcome` | judging each new draft (its quality for the Augury, its scores for More rites): `judged`, `failed`, `off` |
-| `dms_scriptorium_refusals_total` | `reason` | Scriptorium requests whose Access token was refused: the check that failed (`SecurityTokenExpiredException`, ...), or `keys-unavailable` |
+| `dms_scriptorium_refusals_total` | `reason` | Scriptorium requests whose Access token was refused: the check that failed (`SecurityTokenExpiredException`, ...), `keys-unavailable`, or `no-subject` (a valid token naming nobody) |
 | `dms_signins_total` | `provider`, `outcome` | readers signing in to vote, by provider (`github`): `signed-in`, `declined` (at the provider), `refused` (a callback not started in that browser, or for another provider), `failed` (anything else: the provider sent back an error such as `redirect_uri_mismatch` or no code, refused the code, or didn't give the account's id) |
 | `dms_pages_purges_total` | `outcome` | pages purged from Cloudflare's cache after a vote or a new rite changed them: `purged`, `failed` (the page then refreshes within its hour at the edge) |
 | `http_client_*`, `dotnet_*` | | .NET's own: outgoing HTTP calls, memory, garbage collection, the thread pool |

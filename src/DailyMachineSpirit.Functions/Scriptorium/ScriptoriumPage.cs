@@ -80,6 +80,10 @@ public static partial class ScriptoriumPage
         .danger { background: #3b1814; color: #f6cfc6; border-color: #d0604d; }
         .danger:hover { background: #4a1f19; }
         .judgments li { background: #1a1612; border-radius: 12px; padding: 10px 14px; }
+        .record { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 8px; }
+        .record li { background: #1a1612; border-radius: 12px; padding: 10px 14px; }
+        .record time { display: block; font: 500 13px "JetBrains Mono", monospace; color: #b6a98f; }
+        .record-link { margin: 0 0 16px; }
         .judgments cite { font-style: normal; font-weight: 600; }
         .note { display: block; font: italic 18px/1.4 "EB Garamond", serif; color: #cdbd9e; }
         a { color: #d9b874; }
@@ -104,6 +108,7 @@ public static partial class ScriptoriumPage
             """);
         Heading(html, "The Scriptorium",
             "Unconsecrated rites await the judgment of the Scribes. Your notes teach the Augury what to choose when no Scribe is watching.");
+        html.Append("""<p class="record-link"><a href="/scriptorium/record">The Record</a>: every change to the calendar, and who made it.</p>""");
         html.Append($"""<p class="status" role="status">{status.IfNone(string.Empty)}</p>""");
 
         html.Append($"""
@@ -231,6 +236,39 @@ public static partial class ScriptoriumPage
         return html.ToString();
     }
 
+    /// <summary>
+    /// The Record (#9): every change to the drafts and rites, and who made it, newest first; or one draft's, from its
+    /// first draft to its publishing.
+    /// </summary>
+    /// <param name="names">The Scribes' names, by their Access id (<see cref="ScriptoriumOptions.Scribes"/>).</param>
+    public static string RenderRecord(IReadOnlyList<AuditEntry> entries, IReadOnlyDictionary<string, string> names, Option<Guid> draft)
+    {
+        var html = new StringBuilder();
+        Head(html, "The Record");
+        html.Append("""<main id="main">""");
+        Heading(html, "The Record",
+            "Every change to the calendar and the rites, and who made it, newest first: the Scribes' actions and the Machine Spirit's own.");
+        html.Append(draft.Match(
+            Some: _ => """<p>One rite's record. <a href="/scriptorium/record">The whole record</a> · <a href="/scriptorium">Back to the Scriptorium</a></p>""",
+            None: () => """<p><a href="/scriptorium">Back to the Scriptorium</a></p>"""));
+        if (entries.Count == 0)
+        {
+            html.Append("<p>Nothing is recorded yet.</p>");
+        }
+        else
+        {
+            html.Append("""<ol class="record">""");
+            foreach (var entry in entries)
+            {
+                html.Append($"""<li><time datetime="{entry.AtUtc:yyyy-MM-ddTHH:mm:ssZ}">{When(entry.AtUtc)}</time> {Encode(ScribeNames.Of(entry.Actor, names))} {Did(entry)}</li>""");
+            }
+            html.Append("</ol>");
+        }
+        html.Append("</main>");
+        Footer(html, withScript: false);
+        return html.ToString();
+    }
+
     /// <param name="acted">The rite the last action was on, marked so the Scribe's eye finds where it went.</param>
     private static void CalendarEntry(StringBuilder html, CalendarEntry entry, int place, bool isLast, DateOnly today, Option<Guid> acted)
     {
@@ -251,7 +289,7 @@ public static partial class ScriptoriumPage
                 : $"The Augury: {judged.Quality:P0}")
             .IfNone("Not yet judged by the Augury");
         var placedBy = entry.PlacedByScribes ? """<span class="placed">Placed by the Scribes</span> · """ : string.Empty;
-        html.Append($"""<p class="meta">{placedBy}{Encode(augury)} · written by <span class="nowrap">{Encode(draft.Writing.GeneratedByModel)}</span>{(draft.Writing.Edited ? ", amended by a Scribe" : string.Empty)}</p>""");
+        html.Append($"""<p class="meta">{placedBy}{Encode(augury)} · written by <span class="nowrap">{Encode(draft.Writing.GeneratedByModel)}</span>{(draft.Writing.Edited ? ", amended by a Scribe" : string.Empty)} · <a href="/scriptorium/record?draft={id}">its record</a></p>""");
 
         var reorder = new List<string>();
         if (place > 1)
@@ -443,6 +481,30 @@ public static partial class ScriptoriumPage
         ScribeAction.Burn => "Consigned to the flames",
         _ => "Restored from the ashes",
     };
+
+    // What an entry records, after who: the rite named by its title then, linking to its own record.
+    private static string Did(AuditEntry entry)
+    {
+        var rite = entry.DraftId.Match(
+            Some: id => $"""<a href="/scriptorium/record?draft={id:D}">“{WithCode(entry.Title)}”</a>""",
+            None: () => $"“{WithCode(entry.Title)}”");
+        var what = entry.Action switch
+        {
+            AuditAction.Anoint => $"anointed {rite}",
+            AuditAction.Exalt => $"exalted {rite}",
+            AuditAction.Humble => $"humbled {rite}",
+            AuditAction.Burn => $"consigned {rite} to the flames",
+            AuditAction.Restore => $"restored {rite} from the ashes",
+            AuditAction.Amend => $"amended {rite}",
+            AuditAction.Summon => "summoned new rites",
+            AuditAction.LetTheAuguryDecide => "let the Augury decide",
+            AuditAction.Write => $"wrote {rite}",
+            _ => $"published {rite}{entry.RiteNumber.Map(number => $" as NO. {number}").IfNone(string.Empty)}",
+        };
+        return what + entry.Detail.Map(detail => $""" <span class="when">({Encode(detail)})</span>""").IfNone(string.Empty);
+    }
+
+    private static string When(DateTime atUtc) => atUtc.ToString("ddd d MMM, HH:mm 'UTC'", CultureInfo.InvariantCulture);
 
     private static string Encode(string text) => WebUtility.HtmlEncode(text);
 

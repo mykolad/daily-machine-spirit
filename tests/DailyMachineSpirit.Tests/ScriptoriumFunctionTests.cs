@@ -26,7 +26,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         await testbed.AddDraft("The Rite of `git push --force`", 0.9f);
         var burned = await testbed.AddDraft("Litany of the Endless Spinner", 0.3f, RiteKind.Ritual);
-        Ok(await testbed.Scribes().Burn(burned.Id, "Spinners <again>.", CancellationToken.None));
+        Ok(await testbed.Scribes().Burn(burned.Id, "Spinners <again>.", BacklogTestbed.Tester, CancellationToken.None));
         var request = Get("");
 
         var html = Html(await Function(enabled: true).Page(request, CancellationToken.None), 200);
@@ -204,7 +204,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     public async Task AfterARestore_ThePageSaysWhenTheRiteGoesOut()
     {
         var draft = await testbed.AddDraft("Second chance", 0.5f);
-        Ok(await testbed.Scribes().Burn(draft.Id, "", CancellationToken.None));
+        Ok(await testbed.Scribes().Burn(draft.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         var function = Function(enabled: true);
 
         var response = await function.Decide(Post(""), draft.Id, "restore", CancellationToken.None);
@@ -239,7 +239,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var before = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
 
         // Good goes up and Excellent down, both placed by the Scribes; Fair stays where the Augury put it.
-        Ok(await testbed.Scribes().Exalt(good.Id, "", CancellationToken.None));
+        Ok(await testbed.Scribes().Exalt(good.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
 
         Assert.DoesNotContain("it would place it", before);
@@ -255,9 +255,9 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         await testbed.AddDraft("Excellent", 0.95f);
         var top = await testbed.AddDraft("Good", 0.7f);
         var burned = await testbed.AddDraft("Burned", 0.3f);
-        Ok(await testbed.Scribes().Burn(burned.Id, "", CancellationToken.None));
+        Ok(await testbed.Scribes().Burn(burned.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         // A Scribe placed a draft, so Let the Augury Decide shows too.
-        Ok(await testbed.Scribes().Anoint(top.Id, "", CancellationToken.None));
+        Ok(await testbed.Scribes().Anoint(top.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
         var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
 
@@ -280,8 +280,8 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         await testbed.AddDraft("Excellent", 0.95f);
         var top = await testbed.AddDraft("Good", 0.7f);
         var burned = await testbed.AddDraft("Burned", 0.3f);
-        Ok(await testbed.Scribes().Burn(burned.Id, "", CancellationToken.None));
-        Ok(await testbed.Scribes().Anoint(top.Id, "", CancellationToken.None));
+        Ok(await testbed.Scribes().Burn(burned.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        Ok(await testbed.Scribes().Anoint(top.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
         var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
 
@@ -302,7 +302,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     public async Task Page_WhenCosmosFails_SaysTheScriptoriumIsSilent()
     {
         var function = new ScriptoriumFunction(
-            testbed.ScribesWithoutCosmos(), testbed.Amendments(), new EveryoneIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), NullLogger<ScriptoriumFunction>.Instance);
+            testbed.ScribesWithoutCosmos(), testbed.Amendments(), testbed.Audit, new EveryoneIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
         var html = Html(await function.Page(Get(""), CancellationToken.None), 500);
 
@@ -358,7 +358,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var burned = await testbed.AddDraft("Burned", 0.5f);
         await testbed.AddDraft("Still waiting", 0.5f);
         var scribes = new Scribes(new DraftsFailingAfterFirstRead(testbed.Drafts), testbed.Rites, testbed.Scriptorium, testbed.Time);
-        var function = new ScriptoriumFunction(scribes, testbed.Amendments(), new EveryoneIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), NullLogger<ScriptoriumFunction>.Instance);
+        var function = new ScriptoriumFunction(scribes, testbed.Amendments(), testbed.Audit, new EveryoneIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
         var response = await function.Decide(Post(""), burned.Id, "burn", CancellationToken.None);
 
@@ -384,7 +384,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     public async Task Restoring_GoesBackToThePage()
     {
         var draft = await testbed.AddDraft("Second chance", 0.5f);
-        Ok(await testbed.Scribes().Burn(draft.Id, "", CancellationToken.None));
+        Ok(await testbed.Scribes().Burn(draft.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
         var response = await Function(enabled: true).Decide(Post(""), draft.Id, "restore", CancellationToken.None);
 
@@ -498,7 +498,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var draft = await testbed.AddDraft("Kept", 0.5f);
         var function = new ScriptoriumFunction(
-            testbed.Scribes(), testbed.Amendments(), new NobodyIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), NullLogger<ScriptoriumFunction>.Instance);
+            testbed.Scribes(), testbed.Amendments(), testbed.Audit, new NobodyIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
         var page = await function.Page(Get(""), CancellationToken.None);
         var decision = await function.Decide(Post(""), draft.Id, "burn", CancellationToken.None);
@@ -526,7 +526,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         await testbed.AddDraft("Excellent", 0.95f);
         var fair = await testbed.AddDraft("Fair", 0.4f);
-        Ok(await testbed.Scribes().Anoint(fair.Id, "", CancellationToken.None));
+        Ok(await testbed.Scribes().Anoint(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
         var result = await Function(enabled: true).LetTheAuguryDecide(Post(""), CancellationToken.None);
 
@@ -562,7 +562,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     public async Task AmendPage_ForADraftNoLongerWaiting_GoesBackToTheCalendar()
     {
         var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
-        Ok(await testbed.Scribes().Burn(draft.Id, "", CancellationToken.None));
+        Ok(await testbed.Scribes().Burn(draft.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
         var result = await Function(enabled: true).AmendPage(Get(""), draft.Id, CancellationToken.None);
 
@@ -629,8 +629,48 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Contains("""value="Litany of the Cold Cache, Amended" """, html);
     }
 
+    // A summon changes nothing stored itself, so its entry is saved alone, naming who summoned.
+    [Fact]
+    public async Task Summon_IsRecorded()
+    {
+        await Function(enabled: true).Summon(Post(""), CancellationToken.None);
+
+        var entry = Assert.Single(Ok(await testbed.Audit.GetNewest(10, LanguageExt.Prelude.None, CancellationToken.None)));
+        Assert.Equal((AuditEntry.StagingScribe, AuditAction.Summon), (entry.Actor, entry.Action));
+    }
+
+    [Fact]
+    public async Task TheRecord_ListsEachChange_AndWhoMadeIt_AllOrOneRites()
+    {
+        var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
+        await testbed.AddDraft("The Rite of Re-Run", 0.5f);
+        await Function(enabled: true).Decide(Post(""), draft.Id, "burn", CancellationToken.None);
+
+        var all = Html(await Function(enabled: true).Record(Get(""), CancellationToken.None), 200);
+        var one = Html(await Function(enabled: true).Record(Get($"?draft={draft.Id:D}"), CancellationToken.None), 200);
+
+        var rite = $"""<a href="/scriptorium/record?draft={draft.Id:D}">“Litany of the Cold Cache”</a>""";
+        Assert.Contains($"""A Scribe on staging consigned {rite} to the flames <span class="when">(from #2)</span>""", all);
+        Assert.Contains($"The Machine Spirit wrote {rite}", all);
+        Assert.Contains("“The Rite of Re-Run”", all);
+        Assert.Contains("One rite's record.", one);
+        Assert.DoesNotContain("“The Rite of Re-Run”", one);
+        var calendar = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+        Assert.Contains("""<a href="/scriptorium/record">The Record</a>""", calendar);
+    }
+
+    [Fact]
+    public async Task TheRecord_IsTheScribesAlone()
+    {
+        var notAScribe = new ScriptoriumFunction(testbed.Scribes(), testbed.Amendments(), testbed.Audit, new NobodyIsScribeSignIn(),
+            Options.Create(new ScriptoriumOptions { Enabled = true }), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+
+        Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<StatusCodeResult>(await notAScribe.Record(Get(""), CancellationToken.None)).StatusCode);
+        Assert.IsType<NotFoundResult>(await Function(enabled: false).Record(Get(""), CancellationToken.None));
+    }
+
     private ScriptoriumFunction Function(bool enabled)
-        => new(testbed.Scribes(), testbed.Amendments(), new EveryoneIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = enabled }), NullLogger<ScriptoriumFunction>.Instance);
+        => new(testbed.Scribes(), testbed.Amendments(), testbed.Audit, new EveryoneIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = enabled }), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
     private static HttpRequest Get(string query)
     {

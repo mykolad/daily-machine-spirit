@@ -15,6 +15,9 @@ public sealed class FakeAccessTeam : HttpMessageHandler, IHttpClientFactory
     public const string Domain = "scribes.cloudflareaccess.com";
     public const string Audience = "the-scriptoriums-aud-tag";
 
+    /// <summary>The signed-in Scribe's Access id: what a token's <c>sub</c> carries.</summary>
+    public const string ScribeId = "7335d417-61da-459d-899c-0a1f8f6f0d3b";
+
     private RsaSecurityKey key = NewKey("first");
 
     public int KeyFetches { get; private set; }
@@ -25,6 +28,15 @@ public sealed class FakeAccessTeam : HttpMessageHandler, IHttpClientFactory
 
     /// <summary>A token as Access issues it, for this team and audience unless told otherwise.</summary>
     public string Token(string issuer, string audience, DateTime expires)
+        => Token(issuer, audience, expires, new Dictionary<string, object> { ["sub"] = ScribeId, ["email"] = "scribe@example.com" });
+
+    /// <summary>A valid token that names nobody: no <c>sub</c>.</summary>
+    public string TokenWithoutSubject()
+        => Token($"https://{Domain}", Audience, DateTime.UtcNow.AddHours(1), new Dictionary<string, object> { ["email"] = "scribe@example.com" });
+
+    public string ValidToken() => Token($"https://{Domain}", Audience, DateTime.UtcNow.AddHours(1));
+
+    private string Token(string issuer, string audience, DateTime expires, Dictionary<string, object> claims)
         => new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
         {
             Issuer = issuer,
@@ -32,11 +44,9 @@ public sealed class FakeAccessTeam : HttpMessageHandler, IHttpClientFactory
             NotBefore = expires.AddHours(-2),
             IssuedAt = expires.AddHours(-2),
             Expires = expires,
-            Claims = new Dictionary<string, object> { ["email"] = "scribe@example.com" },
+            Claims = claims,
             SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.RsaSha256),
         });
-
-    public string ValidToken() => Token($"https://{Domain}", Audience, DateTime.UtcNow.AddHours(1));
 
     /// <summary>A token signed with a key the team never published.</summary>
     public static string ForgedToken()

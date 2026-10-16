@@ -51,12 +51,13 @@ public sealed class Amendments
     /// Saves the words if the draft is still the version the Scribe read (<paramref name="etag"/>): true when it was
     /// judged again, false when the judge failed and it waits without scores, as a draft that couldn't be judged does.
     /// </summary>
-    public Task<Either<Error, bool>> Save(Guid draftId, string etag, RiteContent words, string note, CancellationToken cancellationToken)
+    public Task<Either<Error, bool>> Save(
+        Guid draftId, string etag, RiteContent words, string note, string scribe, CancellationToken cancellationToken)
         => Note(note).BindAsync(checkedNote => Current(draftId, etag, cancellationToken)
             .BindAsync(draft => RiteChecks.Check(words, draft.Writing.Kind).MapLeft(Refusal)
                 .MapAsync(checkedWords => Judged(Amended(draft, checkedWords), cancellationToken))
                 .BindAsync(judged => scriptorium
-                    .Amend(judged.Draft, etag, Decision(draft, checkedNote), cancellationToken)
+                    .Amend(judged.Draft, etag, Decision(draft, checkedNote), Audit(scribe, draft, judged.Draft), cancellationToken)
                     .MapAsync(_ => Task.FromResult(judged.Judged)))));
 
     /// <summary>The words rewritten by the writer as the note asks; not saved, for the Scribe to read first.</summary>
@@ -109,6 +110,12 @@ public sealed class Amendments
         Note = note,
         DecidedAtUtc = time.GetUtcNow().UtcDateTime,
     };
+
+    // The title it had before, when that changed: the record's line names the rite by its new one.
+    private AuditEntry Audit(string scribe, Draft before, Draft after)
+        => AuditEntries.Of(time, scribe, AuditAction.Amend, after, before.Writing.Title == after.Writing.Title
+            ? None
+            : Some($"was “{before.Writing.Title}”"));
 
     private static Error Refusal(Error why) => Error.New(Refused, why.Message);
 

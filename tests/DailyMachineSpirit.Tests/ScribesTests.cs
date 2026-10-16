@@ -55,7 +55,7 @@ public sealed class ScribesTests : IAsyncLifetime
         await testbed.AddDraft("Good", 0.7f);
         var fair = await testbed.AddDraft("Fair", 0.4f);
 
-        Ok(await testbed.Scribes().Anoint(fair.Id, "  The Heretical Truth names the real fix.  ", CancellationToken.None));
+        Ok(await testbed.Scribes().Anoint(fair.Id, "  The Heretical Truth names the real fix.  ", BacklogTestbed.Tester, CancellationToken.None));
 
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
         Assert.Equal(["Fair", "Excellent", "Good"], view.Calendar.Select(entry => entry.Draft.Writing.Title));
@@ -76,7 +76,7 @@ public sealed class ScribesTests : IAsyncLifetime
     public async Task Anoint_TheFirstDraft_KeepsItAheadOfABetterOneFromARefill()
     {
         var first = await testbed.AddDraft("The Augury's pick", 0.6f);
-        Ok(await testbed.Scribes().Anoint(first.Id, "Yes, this one.", CancellationToken.None));
+        Ok(await testbed.Scribes().Anoint(first.Id, "Yes, this one.", BacklogTestbed.Tester, CancellationToken.None));
 
         await testbed.AddDraft("Better, from a refill", 0.95f);
 
@@ -96,11 +96,11 @@ public sealed class ScribesTests : IAsyncLifetime
         {
             var arrived = await testbed.AddDraft("Arrived meanwhile", 0.5f);
             anointedMeanwhile = arrived.Id;
-            Ok(await testbed.Scribes().Anoint(arrived.Id, "", CancellationToken.None));
+            Ok(await testbed.Scribes().Anoint(arrived.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         });
         var scribes = new Scribes(drafts, testbed.Rites, testbed.Scriptorium, testbed.Time);
 
-        var result = await scribes.Exalt(fair.Id, "", CancellationToken.None);
+        var result = await scribes.Exalt(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None);
 
         Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Failed(result));
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
@@ -114,10 +114,10 @@ public sealed class ScribesTests : IAsyncLifetime
         var fair = await testbed.AddDraft("Fair", 0.4f);
         // Right after this request reads the waiting drafts, another Scribe burns the one it's about to exalt.
         var drafts = new InterruptedDrafts(testbed.Drafts,
-            async () => Ok(await testbed.Scribes().Burn(fair.Id, "Burned meanwhile.", CancellationToken.None)));
+            async () => Ok(await testbed.Scribes().Burn(fair.Id, "Burned meanwhile.", BacklogTestbed.Tester, CancellationToken.None)));
         var scribes = new Scribes(drafts, testbed.Rites, testbed.Scriptorium, testbed.Time);
 
-        var result = await scribes.Exalt(fair.Id, "", CancellationToken.None);
+        var result = await scribes.Exalt(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None);
 
         Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Failed(result));
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
@@ -133,15 +133,15 @@ public sealed class ScribesTests : IAsyncLifetime
         // Fair isn't placed when this request reads the calendar; right after, another Scribe anoints it. The burn
         // still goes through (both Scribes acted on what they saw), and Fair stays in the Scribes' order, burned.
         var drafts = new InterruptedDrafts(testbed.Drafts,
-            async () => Ok(await testbed.Scribes().Anoint(fair.Id, "", CancellationToken.None)));
+            async () => Ok(await testbed.Scribes().Anoint(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None)));
         var scribes = new Scribes(drafts, testbed.Rites, testbed.Scriptorium, testbed.Time);
 
-        Ok(await scribes.Burn(fair.Id, "", CancellationToken.None));
+        Ok(await scribes.Burn(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
         var burned = Ok(await testbed.Scribes().View(CancellationToken.None));
         Assert.Equal(["Excellent"], burned.Calendar.Select(entry => entry.Draft.Writing.Title));
         Assert.Equal(["Fair"], burned.Ashes.Select(draft => draft.Writing.Title));
-        Ok(await testbed.Scribes().Restore(fair.Id, "", CancellationToken.None));
+        Ok(await testbed.Scribes().Restore(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         var restored = Ok(await testbed.Scribes().View(CancellationToken.None));
         Assert.Equal(["Excellent", "Fair"], restored.Calendar.Select(entry => entry.Draft.Writing.Title));
         Assert.False(restored.Calendar.Single(entry => entry.Draft.Id == fair.Id).PlacedByScribes);
@@ -156,10 +156,10 @@ public sealed class ScribesTests : IAsyncLifetime
         // Humbling Excellent would place Good first. Right after this request reads the waiting drafts, another Scribe
         // burns Good, which wasn't placed, so the order's ETag doesn't change: only Good's own state can tell.
         var drafts = new InterruptedDrafts(testbed.Drafts,
-            async () => Ok(await testbed.Scribes().Burn(good.Id, "Burned meanwhile.", CancellationToken.None)));
+            async () => Ok(await testbed.Scribes().Burn(good.Id, "Burned meanwhile.", BacklogTestbed.Tester, CancellationToken.None)));
         var scribes = new Scribes(drafts, testbed.Rites, testbed.Scriptorium, testbed.Time);
 
-        var result = await scribes.Humble(excellent.Id, "", CancellationToken.None);
+        var result = await scribes.Humble(excellent.Id, "", BacklogTestbed.Tester, CancellationToken.None);
 
         Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Failed(result));
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
@@ -176,7 +176,7 @@ public sealed class ScribesTests : IAsyncLifetime
         {
             var arrived = await testbed.AddDraft("Arrived meanwhile", 0.5f);
             anointedMeanwhile = arrived.Id;
-            Ok(await testbed.Scribes().Anoint(arrived.Id, "", CancellationToken.None));
+            Ok(await testbed.Scribes().Anoint(arrived.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         });
         var publisher = new DailyMachineSpirit.Functions.Generation.DailyRitePublisher(
             testbed.Rites, drafts, testbed.Scriptorium, testbed.Refiller(), testbed.Time, testbed.Probe.Metrics,
@@ -195,7 +195,7 @@ public sealed class ScribesTests : IAsyncLifetime
     {
         await testbed.AddDraft("Excellent", 0.95f);
         var fair = await testbed.AddDraft("Fair", 0.4f);
-        Ok(await testbed.Scribes().Anoint(fair.Id, "", CancellationToken.None));
+        Ok(await testbed.Scribes().Anoint(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
         var published = Ok(await testbed.Publisher().PublishToday(CancellationToken.None));
 
@@ -210,7 +210,7 @@ public sealed class ScribesTests : IAsyncLifetime
         await testbed.AddDraft("Good", 0.7f);
         var fair = await testbed.AddDraft("Fair", 0.4f);
 
-        Ok(await testbed.Scribes().Exalt(fair.Id, "", CancellationToken.None));
+        Ok(await testbed.Scribes().Exalt(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
         Assert.Equal(["Excellent", "Fair", "Good"], view.Calendar.Select(entry => entry.Draft.Writing.Title));
@@ -224,7 +224,7 @@ public sealed class ScribesTests : IAsyncLifetime
         await testbed.AddDraft("Good", 0.7f);
         await testbed.AddDraft("Fair", 0.4f);
 
-        Ok(await testbed.Scribes().Humble(excellent.Id, "Too close to last week's.", CancellationToken.None));
+        Ok(await testbed.Scribes().Humble(excellent.Id, "Too close to last week's.", BacklogTestbed.Tester, CancellationToken.None));
 
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
         Assert.Equal(["Good", "Excellent", "Fair"], view.Calendar.Select(entry => entry.Draft.Writing.Title));
@@ -238,11 +238,11 @@ public sealed class ScribesTests : IAsyncLifetime
         var x = await testbed.AddDraft("X", 0.8f);
         await testbed.AddDraft("Y", 0.7f);
         var z = await testbed.AddDraft("Z", 0.6f);
-        Ok(await testbed.Scribes().Anoint(z.Id, "", CancellationToken.None));
+        Ok(await testbed.Scribes().Anoint(z.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         // The Scribes now want Y before X, against the Augury's order.
-        Ok(await testbed.Scribes().Humble(x.Id, "", CancellationToken.None));
+        Ok(await testbed.Scribes().Humble(x.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
-        Ok(await testbed.Scribes().Exalt(w.Id, "", CancellationToken.None));
+        Ok(await testbed.Scribes().Exalt(w.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
         Assert.Equal(["W", "Z", "Y", "X"], view.Calendar.Select(entry => entry.Draft.Writing.Title));
@@ -254,8 +254,8 @@ public sealed class ScribesTests : IAsyncLifetime
         var first = await testbed.AddDraft("Excellent", 0.95f);
         var last = await testbed.AddDraft("Fair", 0.4f);
 
-        Assert.Equal(Scribes.NothingToMove, Failed(await testbed.Scribes().Exalt(first.Id, "", CancellationToken.None)));
-        Assert.Equal(Scribes.NothingToMove, Failed(await testbed.Scribes().Humble(last.Id, "", CancellationToken.None)));
+        Assert.Equal(Scribes.NothingToMove, Failed(await testbed.Scribes().Exalt(first.Id, "", BacklogTestbed.Tester, CancellationToken.None)));
+        Assert.Equal(Scribes.NothingToMove, Failed(await testbed.Scribes().Humble(last.Id, "", BacklogTestbed.Tester, CancellationToken.None)));
 
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
         Assert.Equal(["Excellent", "Fair"], view.Calendar.Select(entry => entry.Draft.Writing.Title));
@@ -268,7 +268,7 @@ public sealed class ScribesTests : IAsyncLifetime
         var excellent = await testbed.AddDraft("Excellent", 0.95f);
         await testbed.AddDraft("Fair", 0.4f);
 
-        var waiting = Ok(await testbed.Scribes().Burn(excellent.Id, "Not funny.", CancellationToken.None));
+        var waiting = Ok(await testbed.Scribes().Burn(excellent.Id, "Not funny.", BacklogTestbed.Tester, CancellationToken.None));
 
         Assert.Equal(1, waiting);
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
@@ -286,10 +286,10 @@ public sealed class ScribesTests : IAsyncLifetime
     public async Task Restore_BringsADraftBackFromTheAshes()
     {
         var draft = await testbed.AddDraft("Second chance", 0.6f);
-        Ok(await testbed.Scribes().Burn(draft.Id, "", CancellationToken.None));
+        Ok(await testbed.Scribes().Burn(draft.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         testbed.Time.Advance(TimeSpan.FromMinutes(1));
 
-        Ok(await testbed.Scribes().Restore(draft.Id, "Funnier than I thought.", CancellationToken.None));
+        Ok(await testbed.Scribes().Restore(draft.Id, "Funnier than I thought.", BacklogTestbed.Tester, CancellationToken.None));
 
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
         Assert.Equal("Second chance", Assert.Single(view.Calendar).Draft.Writing.Title);
@@ -306,10 +306,10 @@ public sealed class ScribesTests : IAsyncLifetime
     {
         await testbed.AddDraft("Excellent", 0.95f);
         var fair = await testbed.AddDraft("Fair", 0.4f);
-        Ok(await testbed.Scribes().Anoint(fair.Id, "", CancellationToken.None));
-        Ok(await testbed.Scribes().Burn(fair.Id, "", CancellationToken.None));
+        Ok(await testbed.Scribes().Anoint(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        Ok(await testbed.Scribes().Burn(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
-        Ok(await testbed.Scribes().Restore(fair.Id, "", CancellationToken.None));
+        Ok(await testbed.Scribes().Restore(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
         Assert.Equal(["Excellent", "Fair"], view.Calendar.Select(entry => entry.Draft.Writing.Title));
@@ -321,16 +321,16 @@ public sealed class ScribesTests : IAsyncLifetime
     public async Task Restore_WorksForADraftBurnedLongAgo_BeyondTheAshesShown()
     {
         var first = await testbed.AddDraft("Burned first", 0.5f);
-        Ok(await testbed.Scribes().Burn(first.Id, "", CancellationToken.None));
+        Ok(await testbed.Scribes().Burn(first.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         for (var i = 0; i < Scribes.Shown; i++)
         {
             testbed.Time.Advance(TimeSpan.FromMinutes(1));
             var later = await testbed.AddDraft($"Burned later {i}", 0.5f);
-            Ok(await testbed.Scribes().Burn(later.Id, "", CancellationToken.None));
+            Ok(await testbed.Scribes().Burn(later.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         }
         Assert.DoesNotContain(Ok(await testbed.Scribes().View(CancellationToken.None)).Ashes, ash => ash.Id == first.Id);
 
-        Ok(await testbed.Scribes().Restore(first.Id, "", CancellationToken.None));
+        Ok(await testbed.Scribes().Restore(first.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
         Assert.Equal("Burned first", Assert.Single(await testbed.Waiting()).Writing.Title);
     }
@@ -342,8 +342,8 @@ public sealed class ScribesTests : IAsyncLifetime
         var two = await testbed.AddDraft("Two", 0.5f);
 
         var left = await Task.WhenAll(
-            testbed.Scribes().Burn(one.Id, "", CancellationToken.None),
-            testbed.Scribes().Burn(two.Id, "", CancellationToken.None));
+            testbed.Scribes().Burn(one.Id, "", BacklogTestbed.Tester, CancellationToken.None),
+            testbed.Scribes().Burn(two.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
         Assert.Contains(0, left.Select(Ok));
         Assert.Empty(await testbed.Waiting());
@@ -354,9 +354,9 @@ public sealed class ScribesTests : IAsyncLifetime
     {
         await testbed.AddDraft("Excellent", 0.95f);
         var fair = await testbed.AddDraft("Fair", 0.4f);
-        Ok(await testbed.Scribes().Anoint(fair.Id, "", CancellationToken.None));
+        Ok(await testbed.Scribes().Anoint(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
-        Ok(await testbed.Scribes().LetTheAuguryDecide(CancellationToken.None));
+        Ok(await testbed.Scribes().LetTheAuguryDecide(BacklogTestbed.Tester, CancellationToken.None));
 
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
         Assert.Equal(["Excellent", "Fair"], view.Calendar.Select(entry => entry.Draft.Writing.Title));
@@ -368,7 +368,7 @@ public sealed class ScribesTests : IAsyncLifetime
     {
         var draft = await testbed.AddDraft("Kept", 0.5f);
 
-        var result = await testbed.Scribes().Burn(draft.Id, new string('a', ScribeDecision.MaxNoteLength + 1), CancellationToken.None);
+        var result = await testbed.Scribes().Burn(draft.Id, new string('a', ScribeDecision.MaxNoteLength + 1), BacklogTestbed.Tester, CancellationToken.None);
 
         Assert.Equal(Scribes.NoteTooLong, Failed(result));
         Assert.Single(await testbed.Waiting());
@@ -379,9 +379,9 @@ public sealed class ScribesTests : IAsyncLifetime
     {
         var unknown = Guid.NewGuid();
 
-        Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Failed(await testbed.Scribes().Anoint(unknown, "", CancellationToken.None)));
-        Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Failed(await testbed.Scribes().Burn(unknown, "", CancellationToken.None)));
-        Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Failed(await testbed.Scribes().Restore(unknown, "", CancellationToken.None)));
+        Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Failed(await testbed.Scribes().Anoint(unknown, "", BacklogTestbed.Tester, CancellationToken.None)));
+        Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Failed(await testbed.Scribes().Burn(unknown, "", BacklogTestbed.Tester, CancellationToken.None)));
+        Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Failed(await testbed.Scribes().Restore(unknown, "", BacklogTestbed.Tester, CancellationToken.None)));
     }
 
     [Fact]
@@ -391,10 +391,11 @@ public sealed class ScribesTests : IAsyncLifetime
         var good = await testbed.AddDraft("Good", 0.7f);
         var fair = await testbed.AddDraft("Fair", 0.4f);
         var stale = Ok(await testbed.Scriptorium.GetPlacements(CancellationToken.None));
-        Ok(await testbed.Scribes().Anoint(good.Id, "", CancellationToken.None));
+        Ok(await testbed.Scribes().Anoint(good.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
         // The second Scribe's change was based on the order before the first one's.
-        var second = await testbed.Scriptorium.SavePlacements(stale with { Order = [fair.Id] }, None, [], CancellationToken.None);
+        var second = await testbed.Scriptorium.SavePlacements(
+            stale with { Order = [fair.Id] }, None, [], AuditEntries.Of(testbed.Time, BacklogTestbed.Tester, AuditAction.Anoint, None, None), CancellationToken.None);
 
         Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Failed(second));
         Assert.Equal("Good", Ok(await testbed.Scribes().View(CancellationToken.None)).Calendar[0].Draft.Writing.Title);
@@ -405,7 +406,7 @@ public sealed class ScribesTests : IAsyncLifetime
     {
         testbed.BacklogSize = 1;
         var burned = await testbed.AddDraft("Litany of the Endless Spinner", 0.5f);
-        Ok(await testbed.Scribes().Burn(burned.Id, "", CancellationToken.None));
+        Ok(await testbed.Scribes().Burn(burned.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         testbed.Models.Answers(Sol, Answer("Something new"));
 
         Ok(await testbed.Refiller().Refill(CancellationToken.None));

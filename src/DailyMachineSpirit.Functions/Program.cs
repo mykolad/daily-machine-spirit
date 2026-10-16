@@ -61,6 +61,7 @@ builder.Services.AddSingleton(services =>
 builder.Services.AddSingleton<IRiteRepository, RiteRepository>();
 builder.Services.AddSingleton<IDraftRepository, DraftRepository>();
 builder.Services.AddSingleton<IScriptoriumRepository, ScriptoriumRepository>();
+builder.Services.AddSingleton<IAuditRepository, AuditRepository>();
 builder.Services.AddSingleton<IVoteRepository, VoteRepository>();
 
 // The daily rite and the backlog. Created only when the timer or a refill runs, so HTTP functions start without the generation settings.

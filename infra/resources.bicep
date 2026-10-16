@@ -24,6 +24,10 @@ var roles = {
 var productionAccess = {
   teamDomain: 'restless-river-ab5e.cloudflareaccess.com'
   audience: '3fac1c3c199e53f8242ae90f5c539f443843eaeff7a9d7ece38afe992f18d1ef'
+  // The names the Scriptorium's record (#9) shows for its Scribes, by Access id: the user's ID in Zero Trust's users
+  // list (the token's sub), whose last characters the record shows for a Scribe without a name. Not secret either,
+  // and a first name is enough.
+  scribes: {}
 }
 
 // The GitHub OAuth apps readers sign in with to vote, one per environment, since each has its own callback URL
@@ -184,6 +188,8 @@ module staging 'modules/environment.bicep' = {
     publishesDaily: true
     scriptoriumEnabled: true
     scriptoriumWithoutSignIn: true
+    // No sign-in, so no Scribes to tell apart: the record names them all as one.
+    scribeNames: {}
     cloudflareAccessTeamDomain: ''
     cloudflareAccessAudience: ''
     signInGitHubClientId: signInGitHubClientIds.staging
@@ -217,6 +223,7 @@ module production 'modules/environment.bicep' = if (deployProduction) {
     // Only behind Cloudflare Access (productionAccess): the app checks Access's token on every Scriptorium request.
     scriptoriumEnabled: true
     scriptoriumWithoutSignIn: false
+    scribeNames: productionAccess.scribes
     cloudflareAccessTeamDomain: productionAccess.teamDomain
     cloudflareAccessAudience: productionAccess.audience
     signInGitHubClientId: signInGitHubClientIds.production

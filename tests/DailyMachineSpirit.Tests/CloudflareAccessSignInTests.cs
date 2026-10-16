@@ -27,8 +27,13 @@ public sealed class CloudflareAccessSignInTests : IDisposable
     public void Dispose() => probe.Dispose();
 
     [Fact]
-    public async Task ATokenFromTheTeam_ForThisApplication_IsAScribe()
-        => Assert.True(await IsScribe(team.ValidToken()));
+    public async Task ATokenFromTheTeam_ForThisApplication_IsAScribe_NamedByTheirAccessId()
+        => Assert.Equal(LanguageExt.Prelude.Some(FakeAccessTeam.ScribeId), await signIn.Scribe(Request(team.ValidToken()), CancellationToken.None));
+
+    // The record (#9) needs someone to name: a valid token without a subject names nobody.
+    [Fact]
+    public async Task AValidTokenWithoutASubject_IsNot()
+        => Assert.False(await IsScribe(team.TokenWithoutSubject()));
 
     [Fact]
     public async Task ARequestWithoutAToken_IsNot()
@@ -153,10 +158,12 @@ public sealed class CloudflareAccessSignInTests : IDisposable
         Assert.Equal(2, team.KeyFetches);
     }
 
-    private Task<bool> IsScribe(string token)
+    private Task<bool> IsScribe(string token) => signIn.IsScribe(Request(token), CancellationToken.None);
+
+    private static HttpRequest Request(string token)
     {
         var request = new DefaultHttpContext().Request;
         request.Headers[CloudflareAccessSignIn.TokenHeader] = token;
-        return signIn.IsScribe(request, CancellationToken.None);
+        return request;
     }
 }

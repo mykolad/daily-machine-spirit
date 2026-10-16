@@ -17,11 +17,25 @@ public class DraftRepository : IDraftRepository
         this.container = container;
     }
 
+    // Every draft is written by the Machine Spirit (a refill): the record says so, in the same batch.
     public Task<Either<Error, Draft>> Add(Draft draft, CancellationToken cancellationToken)
-        => Attempt(async () =>
+        => AttemptEither(async () =>
         {
-            await container.CreateItemAsync(DraftDocument.From(draft), SharedPartitionKey, cancellationToken: cancellationToken);
-            return draft;
+            using var response = await container.CreateTransactionalBatch(SharedPartitionKey)
+                .CreateItem(DraftDocument.From(draft))
+                .CreateItem(AuditEntryDocument.From(new AuditEntry
+                {
+                    Id = Guid.NewGuid(),
+                    AtUtc = DateTime.UtcNow,
+                    Actor = AuditEntry.MachineSpirit,
+                    Action = AuditAction.Write,
+                    DraftId = draft.Id,
+                    Title = draft.Writing.Title,
+                }))
+                .ExecuteAsync(cancellationToken);
+            return response.IsSuccessStatusCode
+                ? Right<Error, Draft>(draft)
+                : Error.New($"Saving the draft failed: {response.StatusCode}. {response.ErrorMessage}");
         });
 
     public Task<Either<Error, Option<Draft>>> Get(Guid draftId, CancellationToken cancellationToken)

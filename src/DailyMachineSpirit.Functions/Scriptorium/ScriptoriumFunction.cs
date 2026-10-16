@@ -34,17 +34,30 @@ public sealed class ScriptoriumFunction
     public const string AllBurned = "every draft was burned";
     public const string Uncounted = "the backlog couldn't be counted after a burn";
 
+    /// <summary>How many entries the Record shows: the newest.</summary>
+    public const int RecordShown = 100;
+
     private readonly Scribes scribes;
     private readonly Amendments amendments;
+    private readonly IAuditRepository audit;
+    private readonly TimeProvider time;
     private readonly IScribeSignIn signIn;
     private readonly IOptions<ScriptoriumOptions> options;
     private readonly ILogger<ScriptoriumFunction> logger;
 
     public ScriptoriumFunction(
-        Scribes scribes, Amendments amendments, IScribeSignIn signIn, IOptions<ScriptoriumOptions> options, ILogger<ScriptoriumFunction> logger)
+        Scribes scribes,
+        Amendments amendments,
+        IAuditRepository audit,
+        IScribeSignIn signIn,
+        IOptions<ScriptoriumOptions> options,
+        TimeProvider time,
+        ILogger<ScriptoriumFunction> logger)
     {
         this.scribes = scribes;
         this.amendments = amendments;
+        this.audit = audit;
+        this.time = time;
         this.signIn = signIn;
         this.options = options;
         this.logger = logger;
@@ -94,48 +107,75 @@ public sealed class ScriptoriumFunction
             Left: error => Failed(request, error));
     }
 
+    /// <summary>The Record (#9): every change and who made it, newest first; <c>?draft=</c> for one draft's.</summary>
+    [Function("ScriptoriumRecord")]
+    public async Task<IActionResult> Record(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "scriptorium/record")] HttpRequest request, CancellationToken cancellationToken)
+    {
+        if (!options.Value.Enabled)
+        {
+            return new NotFoundResult();
+        }
+        if (!await signIn.IsScribe(request, cancellationToken))
+        {
+            return new StatusCodeResult(StatusCodes.Status403Forbidden);
+        }
+
+        var draft = Optional(request.Query["draft"].ToString()).Bind(text => Guid.TryParse(text, out var id) ? Some(id) : None);
+        return (await audit.GetNewest(RecordShown, draft, cancellationToken)).Match(
+            Right: entries => Html(request, ScriptoriumPage.RenderRecord(entries, options.Value.Scribes, draft), StatusCodes.Status200OK),
+            Left: error => Failed(request, error));
+    }
+
     [Function("ScriptoriumDecision")]
     public async Task<ScriptoriumResponse> Decide(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "scriptorium/drafts/{draftId:guid}/{action:alpha}")] HttpRequest request,
         Guid draftId,
         string action,
         CancellationToken cancellationToken)
-        => await (await Refusal(request, cancellationToken)).Match(
-            Some: refused => Task.FromResult(new ScriptoriumResponse { Result = refused }),
-            None: () => Act(request, draftId, action, cancellationToken));
+        => await (await ActingScribe(request, cancellationToken)).Match(
+            Left: refused => Task.FromResult(new ScriptoriumResponse { Result = refused }),
+            Right: scribe => Act(request, draftId, action, scribe, cancellationToken));
 
     [Function("ScriptoriumSummon")]
     public async Task<ScriptoriumResponse> Summon(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "scriptorium/summon")] HttpRequest request, CancellationToken cancellationToken)
-        => (await Refusal(request, cancellationToken)).Match(
-            Some: refused => new ScriptoriumResponse { Result = refused },
-            None: () => new ScriptoriumResponse { Result = BackToPage("summon"), RefillReason = Summoned });
+        => await (await ActingScribe(request, cancellationToken)).Match(
+            Left: refused => Task.FromResult(new ScriptoriumResponse { Result = refused }),
+            Right: async scribe =>
+            {
+                // The summon changes nothing stored itself (the refill writes the drafts, each recorded as the Machine
+                // Spirit's), so its entry is saved alone. Failing, it's logged, and the summon still goes ahead.
+                (await audit.Add(AuditEntries.Of(time, scribe, AuditAction.Summon, None, None), cancellationToken))
+                    .IfLeft(error => logger.LogError(error.ToException(), "A summon wasn't recorded: {Reason}", error.Message));
+                return new ScriptoriumResponse { Result = BackToPage("summon"), RefillReason = Summoned };
+            });
 
     [Function("ScriptoriumAugury")]
     public async Task<IActionResult> LetTheAuguryDecide(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "scriptorium/augury")] HttpRequest request, CancellationToken cancellationToken)
-        => await (await Refusal(request, cancellationToken)).Match(
-            Some: refused => Task.FromResult(refused),
-            None: async () => Answer(request, "augury", None, await scribes.LetTheAuguryDecide(cancellationToken)).Result);
+        => await (await ActingScribe(request, cancellationToken)).Match(
+            Left: refused => Task.FromResult(refused),
+            Right: async scribe => Answer(request, "augury", None, await scribes.LetTheAuguryDecide(scribe, cancellationToken)).Result);
 
-    private async Task<ScriptoriumResponse> Act(HttpRequest request, Guid draftId, string action, CancellationToken cancellationToken)
+    private async Task<ScriptoriumResponse> Act(HttpRequest request, Guid draftId, string action, string scribe, CancellationToken cancellationToken)
         => await (await ReadForm(request, cancellationToken)).Match(
-            Some: fields => Act(request, draftId, action, fields, cancellationToken),
+            Some: fields => Act(request, draftId, action, fields, scribe, cancellationToken),
             None: () => Task.FromResult(new ScriptoriumResponse { Result = new BadRequestResult() }));
 
     private async Task<ScriptoriumResponse> Act(
-        HttpRequest request, Guid draftId, string action, IFormCollection fields, CancellationToken cancellationToken)
+        HttpRequest request, Guid draftId, string action, IFormCollection fields, string scribe, CancellationToken cancellationToken)
     {
         var note = fields["note"].ToString();
         return action switch
         {
-            "amend" => await Amend(request, draftId, fields, cancellationToken),
+            "amend" => await Amend(request, draftId, fields, scribe, cancellationToken),
             "rewrite" => await Rewrite(request, draftId, fields, cancellationToken),
-            "anoint" => Answer(request, action, draftId, await scribes.Anoint(draftId, note, cancellationToken)),
-            "exalt" => Answer(request, action, draftId, await scribes.Exalt(draftId, note, cancellationToken)),
-            "humble" => Answer(request, action, draftId, await scribes.Humble(draftId, note, cancellationToken)),
-            "restore" => Answer(request, action, draftId, await scribes.Restore(draftId, note, cancellationToken)),
-            "burn" => (await scribes.Burn(draftId, note, cancellationToken)).Match(
+            "anoint" => Answer(request, action, draftId, await scribes.Anoint(draftId, note, scribe, cancellationToken)),
+            "exalt" => Answer(request, action, draftId, await scribes.Exalt(draftId, note, scribe, cancellationToken)),
+            "humble" => Answer(request, action, draftId, await scribes.Humble(draftId, note, scribe, cancellationToken)),
+            "restore" => Answer(request, action, draftId, await scribes.Restore(draftId, note, scribe, cancellationToken)),
+            "burn" => (await scribes.Burn(draftId, note, scribe, cancellationToken)).Match(
                 // Nothing waits any more, or it can't be told: refill now rather than at the next daily run. A refill
                 // only writes what's missing, so an unneeded one costs a read.
                 Right: waiting => waiting.Match(
@@ -149,12 +189,13 @@ public sealed class ScriptoriumFunction
     }
 
     // Saved and judged again, back to the calendar; refused, the same page again with the Scribe's words and why.
-    private async Task<ScriptoriumResponse> Amend(HttpRequest request, Guid draftId, IFormCollection fields, CancellationToken cancellationToken)
+    private async Task<ScriptoriumResponse> Amend(
+        HttpRequest request, Guid draftId, IFormCollection fields, string scribe, CancellationToken cancellationToken)
     {
         var words = Words(fields);
         var note = fields["note"].ToString();
         var etag = fields["etag"].ToString();
-        return await (await amendments.Save(draftId, etag, words, note, cancellationToken)).Match(
+        return await (await amendments.Save(draftId, etag, words, note, scribe, cancellationToken)).Match(
             Right: judged => Task.FromResult(new ScriptoriumResponse { Result = Back(judged ? "amend" : "amend-unjudged", draftId) }),
             Left: error => IsTheScribes(error)
                 ? AmendAgain(request, draftId, etag, words, note, error.Message, StatusCodes.Status422UnprocessableEntity, cancellationToken)
@@ -229,17 +270,19 @@ public sealed class ScriptoriumFunction
 
     // Turned off, the Scriptorium doesn't exist. Only a Scribe may act (IScribeSignIn), and a form posted from another
     // site (a forged request riding a Scribe's sign-in or address) is forbidden.
-    private async Task<Option<IActionResult>> Refusal(HttpRequest request, CancellationToken cancellationToken)
+    // Which Scribe acts, for the record (#9); else why they may not.
+    private async Task<Either<IActionResult, string>> ActingScribe(HttpRequest request, CancellationToken cancellationToken)
     {
         if (!options.Value.Enabled)
         {
             return new NotFoundResult();
         }
-        if (!await signIn.IsScribe(request, cancellationToken) || !RequestOrigin.IsFromThisSite(request))
+        if (!RequestOrigin.IsFromThisSite(request))
         {
             return new StatusCodeResult(StatusCodes.Status403Forbidden);
         }
-        return None;
+        return (await signIn.Scribe(request, cancellationToken))
+            .ToEither<IActionResult>(() => new StatusCodeResult(StatusCodes.Status403Forbidden));
     }
 
     private ScriptoriumResponse Answer(HttpRequest request, string action, Option<Guid> draftId, Either<Error, Unit> result)
