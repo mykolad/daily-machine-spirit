@@ -92,6 +92,21 @@ public sealed class AuditTests : IAsyncLifetime
         Assert.Equal([AuditAction.Burn, AuditAction.Write], record.Select(entry => entry.Action).Order());
     }
 
+    // Cosmos orders the stored strings: a time on the whole second must still sort before one half a second later.
+    [Fact]
+    public async Task TheRecord_IsNewestFirst_ToTheFractionOfASecond()
+    {
+        var onTheSecond = new DateTime(2026, 10, 16, 6, 30, 0, DateTimeKind.Utc);
+        foreach (var at in new[] { onTheSecond, onTheSecond.AddMilliseconds(500) })
+        {
+            Ok(await testbed.Audit.Add(
+                AuditEntries.Of(testbed.Time, Tester, AuditAction.LetTheAuguryDecide, None, None) with { AtUtc = at },
+                CancellationToken.None));
+        }
+
+        Assert.Equal([onTheSecond.AddMilliseconds(500), onTheSecond], (await Entries()).Select(entry => entry.AtUtc));
+    }
+
     // However busy a draft's Scribes were, its record goes back to its writing.
     [Fact]
     public async Task OneDraftsRecord_IsWhole_PastTheRecordsLength()

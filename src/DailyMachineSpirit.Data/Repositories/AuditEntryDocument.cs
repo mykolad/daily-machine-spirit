@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using DailyMachineSpirit.Data.Entities;
 using static LanguageExt.Prelude;
 
@@ -14,6 +15,7 @@ internal sealed record AuditEntryDocument
 
     public string Type { get; init; } = AuditType;
 
+    [JsonConverter(typeof(SortableUtcConverter))]
     public DateTime AtUtc { get; init; }
 
     public string Actor { get; init; } = string.Empty;
