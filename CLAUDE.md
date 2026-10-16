@@ -165,10 +165,10 @@ observability/                    — the Grafana dashboard and alerts, and what
       `tags` and restart the app.
   - **Search** (`/archive?q=`, #7): the Archive filtered to the rites holding every word typed (at most 6, quotes
     ignored) in their title, text or Heretical Truth, ignoring case, newest first, Today's too. Each row marks the words
-    (`Highlight`) and shows the words around the first match (`RowLine`), from the truth when only it holds them. A
-    plain `CONTAINS` over a few hundred rites (each word a query parameter), plus their numbers and days for the count
-    and the month index (`FindDays`); Cosmos's full-text index can take over when that grows. The words are never
-    logged, and how many rites were found is in the page's title, which a screen reader reads when the results load.
+    (`Highlight`) and shows the words around the first match in the text (`RowLine`); a rite found by its truth alone
+    shows its opening words, the truth staying sealed until the reader opens the rite. A plain `CONTAINS` over a few
+    hundred rites (each word a query parameter), plus their numbers and days for the count and the month index
+    (`FindDays`); Cosmos's full-text index can take over when that grows. The words are never logged, and how many rites were found is in the page's title, which a screen reader reads when the results load.
     Cloudflare rate-limits it. The nav's search icon leads to the Archive's field.
 - **Votes** (Blessed / Heresy, `Api/VotesFunction`): one per account per rite, which the reader can switch or
   take back, signed in as below. `POST /api/rites/{number}/vote` with `{"vote": "blessed" | "heresy" | null}`, and
