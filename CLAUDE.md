@@ -168,8 +168,9 @@ observability/                    — the Grafana dashboard and alerts, and what
     (`Highlight`) and shows the words around the first match in the text (`RowLine`); a rite found by its truth alone
     shows its opening words, the truth staying sealed until the reader opens the rite. A plain `CONTAINS` over a few
     hundred rites (each word a query parameter), plus their numbers and days for the count and the month index
-    (`FindDays`); Cosmos's full-text index can take over when that grows. The words are never logged, and how many rites were found is in the page's title, which a screen reader reads when the results load.
-    Cloudflare rate-limits it. The nav's search icon leads to the Archive's field.
+    (`FindDays`); Cosmos's full-text index can take over when that grows. The words are never logged, and how many
+    rites were found is in the page's title, which a screen reader reads when the results load. Cloudflare rate-limits
+    it. The nav's search icon leads to the Archive's field.
 - **Votes** (Blessed / Heresy, `Api/VotesFunction`): one per account per rite, which the reader can switch or
   take back, signed in as below. `POST /api/rites/{number}/vote` with `{"vote": "blessed" | "heresy" | null}`, and
   `GET /api/votes?rites=12` for the page to show the reader's own vote pressed.
