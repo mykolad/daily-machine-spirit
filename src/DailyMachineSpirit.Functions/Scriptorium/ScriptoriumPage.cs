@@ -241,7 +241,7 @@ public static partial class ScriptoriumPage
     /// first draft to its publishing.
     /// </summary>
     /// <param name="names">The Scribes' names, by their Access id (<see cref="ScriptoriumOptions.Scribes"/>).</param>
-    public static string RenderRecord(IReadOnlyList<AuditEntry> entries, IReadOnlyDictionary<string, string> names, Option<Guid> draft)
+    public static string RenderRecord(IReadOnlyList<AuditEntry> entries, IReadOnlyList<ScribeName> names, Option<Guid> draft)
     {
         var html = new StringBuilder();
         Head(html, "The Record");

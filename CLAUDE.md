@@ -238,20 +238,20 @@ observability/                    — the Grafana dashboard and alerts, and what
     rewrite fills the form, unsaved, for the Scribe to read first). Saved words pass what a model's answer must
     (`RiteChecks`) and are judged again (scores, quality and tags describe what will be published; if the judge fails,
     the draft waits unjudged). The draft keeps `GeneratedByModel` and gets `Edited`, carried into the rite; the rite
-    never says which Scribe (the record does). The save is guarded by the draft's ETag, read with the page, and records an `Amend` decision
-    with the words as they were. The amending page posts plain forms, without the calendar's script.
+    never says which Scribe (the record does). The save is guarded by the draft's ETag, read with the page, and
+    records an `Amend` decision with the words as they were. The amending page posts plain forms, without the calendar's script.
   - **The Scribes' order** (the `placements` document) comes first; the Augury orders the rest. Moving a draft places
     everything above it too, so the order stays what the Scribes saw.
   - **Every action is a lesson:** it saves a `ScribeDecision` with the draft as it was, the Augury's place and quality
     for it, and the Scribe's optional note, in the same batch as the change. #12 teaches the Augury from them.
-  - **The Record** (`/scriptorium/record`, `?draft=` for one draft's; #9): who changed what, newest first, the last
-    100. An `AuditEntry` (documents of type `audit`) is saved in the same batch as each change, so there's no change
-    without its entry: the Scribes' actions, and the Machine Spirit's own (each draft it writes, each rite it
-    publishes). Only Summon, which stores nothing itself, saves its entry alone, and goes ahead if that fails.
+  - **The Record** (`/scriptorium/record`, #9): who changed what, newest first, the last 100; `?draft=` gives one
+    draft's whole history. An `AuditEntry` (documents of type `audit`) is saved in the same batch as each change, so
+    there's no change without its entry: the Scribes' actions, and the Machine Spirit's own (each draft it writes, each
+    rite it publishes). Only Summon, which stores nothing itself, saves its entry alone, and goes ahead if that fails.
     - **Who:** a Scribe is their Access id (the token's `sub`), never their email; on staging, with no sign-in, every
       Scribe is `staging`; the Machine Spirit is `machine-spirit`. The page shows an id by its name in
-      `Scriptorium:Scribes:<id>` (`productionAccess.scribes` in `resources.bicep`), else by its last six characters
-      (`ScribeNames`).
+      `Scriptorium:Scribes`, a list of `Id` and `Name` (a setting's name can't hold an id's hyphens), which the Bicep
+      makes from `productionAccess.scribes` in `resources.bicep`; else by its last six characters (`ScribeNames`).
     - **Kept** as long as the drafts and rites, with ids, titles and where a draft went; never a visitor.
   - **Concurrency:** each change uses an ETag, so two Scribes can't overwrite each other: the later one is told to look
     again.

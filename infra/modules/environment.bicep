@@ -24,7 +24,7 @@ param publishesDaily bool
 param scriptoriumEnabled bool
 @description('Lets whoever reaches the Scriptorium in without a sign-in: only where the app admits its owner\'s address alone (staging).')
 param scriptoriumWithoutSignIn bool
-@description('The names the Scriptorium\'s record (#9) shows for its Scribes, by their Cloudflare Access id (Scriptorium:Scribes); empty for none.')
+@description('The names the Scriptorium\'s record (#9) shows for its Scribes, by their Cloudflare Access id (id: name); empty for none.')
 param scribeNames object
 @description('The Cloudflare Access team and application guarding the Scriptorium (CloudflareAccessOptions); empty until set up.')
 param cloudflareAccessTeamDomain string
@@ -72,9 +72,14 @@ var ownerRules = empty(allowedIp) ? [] : [
 ]
 var accessRules = concat(ownerRules, admitsOnlyCloudflare ? cloudflareRules : [])
 
-// One setting per Scribe's name: Scriptorium__Scribes__<Access id>.
-var scribeNameSettings = [for scribe in items(scribeNames): {
-  name: 'Scriptorium__Scribes__${scribe.key}'
+// Each Scribe's name as a list entry (Scriptorium__Scribes__<n>__Id and __Name): a setting's name can't hold the
+// hyphens of an Access id.
+var scribeIdSettings = [for (scribe, index) in items(scribeNames): {
+  name: 'Scriptorium__Scribes__${index}__Id'
+  value: scribe.key
+}]
+var scribeNameSettings = [for (scribe, index) in items(scribeNames): {
+  name: 'Scriptorium__Scribes__${index}__Name'
   value: scribe.value
 }]
 
@@ -328,7 +333,7 @@ resource app 'Microsoft.Web/sites@2024-04-01' = {
           name: 'OTEL_RESOURCE_ATTRIBUTES'
           value: 'deployment.environment.name=${environmentName}'
         }
-      ], scribeNameSettings)
+      ], scribeIdSettings, scribeNameSettings)
     }
   }
 }

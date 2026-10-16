@@ -2,6 +2,7 @@ using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Scriptorium;
 using LanguageExt;
+using Microsoft.Extensions.Configuration;
 using static DailyMachineSpirit.Tests.BacklogTestbed;
 using static DailyMachineSpirit.Tests.Expect;
 using static LanguageExt.Prelude;
@@ -85,19 +86,47 @@ public sealed class AuditTests : IAsyncLifetime
         await testbed.AddDraft("Another", 0.5f);
         Ok(await testbed.Scribes().Burn(one.Id, "", Tester, CancellationToken.None));
 
-        var record = Ok(await testbed.Audit.GetNewest(10, Some(one.Id), CancellationToken.None));
+        var record = Ok(await testbed.Audit.GetHistory(one.Id, CancellationToken.None));
 
         // The Machine Spirit's entries take the real time, the Scribes' the test's clock: which is newer isn't the point.
         Assert.Equal([AuditAction.Burn, AuditAction.Write], record.Select(entry => entry.Action).Order());
     }
 
+    // However busy a draft's Scribes were, its record goes back to its writing.
+    [Fact]
+    public async Task OneDraftsRecord_IsWhole_PastTheRecordsLength()
+    {
+        var draft = await testbed.AddDraft("Much Debated", 0.5f);
+        for (var exalted = 0; exalted < ScriptoriumFunction.RecordShown; exalted++)
+        {
+            Ok(await testbed.Audit.Add(AuditEntries.Of(testbed.Time, Tester, AuditAction.Exalt, Some(draft), None), CancellationToken.None));
+        }
+
+        var record = Ok(await testbed.Audit.GetHistory(draft.Id, CancellationToken.None));
+
+        Assert.Equal(ScriptoriumFunction.RecordShown + 1, record.Count);
+        Assert.Contains(record, entry => entry.Action == AuditAction.Write);
+    }
+
+    // The names as the infrastructure sets them (Scriptorium__Scribes__0__Id, __Name), read as the app reads its settings.
     [Theory]
     [InlineData(AuditEntry.MachineSpirit, "The Machine Spirit")]
     [InlineData(AuditEntry.StagingScribe, "A Scribe on staging")]
-    [InlineData("7335d417-61da-459d-899c-0a1f8f6f0d3b", "Mykola")]
+    [InlineData(FakeAccessTeam.ScribeId, "Brother Ferrum")]
     [InlineData("0f7d1c2e-1111-2222-3333-4ab5c6d7e8f9", "A Scribe (…d7e8f9)")]
     public void TheRecord_NamesEachActor(string actor, string name)
-        => Assert.Equal(name, ScribeNames.Of(actor, new Dictionary<string, string> { ["7335d417-61da-459d-899c-0a1f8f6f0d3b"] = "Mykola" }));
+    {
+        var options = new ScriptoriumOptions();
+        new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Scriptorium:Scribes:0:Id"] = "1a2b3c4d-0000-0000-0000-000000000000",
+            ["Scriptorium:Scribes:0:Name"] = "Sister Cache",
+            ["Scriptorium:Scribes:1:Id"] = FakeAccessTeam.ScribeId,
+            ["Scriptorium:Scribes:1:Name"] = "Brother Ferrum",
+        }).Build().GetSection(ScriptoriumOptions.SectionName).Bind(options);
 
-    private async Task<List<AuditEntry>> Entries() => Ok(await testbed.Audit.GetNewest(50, None, CancellationToken.None));
+        Assert.Equal(name, ScribeNames.Of(actor, options.Scribes));
+    }
+
+    private async Task<List<AuditEntry>> Entries() => Ok(await testbed.Audit.GetNewest(50, CancellationToken.None));
 }

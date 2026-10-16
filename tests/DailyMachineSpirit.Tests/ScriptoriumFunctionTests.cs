@@ -635,7 +635,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         await Function(enabled: true).Summon(Post(""), CancellationToken.None);
 
-        var entry = Assert.Single(Ok(await testbed.Audit.GetNewest(10, LanguageExt.Prelude.None, CancellationToken.None)));
+        var entry = Assert.Single(Ok(await testbed.Audit.GetNewest(10, CancellationToken.None)));
         Assert.Equal((AuditEntry.StagingScribe, AuditAction.Summon), (entry.Actor, entry.Action));
     }
 

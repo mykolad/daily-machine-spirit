@@ -122,7 +122,10 @@ public sealed class ScriptoriumFunction
         }
 
         var draft = Optional(request.Query["draft"].ToString()).Bind(text => Guid.TryParse(text, out var id) ? Some(id) : None);
-        return (await audit.GetNewest(RecordShown, draft, cancellationToken)).Match(
+        var entries = await draft.Match(
+            Some: id => audit.GetHistory(id, cancellationToken),
+            None: () => audit.GetNewest(RecordShown, cancellationToken));
+        return entries.Match(
             Right: entries => Html(request, ScriptoriumPage.RenderRecord(entries, options.Value.Scribes, draft), StatusCodes.Status200OK),
             Left: error => Failed(request, error));
     }

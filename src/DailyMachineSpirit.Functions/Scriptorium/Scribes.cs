@@ -24,10 +24,10 @@ public class ScriptoriumOptions
     public bool WithoutSignIn { get; set; }
 
     /// <summary>
-    /// The names the record (#9) shows for the Scribes, by their Cloudflare Access id
-    /// (<c>Scriptorium:Scribes:&lt;id&gt;</c>). A Scribe without one is shown by the end of their id.
+    /// The names the record (#9) shows for the Scribes, by their Cloudflare Access id. A Scribe without one is shown by
+    /// the end of their id.
     /// </summary>
-    public Dictionary<string, string> Scribes { get; set; } = [];
+    public List<ScribeName> Scribes { get; set; } = [];
 }
 
 /// <summary>A draft in the Liturgical Calendar, as the Scriptorium shows it.</summary>

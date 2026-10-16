@@ -23,13 +23,19 @@ public sealed class AuditRepository : IAuditRepository
             return unit;
         });
 
-    public Task<Either<Error, List<AuditEntry>>> GetNewest(int count, Option<Guid> draftId, CancellationToken cancellationToken)
+    public Task<Either<Error, List<AuditEntry>>> GetNewest(int count, CancellationToken cancellationToken)
+        => Entries(
+            new QueryDefinition("SELECT TOP @count * FROM c WHERE c.type = @type ORDER BY c.atUtc DESC").WithParameter("@count", count),
+            cancellationToken);
+
+    public Task<Either<Error, List<AuditEntry>>> GetHistory(Guid draftId, CancellationToken cancellationToken)
+        => Entries(
+            new QueryDefinition("SELECT * FROM c WHERE c.type = @type AND c.draftId = @draftId ORDER BY c.atUtc DESC")
+                .WithParameter("@draftId", draftId),
+            cancellationToken);
+
+    private Task<Either<Error, List<AuditEntry>>> Entries(QueryDefinition query, CancellationToken cancellationToken)
         => Attempt(async () => (await container.Query<AuditEntryDocument>(
-            draftId.Match(
-                Some: id => new QueryDefinition("SELECT TOP @count * FROM c WHERE c.type = @type AND c.draftId = @draftId ORDER BY c.atUtc DESC")
-                    .WithParameter("@draftId", id),
-                None: () => new QueryDefinition("SELECT TOP @count * FROM c WHERE c.type = @type ORDER BY c.atUtc DESC"))
-                .WithParameter("@count", count)
-                .WithParameter("@type", AuditEntryDocument.AuditType),
-            cancellationToken)).Select(document => document.ToEntry()).ToList());
+            query.WithParameter("@type", AuditEntryDocument.AuditType), cancellationToken))
+            .Select(document => document.ToEntry()).ToList());
 }

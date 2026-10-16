@@ -13,6 +13,9 @@ public interface IAuditRepository
 {
     Task<Either<Error, Unit>> Add(AuditEntry entry, CancellationToken cancellationToken);
 
-    /// <summary>The newest entries first: all of them, or one draft's.</summary>
-    Task<Either<Error, List<AuditEntry>>> GetNewest(int count, Option<Guid> draftId, CancellationToken cancellationToken);
+    /// <summary>The newest entries, newest first.</summary>
+    Task<Either<Error, List<AuditEntry>>> GetNewest(int count, CancellationToken cancellationToken);
+
+    /// <summary>All of one draft's entries, newest first: from its writing to its publishing, however many.</summary>
+    Task<Either<Error, List<AuditEntry>>> GetHistory(Guid draftId, CancellationToken cancellationToken);
 }
