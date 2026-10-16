@@ -49,7 +49,7 @@ public sealed class PreceptsFunction
         var outcome = Optional(request.Query["done"].ToString()).Filter(done => done.Length > 0);
         var acted = Optional(request.Query["precept"].ToString()).Bind(text => Guid.TryParse(text, out var id) ? Some(id) : None);
         return (await keeping.View(cancellationToken)).Match(
-            Right: book => Html(request, ScriptoriumPage.RenderPrecepts(book, outcome, acted), StatusCodes.Status200OK),
+            Right: stored => Html(request, ScriptoriumPage.RenderPrecepts(stored, outcome, acted), StatusCodes.Status200OK),
             Left: error => Failed(request, error));
     }
 
@@ -99,16 +99,25 @@ public sealed class PreceptsFunction
         => await (await gate.ActingScribe(request, cancellationToken)).Match(
             Left: refused => Task.FromResult(refused),
             Right: async scribe => await (await ReadForm(request, cancellationToken)).Match(
-                Some: async fields => action switch
-                {
-                    "edit" => Answer(request, action, preceptId, await keeping.Edit(preceptId, fields["text"].ToString(), scribe, cancellationToken)),
-                    "pin" => Answer(request, action, preceptId, await keeping.Pin(preceptId, scribe, cancellationToken)),
-                    "unpin" => Answer(request, action, preceptId, await keeping.Unpin(preceptId, scribe, cancellationToken)),
-                    // Gone from the page, so the message is where the eye goes.
-                    "delete" => Answer(request, action, None, await keeping.Delete(preceptId, scribe, cancellationToken)),
-                    _ => new NotFoundResult(),
-                },
+                Some: fields => Act(request, preceptId, action, fields, scribe, cancellationToken),
                 None: () => Task.FromResult<IActionResult>(new BadRequestResult())));
+
+    // Each change carries the version of the Precepts the Scribe's page showed (etag).
+    private async Task<IActionResult> Act(
+        HttpRequest request, Guid preceptId, string action, IFormCollection fields, string scribe, CancellationToken cancellationToken)
+    {
+        var etag = fields["etag"].ToString();
+        return action switch
+        {
+            "edit" => Answer(request, action, preceptId,
+                await keeping.Edit(preceptId, etag, fields["text"].ToString(), scribe, cancellationToken)),
+            "pin" => Answer(request, action, preceptId, await keeping.Pin(preceptId, etag, scribe, cancellationToken)),
+            "unpin" => Answer(request, action, preceptId, await keeping.Unpin(preceptId, etag, scribe, cancellationToken)),
+            // Gone from the page, so the message is where the eye goes.
+            "delete" => Answer(request, action, None, await keeping.Delete(preceptId, etag, scribe, cancellationToken)),
+            _ => new NotFoundResult(),
+        };
+    }
 
     private IActionResult Answer(HttpRequest request, string action, Option<Guid> preceptId, Either<Error, Unit> result)
         => result.Match(

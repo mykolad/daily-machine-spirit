@@ -140,16 +140,36 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         var at = $"&precept={id:D}#precept-{id:D}";
 
         Assert.Equal($"/scriptorium/precepts?done=edit{at}",
-            RedirectedTo(await function.Change(Form(("text", "Name the real fix.")), id, "edit", CancellationToken.None)));
-        Assert.Equal($"/scriptorium/precepts?done=unpin{at}", RedirectedTo(await function.Change(Form(), id, "unpin", CancellationToken.None)));
+            RedirectedTo(await function.Change(Form(("text", "Name the real fix."), await Seen()), id, "edit", CancellationToken.None)));
+        Assert.Equal($"/scriptorium/precepts?done=unpin{at}", RedirectedTo(await function.Change(Form(await Seen()), id, "unpin", CancellationToken.None)));
         var unpinned = await function.Page(Get($"?done=unpin&precept={id:D}"), CancellationToken.None);
         Assert.Contains($"""<li class="rite acted" id="precept-{id:D}">""", Html(unpinned, 200));
-        Assert.Equal($"/scriptorium/precepts?done=pin{at}", RedirectedTo(await function.Change(Form(), id, "pin", CancellationToken.None)));
+        Assert.Equal($"/scriptorium/precepts?done=pin{at}", RedirectedTo(await function.Change(Form(await Seen()), id, "pin", CancellationToken.None)));
         Assert.Equal("Name the real fix.", Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts.Single().Text);
 
-        Assert.Equal("/scriptorium/precepts?done=delete", RedirectedTo(await function.Change(Form(), id, "delete", CancellationToken.None)));
+        Assert.Equal("/scriptorium/precepts?done=delete", RedirectedTo(await function.Change(Form(await Seen()), id, "delete", CancellationToken.None)));
         Assert.Empty(Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts);
-        Assert.Equal("/scriptorium/precepts?done=changed", RedirectedTo(await function.Change(Form(), id, "pin", CancellationToken.None)));
+        Assert.Equal("/scriptorium/precepts?done=changed", RedirectedTo(await function.Change(Form(await Seen()), id, "pin", CancellationToken.None)));
+    }
+
+    // Two Scribes with the same page open: the second, saving after the first, is told to look again rather than
+    // overwriting the first one's words unseen.
+    [Fact]
+    public async Task AChange_FromAPageShownBeforeAnother_IsRefused()
+    {
+        Ok(await testbed.PreceptKeeping().Add("Prefer the real fix.", Tester, CancellationToken.None));
+        var id = Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts.Single().Id;
+        var bothSaw = await Seen();
+        var function = Function(enabled: true);
+        var first = await function.Change(Form(("text", "The first Scribe's words."), bothSaw), id, "edit", CancellationToken.None);
+        Assert.StartsWith("/scriptorium/precepts?done=edit", RedirectedTo(first));
+
+        var second = await function.Change(Form(("text", "The second Scribe's words."), bothSaw), id, "edit", CancellationToken.None);
+
+        Assert.Equal("/scriptorium/precepts?done=changed", RedirectedTo(second));
+        Assert.Equal("The first Scribe's words.", Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts.Single().Text);
+        Assert.Contains($"""<input type="hidden" name="etag" value="{System.Net.WebUtility.HtmlEncode((await Seen()).Value)}">""",
+            Html(await function.Page(Get(""), CancellationToken.None), 200));
     }
 
     [Fact]
@@ -263,6 +283,10 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
 
     private DistilPreceptsFunction Timer(bool enabled)
         => new(testbed.Distiller(), Options.Create(new ScriptoriumOptions { Enabled = enabled }), NullLogger<DistilPreceptsFunction>.Instance);
+
+    // The version of the Precepts the page shows now, as its forms send it.
+    private async Task<(string Name, string Value)> Seen()
+        => ("etag", Ok(await testbed.Precepts.Get(CancellationToken.None)).ETag.IfNone(string.Empty));
 
     private async Task AJudgment()
     {

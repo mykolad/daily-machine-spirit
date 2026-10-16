@@ -56,7 +56,7 @@ public sealed class PreceptsTests : IAsyncLifetime
         Ok(await keeping.Add("Keep the Omnissiah out of rituals.", Tester, CancellationToken.None));
         testbed.Models.Answers(Sol, Distilled(RealFix, NoRepeats));
         var first = Ok(await testbed.Distiller().Distil(AuditEntry.MachineSpirit, CancellationToken.None));
-        Ok(await keeping.Delete(first.Precepts.Single(precept => precept.Text == NoRepeats).Id, Tester, CancellationToken.None));
+        Ok(await keeping.Delete(first.Precepts.Single(precept => precept.Text == NoRepeats).Id, await Version(), Tester, CancellationToken.None));
         testbed.Models.Answers(Sol, Distilled("keep the omnissiah out of rituals.", "Name the command in backticks."));
 
         var second = Ok(await testbed.Distiller().Distil(AuditEntry.MachineSpirit, CancellationToken.None));
@@ -102,6 +102,52 @@ public sealed class PreceptsTests : IAsyncLifetime
         Assert.Equal([Sol, Luna], testbed.Models.Requests.Select(request => request.Model));
     }
 
+    // The serializer checks the list, not what's in it.
+    [Fact]
+    public async Task Distil_AsksTheNextModel_WhenAPreceptIsNull()
+    {
+        await AJudgment();
+        testbed.Models.Answers(Sol, """{"precepts":[null]}""");
+        testbed.Models.Answers(Luna, Distilled(RealFix));
+
+        var book = Ok(await testbed.Distiller().Distil(Tester, CancellationToken.None));
+
+        Assert.Equal([RealFix], book.Precepts.Select(precept => precept.Text));
+    }
+
+    // Deleting promised it won't come back: an answer of nothing but deleted precepts goes to the next model.
+    [Fact]
+    public async Task Distil_NeverBringsBackADeletedPrecept()
+    {
+        await AJudgment();
+        Ok(await testbed.PreceptKeeping().Add(NoRepeats, Tester, CancellationToken.None));
+        var read = Ok(await testbed.Precepts.Get(CancellationToken.None));
+        Ok(await testbed.PreceptKeeping().Delete(read.Book.Precepts.Single().Id, ETag(read), Tester, CancellationToken.None));
+        testbed.Models.Answers(Sol, Distilled(NoRepeats.ToUpperInvariant()));
+        testbed.Models.Answers(Luna, Distilled(NoRepeats, RealFix));
+
+        var book = Ok(await testbed.Distiller().Distil(Tester, CancellationToken.None));
+
+        Assert.Equal([RealFix], book.Precepts.Select(precept => precept.Text));
+    }
+
+    // A model that doesn't answer in time gives way to the next, so a Scribe isn't kept waiting.
+    [Fact]
+    public async Task Distil_AsksTheNextModel_WhenOneTakesTooLong()
+    {
+        await AJudgment();
+        testbed.Models.Then(Sol, [() =>
+        {
+            testbed.Time.Advance(PreceptDistiller.AttemptTime);
+            return new TaskCompletionSource<string>().Task;
+        }]);
+        testbed.Models.Answers(Luna, Distilled(RealFix));
+
+        var book = Ok(await testbed.Distiller().Distil(Tester, CancellationToken.None));
+
+        Assert.Equal([RealFix], book.Precepts.Select(precept => precept.Text));
+    }
+
     [Fact]
     public async Task Distil_SavesNothing_WhenNoModelAnswersUsably()
     {
@@ -128,14 +174,14 @@ public sealed class PreceptsTests : IAsyncLifetime
 
         // A minute apart, so newest first is one order.
         testbed.Time.Advance(TimeSpan.FromMinutes(1));
-        Ok(await keeping.Edit(distilled.Id, "Avoid last week's subjects.", Tester, CancellationToken.None));
-        var edited = Ok(await keeping.View(CancellationToken.None)).Precepts[1];
+        Ok(await keeping.Edit(distilled.Id, await Version(), "Avoid last week's subjects.", Tester, CancellationToken.None));
+        var edited = Ok(await keeping.View(CancellationToken.None)).Book.Precepts[1];
         testbed.Time.Advance(TimeSpan.FromMinutes(1));
-        Ok(await keeping.Unpin(edited.Id, Tester, CancellationToken.None));
+        Ok(await keeping.Unpin(edited.Id, await Version(), Tester, CancellationToken.None));
         testbed.Time.Advance(TimeSpan.FromMinutes(1));
-        Ok(await keeping.Pin(edited.Id, Tester, CancellationToken.None));
+        Ok(await keeping.Pin(edited.Id, await Version(), Tester, CancellationToken.None));
 
-        var book = Ok(await keeping.View(CancellationToken.None));
+        var book = Ok(await keeping.View(CancellationToken.None)).Book;
         Assert.Equal([(RealFix, true, true), ("Avoid last week's subjects.", true, true)],
             book.Precepts.Select(precept => (precept.Text, precept.Pinned, precept.ByScribe)));
         var record = Ok(await testbed.Audit.GetNewest(10, CancellationToken.None))
@@ -159,11 +205,11 @@ public sealed class PreceptsTests : IAsyncLifetime
         for (var deleted = 0; deleted <= PreceptBook.RejectedKept; deleted++)
         {
             Ok(await keeping.Add($"Precept {deleted}.", Tester, CancellationToken.None));
-            var added = Ok(await keeping.View(CancellationToken.None)).Precepts.Single();
-            Ok(await keeping.Delete(added.Id, Tester, CancellationToken.None));
+            var added = Ok(await keeping.View(CancellationToken.None)).Book.Precepts.Single();
+            Ok(await keeping.Delete(added.Id, await Version(), Tester, CancellationToken.None));
         }
 
-        var book = Ok(await keeping.View(CancellationToken.None));
+        var book = Ok(await keeping.View(CancellationToken.None)).Book;
         Assert.Empty(book.Precepts);
         Assert.Equal(PreceptBook.RejectedKept, book.Rejected.Count);
         Assert.Equal($"Precept {PreceptBook.RejectedKept}.", book.Rejected[0]);
@@ -195,7 +241,7 @@ public sealed class PreceptsTests : IAsyncLifetime
     [Fact]
     public async Task APreceptGoneMeanwhile_IsAChangeToLookAt()
         => Assert.Equal(ScriptoriumRepository.ChangedMeanwhile,
-            Failed(await testbed.PreceptKeeping().Pin(Guid.NewGuid(), Tester, CancellationToken.None)));
+            Failed(await testbed.PreceptKeeping().Pin(Guid.NewGuid(), await Version(), Tester, CancellationToken.None)));
 
     // Two changes from the same read: the later one must not overwrite the first.
     [Fact]
@@ -224,6 +270,11 @@ public sealed class PreceptsTests : IAsyncLifetime
 
         Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Failed(late));
     }
+
+    // The version of the Precepts a Scribe's page would show now.
+    private async Task<string> Version() => ETag(Ok(await testbed.Precepts.Get(CancellationToken.None)));
+
+    private static string ETag(StoredPrecepts read) => read.ETag.IfNone(string.Empty);
 
     private async Task AJudgment()
     {

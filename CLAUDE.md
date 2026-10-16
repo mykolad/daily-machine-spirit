@@ -247,14 +247,16 @@ observability/                    — the Grafana dashboard and alerts, and what
   - **Every action is a lesson:** it saves a `ScribeDecision` with the draft as it was, the Augury's place and quality
     for it, and the Scribe's optional note, in the same batch as the change. The Precepts are learned from them.
   - **The Precepts** (`/scriptorium/precepts`, #12): rules for writing and choosing rites, learned from the Scribes'
-    judgments, which the writer follows. One `precepts` document, guarded by its ETag, each change recorded (#9).
-    - **Distilled** (`PreceptDistiller`): `gpt-6-sol` (then `gpt-6-luna`, one try each) reads the newest 100
-      judgments with their notes and answers at most 12 precepts (JSON schema output). The `DistilPrecepts` timer runs
-      Mondays at 01:00 UTC, as the Machine Spirit; a Scribe can ask sooner, and waits for the answer. Nothing judged
-      yet, or every precept pinned, means nothing to do.
+    judgments, which the writer follows. One `precepts` document, each change recorded (#9). Its forms carry the
+    version the page showed (its ETag), so a change from a page shown before another is refused.
+    - **Distilled** (`PreceptDistiller`): `gpt-6-sol` (then `gpt-6-luna`, one try of 30 seconds each) reads the
+      newest 100 judgments with their notes and answers at most 12 precepts (JSON schema output). An answer with a
+      null, an overlong precept, or nothing but pinned and deleted ones goes to the next model. The `DistilPrecepts`
+      timer runs Mondays at 01:00 UTC, as the Machine Spirit; a Scribe can ask sooner, and waits for the answer.
+      Nothing judged yet, or every precept pinned, means nothing to do.
     - **The Scribes have the final say** (`PreceptKeeping`): they add, edit, pin or delete precepts. Pinned precepts
       stay when distilled again, the rest make way for the new ones; a Scribe's words are pinned. Deleted ones are
-      remembered (the newest 30) and the model is told not to propose them again.
+      remembered (the newest 30): the model is told not to propose them, and any it does are dropped.
     - **Not yet the judge's:** the Augury still orders by Jev's quality; #10 tests a model judge with the Precepts.
   - **The Record** (`/scriptorium/record`, #9): who changed what, newest first, the last 100; `?draft=` gives one
     draft's whole history. An `AuditEntry` (documents of type `audit`) is saved in the same batch as each change, so

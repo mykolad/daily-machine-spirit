@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using DailyMachineSpirit.Data.Entities;
+using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Generation.Precepts;
 using LanguageExt;
 
@@ -14,8 +15,11 @@ public static partial class ScriptoriumPage
     /// </summary>
     /// <param name="outcome">What the last action did, if anything.</param>
     /// <param name="acted">The precept it acted on, marked so the eye finds it.</param>
-    public static string RenderPrecepts(PreceptBook book, Option<string> outcome, Option<Guid> acted)
+    public static string RenderPrecepts(StoredPrecepts stored, Option<string> outcome, Option<Guid> acted)
     {
+        var book = stored.Book;
+        // Sent back with each change to a precept: a page shown before another change is told to look again.
+        var version = $"""<input type="hidden" name="etag" value="{Encode(stored.ETag.IfNone(string.Empty))}">""";
         var html = new StringBuilder();
         Head(html, "The Precepts");
         html.Append("""<main id="main">""");
@@ -41,7 +45,7 @@ public static partial class ScriptoriumPage
             html.Append("""<ol class="calendar">""");
             foreach (var precept in book.Precepts)
             {
-                PreceptEntry(html, precept, acted);
+                PreceptEntry(html, precept, version, acted);
             }
             html.Append("</ol>");
         }
@@ -62,7 +66,7 @@ public static partial class ScriptoriumPage
     }
 
     // Each precept's buttons name it for screen readers, since every entry has the same buttons.
-    private static void PreceptEntry(StringBuilder html, Precept precept, Option<Guid> acted)
+    private static void PreceptEntry(StringBuilder html, Precept precept, string version, Option<Guid> acted)
     {
         var id = precept.Id.ToString("D");
         var action = $"/scriptorium/precepts/{id}";
@@ -78,6 +82,7 @@ public static partial class ScriptoriumPage
             <details class="fold">
             <summary>{ScriptoriumIcons.Note}Edit{named}</summary>
             <form method="post" action="{action}/edit" class="amend">
+            {version}
             <label for="precept-{id}-text">Its words</label>
             <p class="hint" id="precept-{id}-hint">Saving pins it, so distilling again keeps your words.</p>
             <textarea id="precept-{id}-text" name="text" rows="2" maxlength="{Precept.MaxLength}" aria-describedby="precept-{id}-hint" required>{Encode(precept.Text)}</textarea>
@@ -85,6 +90,7 @@ public static partial class ScriptoriumPage
             </form>
             </details>
             <form method="post" class="buttons">
+            {version}
             {pin}
             <button class="danger burn" formaction="{action}/delete">{ScriptoriumIcons.Delete}Delete{named}</button>
             </form>

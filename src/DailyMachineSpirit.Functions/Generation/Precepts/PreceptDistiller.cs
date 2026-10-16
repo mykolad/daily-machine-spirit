@@ -20,6 +20,9 @@ public sealed class PreceptDistiller
     /// <summary>How many of the newest judgments a distillation reads: a few months of a weekly visit's.</summary>
     public const int JudgmentsRead = 100;
 
+    /// <summary>How long a model may take: two of them stay within the minute the page promises.</summary>
+    public static readonly TimeSpan AttemptTime = TimeSpan.FromSeconds(30);
+
     /// <summary>The Scribes haven't judged anything yet: there's nothing to learn from.</summary>
     public static readonly Error NothingToLearn = Error.New("The Scribes haven't judged any rite yet, so there's nothing to learn from.");
 
@@ -84,7 +87,9 @@ public sealed class PreceptDistiller
             new(ChatRole.System, PreceptPrompt.Instructions(room)),
             new(ChatRole.User, PreceptPrompt.Request(decisions, pinned.Select(precept => precept.Text).ToList(), book.Rejected)),
         };
-        return (await Answer(messages, room, pinned, cancellationToken)).Map(distilled => book with
+        // Neither a pinned precept again nor one the Scribes deleted: the page promised it wouldn't come back.
+        var excluded = pinned.Select(precept => precept.Text).Concat(book.Rejected).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return (await Answer(messages, room, excluded, cancellationToken)).Map(distilled => book with
         {
             Precepts = [.. pinned, .. distilled.Select(text => new Precept { Id = Guid.NewGuid(), Text = text })],
             DistilledAtUtc = time.GetUtcNow().UtcDateTime,
@@ -92,14 +97,15 @@ public sealed class PreceptDistiller
         });
     }
 
-    // Each model once, in order: a Scribe waits for the answer, and the weekly run can wait for next week.
+    // Each model once, in order, for AttemptTime at most: a Scribe waits for the answer, and the weekly run can wait for
+    // next week.
     private async Task<Either<Error, List<string>>> Answer(
-        List<ChatMessage> messages, int room, IReadOnlyList<Precept> pinned, CancellationToken cancellationToken)
+        List<ChatMessage> messages, int room, IReadOnlySet<string> excluded, CancellationToken cancellationToken)
     {
         var failures = new List<string>();
         foreach (var model in options.Value.Models)
         {
-            var answer = (await Ask(model, messages, cancellationToken)).Bind(distilled => Checked(distilled, room, pinned));
+            var answer = (await Ask(model, messages, cancellationToken)).Bind(distilled => Checked(distilled, room, excluded));
             if (answer.IsRight)
             {
                 return answer;
@@ -116,33 +122,40 @@ public sealed class PreceptDistiller
 
     private async Task<Either<Error, DistilledPrecepts>> Ask(string model, List<ChatMessage> messages, CancellationToken cancellationToken)
     {
+        using var timeout = new CancellationTokenSource(AttemptTime, time);
+        using var attempt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
         try
         {
             var response = await chatClients.For(model).GetResponseAsync<DistilledPrecepts>(
-                messages, AnswerSerializerOptions, options: null, useJsonSchemaResponseFormat: true, cancellationToken);
+                messages, AnswerSerializerOptions, options: null, useJsonSchemaResponseFormat: true, attempt.Token);
             return response.TryGetResult(out var distilled)
                 ? distilled
                 : Error.New("The answer isn't a list of precepts.");
         }
-        // An outage, throttling, a timeout or a refusal: the next model is asked. Only the caller's own cancellation stops.
+        // An outage, throttling, running out of time or a refusal: the next model is asked. Only the caller's own
+        // cancellation stops.
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             return Error.New(ex);
         }
     }
 
-    // Trimmed, without blanks or repeats of a pinned precept, and no more than there's room for. One too long means the
+    // Trimmed, without blanks or excluded precepts, and no more than there's room for. A null or one too long means the
     // model ignored the rules, so its answer isn't trusted.
-    private static Either<Error, List<string>> Checked(DistilledPrecepts distilled, int room, IReadOnlyList<Precept> pinned)
+    private static Either<Error, List<string>> Checked(DistilledPrecepts distilled, int room, IReadOnlySet<string> excluded)
     {
+        // The serializer checks the list isn't null, but not what's in it.
+        if (distilled.Precepts.Any(text => text is null))
+        {
+            return Error.New("The answer has a null precept.");
+        }
         var texts = distilled.Precepts.Select(text => text.Trim())
-            .Where(text => text.Length > 0)
-            .Where(text => !pinned.Any(precept => string.Equals(precept.Text, text, StringComparison.OrdinalIgnoreCase)))
+            .Where(text => text.Length > 0 && !excluded.Contains(text))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
         if (texts.Count == 0)
         {
-            return Error.New("The answer has no precepts.");
+            return Error.New("The answer has no new precepts.");
         }
         if (texts.Any(text => text.Length > Precept.MaxLength))
         {
