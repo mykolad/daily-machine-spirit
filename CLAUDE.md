@@ -19,7 +19,7 @@ what really happens. Either kind is a **rite** (the design's word, and `Rite` in
 
 ```
 src/DailyMachineSpirit.Functions  — the Functions app (HTTP, timer and queue functions)
-  Generation/                     — the backlog and the daily rite: Writing/, Chat/ (the models), Judging/ (Jev)
+  Generation/                     — the backlog and the daily rite: Writing/, Chat/ (models), Judging/ (Jev), Precepts/
   Pages/                          — the public pages, rendered on the server (Today, the archive, a rite's page)
   Tags/                           — the tags' vocabulary, and tagging the rites judged before tags existed
 src/DailyMachineSpirit.Data       — Cosmos DB: entities, documents, repositories
@@ -225,6 +225,7 @@ observability/                    — the Grafana dashboard and alerts, and what
   - **Writing:** `RiteWriter` asks `gpt-6-sol` for a `RiteContent` (JSON schema output), up to 3 times, then
     `gpt-6-luna` (`Generation:Models`). An answer that's empty, too long, uses a forbidden name or writes code outside
     backticks (`UnquotedCode`) is asked for again, never cut (`RiteChecks`, which a Scribe's amendment passes too).
+    Every draft and rewrite follows the Precepts (below); if they can't be read, the rite is written without them.
   - **Judging:** an `IRiteJudge` judges each draft (`JevJudge` for now, swappable like the models): its similarity
     scores for "More rites" and its quality for the Augury, in one request. A draft that can't be judged still joins
     the backlog, without scores. "Scores" are always the similarity scores, never the quality.
@@ -239,11 +240,22 @@ observability/                    — the Grafana dashboard and alerts, and what
     (`RiteChecks`) and are judged again (scores, quality and tags describe what will be published; if the judge fails,
     the draft waits unjudged). The draft keeps `GeneratedByModel` and gets `Edited`, carried into the rite; the rite
     never says which Scribe (the record does). The save is guarded by the draft's ETag, read with the page, and
-    records an `Amend` decision with the words as they were. The amending page posts plain forms, without the calendar's script.
+    records an `Amend` decision with the words as they were. The amending page posts plain forms, without the
+    calendar's script.
   - **The Scribes' order** (the `placements` document) comes first; the Augury orders the rest. Moving a draft places
     everything above it too, so the order stays what the Scribes saw.
   - **Every action is a lesson:** it saves a `ScribeDecision` with the draft as it was, the Augury's place and quality
-    for it, and the Scribe's optional note, in the same batch as the change. #12 teaches the Augury from them.
+    for it, and the Scribe's optional note, in the same batch as the change. The Precepts are learned from them.
+  - **The Precepts** (`/scriptorium/precepts`, #12): rules for writing and choosing rites, learned from the Scribes'
+    judgments, which the writer follows. One `precepts` document, guarded by its ETag, each change recorded (#9).
+    - **Distilled** (`PreceptDistiller`): `gpt-6-sol` (then `gpt-6-luna`, one try each) reads the newest 100
+      judgments with their notes and answers at most 12 precepts (JSON schema output). The `DistilPrecepts` timer runs
+      Mondays at 01:00 UTC, as the Machine Spirit; a Scribe can ask sooner, and waits for the answer. Nothing judged
+      yet, or every precept pinned, means nothing to do.
+    - **The Scribes have the final say** (`PreceptKeeping`): they add, edit, pin or delete precepts. Pinned precepts
+      stay when distilled again, the rest make way for the new ones; a Scribe's words are pinned. Deleted ones are
+      remembered (the newest 30) and the model is told not to propose them again.
+    - **Not yet the judge's:** the Augury still orders by Jev's quality; #10 tests a model judge with the Precepts.
   - **The Record** (`/scriptorium/record`, #9): who changed what, newest first, the last 100; `?draft=` gives one
     draft's whole history. An `AuditEntry` (documents of type `audit`) is saved in the same batch as each change, so
     there's no change without its entry: the Scribes' actions, and the Machine Spirit's own (each draft it writes, each

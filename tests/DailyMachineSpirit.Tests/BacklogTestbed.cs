@@ -1,6 +1,7 @@
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Generation;
+using DailyMachineSpirit.Functions.Generation.Precepts;
 using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Scriptorium;
 using LanguageExt;
@@ -48,6 +49,8 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public AuditRepository Audit => new(cosmos.Container);
 
+    public PreceptRepository Precepts => new(cosmos.Container);
+
     public static string Answer(string title)
         => FakeChatClients.Answer(title, "Press Re-run thrice, O Machine Spirit.", "The test is flaky: fix its race instead.");
 
@@ -76,6 +79,11 @@ public sealed class BacklogTestbed : IAsyncLifetime
     public DailyRitePublisher Publisher() => new(Rites, Drafts, Scriptorium, Refiller(), Time, Probe.Metrics, NullLogger<DailyRitePublisher>.Instance);
 
     public Scribes Scribes() => new(Drafts, Rites, Scriptorium, Time);
+
+    public PreceptKeeping PreceptKeeping() => new(Precepts, Time);
+
+    public PreceptDistiller Distiller()
+        => new(Scriptorium, Precepts, Models, Options.Create(new GenerationOptions()), Time, NullLogger<PreceptDistiller>.Instance);
 
     public Amendments Amendments()
         => new(Drafts, Scriptorium, Jev.NewJudge(Time, JevApiKey), Writer(Options.Create(new GenerationOptions { RetryDelaySeconds = 0 })), Time, NullLogger<Amendments>.Instance);
@@ -130,7 +138,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
             },
         }, CancellationToken.None));
 
-    private RiteWriter Writer(IOptions<GenerationOptions> options) => new(Models, options, Time, Probe.Metrics, NullLogger<RiteWriter>.Instance);
+    private RiteWriter Writer(IOptions<GenerationOptions> options) => new(Models, Precepts, options, Time, Probe.Metrics, NullLogger<RiteWriter>.Instance);
 
     public async Task<List<Draft>> Waiting() => Expect.Ok(await Drafts.GetWaiting(CancellationToken.None));
 

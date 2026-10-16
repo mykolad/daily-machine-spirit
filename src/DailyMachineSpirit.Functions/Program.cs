@@ -4,6 +4,7 @@ using DailyMachineSpirit.Functions.Caching;
 using DailyMachineSpirit.Functions.Generation;
 using DailyMachineSpirit.Functions.Generation.Chat;
 using DailyMachineSpirit.Functions.Generation.Judging;
+using DailyMachineSpirit.Functions.Generation.Precepts;
 using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Scriptorium;
 using DailyMachineSpirit.Functions.Scriptorium.SignIn;
@@ -62,6 +63,7 @@ builder.Services.AddSingleton<IRiteRepository, RiteRepository>();
 builder.Services.AddSingleton<IDraftRepository, DraftRepository>();
 builder.Services.AddSingleton<IScriptoriumRepository, ScriptoriumRepository>();
 builder.Services.AddSingleton<IAuditRepository, AuditRepository>();
+builder.Services.AddSingleton<IPreceptRepository, PreceptRepository>();
 builder.Services.AddSingleton<IVoteRepository, VoteRepository>();
 
 // The daily rite and the backlog. Created only when the timer or a refill runs, so HTTP functions start without the generation settings.
@@ -75,11 +77,13 @@ builder.Services.AddHostedService<TagBackfill>();
 builder.Services.AddTransient<RiteWriter>();
 builder.Services.AddTransient<BacklogRefiller>();
 builder.Services.AddTransient<DailyRitePublisher>();
+builder.Services.AddTransient<PreceptDistiller>();
 
 // The Scriptorium: the Scribes' page.
 builder.Services.Configure<ScriptoriumOptions>(builder.Configuration.GetSection(ScriptoriumOptions.SectionName));
 builder.Services.AddTransient<Scribes>();
 builder.Services.AddTransient<Amendments>();
+builder.Services.AddTransient<PreceptKeeping>();
 builder.Services.AddScribeSignIn(builder.Configuration);
 
 // Readers sign in to vote, with each provider set up (GitHub for now); separate from the Scriptorium's sign-in.

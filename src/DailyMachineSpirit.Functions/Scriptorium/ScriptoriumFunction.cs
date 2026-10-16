@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using static DailyMachineSpirit.Functions.Scriptorium.ScriptoriumHttp;
 using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Functions.Scriptorium;
@@ -41,7 +42,7 @@ public sealed class ScriptoriumFunction
     private readonly Amendments amendments;
     private readonly IAuditRepository audit;
     private readonly TimeProvider time;
-    private readonly IScribeSignIn signIn;
+    private readonly ScriptoriumGate gate;
     private readonly IOptions<ScriptoriumOptions> options;
     private readonly ILogger<ScriptoriumFunction> logger;
 
@@ -58,7 +59,7 @@ public sealed class ScriptoriumFunction
         this.amendments = amendments;
         this.audit = audit;
         this.time = time;
-        this.signIn = signIn;
+        gate = new ScriptoriumGate(signIn, options);
         this.options = options;
         this.logger = logger;
     }
@@ -67,13 +68,9 @@ public sealed class ScriptoriumFunction
     public async Task<IActionResult> Page(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "scriptorium")] HttpRequest request, CancellationToken cancellationToken)
     {
-        if (!options.Value.Enabled)
+        if ((await gate.Refusal(request, cancellationToken)).Case is IActionResult refused)
         {
-            return new NotFoundResult();
-        }
-        if (!await signIn.IsScribe(request, cancellationToken))
-        {
-            return new StatusCodeResult(StatusCodes.Status403Forbidden);
+            return refused;
         }
 
         var outcome = Optional(request.Query["done"].ToString()).Filter(done => done.Length > 0);
@@ -90,13 +87,9 @@ public sealed class ScriptoriumFunction
         Guid draftId,
         CancellationToken cancellationToken)
     {
-        if (!options.Value.Enabled)
+        if ((await gate.Refusal(request, cancellationToken)).Case is IActionResult refused)
         {
-            return new NotFoundResult();
-        }
-        if (!await signIn.IsScribe(request, cancellationToken))
-        {
-            return new StatusCodeResult(StatusCodes.Status403Forbidden);
+            return refused;
         }
 
         return (await amendments.Get(draftId, cancellationToken)).Match(
@@ -112,13 +105,9 @@ public sealed class ScriptoriumFunction
     public async Task<IActionResult> Record(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "scriptorium/record")] HttpRequest request, CancellationToken cancellationToken)
     {
-        if (!options.Value.Enabled)
+        if ((await gate.Refusal(request, cancellationToken)).Case is IActionResult refused)
         {
-            return new NotFoundResult();
-        }
-        if (!await signIn.IsScribe(request, cancellationToken))
-        {
-            return new StatusCodeResult(StatusCodes.Status403Forbidden);
+            return refused;
         }
 
         var draft = Optional(request.Query["draft"].ToString()).Bind(text => Guid.TryParse(text, out var id) ? Some(id) : None);
@@ -136,14 +125,14 @@ public sealed class ScriptoriumFunction
         Guid draftId,
         string action,
         CancellationToken cancellationToken)
-        => await (await ActingScribe(request, cancellationToken)).Match(
+        => await (await gate.ActingScribe(request, cancellationToken)).Match(
             Left: refused => Task.FromResult(new ScriptoriumResponse { Result = refused }),
             Right: scribe => Act(request, draftId, action, scribe, cancellationToken));
 
     [Function("ScriptoriumSummon")]
     public async Task<ScriptoriumResponse> Summon(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "scriptorium/summon")] HttpRequest request, CancellationToken cancellationToken)
-        => await (await ActingScribe(request, cancellationToken)).Match(
+        => await (await gate.ActingScribe(request, cancellationToken)).Match(
             Left: refused => Task.FromResult(new ScriptoriumResponse { Result = refused }),
             Right: async scribe =>
             {
@@ -157,7 +146,7 @@ public sealed class ScriptoriumFunction
     [Function("ScriptoriumAugury")]
     public async Task<IActionResult> LetTheAuguryDecide(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "scriptorium/augury")] HttpRequest request, CancellationToken cancellationToken)
-        => await (await ActingScribe(request, cancellationToken)).Match(
+        => await (await gate.ActingScribe(request, cancellationToken)).Match(
             Left: refused => Task.FromResult(refused),
             Right: async scribe => Answer(request, "augury", None, await scribes.LetTheAuguryDecide(scribe, cancellationToken)).Result);
 
@@ -254,40 +243,6 @@ public sealed class ScriptoriumFunction
 
     private static RiteContent Words(Draft draft) => new(draft.Writing.Title, draft.Writing.Text, draft.Writing.HereticalTruth);
 
-    // The page's forms are always url-encoded; anything else is the client's mistake (400), not the Scriptorium's.
-    private static async Task<Option<IFormCollection>> ReadForm(HttpRequest request, CancellationToken cancellationToken)
-    {
-        if (!request.HasFormContentType)
-        {
-            return None;
-        }
-        try
-        {
-            return Some(await request.ReadFormAsync(cancellationToken));
-        }
-        catch (Exception ex) when (ex is (InvalidDataException or IOException) && !cancellationToken.IsCancellationRequested)
-        {
-            return None;
-        }
-    }
-
-    // Turned off, the Scriptorium doesn't exist. Only a Scribe may act (IScribeSignIn), and a form posted from another
-    // site (a forged request riding a Scribe's sign-in or address) is forbidden.
-    // Which Scribe acts, for the record (#9); else why they may not.
-    private async Task<Either<IActionResult, string>> ActingScribe(HttpRequest request, CancellationToken cancellationToken)
-    {
-        if (!options.Value.Enabled)
-        {
-            return new NotFoundResult();
-        }
-        if (!RequestOrigin.IsFromThisSite(request))
-        {
-            return new StatusCodeResult(StatusCodes.Status403Forbidden);
-        }
-        return (await signIn.Scribe(request, cancellationToken))
-            .ToEither<IActionResult>(() => new StatusCodeResult(StatusCodes.Status403Forbidden));
-    }
-
     private ScriptoriumResponse Answer(HttpRequest request, string action, Option<Guid> draftId, Either<Error, Unit> result)
         => result.Match(
             Right: _ => new ScriptoriumResponse { Result = Back(action, draftId) },
@@ -326,20 +281,4 @@ public sealed class ScriptoriumFunction
 
     // A burned rite has left the calendar, so the page stays at the message, which links to the rite in the Ashes.
     private static IActionResult AfterBurning(string outcome, Guid draftId) => Redirect($"/scriptorium?done={outcome}&rite={draftId:D}");
-
-    // A 302, which browsers follow with a GET.
-    private static IActionResult Redirect(string url) => new RedirectResult(url) { PreserveMethod = false, Permanent = false };
-
-    private static IActionResult Html(HttpRequest request, string html, int status)
-    {
-        // The Scribes' page is never cached (by Cloudflare or the browser) and never indexed. It's never shown inside
-        // another site's frame either, where disguised buttons could trick a Scribe into burning or reordering
-        // (clickjacking); X-Frame-Options covers browsers without frame-ancestors.
-        var headers = request.HttpContext.Response.Headers;
-        headers.CacheControl = "no-store";
-        headers["X-Robots-Tag"] = "noindex";
-        headers.ContentSecurityPolicy = "frame-ancestors 'none'";
-        headers.XFrameOptions = "DENY";
-        return new ContentResult { Content = html, ContentType = "text/html; charset=utf-8", StatusCode = status };
-    }
 }

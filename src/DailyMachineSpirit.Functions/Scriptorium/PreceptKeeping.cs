@@ -1,0 +1,105 @@
+using DailyMachineSpirit.Data.Entities;
+using DailyMachineSpirit.Data.Repositories;
+using LanguageExt;
+using LanguageExt.Common;
+using static LanguageExt.Prelude;
+
+namespace DailyMachineSpirit.Functions.Scriptorium;
+
+/// <summary>
+/// The Scribes have the final say over what the Machine Spirit learned (#12): they add, edit, pin and delete precepts.
+/// A Scribe's words are pinned, so distilling again never replaces them; a deleted precept is remembered, so it isn't
+/// proposed again. Each change is recorded (#9) and guarded by the Precepts' ETag.
+/// </summary>
+public sealed class PreceptKeeping
+{
+    public static readonly Error TextNeeded = Error.New("A precept needs words.");
+
+    public static readonly Error TooLong = Error.New($"A precept can be at most {Precept.MaxLength} characters.");
+
+    public static readonly Error Full = Error.New($"There are {PreceptBook.MaxPrecepts} precepts already: delete or edit one instead.");
+
+    private readonly IPreceptRepository precepts;
+    private readonly TimeProvider time;
+
+    public PreceptKeeping(IPreceptRepository precepts, TimeProvider time)
+    {
+        this.precepts = precepts;
+        this.time = time;
+    }
+
+    public Task<Either<Error, PreceptBook>> View(CancellationToken cancellationToken)
+        => precepts.Get(cancellationToken).MapAsync(read => Task.FromResult(read.Book));
+
+    public Task<Either<Error, Unit>> Add(string text, string scribe, CancellationToken cancellationToken)
+        => Text(text).BindAsync(words => Change(book => book.Precepts.Count >= PreceptBook.MaxPrecepts
+            ? Left<Error, (PreceptBook, AuditEntry)>(Full)
+            : (book with { Precepts = [.. book.Precepts, new Precept { Id = Guid.NewGuid(), Text = words, Pinned = true, ByScribe = true }] },
+                Audit(scribe, AuditAction.AddPrecept, words, None)),
+            cancellationToken));
+
+    /// <summary>New words for the precept, pinned: a Scribe's words aren't for a model to replace.</summary>
+    public Task<Either<Error, Unit>> Edit(Guid preceptId, string text, string scribe, CancellationToken cancellationToken)
+        => Text(text).BindAsync(words => Change(book => Find(book, preceptId).Map(found =>
+            (Replace(book, found with { Text = words, Pinned = true, ByScribe = true }),
+                Audit(scribe, AuditAction.EditPrecept, words, Some($"was “{found.Text}”")))),
+            cancellationToken));
+
+    public Task<Either<Error, Unit>> Pin(Guid preceptId, string scribe, CancellationToken cancellationToken)
+        => Change(book => Find(book, preceptId).Map(found =>
+            (Replace(book, found with { Pinned = true }), Audit(scribe, AuditAction.PinPrecept, found.Text, None))),
+            cancellationToken);
+
+    public Task<Either<Error, Unit>> Unpin(Guid preceptId, string scribe, CancellationToken cancellationToken)
+        => Change(book => Find(book, preceptId).Map(found =>
+            (Replace(book, found with { Pinned = false }), Audit(scribe, AuditAction.UnpinPrecept, found.Text, None))),
+            cancellationToken);
+
+    /// <summary>Deletes the precept, and remembers its words so a distillation doesn't propose them again.</summary>
+    public Task<Either<Error, Unit>> Delete(Guid preceptId, string scribe, CancellationToken cancellationToken)
+        => Change(book => Find(book, preceptId).Map(found =>
+            (book with
+            {
+                Precepts = book.Precepts.Where(precept => precept.Id != preceptId).ToList(),
+                Rejected = [found.Text, .. book.Rejected.Take(PreceptBook.RejectedKept - 1)],
+            },
+                Audit(scribe, AuditAction.DeletePrecept, found.Text, None))),
+            cancellationToken);
+
+    private Task<Either<Error, Unit>> Change(
+        Func<PreceptBook, Either<Error, (PreceptBook Changed, AuditEntry Audit)>> change, CancellationToken cancellationToken)
+        => precepts.Get(cancellationToken)
+            .BindAsync(read => change(read.Book)
+                .BindAsync(changed => precepts.Save(read, changed.Changed, changed.Audit, cancellationToken)));
+
+    // Gone meanwhile: a distillation replaced it, or another Scribe deleted it.
+    private static Either<Error, Precept> Find(PreceptBook book, Guid preceptId)
+        => book.Precepts.Where(precept => precept.Id == preceptId).HeadOrNone().ToEither(ScriptoriumRepository.ChangedMeanwhile);
+
+    private static PreceptBook Replace(PreceptBook book, Precept changed)
+        => book with { Precepts = book.Precepts.Select(precept => precept.Id == changed.Id ? changed : precept).ToList() };
+
+    private static Either<Error, string> Text(string text)
+    {
+        var trimmed = text.Trim();
+        if (trimmed.Length == 0)
+        {
+            return TextNeeded;
+        }
+        if (trimmed.Length > Precept.MaxLength)
+        {
+            return TooLong;
+        }
+        return trimmed;
+    }
+
+    private AuditEntry Audit(string scribe, AuditAction action, string text, Option<string> detail) => new()
+    {
+        Id = Guid.NewGuid(),
+        AtUtc = time.GetUtcNow().UtcDateTime,
+        Actor = scribe,
+        Action = action,
+        Title = text,
+        Detail = detail,
+    };
+}
