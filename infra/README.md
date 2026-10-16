@@ -233,9 +233,10 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
   - **A rate limit rule** (Security → WAF → Rate limiting rules, set up 2026-10-13) for votes and searches (each
     search reads every rite; the Archive's field searches as the reader types, a request per pause), counted by IP, 20
     in 10 seconds, blocked for 10 seconds. The Free plan has one such rule, so every limited path shares it:
-    `(http.request.uri.path wildcard r"/api/rites/*/vote") or (http.request.uri.path eq "/archive" and
-    http.request.uri.query contains "q=")`. With `eq`, the `*` would be taken literally, and match nothing. The nav's
-    suggestions are matched in the browser, so they need no limit.
+    `(http.request.uri.path wildcard r"/api/rites/*/vote") or (http.request.uri.path eq "/archive")`. Every request to
+    the Archive, not only those with `q=`: the app reads the decoded query (`%71=` is `q=` too), and any other query
+    string is cached apart, so each new one reads the database. Paging and live search stay far below the limit. With
+    `eq`, the `*` would be taken literally, and match nothing. The nav's suggestions are matched in the browser.
 
   Production admits only Cloudflare's address ranges (`cloudflare-ips.json`), so its cache and rate limit can't be gone
   around. **Check Cloudflare's Addresses** (a weekly workflow) opens an issue when Cloudflare publishes different
