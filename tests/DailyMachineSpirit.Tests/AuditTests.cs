@@ -153,11 +153,11 @@ public sealed class AuditTests : IAsyncLifetime
     {
         var entry = new AuditEntry { Id = Guid.NewGuid(), Actor = Tester, Action = action, Title = "Litany", RiteNumber = Some(7) };
 
-        Assert.Contains($"A Scribe (…456789) {did}</li>", ScriptoriumPage.RenderRecord([entry], [], None));
+        Assert.Contains($"A Scribe (…456789) {did}</li>", ScriptoriumPage.RenderRecord([entry], None));
     }
 
     [Fact]
-    public void AnEmptyRecord_SaysSo() => Assert.Contains("Nothing is recorded yet.", ScriptoriumPage.RenderRecord([], [], None));
+    public void AnEmptyRecord_SaysSo() => Assert.Contains("Nothing is recorded yet.", ScriptoriumPage.RenderRecord([], None));
 
     private async Task<List<AuditEntry>> Entries() => Ok(await testbed.Audit.GetNewest(50, CancellationToken.None));
 }
