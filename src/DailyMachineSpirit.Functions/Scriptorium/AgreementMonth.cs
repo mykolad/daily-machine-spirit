@@ -9,7 +9,7 @@ namespace DailyMachineSpirit.Functions.Scriptorium;
 /// <param name="Month">The month's first day (UTC).</param>
 /// <param name="Judgments">Every decision the Scribes made that month.</param>
 /// <param name="Burns">Drafts consigned to the flames.</param>
-/// <param name="TopPicksBurned">Burned drafts the Augury had among its top picks.</param>
-/// <param name="Moves">Anointed, exalted and humbled drafts the Augury had placed.</param>
+/// <param name="TopPicksBurned">Burned drafts the Augury had judged and put among its top picks.</param>
+/// <param name="Moves">Anointed, exalted and humbled drafts the Augury had judged.</param>
 /// <param name="AverageDistance">How many places, on average, the moves took a draft from the Augury's place for it.</param>
 public sealed record AgreementMonth(DateOnly Month, int Judgments, int Burns, int TopPicksBurned, int Moves, Option<double> AverageDistance);

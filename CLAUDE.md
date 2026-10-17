@@ -260,7 +260,8 @@ observability/                    — the Grafana dashboard and alerts, and what
     - **Not yet the judge's:** the Augury still orders by Jev's quality; #10 tests a model judge with the Precepts.
     - **Do the Scribes agree with the Augury?** (`AgreementTrend`, on the Precepts' page): for each of the last six
       months, how many of the Augury's top three picks were burned, and how many places, on average, an anoint, exalt
-      or humble moved a draft from the Augury's place for it (its place after the move follows from the action). When
+      or humble moved a draft from the Augury's place for it (its place after the move follows from the action). Only
+      judged drafts count: without a quality, the Augury places a draft by age alone. When
       both stay low, the Augury can be left to choose on its own.
   - **The Record** (`/scriptorium/record`, #9): who changed what, newest first, the last 100; `?draft=` gives one
     draft's whole history. An `AuditEntry` (documents of type `audit`) is saved in the same batch as each change, so

@@ -47,15 +47,19 @@ public sealed class AgreementTrend
             month,
             inMonth.Count,
             burns.Count,
-            burns.Count(decision => decision.AuguryPlace.Exists(place => place <= TopPicks)),
+            burns.Count(WasATopPick),
             distances.Count,
             distances.Count == 0 ? None : Some(distances.Average()));
     }
 
+    // Only a judged draft: an unjudged one is placed by age alone, so burning it says nothing against the Augury.
+    private static bool WasATopPick(ScribeDecision decision)
+        => decision.AuguryQuality.IsSome && decision.AuguryPlace.Exists(place => place <= TopPicks);
+
     // How far a move took the draft from the Augury's place for it. Its new place follows from the action and the place
-    // before; a draft the Augury hadn't placed (not judged) has no distance to tell.
+    // before. An unjudged draft has a place too, but only by age: moving it says nothing about the Augury's judgment.
     private static Option<double> Distance(ScribeDecision decision)
-        => decision.CalendarPlace
+        => decision.AuguryQuality.Bind(_ => decision.CalendarPlace)
             .Bind(before => NewPlace(decision.Action, before))
             .Bind(after => decision.AuguryPlace.Map(augury => (double)Math.Abs(after - augury)));
 

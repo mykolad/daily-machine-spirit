@@ -1,3 +1,4 @@
+using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Functions.Scriptorium;
 using static DailyMachineSpirit.Tests.BacklogTestbed;
 using static DailyMachineSpirit.Tests.Expect;
@@ -38,6 +39,21 @@ public sealed class AgreementTrendTests : IAsyncLifetime
         Assert.Equal(new AgreementMonth(new DateOnly(2026, 10, 1), 3, 1, 1, 2, Some(1.5)), months[1]);
     }
 
+    // Without a quality (Jev off or failing), the Augury places drafts by age alone: burning or moving them says
+    // nothing about its judgment, so they count only as judgments.
+    [Fact]
+    public async Task UnjudgedDrafts_CountOnlyAsJudgments()
+    {
+        var first = await Unjudged("First");
+        var second = await Unjudged("Second");
+        Ok(await testbed.Scribes().Anoint(second.Id, "", Tester, CancellationToken.None));
+        Ok(await testbed.Scribes().Burn(first.Id, "", Tester, CancellationToken.None));
+
+        var october = Ok(await new AgreementTrend(testbed.Scriptorium, testbed.Time).Months(CancellationToken.None))[0];
+
+        Assert.Equal(new AgreementMonth(new DateOnly(2026, 10, 1), 2, 1, 0, 0, None), october);
+    }
+
     // A burn of a draft the Augury placed below its top picks, or a restore, says nothing against it.
     [Fact]
     public async Task OtherJudgments_CountOnlyAsJudgments()
@@ -53,4 +69,21 @@ public sealed class AgreementTrendTests : IAsyncLifetime
 
         Assert.Equal(new AgreementMonth(new DateOnly(2026, 10, 1), 2, 1, 0, 0, None), october);
     }
+
+    // A draft judging couldn't score: it waits, placed by age.
+    private async Task<Draft> Unjudged(string title)
+        => Ok(await testbed.Drafts.Add(new Draft
+        {
+            Id = Guid.NewGuid(),
+            State = DraftState.Waiting,
+            Writing = new RiteWriting
+            {
+                Kind = RiteKind.Prayer,
+                Title = title,
+                Text = "O Machine Spirit, let the cache be warm.",
+                HereticalTruth = "A cold cache is just a cache that hasn't been read yet.",
+                GeneratedByModel = Sol,
+                GeneratedAtUtc = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc),
+            },
+        }, CancellationToken.None));
 }
