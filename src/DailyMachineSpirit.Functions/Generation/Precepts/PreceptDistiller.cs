@@ -83,7 +83,7 @@ public sealed class PreceptDistiller
 
     // Never distilled counts as new: the first run learns from whatever there is.
     private static bool JudgedSince(PreceptBook book, IReadOnlyList<ScribeDecision> decisions)
-        => book.DistilledAtUtc.ForAll(distilled => decisions.Any(decision => decision.DecidedAtUtc > distilled));
+        => book.NewestJudgmentReadUtc.ForAll(newestRead => decisions.Any(decision => decision.DecidedAtUtc > newestRead));
 
     private async Task<Either<Error, PreceptBook>> Distilled(
         PreceptBook book, IReadOnlyList<ScribeDecision> decisions, CancellationToken cancellationToken)
@@ -111,6 +111,7 @@ public sealed class PreceptDistiller
             Precepts = [.. pinned, .. distilled.Select(text => new Precept { Id = Guid.NewGuid(), Text = text })],
             DistilledAtUtc = time.GetUtcNow().UtcDateTime,
             DistilledFrom = decisions.Count,
+            NewestJudgmentReadUtc = decisions.Max(decision => decision.DecidedAtUtc),
         });
     }
 
