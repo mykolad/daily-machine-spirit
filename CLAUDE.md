@@ -233,10 +233,12 @@ observability/                    — the Grafana dashboard and alerts, and what
     old lesson is the same rite. Then `DuplicateCheck` asks `gpt-6-luna` (`Generation:DuplicateCheckModel`) whether
     the draft repeats any of those or any rite ever published. One that does is written again, told of the rite it
     repeats, up to twice (`Generation:DuplicateRewrites`); still repeating, it's kept with `Resembles` (that rite's
-    title), and the Scriptorium shows it as "Much like …" for the Scribes to judge. A check that fails keeps the draft
-    unchecked; checks are counted (`dms.generation.duplicate_checks`). Amending a draft clears the mark. A model, not
-    a measure: Jev's scores place a rite among broad topics (unrelated rites on one topic score nearly the same), and
-    two wordings of one lesson share few words.
+    title), and the Scriptorium shows it as "Much like …" for the Scribes to judge. A rewrite that fails on every
+    model keeps the draft, marked the same way. The check reads the waiting drafts again first, so a draft another
+    refill saved meanwhile counts too. A check that fails keeps the draft unchecked; checks are counted
+    (`dms.generation.duplicate_checks`). Amending a draft clears the mark. A model, not a measure: Jev's scores place a
+    rite among broad topics (unrelated rites on one topic score nearly the same), and two wordings of one lesson share
+    few words.
   - **Refilling:** the `RefillBacklog` function keeps `Generation:BacklogSize` (20) drafts waiting. Each draft is of
     the kind there are fewer of, repeating no rite already written (above). The timer asks for a
     refill after publishing, by a message on the `backlog-refills` queue: a full refill takes minutes, longer than a
@@ -286,10 +288,12 @@ observability/                    — the Grafana dashboard and alerts, and what
     - **Distilled** (`PreceptDistiller`): `gpt-6-sol` (then `gpt-6-luna`, one try of 40 seconds each) reads the
       newest 100 judgments with their notes and answers at most 12 precepts (JSON schema output). An answer with a
       null, an overlong precept, or nothing but pinned and deleted ones goes to the next model. The `DistilPrecepts`
-      timer runs Mondays at 01:00 UTC, as the Machine Spirit; a Scribe can ask sooner, and waits for the answer.
+      timer runs Mondays at 01:00 UTC, as the Machine Spirit, unless no rite was judged since the last distillation
+      (the same judgments would only reword the unpinned precepts); a Scribe can ask sooner, and waits for the answer.
       Nothing judged yet, or every precept pinned, means nothing to do.
     - **The Scribes have the final say** (`PreceptKeeping`): they add, edit, pin or delete precepts. Pinned precepts
-      stay when distilled again, the rest make way for the new ones; a Scribe's words are pinned. Deleted ones are
+      stay when distilled again, the rest make way for the new ones; a Scribe's words are pinned. Pinned ones come first,
+      on the page and in the writer's prompt; Pin and Unpin say what they do in their `title`. Deleted ones are
       remembered (the newest 30): the model is told not to propose them, and any it does are dropped.
     - **Not yet the judge's:** the Augury still orders by Jev's quality; #10 tests a model judge with the Precepts.
     - **Do the Scribes agree with the Augury?** (`AgreementTrend`, on the Precepts' page): for each of the last six
@@ -302,9 +306,8 @@ observability/                    — the Grafana dashboard and alerts, and what
     there's no change without its entry: the Scribes' actions, and the Machine Spirit's own (each draft it writes, each
     rite it publishes). Only Summon, which stores nothing itself, saves its entry alone, and goes ahead if that fails.
     - **Who:** a Scribe is their Access id (the token's `sub`), never their email; on staging, with no sign-in, every
-      Scribe is `staging`; the Machine Spirit is `machine-spirit`. The page shows an id by its name in
-      `Scriptorium:Scribes`, a list of `Id` and `Name` (a setting's name can't hold an id's hyphens), which the Bicep
-      makes from `productionAccess.scribes` in `resources.bicep`; else by its last six characters (`ScribeNames`).
+      Scribe is `staging`; the Machine Spirit is `machine-spirit`. The page shows a Scribe by the last six
+      characters of their id (`ScribeNames`), until the Scribes choose their names.
     - **Kept** as long as the drafts and rites, with ids, titles and where a draft went; never a visitor.
   - **Concurrency:** each change uses an ETag, so two Scribes can't overwrite each other: the later one is told to look
     again.

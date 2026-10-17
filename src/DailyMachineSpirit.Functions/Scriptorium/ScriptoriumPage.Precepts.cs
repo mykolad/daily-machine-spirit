@@ -68,7 +68,8 @@ public static partial class ScriptoriumPage
         return html.ToString();
     }
 
-    // Each precept's buttons name it for screen readers, since every entry has the same buttons.
+    // Each precept's buttons name it for screen readers, since every entry has the same buttons. Pin and Unpin say what
+    // they do in their title, as the calendar's buttons do: pinning only matters at the next distillation.
     private static void PreceptEntry(StringBuilder html, Precept precept, string version, Option<Guid> acted)
     {
         var id = precept.Id.ToString("D");
@@ -76,8 +77,8 @@ public static partial class ScriptoriumPage
         var named = $"""<span class="visually-hidden">: {Encode(precept.Text)}</span>""";
         var origin = precept.ByScribe ? "A Scribe's words" : "Distilled by the Machine Spirit";
         var pin = precept.Pinned
-            ? $"""<button class="outline" formaction="{action}/unpin">{ScriptoriumIcons.Pin}Unpin{named}</button>"""
-            : $"""<button class="outline" formaction="{action}/pin">{ScriptoriumIcons.Pin}Pin{named}</button>""";
+            ? $"""<button title="Lets the next distillation replace this precept with a new one." class="outline" formaction="{action}/unpin">{ScriptoriumIcons.Pin}Unpin{named}</button>"""
+            : $"""<button title="Keeps this precept, word for word, when the Precepts are distilled again. Pinned precepts come first." class="outline" formaction="{action}/pin">{ScriptoriumIcons.Pin}Pin{named}</button>""";
         html.Append($"""
             <li class="rite{(acted.Exists(found => found == precept.Id) ? " acted" : string.Empty)}" id="precept-{id}">
             <p class="text">{WithCode(precept.Text)}</p>
@@ -107,7 +108,7 @@ public static partial class ScriptoriumPage
         html.Append($"""
             <section aria-labelledby="agreement-heading">
             <h2 id="agreement-heading">Do the Scribes Agree with the Augury?</h2>
-            <p>How many of the Augury's top {AgreementTrend.TopPicks} picks the Scribes burned, and how far they moved
+            <p>How many of the Augury's top {AgreementTrend.TopPickPlaces} picks the Scribes burned, and how far they moved
             drafts from the places it gave them. When both stay low, the Augury can be left to choose on its own.</p>
             <table class="agreement">
             <thead><tr><th scope="col">Month</th><th scope="col">Judgments</th>
@@ -116,12 +117,12 @@ public static partial class ScriptoriumPage
             """);
         foreach (var month in trend)
         {
-            var burned = month.Burns == 0 ? "No burns" : $"{month.TopPicksBurned} of {Count(month.Burns, "burn")}";
-            var moved = month.AverageDistance.Match(
-                Some: distance => $"{Places(distance)} ({Count(month.Moves, "move")})",
+            var burned = month.DraftsBurned == 0 ? "No burns" : $"{month.AuguryTopPicksBurned} of {Count(month.DraftsBurned, "burn")}";
+            var moved = month.AveragePlacesFromAuguryPlace.Match(
+                Some: distance => $"{Places(distance)} ({Count(month.JudgedDraftsMoved, "move")})",
                 None: () => "No moves");
-            html.Append($"""<tr><th scope="row">{month.Month.ToString("MMM yyyy", CultureInfo.InvariantCulture)}</th>"""
-                + $"<td>{month.Judgments}</td><td>{burned}</td><td>{moved}</td></tr>");
+            html.Append($"""<tr><th scope="row">{month.FirstDayUtc.ToString("MMM yyyy", CultureInfo.InvariantCulture)}</th>"""
+                + $"<td>{month.ScribeDecisions}</td><td>{burned}</td><td>{moved}</td></tr>");
         }
         html.Append("</tbody></table></section>");
     }

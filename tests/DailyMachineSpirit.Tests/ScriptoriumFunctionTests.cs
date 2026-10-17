@@ -40,6 +40,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Contains($"/scriptorium/drafts/{top:D}/anoint", html);
         Assert.DoesNotContain($"/scriptorium/drafts/{top:D}/exalt", html);
         Assert.Contains("“Spinners &lt;again&gt;.”", html);
+        Assert.Contains("and whether the Scribes agree with the Augury.", html);
         Assert.Contains("not affiliated with or endorsed by Games Workshop", html);
         Assert.Equal("no-store", request.HttpContext.Response.Headers.CacheControl.ToString());
         Assert.Equal("noindex", request.HttpContext.Response.Headers["X-Robots-Tag"].ToString());
@@ -585,7 +586,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var html = Html(await Function(enabled: true).Page(Following(response.Result), CancellationToken.None), 200);
         Assert.Matches("Judged “Litany of the Cold Cache” again, \\d+ %: the Augury places it for ", html);
         Assert.Contains($"""A Scribe on staging judged <a href="/scriptorium/record?draft={unjudged.Id:D}">“Litany of the Cold Cache”</a> again""", ScriptoriumPage.RenderRecord(
-            Ok(await testbed.Audit.GetHistory(unjudged.Id, CancellationToken.None)), [], LanguageExt.Prelude.None));
+            Ok(await testbed.Audit.GetHistory(unjudged.Id, CancellationToken.None)), LanguageExt.Prelude.None));
     }
 
     [Fact]

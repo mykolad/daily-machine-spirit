@@ -28,7 +28,6 @@ public sealed class DuplicateCheck
         Answer the number of the existing rite the new one repeats, or 0 if it repeats none.
         """;
 
-    /// <summary>How long the model may take: a refill waits on it once per draft.</summary>
     public static readonly TimeSpan AttemptTime = TimeSpan.FromSeconds(60);
 
     private static readonly JsonSerializerOptions AnswerSerializerOptions = new(JsonSerializerOptions.Web)
@@ -50,7 +49,6 @@ public sealed class DuplicateCheck
         this.metrics = metrics;
     }
 
-    /// <summary>The taken rite the draft repeats, if any; an error when the model couldn't tell.</summary>
     public async Task<Either<Error, Option<TakenRite>>> Repeats(Draft draft, IReadOnlyList<TakenRite> taken, CancellationToken cancellationToken)
     {
         if (taken.Count == 0)
@@ -64,7 +62,7 @@ public sealed class DuplicateCheck
         try
         {
             var response = await chatClients.For(options.Value.DuplicateCheckModel).GetResponseAsync<DuplicateAnswer>(
-                [new(ChatRole.System, Instructions), new(ChatRole.User, Request(draft, taken))],
+                [new(ChatRole.System, Instructions), new(ChatRole.User, RitesToCompareAsJson(draft, taken))],
                 AnswerSerializerOptions, options: null, useJsonSchemaResponseFormat: true, attempt.Token);
             metrics.AnswerTime(options.Value.DuplicateCheckModel, "check", "answered", time.GetElapsedTime(started));
             if (!response.TryGetResult(out var answer))
@@ -78,8 +76,6 @@ public sealed class DuplicateCheck
                 var number => Error.New($"The answer names rite {number}, but there are {taken.Count}."),
             };
         }
-        // An outage, throttling, running out of time or a refusal: the draft can't be checked. Only the caller's own
-        // cancellation stops.
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             metrics.AnswerTime(options.Value.DuplicateCheckModel, "check", timeout.IsCancellationRequested ? "timed-out" : "failed", time.GetElapsedTime(started));
@@ -87,8 +83,7 @@ public sealed class DuplicateCheck
         }
     }
 
-    // As JSON, so the rites' words stay words to compare.
-    private static string Request(Draft draft, IReadOnlyList<TakenRite> taken)
+    private static string RitesToCompareAsJson(Draft draft, IReadOnlyList<TakenRite> taken)
     {
         var sb = new StringBuilder();
         sb.AppendLine($"The new rite: {JsonSerializer.Serialize(new { draft.Writing.Title, draft.Writing.Text, draft.Writing.HereticalTruth })}");

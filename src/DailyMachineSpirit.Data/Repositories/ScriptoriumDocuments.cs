@@ -47,6 +47,8 @@ internal sealed record ScribeDecisionDocument
 
     public float? AuguryQuality { get; init; }
 
+    public bool? AuguryRankedByQuality { get; init; }
+
     public string? Note { get; init; }
 
     public DateTime DecidedAtUtc { get; init; }
@@ -63,6 +65,7 @@ internal sealed record ScribeDecisionDocument
         CalendarPlace = decision.CalendarPlace.OrNullable(),
         AuguryPlace = decision.AuguryPlace.OrNullable(),
         AuguryQuality = decision.AuguryQuality.OrNullable(),
+        AuguryRankedByQuality = decision.AuguryRankedByQuality,
         Note = decision.Note.OrNull(),
         DecidedAtUtc = Utc.From(decision.DecidedAtUtc),
     };
@@ -79,6 +82,8 @@ internal sealed record ScribeDecisionDocument
         CalendarPlace = Optional(CalendarPlace),
         AuguryPlace = Optional(AuguryPlace),
         AuguryQuality = Optional(AuguryQuality),
+        // Decisions saved before it was kept: a judged draft was taken as ranked by its quality then.
+        AuguryRankedByQuality = AuguryRankedByQuality ?? AuguryQuality.HasValue,
         Note = Optional(Note),
         DecidedAtUtc = DecidedAtUtc,
     };

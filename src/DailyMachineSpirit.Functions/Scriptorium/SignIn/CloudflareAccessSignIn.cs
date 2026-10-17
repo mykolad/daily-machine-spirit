@@ -54,7 +54,7 @@ public sealed class CloudflareAccessSignIn : IScribeSignIn
 
     /// <summary>
     /// The Scribe's Access id (the token's <c>sub</c>), stable for as long as their Access identity is. The record (#9)
-    /// keeps it rather than their email, and the Scriptorium shows it by a name from its settings.
+    /// keeps it rather than their email.
     /// </summary>
     public async Task<Option<string>> Scribe(HttpRequest request, CancellationToken cancellationToken)
     {

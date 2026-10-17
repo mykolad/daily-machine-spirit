@@ -112,7 +112,7 @@ public static partial class ScriptoriumPage
             """);
         Heading(html, "The Scriptorium",
             "Unconsecrated rites await the judgment of the Scribes. Your notes teach the Augury what to choose when no Scribe is watching.");
-        html.Append("""<p class="record-link"><a href="/scriptorium/precepts">The Precepts</a>: what the Machine Spirit has learned from your judgments. <a href="/scriptorium/record">The Record</a>: every change, and who made it.</p>""");
+        html.Append("""<p class="record-link"><a href="/scriptorium/precepts">The Precepts</a>: what the Machine Spirit has learned from your judgments, and whether the Scribes agree with the Augury. <a href="/scriptorium/record">The Record</a>: every change, and who made it.</p>""");
         html.Append($"""<p class="status" role="status">{status.IfNone(string.Empty)}</p>""");
 
         html.Append($"""
@@ -244,8 +244,7 @@ public static partial class ScriptoriumPage
     /// The Record (#9): every change to the drafts and rites, and who made it, newest first; or one draft's, from its
     /// first draft to its publishing.
     /// </summary>
-    /// <param name="names">The Scribes' names, by their Access id (<see cref="ScriptoriumOptions.Scribes"/>).</param>
-    public static string RenderRecord(IReadOnlyList<AuditEntry> entries, IReadOnlyList<ScribeName> names, Option<Guid> draft)
+    public static string RenderRecord(IReadOnlyList<AuditEntry> entries, Option<Guid> draft)
     {
         var html = new StringBuilder();
         Head(html, "The Record");
@@ -264,7 +263,7 @@ public static partial class ScriptoriumPage
             html.Append("""<ol class="record">""");
             foreach (var entry in entries)
             {
-                html.Append($"""<li><time datetime="{entry.AtUtc:yyyy-MM-ddTHH:mm:ssZ}">{When(entry.AtUtc)}</time> {Encode(ScribeNames.Of(entry.Actor, names))} {Did(entry)}</li>""");
+                html.Append($"""<li><time datetime="{entry.AtUtc:yyyy-MM-ddTHH:mm:ssZ}">{When(entry.AtUtc)}</time> {Encode(ScribeNames.Of(entry.Actor))} {Did(entry)}</li>""");
             }
             html.Append("</ol>");
         }
