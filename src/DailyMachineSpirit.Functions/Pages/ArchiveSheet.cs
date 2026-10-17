@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace DailyMachineSpirit.Functions.Pages;
 
 /// <summary>
@@ -7,6 +9,20 @@ namespace DailyMachineSpirit.Functions.Pages;
 /// </summary>
 public static class ArchiveSheet
 {
+    /// <summary>How many times a page repeats the code: enough for twenty rows and their month's rubric, and more.</summary>
+    private const int CopiesPerPage = 12;
+
+    // The margins' code, as Today's parchment has "READ THE CODE" in hex and "KNOW" in binary: "NOTHING IS FORGOTTEN"
+    // and "KEPT", for the record. Repeated, as the sheet runs on for as long as there are rites, and cut where it ends:
+    // a page's worth here, and the script adds a page's worth more with each page it loads (data-code, data-copies).
+    private static readonly string LeftCode
+        = string.Join(" ", "NOTHING IS FORGOTTEN".Select(letter => ((int)letter).ToString("X2", CultureInfo.InvariantCulture)));
+    private static readonly string RightCode = string.Join(" ", "KEPT".Select(letter => Convert.ToString(letter, 2).PadLeft(8, '0')));
+
+    // Dry words on the paper strip by the seal at the Archive's end, one for each count of rites, so a reader returning
+    // another day may find another.
+    private static readonly string[] Closings = ["Archived (probably)", "Backed up, never restored", "Retention: forever", "Read by no one since"];
+
     /// <param name="kicker">The small red line over the heading, or empty.</param>
     /// <param name="heading">The page's h1, as HTML.</param>
     /// <param name="sub">The line under it, as HTML.</param>
@@ -19,6 +35,10 @@ public static class ArchiveSheet
         => $"""
             <div class="hero archive-hero">
             <div class="sheet">
+            <span class="rule-outer" aria-hidden="true"></span><span class="rule-inner" aria-hidden="true"></span>
+            {Svg.Corners}
+            <span class="margin-text margin-left" aria-hidden="true" data-code="{LeftCode}" data-copies="{CopiesPerPage}">{Repeated(LeftCode)}</span>
+            <span class="margin-text margin-right" aria-hidden="true" data-code="{RightCode}" data-copies="{CopiesPerPage}">{Repeated(RightCode)}</span>
             <div class="sheet-inner">
             <header class="sheet-head">
             {(kicker.Length == 0 ? string.Empty : $"""<p class="sheet-kicker">{kicker}</p>""")}
@@ -73,4 +93,20 @@ public static class ArchiveSheet
                 <ul>{string.Concat(months.Select(month => $"""<li><a href="{Html.Encode(link(month))}"><span>{month.Label}</span><span class="month-count">{Html.Count(month.Count)}<span class="sr-only"> {(month.Count == 1 ? "rite" : "rites")}</span></span></a></li>"""))}</ul>
                 </aside>
                 """;
+
+    /// <summary>
+    /// The end of the Archive, on its last page: the ribbon and wax seal hang from the sheet, as under Today's rite, with
+    /// a dry word on a paper strip. Decoration, hidden from screen readers; the end's own words follow.
+    /// </summary>
+    /// <param name="rites">How many rites are kept, which picks the strip's words.</param>
+    public static string Closing(int rites)
+        => $"""
+            <div class="archive-seal" aria-hidden="true">
+            <div class="ribbon"><span></span><span></span></div>
+            {Svg.ClosingSeal}
+            <span class="purity-strip">{Closings[rites % Closings.Length]}</span>
+            </div>
+            """;
+
+    private static string Repeated(string code) => string.Join(" · ", Enumerable.Repeat(code, CopiesPerPage));
 }
