@@ -32,6 +32,37 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.Contains("3h 12m", html);
     }
 
+    // On Today the motto sits under the rite, where it's read, and leaves the footer, so it's said once; every other
+    // page keeps it in the footer.
+    [Fact]
+    public async Task TheMotto_IsUnderTodaysRite_AndInTheFooterElsewhere()
+    {
+        await Add(Day, "The Rite of Re-Run");
+        const string motto = "Knowledge is lost. The rituals remain.";
+
+        var (_, today) = await Today("");
+        var (_, notFound) = await Today("no-such-page");
+        var (_, archive) = await Archive("");
+
+        Assert.Equal(1, today.Split(motto).Length - 1);
+        Assert.Contains($"""<p class="epigraph">{motto}</p>""", today);
+        // The rendered elements, not the stylesheet's selectors (which come first, in the head): the rite, then the motto.
+        var heading = today.IndexOf("""<h2 class="rite-title" id="rite-title">""", StringComparison.Ordinal);
+        var epigraph = today.IndexOf("""<p class="epigraph">""", StringComparison.Ordinal);
+        Assert.True(heading >= 0 && epigraph > heading, $"The rite's heading is at {heading}, the motto at {epigraph}.");
+        Assert.Contains($"""<p class="motto">{motto}</p>""", archive);
+        Assert.Contains($"""<p class="motto">{motto}</p>""", notFound);
+    }
+
+    [Fact]
+    public async Task BeforeTheFirstRite_TheMottoIsUnderTheSlumber()
+    {
+        var (_, html) = await Today("");
+
+        Assert.Contains("""<p class="epigraph">Knowledge is lost. The rituals remain.</p>""", html);
+        Assert.DoesNotContain("""<p class="motto">""", html);
+    }
+
     // Inline, so the icon costs no request, and browsers don't ask for /favicon.ico (which would get the 404 page).
     [Fact]
     public async Task EveryPage_CarriesItsIcon_Inline()
