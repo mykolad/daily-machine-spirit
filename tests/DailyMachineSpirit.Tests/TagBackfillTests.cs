@@ -35,6 +35,26 @@ public sealed class TagBackfillTests : IAsyncLifetime
         Assert.Equal(Some(new[] { "ai" }), Ok(await Drafts.Get(draft.Id, CancellationToken.None)).Bind(found => found.Tags));
     }
 
+    // An amendment saved between the backfill's read and its save: tagged anew from the new words, or left without
+    // scores when judging them failed. Tags from the old scores mustn't overwrite either.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task StaleTags_DontOverwriteAnAmendmentSavedMeanwhile(bool judgedAgain)
+    {
+        var draft = await AddDraft(TopicScores.About(("ai", 0.9f)));
+        var read = Assert.Single(Ok(await Drafts.GetUntagged(CancellationToken.None)));
+        var amended = judgedAgain
+            ? draft with { Tags = Some(new[] { "caches" }), Similarity = Some(TopicScores.About(("caches", 0.9f))) }
+            : draft with { Similarity = None };
+        await cosmos.Container.UpsertItemAsync(DraftDocument.From(amended), CosmosCalls.SharedPartitionKey);
+
+        Ok(await Drafts.SaveTags(read.Id, ["ai"], CancellationToken.None));
+
+        var tags = Ok(await Drafts.Get(draft.Id, CancellationToken.None)).Bind(found => found.Tags);
+        Assert.Equal(judgedAgain ? Some(new[] { "caches" }) : None, tags);
+    }
+
     // Another judge's scores stay untagged until a judge that reads them comes; the rest are tagged meanwhile.
     [Fact]
     public async Task Run_LeavesScoresTheJudgeCantRead()
