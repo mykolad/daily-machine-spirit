@@ -32,11 +32,8 @@ public static class LiturgicalCalendar
         var before = recent.Take(ResemblanceWindow).Reverse().Select(rite => (rite.Writing.Kind, rite.Similarity))
             .Concat(ordered.Select(draft => (draft.Writing.Kind, draft.Similarity)))
             .ToList();
-        // The most recent judge: after a new Jev model or quality question, drafts it hasn't judged yet
-        // wait behind the ones it has.
-        var judge = waiting.SelectMany(draft => draft.Augury).OrderByDescending(augury => augury.JudgedAtUtc)
-            .Select(augury => augury.JudgedBy).HeadOrNone();
-        bool IsJudged(Draft draft) => draft.Augury.Exists(augury => judge.Exists(newest => newest == augury.JudgedBy));
+        var judge = NewestJudge(waiting);
+        bool IsJudged(Draft draft) => JudgedBy(draft, judge);
         // A fixed order to start from, so equal values always resolve the same way.
         var judged = unplaced.Where(IsJudged).OrderBy(draft => draft.Writing.GeneratedAtUtc).ThenBy(draft => draft.Id).ToList();
 
@@ -52,6 +49,19 @@ public static class LiturgicalCalendar
         ordered.AddRange(unplaced.Where(draft => !IsJudged(draft)).OrderBy(draft => draft.Writing.GeneratedAtUtc).ThenBy(draft => draft.Id));
         return ordered;
     }
+
+    /// <summary>
+    /// Whether the Augury ranks the draft by its quality: only when the most recent judge scored it. After a new Jev
+    /// model or quality question, drafts it hasn't judged yet wait behind the ones it has, by age.
+    /// </summary>
+    public static bool RanksByQuality(Draft draft, IReadOnlyList<Draft> waiting) => JudgedBy(draft, NewestJudge(waiting));
+
+    private static Option<string> NewestJudge(IReadOnlyList<Draft> waiting)
+        => waiting.SelectMany(draft => draft.Augury).OrderByDescending(augury => augury.JudgedAtUtc)
+            .Select(augury => augury.JudgedBy).HeadOrNone();
+
+    private static bool JudgedBy(Draft draft, Option<string> judge)
+        => draft.Augury.Exists(augury => judge.Exists(newest => newest == augury.JudgedBy));
 
     private static float Value(Draft draft, List<(RiteKind Kind, Option<RiteSimilarity> Similarity)> before)
     {

@@ -32,6 +32,12 @@ public sealed record ScribeDecision
 
     public Option<float> AuguryQuality { get; init; }
 
+    /// <summary>
+    /// Whether the Augury placed it by its quality, as it does the drafts its current judge scored. A draft an older judge
+    /// scored is placed by age, as an unjudged one is, so its place says nothing about the Augury's judgment.
+    /// </summary>
+    public bool AuguryRankedByQuality { get; init; }
+
     public Option<string> Note { get; init; }
 
     public DateTime DecidedAtUtc { get; init; }
