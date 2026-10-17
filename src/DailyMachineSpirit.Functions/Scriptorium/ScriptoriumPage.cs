@@ -16,6 +16,10 @@ namespace DailyMachineSpirit.Functions.Scriptorium;
 /// </summary>
 public static partial class ScriptoriumPage
 {
+    // What a slow action's button says while the Machine Spirit works: both take seconds, at most a minute and a half.
+    private const string Rewriting = "The Machine Spirit is rewriting it… usually a few seconds, at most a minute and a half.";
+    private const string Distilling = "The Machine Spirit is distilling the Precepts… usually seconds, at most a minute and a half.";
+
     private const string Styles = """
         :root { color-scheme: dark; }
         * { box-sizing: border-box; }
@@ -68,6 +72,8 @@ public static partial class ScriptoriumPage
         .amend { max-width: 740px; }
         .amend label { display: block; margin: 20px 0 6px; font-weight: 600; }
         .hint { margin: 0 0 8px; font-size: 15px; color: #b6a98f; }
+        .amend .changed { border-color: #f0b45a; }
+        .changed-mark { font-weight: 400; color: #f0b45a; }
         .amend .buttons { margin-top: 20px; }
         .amend input[type=text], textarea { width: 100%; background: #100e0b; color: #ede3cf; border: 1px solid #b6a98f; border-radius: 12px; padding: 8px 12px; font: 16px/1.4 Figtree, sans-serif; margin-bottom: 8px; }
         button { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 10px 18px 10px 14px; border-radius: 999px; font: 600 16px/1.2 Figtree, sans-serif; cursor: pointer; border: 1px solid transparent; }
@@ -178,7 +184,7 @@ public static partial class ScriptoriumPage
             html.Append("</ul>");
         }
         html.Append("</section></main>");
-        Footer(html, withScript: true);
+        Footer(html, Some(ScriptoriumScript.Js));
         return html.ToString();
     }
 
@@ -194,20 +200,29 @@ public static partial class ScriptoriumPage
             <p><a href="/scriptorium">Return to the Scriptorium</a></p>
             </main>
             """);
-        Footer(html, withScript: false);
+        Footer(html, None);
         return html.ToString();
     }
 
     /// <summary>
-    /// The page for amending a waiting draft's words (#8). Plain form posts, without the calendar's script: saving goes
-    /// back to the calendar, and asking for a rewrite comes back here with the rewrite in the fields, unsaved.
+    /// The page for amending a waiting draft's words (#8). Plain form posts: saving goes back to the calendar, and asking
+    /// for a rewrite comes back here with the rewrite in the fields, unsaved. Its script (<see cref="SlowActionScript"/>)
+    /// asks for the rewrite in the background, saying it's under way.
     /// </summary>
     /// <param name="words">What the fields hold: the draft's words, or what the Scribe or the rewrite put there.</param>
     /// <param name="message">Why it came back: a rule the words break, or that the Machine Spirit rewrote them.</param>
-    public static string RenderAmend(AmendableDraft amendable, RiteContent words, string note, Option<string> message)
+    /// <param name="rewrittenFrom">The words a rewrite started from, when <paramref name="words"/> are one: the fields it
+    /// changed say so, and the first is focused.</param>
+    public static string RenderAmend(AmendableDraft amendable, RiteContent words, string note, Option<string> message, Option<RiteContent> rewrittenFrom)
     {
         var draft = amendable.Draft;
         var id = draft.Id.ToString("D");
+        var changed = rewrittenFrom.Map(before => ChangedFields(before, words)).IfNone([]);
+        // Marked in the label, so a screen reader hears it with the field's name, and on the field's edge, for the eye.
+        string Label(string field, string name)
+            => $"""<label for="amend-{field}">{name}{(changed.Contains(field) ? """<span class="changed-mark"> · rewritten</span>""" : string.Empty)}</label>""";
+        string Marked(string field)
+            => !changed.Contains(field) ? string.Empty : changed[0] == field ? " class=\"changed\" autofocus" : " class=\"changed\"";
         var html = new StringBuilder();
         Head(html, $"Amend “{draft.Writing.Title}”");
         html.Append("""<main id="main">""");
@@ -218,26 +233,45 @@ public static partial class ScriptoriumPage
             <form method="post" class="amend" action="/scriptorium/drafts/{id}/amend">
             <input type="hidden" name="etag" value="{Encode(amendable.ETag)}">
             <p class="kicker">{Kind(draft.Writing.Kind)} · written by {Encode(draft.Writing.GeneratedByModel)}</p>
-            <label for="amend-title">Title</label>
-            <input type="text" id="amend-title" name="title" value="{Encode(words.Title)}" maxlength="{RiteWriting.MaxTitleLength}" required>
-            <label for="amend-text">Text</label>
-            <textarea id="amend-text" name="text" rows="6" maxlength="{RiteWriting.MaxTextLength}" required>{Encode(words.Text)}</textarea>
-            <label for="amend-truth">Heretical Truth</label>
-            <textarea id="amend-truth" name="truth" rows="3" maxlength="{RiteWriting.MaxHereticalTruthLength}" aria-describedby="amend-code-hint" required>{Encode(words.HereticalTruth)}</textarea>
+            {Label("title", "Title")}
+            <input type="text" id="amend-title" name="title" value="{Encode(words.Title)}" maxlength="{RiteWriting.MaxTitleLength}"{Marked("title")} required>
+            {Label("text", "Text")}
+            <textarea id="amend-text" name="text" rows="6" maxlength="{RiteWriting.MaxTextLength}"{Marked("text")} required>{Encode(words.Text)}</textarea>
+            {Label("truth", "Heretical Truth")}
+            <textarea id="amend-truth" name="truth" rows="3" maxlength="{RiteWriting.MaxHereticalTruthLength}" aria-describedby="amend-code-hint"{Marked("truth")} required>{Encode(words.HereticalTruth)}</textarea>
             <p class="hint" id="amend-code-hint">Commands, flags and file names go in `backticks`, as the Machine Spirit writes them.</p>
             <label for="amend-note">Note</label>
-            <p class="hint" id="amend-note-hint">Why it needs amending. The Machine Spirit follows it when asked to rewrite, and the Augury learns from it.</p>
+            <p class="hint" id="amend-note-hint">Why it needs amending. Needed to ask for a rewrite, which follows it; the Augury learns from it too.</p>
             <textarea id="amend-note" name="note" rows="3" maxlength="{ScribeDecision.MaxNoteLength}" aria-describedby="amend-note-hint">{Encode(note)}</textarea>
             <div class="buttons">
             <button class="primary">{ScriptoriumIcons.Save}Save the Amendment</button>
-            <button class="secondary" formaction="/scriptorium/drafts/{id}/rewrite">{ScriptoriumIcons.Summon}Ask the Machine Spirit to Rewrite</button>
+            <button class="secondary" formaction="/scriptorium/drafts/{id}/rewrite" data-needs-note data-in-place data-slow="{Encode(Rewriting)}">{ScriptoriumIcons.Summon}Ask the Machine Spirit to Rewrite</button>
             <a class="button-link" href="/scriptorium#rite-{id}">Leave It as It Was</a>
             </div>
             </form>
             </main>
             """);
-        Footer(html, withScript: false);
+        Footer(html, Some(SlowActionScript.Js));
         return html.ToString();
+    }
+
+    // The amending page's fields whose words a rewrite changed, in the page's order.
+    private static List<string> ChangedFields(RiteContent before, RiteContent after)
+    {
+        var fields = new List<string>();
+        if (after.Title != before.Title)
+        {
+            fields.Add("title");
+        }
+        if (after.Text != before.Text)
+        {
+            fields.Add("text");
+        }
+        if (after.HereticalTruth != before.HereticalTruth)
+        {
+            fields.Add("truth");
+        }
+        return fields;
     }
 
     /// <summary>
@@ -268,7 +302,7 @@ public static partial class ScriptoriumPage
             html.Append("</ol>");
         }
         html.Append("</main>");
-        Footer(html, withScript: false);
+        Footer(html, None);
         return html.ToString();
     }
 
@@ -397,15 +431,16 @@ public static partial class ScriptoriumPage
             """);
 
     // Every page carries the site's motto and the Games Workshop disclaimer (CLAUDE.md, Ground rules).
-    // The amending page goes without the script, whose in-place actions belong to the calendar: its forms simply post.
-    private static void Footer(StringBuilder html, bool withScript)
+    // The calendar has its own script (ScriptoriumScript); the amending page and the Precepts have the one for their slow
+    // actions (SlowActionScript); the rest have none: their forms simply post.
+    private static void Footer(StringBuilder html, Option<string> script)
         => html.Append("""
             <footer>
             <p class="motto">Knowledge is lost. The rituals remain.</p>
             <p class="disclaimer">An unofficial fan satire, not affiliated with or endorsed by Games Workshop. Warhammer 40,000 and related names are trademarks of Games Workshop Ltd. Prayers are generated by AI.</p>
             </footer>
             </div>
-            """).Append(withScript ? $"<script>{ScriptoriumScript.Js}</script>" : string.Empty).Append("</body></html>");
+            """).Append(script.Map(js => $"<script>{js}</script>").IfNone(string.Empty)).Append("</body></html>");
 
     private static void Head(StringBuilder html, string title)
     {
