@@ -2,7 +2,6 @@ using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Scriptorium;
 using LanguageExt;
-using Microsoft.Extensions.Configuration;
 using static DailyMachineSpirit.Tests.BacklogTestbed;
 using static DailyMachineSpirit.Tests.Expect;
 using static LanguageExt.Prelude;
@@ -123,24 +122,13 @@ public sealed class AuditTests : IAsyncLifetime
         Assert.Contains(record, entry => entry.Action == AuditAction.Write);
     }
 
-    // The names as the infrastructure sets them (Scriptorium__Scribes__0__Id, __Name), read as the app reads its settings.
     [Theory]
     [InlineData(AuditEntry.MachineSpirit, "The Machine Spirit")]
     [InlineData(AuditEntry.StagingScribe, "A Scribe on staging")]
-    [InlineData(FakeAccessTeam.ScribeId, "Brother Ferrum")]
     [InlineData("0f7d1c2e-1111-2222-3333-4ab5c6d7e8f9", "A Scribe (…d7e8f9)")]
     public void TheRecord_NamesEachActor(string actor, string name)
     {
-        var options = new ScriptoriumOptions();
-        new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
-        {
-            ["Scriptorium:Scribes:0:Id"] = "1a2b3c4d-0000-0000-0000-000000000000",
-            ["Scriptorium:Scribes:0:Name"] = "Sister Cache",
-            ["Scriptorium:Scribes:1:Id"] = FakeAccessTeam.ScribeId,
-            ["Scriptorium:Scribes:1:Name"] = "Brother Ferrum",
-        }).Build().GetSection(ScriptoriumOptions.SectionName).Bind(options);
-
-        Assert.Equal(name, ScribeNames.Of(actor, options.Scribes));
+        Assert.Equal(name, ScribeNames.Of(actor));
     }
 
     // Each entry reads as a sentence: who, then what they did to which rite or precept.
