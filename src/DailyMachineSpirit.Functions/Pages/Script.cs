@@ -319,6 +319,12 @@ public static class Script
               try {
                 const response = await fetch(url, { signal: request.signal });
                 if (!response.ok) throw new Error(String(response.status));
+                // Sent elsewhere (a subject with no words left, only quotes, is the tag's own page): that page isn't the
+                // Archive's, so it's loaded rather than swapped in.
+                if (response.redirected) {
+                  location.assign(response.url);
+                  return;
+                }
                 const page = new DOMParser().parseFromString(await response.text(), 'text/html');
                 searches += 1;
                 swap(page);
