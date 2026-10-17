@@ -34,7 +34,7 @@ public sealed class AgreementTrendTests : IAsyncLifetime
 
         Assert.Equal(AgreementTrend.MonthsShown, months.Count);
         Assert.Equal([new DateOnly(2026, 11, 1), new DateOnly(2026, 10, 1), new DateOnly(2026, 6, 1)],
-            [months[0].Month, months[1].Month, months[^1].Month]);
+            [months[0].FirstDayUtc, months[1].FirstDayUtc, months[^1].FirstDayUtc]);
         Assert.Equal(new AgreementMonth(new DateOnly(2026, 11, 1), 0, 0, 0, 0, None), months[0]);
         Assert.Equal(new AgreementMonth(new DateOnly(2026, 10, 1), 3, 1, 1, 2, Some(1.5)), months[1]);
     }

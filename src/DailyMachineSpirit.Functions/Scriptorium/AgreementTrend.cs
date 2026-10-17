@@ -15,8 +15,7 @@ public sealed class AgreementTrend
     /// <summary>How many months the trend shows, this one included.</summary>
     public const int MonthsShown = 6;
 
-    /// <summary>The Augury's top picks: the drafts it would publish in the next three days.</summary>
-    public const int TopPicks = 3;
+    public const int TopPickPlaces = 3;
 
     private readonly IScriptoriumRepository scriptorium;
     private readonly TimeProvider time;
@@ -54,7 +53,7 @@ public sealed class AgreementTrend
 
     // Only a judged draft: an unjudged one is placed by age alone, so burning it says nothing against the Augury.
     private static bool WasATopPick(ScribeDecision decision)
-        => decision.AuguryQuality.IsSome && decision.AuguryPlace.Exists(place => place <= TopPicks);
+        => decision.AuguryQuality.IsSome && decision.AuguryPlace.Exists(place => place <= TopPickPlaces);
 
     // How far a move took the draft from the Augury's place for it. Its new place follows from the action and the place
     // before. An unjudged draft has a place too, but only by age: moving it says nothing about the Augury's judgment.
