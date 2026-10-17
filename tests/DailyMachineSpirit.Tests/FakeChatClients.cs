@@ -52,7 +52,8 @@ public sealed class FakeChatClients : IChatClients
                 throw new InvalidOperationException($"The test gave {model} no answer for request {owner.Requests.Count}.");
             }
 
-            return new ChatResponse(new ChatMessage(ChatRole.Assistant, await queue.Dequeue()()));
+            // A model still thinking stops when the caller gives up, as the real client does.
+            return new ChatResponse(new ChatMessage(ChatRole.Assistant, await queue.Dequeue()().WaitAsync(cancellationToken)));
         }
 
         public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(

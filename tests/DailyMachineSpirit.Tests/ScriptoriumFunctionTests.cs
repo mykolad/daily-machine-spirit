@@ -584,6 +584,22 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Contains("Amended: <cite>Litany of the Cold Cache</cite>", html);
     }
 
+    // Unjudged, a draft the Scribes placed keeps its place, even first: the message says when it goes out.
+    [Fact]
+    public async Task Amend_Unjudged_SaysWhenItGoesOut()
+    {
+        await testbed.AddDraft("Best", 0.9f);
+        var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
+        Ok(await testbed.Scribes().Anoint(draft.Id, "", CancellationToken.None));
+        testbed.JevApiKey = "";
+
+        var response = await Function(enabled: true).Decide(
+            Amending(await ETag(draft), "The Litany of the Warm Cache", "Sharper."), draft.Id, "amend", CancellationToken.None);
+
+        var html = Html(await Function(enabled: true).Page(Following(response.Result), CancellationToken.None), 200);
+        Assert.Contains("Amended “The Litany of the Warm Cache”, but it couldn't be judged again, so it waits unjudged for Wed 7 Oct.", html);
+    }
+
     // Refused, the page comes back with what the Scribe typed and why: nothing they wrote is lost.
     [Fact]
     public async Task Amend_WordsBreakingARule_ComeBackWithWhy_KeepingTheScribesWords()
