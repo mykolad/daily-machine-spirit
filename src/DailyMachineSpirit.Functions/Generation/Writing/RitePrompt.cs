@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 using DailyMachineSpirit.Data.Entities;
 
 namespace DailyMachineSpirit.Functions.Generation.Writing;
@@ -53,4 +54,20 @@ public static class RitePrompt
 
     public static string Request(RiteKind kind)
         => kind == RiteKind.Prayer ? "Write a prayer." : "Write a ritual.";
+
+    /// <summary>
+    /// Asks for the rite rewritten as a Scribe's note says: their note, the rite as it stands (both as JSON, so what a
+    /// Scribe typed stays words to rewrite by, not instructions mixed into the request's own).
+    /// </summary>
+    public static string Rewrite(RiteKind kind, RiteContent words, string note)
+    {
+        var rite = JsonSerializer.Serialize(new { words.Title, words.Text, words.HereticalTruth });
+        var said = JsonSerializer.Serialize(note);
+        return $"""
+            A Scribe of the Scriptorium has read this {(kind == RiteKind.Prayer ? "prayer" : "ritual")} and wants it rewritten.
+            Their note: {said}
+            The {(kind == RiteKind.Prayer ? "prayer" : "ritual")} as it stands: {rite}
+            Rewrite it as the note asks. Keep whatever the note doesn't ask to change, and keep to every rule above.
+            """;
+    }
 }

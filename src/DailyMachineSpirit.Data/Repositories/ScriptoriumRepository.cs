@@ -42,6 +42,13 @@ public interface IScriptoriumRepository
         Option<Placements> placements,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Saves the amended draft with the decision that records it, if the draft is still the version read
+    /// (<paramref name="etag"/>, from <see cref="IDraftRepository.GetWithETag"/>): else
+    /// <see cref="ScriptoriumRepository.ChangedMeanwhile"/>, as when another Scribe amended, burned or published it since.
+    /// </summary>
+    Task<Either<Error, Unit>> Amend(Draft amended, string etag, ScribeDecision decision, CancellationToken cancellationToken);
+
     /// <summary>Burned drafts, the most recently burned first.</summary>
     Task<Either<Error, List<Draft>>> GetBurned(int count, CancellationToken cancellationToken);
 
@@ -107,6 +114,16 @@ public class ScriptoriumRepository : IScriptoriumRepository
                         return (await Execute(batch, cancellationToken)).Map(_ => changed.ToDraft());
                     },
                     None: () => Task.FromResult(Left<Error, Draft>(ChangedMeanwhile)));
+        });
+
+    public Task<Either<Error, Unit>> Amend(Draft amended, string etag, ScribeDecision decision, CancellationToken cancellationToken)
+        => AttemptEither(async () =>
+        {
+            var document = DraftDocument.From(amended);
+            var batch = container.CreateTransactionalBatch(SharedPartitionKey)
+                .ReplaceItem(document.Id, document, new TransactionalBatchItemRequestOptions { IfMatchEtag = etag })
+                .CreateItem(ScribeDecisionDocument.From(decision));
+            return await Execute(batch, cancellationToken);
         });
 
     public Task<Either<Error, List<Draft>>> GetBurned(int count, CancellationToken cancellationToken)

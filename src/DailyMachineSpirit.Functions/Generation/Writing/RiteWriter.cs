@@ -7,27 +7,22 @@ using LanguageExt.Common;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Functions.Generation.Writing;
 
 /// <summary>
 /// Asks the models for a rite, each up to <see cref="GenerationOptions.AttemptsPerModel"/> times, in
-/// <see cref="GenerationOptions.Models"/> order. An unusable answer is asked for again, never cut or patched up: a cut
-/// rite would read as broken, and a patched one isn't what the model wrote.
+/// <see cref="GenerationOptions.Models"/> order. An unusable answer (<see cref="RiteChecks"/>) is asked for again, never
+/// cut or patched up: a cut rite would read as broken, and a patched one isn't what the model wrote.
 /// </summary>
 public sealed class RiteWriter
 {
-    private const string Omnissiah = "Omnissiah";
-
-    // The satire borrows its mood from a setting whose names it must not use (CLAUDE.md, Ground rules). The prompt
-    // forbids them; an answer that uses one anyway is asked for again. The list catches the setting's distinctive coined
-    // names, the ones a model reaches for; it can't be complete, so the prompt's rule stays the first line.
-    private static readonly string[] ForbiddenNames =
-    [
-        "Warhammer", "Games Workshop", "Adeptus", "Mechanicus", "Mechanicum", "Imperium", "Astartes", "Space Marine",
-        "Aquila", "Primarch", "Ultramarine", "Horus Heresy", "Emperor of Mankind", "Astra Militarum", "Ecclesiarchy",
-        "Tyranid", "Necron", "Eldar", "Aeldari",
-    ];
+    /// <summary>
+    /// A rewrite's patience: each model once, 30 seconds each, so the Scribe gets their page back (with the rewrite or
+    /// their own words) well within the minute and a half Cloudflare waits for an answer.
+    /// </summary>
+    public static readonly Patience WhileTheScribeWaits = new(1, TimeSpan.Zero, Some(TimeSpan.FromSeconds(30)));
 
     private static readonly JsonSerializerOptions AnswerSerializerOptions = new(JsonSerializerOptions.Web)
     {
@@ -54,50 +49,65 @@ public sealed class RiteWriter
 
     /// <summary>A new draft of the kind, on a subject none of <paramref name="titlesToAvoid"/> has; not judged or saved yet.</summary>
     public async Task<Either<Error, Draft>> Write(RiteKind kind, IReadOnlyList<string> titlesToAvoid, CancellationToken cancellationToken)
-    {
-        var settings = options.Value;
-        List<ChatMessage> messages =
-        [
-            new(ChatRole.System, RitePrompt.Instructions(kind, titlesToAvoid)),
-            new(ChatRole.User, RitePrompt.Request(kind)),
-        ];
+        => (await Answer(
+                [new(ChatRole.System, RitePrompt.Instructions(kind, titlesToAvoid)), new(ChatRole.User, RitePrompt.Request(kind))],
+                kind,
+                Unhurried(),
+                $"No model wrote a usable {kind.ToString().ToLowerInvariant()}.",
+                cancellationToken))
+            .Map(written => new Draft
+            {
+                Id = Guid.NewGuid(),
+                State = DraftState.Waiting,
+                Writing = new RiteWriting
+                {
+                    Kind = kind,
+                    Title = written.Content.Title,
+                    Text = written.Content.Text,
+                    HereticalTruth = written.Content.HereticalTruth,
+                    GeneratedByModel = written.Model,
+                    GeneratedAtUtc = time.GetUtcNow().UtcDateTime,
+                },
+            });
 
+    /// <summary>
+    /// The rite's words rewritten as a Scribe's note asks (#8), kept wherever the note doesn't ask for a change. Not
+    /// saved: the Scribe reads the rewrite before amending the draft with it.
+    /// </summary>
+    public async Task<Either<Error, RiteContent>> Rewrite(RiteKind kind, RiteContent words, string note, CancellationToken cancellationToken)
+        => (await Answer(
+                [new(ChatRole.System, RitePrompt.Instructions(kind, [])), new(ChatRole.User, RitePrompt.Rewrite(kind, words, note))],
+                kind,
+                WhileTheScribeWaits,
+                "No model rewrote it usably.",
+                cancellationToken))
+            .Map(written => written.Content);
+
+    // The first usable answer to the messages, and the model that gave it.
+    private async Task<Either<Error, (RiteContent Content, string Model)>> Answer(
+        List<ChatMessage> messages, RiteKind kind, Patience patience, string noneUsable, CancellationToken cancellationToken)
+    {
         var failures = new List<string>();
-        foreach (var model in settings.Models)
+        foreach (var model in options.Value.Models)
         {
-            for (var attempt = 1; attempt <= settings.AttemptsPerModel; attempt++)
+            for (var attempt = 1; attempt <= patience.AttemptsPerModel; attempt++)
             {
                 // A pause before asking again: an overloaded or throttled model often answers a little later.
                 if (failures.Count > 0)
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(settings.RetryDelaySeconds), time, cancellationToken);
+                    await Task.Delay(patience.RetryDelay, time, cancellationToken);
                 }
 
-                var answer = await Ask(model, messages, cancellationToken);
-                var written = answer
-                    .Bind(content => Check(content, kind))
-                    .Map(content => new Draft
-                    {
-                        Id = Guid.NewGuid(),
-                        State = DraftState.Waiting,
-                        Writing = new RiteWriting
-                        {
-                            Kind = kind,
-                            Title = content.Title,
-                            Text = content.Text,
-                            HereticalTruth = content.HereticalTruth,
-                            GeneratedByModel = model,
-                            GeneratedAtUtc = time.GetUtcNow().UtcDateTime,
-                        },
-                    });
+                var answer = await Ask(model, messages, patience.AttemptTime, cancellationToken);
+                var written = answer.Bind(content => RiteChecks.Check(content, kind));
                 metrics.Answer(model, answer.IsLeft ? "failed" : written.IsLeft ? "refused" : "accepted");
                 if (written.IsRight)
                 {
                     // The model shows whether the fallback had to step in, even when the run succeeds.
-                    written.IfRight(rite => logger.LogInformation(
+                    written.IfRight(content => logger.LogInformation(
                         "{Model} wrote the {Kind} \"{Title}\" on try {Attempt}, after {FailedTries} failed tries in all.",
-                        model, kind, rite.Writing.Title, attempt, failures.Count));
-                    return written;
+                        model, kind, content.Title, attempt, failures.Count));
+                    return written.Map(content => (content, model));
                 }
 
                 written.IfLeft(error =>
@@ -109,15 +119,21 @@ public sealed class RiteWriter
             }
         }
 
-        return Error.New($"No model wrote a usable {kind.ToString().ToLowerInvariant()}. {string.Join(" | ", failures)}");
+        return Error.New($"{noneUsable} {string.Join(" | ", failures)}");
     }
 
-    private async Task<Either<Error, RiteContent>> Ask(string model, List<ChatMessage> messages, CancellationToken cancellationToken)
+    private async Task<Either<Error, RiteContent>> Ask(
+        string model, List<ChatMessage> messages, Option<TimeSpan> attemptTime, CancellationToken cancellationToken)
     {
+        // Without a limit, the model's client times out on its own.
+        using var timeout = attemptTime.Match(
+            Some: limit => new CancellationTokenSource(limit, time),
+            None: () => new CancellationTokenSource());
+        using var attempt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
         try
         {
             var response = await chatClients.For(model).GetResponseAsync<RiteContent>(
-                messages, AnswerSerializerOptions, options: null, useJsonSchemaResponseFormat: true, cancellationToken);
+                messages, AnswerSerializerOptions, options: null, useJsonSchemaResponseFormat: true, attempt.Token);
             return response.TryGetResult(out var content)
                 ? content
                 : Error.New($"The answer isn't a rite: {Shorten(response.Text)}");
@@ -130,60 +146,9 @@ public sealed class RiteWriter
         }
     }
 
-    private static Either<Error, RiteContent> Check(RiteContent answer, RiteKind kind)
-    {
-        var content = answer with
-        {
-            // A heading shows no code formatting: a stray backtick is dropped rather than asked about again.
-            Title = answer.Title.Replace("`", "").Trim(),
-            Text = answer.Text.Trim(),
-            HereticalTruth = answer.HereticalTruth.Trim(),
-        };
-        if (content.Title.Length == 0 || content.Text.Length == 0 || content.HereticalTruth.Length == 0)
-        {
-            return Error.New("The answer has an empty field.");
-        }
-
-        if (content.Title.Length > RiteWriting.MaxTitleLength
-            || content.Text.Length > RiteWriting.MaxTextLength
-            || content.HereticalTruth.Length > RiteWriting.MaxHereticalTruthLength)
-        {
-            return Error.New(
-                $"The answer is too long: title {content.Title.Length}, text {content.Text.Length}, heretical truth {content.HereticalTruth.Length} characters.");
-        }
-
-        var everything = $"{content.Title}\n{content.Text}\n{content.HereticalTruth}";
-        var forbidden = ForbiddenNames.Where(name => everything.Contains(name, StringComparison.OrdinalIgnoreCase)).ToList();
-        if (forbidden.Count > 0)
-        {
-            return Error.New($"The answer uses forbidden names: {string.Join(", ", forbidden)}.");
-        }
-        // A prayer may call on the Omnissiah once; a heading, a Heretical Truth or a ritual never names it.
-        var allowedInText = kind == RiteKind.Prayer ? 1 : 0;
-        if (Occurrences(content.Title, Omnissiah) + Occurrences(content.HereticalTruth, Omnissiah) > 0
-            || Occurrences(content.Text, Omnissiah) > allowedInText)
-        {
-            return Error.New($"The answer names the {Omnissiah} where it isn't allowed: only once, in a prayer's text.");
-        }
-
-        // The pages show `backticked` words as code: a command written as plain words would read as prose.
-        return new[] { content.Text, content.HereticalTruth }.Select(UnquotedCode.Find).Somes().HeadOrNone()
-            .Match<Either<Error, RiteContent>>(
-                Some: code => Error.New($"The answer has code outside backticks: {code}."),
-                None: () => content);
-    }
-
-    private static int Occurrences(string text, string word)
-    {
-        var count = 0;
-        for (var at = text.IndexOf(word, StringComparison.OrdinalIgnoreCase); at >= 0;
-             at = text.IndexOf(word, at + word.Length, StringComparison.OrdinalIgnoreCase))
-        {
-            count++;
-        }
-
-        return count;
-    }
+    // A refill's patience: nobody waits on it, so every model gets its tries, with pauses between them.
+    private Patience Unhurried()
+        => new(options.Value.AttemptsPerModel, TimeSpan.FromSeconds(options.Value.RetryDelaySeconds), None);
 
     private static string Shorten(string text) => text.Length <= 500 ? text : $"{text[..500]}…";
 }

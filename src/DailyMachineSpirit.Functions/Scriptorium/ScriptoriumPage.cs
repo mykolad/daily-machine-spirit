@@ -3,6 +3,7 @@ using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using DailyMachineSpirit.Data.Entities;
+using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Tags;
 using LanguageExt;
 using static LanguageExt.Prelude;
@@ -63,10 +64,16 @@ public static partial class ScriptoriumPage
         .tag { padding: 2px 12px; border-radius: 999px; border: 1px solid rgba(201,162,90,.45); font: 600 14px/1.5 Figtree, sans-serif; color: #d9b874; }
         .fold summary { cursor: pointer; padding: 10px 0; font-weight: 600; color: #cdbd9e; }
         .fold summary .icon { width: 16px; height: 16px; vertical-align: -2px; margin: 0 4px; }
-        textarea { width: 100%; background: #100e0b; color: #ede3cf; border: 1px solid #b6a98f; border-radius: 12px; padding: 8px 12px; font: 16px/1.4 Figtree, sans-serif; margin-bottom: 8px; }
+        .amend { max-width: 740px; }
+        .amend label { display: block; margin: 20px 0 6px; font-weight: 600; }
+        .hint { margin: 0 0 8px; font-size: 15px; color: #b6a98f; }
+        .amend .buttons { margin-top: 20px; }
+        .amend input[type=text], textarea { width: 100%; background: #100e0b; color: #ede3cf; border: 1px solid #b6a98f; border-radius: 12px; padding: 8px 12px; font: 16px/1.4 Figtree, sans-serif; margin-bottom: 8px; }
         button { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 10px 18px 10px 14px; border-radius: 999px; font: 600 16px/1.2 Figtree, sans-serif; cursor: pointer; border: 1px solid transparent; }
         .icon { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
         .primary { background: #c9a25a; color: #100e0b; }
+        .button-link { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 10px 18px 10px 14px; border-radius: 999px; border: 1px solid rgba(237,227,207,.22); font: 600 16px/1.2 Figtree, sans-serif; color: #ede3cf; text-decoration: none; }
+        .button-link:hover { background: rgba(237,227,207,.08); border-color: rgba(237,227,207,.4); color: #ede3cf; }
         .primary:hover { background: #d6b170; }
         .outline, .secondary { background: transparent; color: #ede3cf; border-color: rgba(237,227,207,.22); }
         .outline:hover, .secondary:hover { background: rgba(237,227,207,.08); border-color: rgba(237,227,207,.4); }
@@ -162,7 +169,7 @@ public static partial class ScriptoriumPage
             html.Append("</ul>");
         }
         html.Append("</section></main>");
-        Footer(html);
+        Footer(html, withScript: true);
         return html.ToString();
     }
 
@@ -178,7 +185,49 @@ public static partial class ScriptoriumPage
             <p><a href="/scriptorium">Return to the Scriptorium</a></p>
             </main>
             """);
-        Footer(html);
+        Footer(html, withScript: false);
+        return html.ToString();
+    }
+
+    /// <summary>
+    /// The page for amending a waiting draft's words (#8). Plain form posts, without the calendar's script: saving goes
+    /// back to the calendar, and asking for a rewrite comes back here with the rewrite in the fields, unsaved.
+    /// </summary>
+    /// <param name="words">What the fields hold: the draft's words, or what the Scribe or the rewrite put there.</param>
+    /// <param name="message">Why it came back: a rule the words break, or that the Machine Spirit rewrote them.</param>
+    public static string RenderAmend(AmendableDraft amendable, RiteContent words, string note, Option<string> message)
+    {
+        var draft = amendable.Draft;
+        var id = draft.Id.ToString("D");
+        var html = new StringBuilder();
+        Head(html, $"Amend “{draft.Writing.Title}”");
+        html.Append("""<main id="main">""");
+        Heading(html, "Amend the Rite",
+            "Change its words by hand, or write a note and let the Machine Spirit rewrite them. Whatever you save is judged again.");
+        html.Append($"""
+            <p class="status" role="status">{message.Map(Encode).IfNone(string.Empty)}</p>
+            <form method="post" class="amend" action="/scriptorium/drafts/{id}/amend">
+            <input type="hidden" name="etag" value="{Encode(amendable.ETag)}">
+            <p class="kicker">{Kind(draft.Writing.Kind)} · written by {Encode(draft.Writing.GeneratedByModel)}</p>
+            <label for="amend-title">Title</label>
+            <input type="text" id="amend-title" name="title" value="{Encode(words.Title)}" maxlength="{RiteWriting.MaxTitleLength}" required>
+            <label for="amend-text">Text</label>
+            <textarea id="amend-text" name="text" rows="6" maxlength="{RiteWriting.MaxTextLength}" required>{Encode(words.Text)}</textarea>
+            <label for="amend-truth">Heretical Truth</label>
+            <textarea id="amend-truth" name="truth" rows="3" maxlength="{RiteWriting.MaxHereticalTruthLength}" aria-describedby="amend-code-hint" required>{Encode(words.HereticalTruth)}</textarea>
+            <p class="hint" id="amend-code-hint">Commands, flags and file names go in `backticks`, as the Machine Spirit writes them.</p>
+            <label for="amend-note">Note</label>
+            <p class="hint" id="amend-note-hint">Why it needs amending. The Machine Spirit follows it when asked to rewrite, and the Augury learns from it.</p>
+            <textarea id="amend-note" name="note" rows="3" maxlength="{ScribeDecision.MaxNoteLength}" aria-describedby="amend-note-hint">{Encode(note)}</textarea>
+            <div class="buttons">
+            <button class="primary">{ScriptoriumIcons.Save}Save the Amendment</button>
+            <button class="secondary" formaction="/scriptorium/drafts/{id}/rewrite">{ScriptoriumIcons.Summon}Ask the Machine Spirit to Rewrite</button>
+            <a class="button-link" href="/scriptorium#rite-{id}">Leave It as It Was</a>
+            </div>
+            </form>
+            </main>
+            """);
+        Footer(html, withScript: false);
         return html.ToString();
     }
 
@@ -202,7 +251,7 @@ public static partial class ScriptoriumPage
                 : $"The Augury: {judged.Quality:P0}")
             .IfNone("Not yet judged by the Augury");
         var placedBy = entry.PlacedByScribes ? """<span class="placed">Placed by the Scribes</span> · """ : string.Empty;
-        html.Append($"""<p class="meta">{placedBy}{Encode(augury)} · written by <span class="nowrap">{Encode(draft.Writing.GeneratedByModel)}</span></p>""");
+        html.Append($"""<p class="meta">{placedBy}{Encode(augury)} · written by <span class="nowrap">{Encode(draft.Writing.GeneratedByModel)}</span>{(draft.Writing.Edited ? ", amended by a Scribe" : string.Empty)}</p>""");
 
         var reorder = new List<string>();
         if (place > 1)
@@ -218,6 +267,7 @@ public static partial class ScriptoriumPage
             // Anointing the first is useful too: it keeps it first, ahead of a better draft a refill may bring.
             Button(id, draft.Writing.Title, "anoint", ScriptoriumIcons.Anoint, "Anoint", "primary"),
             .. reorder.Count == 0 ? [] : new[] { $"""<span class="pair" role="group" aria-label="Reorder">{string.Concat(reorder)}</span>""" },
+            AmendLink(id, draft.Writing.Title),
             Button(id, draft.Writing.Title, "burn", ScriptoriumIcons.Burn, "Consign to the Flames", "danger burn"),
         ]);
         html.Append("</article></li>");
@@ -268,6 +318,10 @@ public static partial class ScriptoriumPage
     private static string Button(string id, string title, string action, string icon, string label, string style)
         => $"""<button title="{Encode(About(action))}" class="{style}" formaction="/scriptorium/drafts/{id}/{action}">{icon}{label}<span class="visually-hidden">: {Encode(title)}</span></button>""";
 
+    // A link, not a button: it opens the amending page, and nothing changes until that page's form is saved.
+    private static string AmendLink(string id, string title)
+        => $"""<a class="button-link" title="{Encode(About("amend"))}" href="/scriptorium/drafts/{id}/amend">{ScriptoriumIcons.Note}Amend<span class="visually-hidden">: {Encode(title)}</span></a>""";
+
     // What an action does, shown when the pointer rests on its button: the names are the rite's own words, and a Scribe
     // who acts once a month needn't remember what "Let the Augury Decide" means. Each place in the calendar is a day.
     private static string About(string action) => action switch
@@ -278,6 +332,7 @@ public static partial class ScriptoriumPage
         "exalt" => "Moves this rite one day earlier. It and every rite above it then keep the Scribes' order.",
         "humble" => "Moves this rite one day later, swapping it with the next; both then keep the Scribes' order.",
         "burn" => "Takes this rite out of the calendar, into the Ashes. Nothing is deleted: it can be restored.",
+        "amend" => "Changes its words by hand, or asks the Machine Spirit to rewrite them as your note says. It's judged again when saved.",
         _ => "Puts this rite back in the calendar, where the Augury places it.",
     };
 
@@ -296,18 +351,15 @@ public static partial class ScriptoriumPage
             """);
 
     // Every page carries the site's motto and the Games Workshop disclaimer (CLAUDE.md, Ground rules).
-    private static void Footer(StringBuilder html)
+    // The amending page goes without the script, whose in-place actions belong to the calendar: its forms simply post.
+    private static void Footer(StringBuilder html, bool withScript)
         => html.Append("""
             <footer>
             <p class="motto">Knowledge is lost. The rituals remain.</p>
             <p class="disclaimer">An unofficial fan satire, not affiliated with or endorsed by Games Workshop. Warhammer 40,000 and related names are trademarks of Games Workshop Ltd. Prayers are generated by AI.</p>
             </footer>
             </div>
-            <script>
-            """).Append(ScriptoriumScript.Js).Append("""
-            </script>
-            </body></html>
-            """);
+            """).Append(withScript ? $"<script>{ScriptoriumScript.Js}</script>" : string.Empty).Append("</body></html>");
 
     private static void Head(StringBuilder html, string title)
     {
@@ -373,6 +425,8 @@ public static partial class ScriptoriumPage
             "burn-last" => $"{Named("Consigned")} to the flames. No rite waits now, so new ones are being summoned: look again in a few minutes.{restore}",
             "restore" => $"{Named("Restored")} from the ashes{date.Map(day => $": it waits for {day}").IfNone(string.Empty)}.",
             "summon" => "New rites are being summoned: look again in a few minutes.",
+            "amend" => $"{Named("Amended")}: judged again, it waits{date.Map(day => $" for {day}").IfNone(string.Empty)}.",
+            "amend-unjudged" => $"{Named("Amended")}, but it couldn't be judged again, so it waits unjudged{date.Map(day => $" for {day}").IfNone(string.Empty)}.",
             "augury" => "The Augury orders every draft again.",
             "changed" => "Another Scribe changed the calendar meanwhile. Look again before deciding.",
             "unmoved" => "It was already there, so nothing moved. Another Scribe may have moved it: look again.",
@@ -387,6 +441,7 @@ public static partial class ScriptoriumPage
         ScribeAction.Exalt => "Exalted",
         ScribeAction.Humble => "Humbled",
         ScribeAction.Burn => "Consigned to the flames",
+        ScribeAction.Amend => "Amended",
         _ => "Restored from the ashes",
     };
 

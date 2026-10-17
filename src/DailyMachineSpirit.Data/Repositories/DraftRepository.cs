@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 using DailyMachineSpirit.Data.Entities;
 using LanguageExt;
@@ -28,6 +29,10 @@ public class DraftRepository : IDraftRepository
         => Attempt(async () => (await container.ReadOrNone<DraftDocument>(DraftDocument.IdFor(draftId), cancellationToken))
             .Map(found => found.Document.ToDraft()));
 
+    public Task<Either<Error, Option<(Draft Draft, string ETag)>>> GetWithETag(Guid draftId, CancellationToken cancellationToken)
+        => Attempt(async () => (await container.ReadOrNone<DraftDocument>(DraftDocument.IdFor(draftId), cancellationToken))
+            .Map(found => (found.Document.ToDraft(), found.ETag)));
+
     public Task<Either<Error, List<Draft>>> GetWaiting(CancellationToken cancellationToken)
         => Attempt(async () => (await container.Query<DraftDocument>(
             new QueryDefinition("SELECT * FROM c WHERE c.type = @type AND c.state = @state")
@@ -42,12 +47,22 @@ public class DraftRepository : IDraftRepository
             cancellationToken)).Select(document => document.ToDraft()).ToList());
 
     // A patch, not a replace: a Scribe's change made meanwhile stays. It changes the draft's ETag, so a Scribe acting on
-    // the page from before is told to look again, as after any change.
+    // the page from before is told to look again, as after any change. Only while the draft is still as GetUntagged
+    // found it, untagged and scored: an amendment saved since the read either tagged it anew or cleared the scores these
+    // tags came from, and stale tags mustn't overwrite either. Then nothing is saved, and that's no failure.
     public Task<Either<Error, Unit>> SaveTags(Guid draftId, string[] tags, CancellationToken cancellationToken)
         => Attempt(async () =>
         {
-            await container.PatchItemAsync<DraftDocument>(DraftDocument.IdFor(draftId), SharedPartitionKey,
-                [PatchOperation.Set("/tags", tags)], cancellationToken: cancellationToken);
+            try
+            {
+                await container.PatchItemAsync<DraftDocument>(DraftDocument.IdFor(draftId), SharedPartitionKey,
+                    [PatchOperation.Set("/tags", tags)],
+                    new PatchItemRequestOptions { FilterPredicate = "FROM c WHERE IS_OBJECT(c.similarity) AND NOT IS_ARRAY(c.tags)" },
+                    cancellationToken);
+            }
+            catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.PreconditionFailed)
+            {
+            }
             return unit;
         });
 }

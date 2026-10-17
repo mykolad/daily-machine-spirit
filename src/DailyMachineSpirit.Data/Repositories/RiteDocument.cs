@@ -32,6 +32,8 @@ internal sealed record RiteDocument
 
     public DateTime GeneratedAtUtc { get; init; }
 
+    public bool Edited { get; init; }
+
     // The signed-in votes (VoteRepository). The anonymous counts from before sign-in were "blessedCount" and
     // "heresyCount": older documents still have them, and nothing reads them, so the counts started again from zero.
     public int BlessedVotes { get; init; }
@@ -57,6 +59,7 @@ internal sealed record RiteDocument
         HereticalTruth = rite.Writing.HereticalTruth,
         GeneratedByModel = rite.Writing.GeneratedByModel,
         GeneratedAtUtc = Utc.From(rite.Writing.GeneratedAtUtc),
+        Edited = rite.Writing.Edited,
         BlessedVotes = rite.BlessedCount,
         HeresyVotes = rite.HeresyCount,
         Similarity = rite.Similarity.Map(Utc.From).OrNull(),
@@ -75,6 +78,7 @@ internal sealed record RiteDocument
             HereticalTruth = HereticalTruth,
             GeneratedByModel = GeneratedByModel,
             GeneratedAtUtc = GeneratedAtUtc,
+            Edited = Edited,
         },
         BlessedCount = BlessedVotes,
         HeresyCount = HeresyVotes,

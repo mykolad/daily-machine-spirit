@@ -302,7 +302,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     public async Task Page_WhenCosmosFails_SaysTheScriptoriumIsSilent()
     {
         var function = new ScriptoriumFunction(
-            testbed.ScribesWithoutCosmos(), new EveryoneIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), NullLogger<ScriptoriumFunction>.Instance);
+            testbed.ScribesWithoutCosmos(), testbed.Amendments(), new EveryoneIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), NullLogger<ScriptoriumFunction>.Instance);
 
         var html = Html(await function.Page(Get(""), CancellationToken.None), 500);
 
@@ -358,7 +358,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var burned = await testbed.AddDraft("Burned", 0.5f);
         await testbed.AddDraft("Still waiting", 0.5f);
         var scribes = new Scribes(new DraftsFailingAfterFirstRead(testbed.Drafts), testbed.Rites, testbed.Scriptorium, testbed.Time);
-        var function = new ScriptoriumFunction(scribes, new EveryoneIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), NullLogger<ScriptoriumFunction>.Instance);
+        var function = new ScriptoriumFunction(scribes, testbed.Amendments(), new EveryoneIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), NullLogger<ScriptoriumFunction>.Instance);
 
         var response = await function.Decide(Post(""), burned.Id, "burn", CancellationToken.None);
 
@@ -498,7 +498,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var draft = await testbed.AddDraft("Kept", 0.5f);
         var function = new ScriptoriumFunction(
-            testbed.Scribes(), new NobodyIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), NullLogger<ScriptoriumFunction>.Instance);
+            testbed.Scribes(), testbed.Amendments(), new NobodyIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), NullLogger<ScriptoriumFunction>.Instance);
 
         var page = await function.Page(Get(""), CancellationToken.None);
         var decision = await function.Decide(Post(""), draft.Id, "burn", CancellationToken.None);
@@ -534,8 +534,120 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Equal("Excellent", Ok(await testbed.Scribes().View(CancellationToken.None)).Calendar[0].Draft.Writing.Title);
     }
 
+    [Fact]
+    public async Task TheCalendar_OffersToAmendEachWaitingDraft()
+    {
+        var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
+
+        var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+
+        Assert.Contains($"""href="/scriptorium/drafts/{draft.Id:D}/amend">""", html);
+    }
+
+    // The draft's words in a plain form, which posts without the calendar's script.
+    [Fact]
+    public async Task AmendPage_ShowsTheDraftsWords_InAPlainForm()
+    {
+        var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
+
+        var html = Html(await Function(enabled: true).AmendPage(Get(""), draft.Id, CancellationToken.None), 200);
+
+        Assert.Contains("""<input type="text" id="amend-title" name="title" value="Litany of the Cold Cache" """, html);
+        Assert.Contains("""<input type="hidden" name="etag" value=""", html);
+        Assert.Contains($"""formaction="/scriptorium/drafts/{draft.Id:D}/rewrite">""", html);
+        Assert.DoesNotContain("<script>", html);
+    }
+
+    [Fact]
+    public async Task AmendPage_ForADraftNoLongerWaiting_GoesBackToTheCalendar()
+    {
+        var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
+        Ok(await testbed.Scribes().Burn(draft.Id, "", CancellationToken.None));
+
+        var result = await Function(enabled: true).AmendPage(Get(""), draft.Id, CancellationToken.None);
+
+        Assert.Equal($"/scriptorium?done=changed&rite={draft.Id:D}#rite-{draft.Id:D}", Assert.IsType<RedirectResult>(result).Url);
+    }
+
+    [Fact]
+    public async Task Amend_SavesTheWords_AndTheCalendarSaysSo()
+    {
+        var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
+
+        var response = await Function(enabled: true).Decide(
+            Amending(await ETag(draft), "The Litany of the Warm Cache", "Sharper."), draft.Id, "amend", CancellationToken.None);
+
+        Assert.Equal($"/scriptorium?done=amend&rite={draft.Id:D}#rite-{draft.Id:D}", Assert.IsType<RedirectResult>(response.Result).Url);
+        var html = Html(await Function(enabled: true).Page(Following(response.Result), CancellationToken.None), 200);
+        Assert.Contains("Amended “The Litany of the Warm Cache”: judged again, it waits for Wed 7 Oct.", html);
+        Assert.Contains("""written by <span class="nowrap">gpt-6-sol</span>, amended by a Scribe""", html);
+        Assert.Contains("Amended: <cite>Litany of the Cold Cache</cite>", html);
+    }
+
+    // Unjudged, a draft the Scribes placed keeps its place, even first: the message says when it goes out.
+    [Fact]
+    public async Task Amend_Unjudged_SaysWhenItGoesOut()
+    {
+        await testbed.AddDraft("Best", 0.9f);
+        var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
+        Ok(await testbed.Scribes().Anoint(draft.Id, "", CancellationToken.None));
+        testbed.JevApiKey = "";
+
+        var response = await Function(enabled: true).Decide(
+            Amending(await ETag(draft), "The Litany of the Warm Cache", "Sharper."), draft.Id, "amend", CancellationToken.None);
+
+        var html = Html(await Function(enabled: true).Page(Following(response.Result), CancellationToken.None), 200);
+        Assert.Contains("Amended “The Litany of the Warm Cache”, but it couldn't be judged again, so it waits unjudged for Wed 7 Oct.", html);
+    }
+
+    // Refused, the page comes back with what the Scribe typed and why: nothing they wrote is lost.
+    [Fact]
+    public async Task Amend_WordsBreakingARule_ComeBackWithWhy_KeepingTheScribesWords()
+    {
+        var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
+
+        var response = await Function(enabled: true).Decide(
+            Amending(await ETag(draft), "The Warhammer Litany", "Sharper."), draft.Id, "amend", CancellationToken.None);
+
+        var html = Html(response.Result, 422);
+        Assert.Contains("The answer uses forbidden names: Warhammer.", html);
+        Assert.Contains("""value="The Warhammer Litany" """, html);
+        Assert.Contains("Sharper.</textarea>", html);
+        Assert.Equal("Litany of the Cold Cache", Assert.Single(await testbed.Waiting()).Writing.Title);
+    }
+
+    // The rewrite fills the form, unsaved: the Scribe reads it before saving it.
+    [Fact]
+    public async Task Rewrite_ComesBackWithTheRewrite_Unsaved()
+    {
+        var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
+        testbed.Models.Answers(BacklogTestbed.Sol, BacklogTestbed.Answer("The Litany of the Warm Cache"));
+
+        var response = await Function(enabled: true).Decide(
+            Amending(await ETag(draft), "Litany of the Cold Cache", "Warm it up."), draft.Id, "rewrite", CancellationToken.None);
+
+        var html = Html(response.Result, 200);
+        Assert.Contains("The Machine Spirit rewrote it as your note asks.", html);
+        Assert.Contains("""value="The Litany of the Warm Cache" """, html);
+        Assert.Equal("Litany of the Cold Cache", Assert.Single(await testbed.Waiting()).Writing.Title);
+    }
+
+    [Fact]
+    public async Task Rewrite_WhenNoModelAnswers_ComesBackSayingSo_KeepingTheScribesWords()
+    {
+        var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
+        testbed.Models.Fails(BacklogTestbed.Sol, 3).Fails(BacklogTestbed.Luna, 3);
+
+        var response = await Function(enabled: true).Decide(
+            Amending(await ETag(draft), "Litany of the Cold Cache, Amended", "Warm it up."), draft.Id, "rewrite", CancellationToken.None);
+
+        var html = Html(response.Result, 503);
+        Assert.Contains("The Machine Spirit couldn&#39;t rewrite it just now.", html);
+        Assert.Contains("""value="Litany of the Cold Cache, Amended" """, html);
+    }
+
     private ScriptoriumFunction Function(bool enabled)
-        => new(testbed.Scribes(), new EveryoneIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = enabled }), NullLogger<ScriptoriumFunction>.Instance);
+        => new(testbed.Scribes(), testbed.Amendments(), new EveryoneIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = enabled }), NullLogger<ScriptoriumFunction>.Instance);
 
     private static HttpRequest Get(string query)
     {
@@ -555,6 +667,22 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     // As a browser posts the page's form: same origin, with the note field, url-encoded.
     private static HttpRequest Post(string note)
         => Post("application/x-www-form-urlencoded", $"note={Uri.EscapeDataString(note)}");
+
+    // As the amending page posts its form: the version read, the words, and the note.
+    private static HttpRequest Amending(string etag, string title, string note)
+        => Post("application/x-www-form-urlencoded", string.Join("&", new[]
+        {
+            ("etag", etag),
+            ("title", title),
+            ("text", "O Machine Spirit, warm thy cache."),
+            ("truth", "A warm cache is one that was read before."),
+            ("note", note),
+        }.Select(field => $"{field.Item1}={Uri.EscapeDataString(field.Item2)}")));
+
+    private async Task<string> ETag(Draft draft)
+        => Ok(await testbed.Amendments().Get(draft.Id, CancellationToken.None))
+            .Map(amendable => amendable.ETag)
+            .IfNone(() => throw new Xunit.Sdk.XunitException("The draft isn't amendable."));
 
     private static HttpRequest Post(string contentType, string body)
     {

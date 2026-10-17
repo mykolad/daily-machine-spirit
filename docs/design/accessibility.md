@@ -21,6 +21,10 @@ Proposal.dc.html`, `scriptorium-icons.md`): icons, grouped buttons, folded notes
   text field, so the field has a visually hidden `<label>` too.
 - **Exalt and Humble are a `role="group"` named "Reorder"**, so a screen reader announces the pair as one set of
   controls.
+- **The amending page's fields each have a visible label,** and the two hints (code in backticks; what the note is
+  for) are tied to their fields with `aria-describedby`. "Amend" on the calendar is a link, since it only opens the
+  page: the page's buttons change things. Why words were refused, or that the Machine Spirit rewrote them, is the
+  page's `role="status"` message, and the fields keep what the Scribe typed.
 
 ## Tags
 

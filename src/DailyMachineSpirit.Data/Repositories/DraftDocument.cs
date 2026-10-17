@@ -28,6 +28,8 @@ internal sealed record DraftDocument
 
     public DateTime GeneratedAtUtc { get; init; }
 
+    public bool Edited { get; init; }
+
     // Null when missing: the JSON serializer doesn't know Option.
     public RiteSimilarity? Similarity { get; init; }
 
@@ -51,6 +53,7 @@ internal sealed record DraftDocument
         HereticalTruth = draft.Writing.HereticalTruth,
         GeneratedByModel = draft.Writing.GeneratedByModel,
         GeneratedAtUtc = Utc.From(draft.Writing.GeneratedAtUtc),
+        Edited = draft.Writing.Edited,
         Similarity = draft.Similarity.Map(Utc.From).OrNull(),
         Tags = draft.Tags.OrNull(),
         Augury = draft.Augury.Map(augury => augury with { JudgedAtUtc = Utc.From(augury.JudgedAtUtc) }).OrNull(),
@@ -70,6 +73,7 @@ internal sealed record DraftDocument
             HereticalTruth = HereticalTruth,
             GeneratedByModel = GeneratedByModel,
             GeneratedAtUtc = GeneratedAtUtc,
+            Edited = Edited,
         },
         Similarity = Optional(Similarity),
         Tags = Optional(Tags),

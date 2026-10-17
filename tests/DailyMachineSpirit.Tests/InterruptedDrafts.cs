@@ -24,6 +24,9 @@ public sealed class InterruptedDrafts : IDraftRepository
     public Task<Either<Error, Option<Draft>>> Get(Guid draftId, CancellationToken cancellationToken)
         => inner.Get(draftId, cancellationToken);
 
+    public Task<Either<Error, Option<(Draft Draft, string ETag)>>> GetWithETag(Guid draftId, CancellationToken cancellationToken)
+        => inner.GetWithETag(draftId, cancellationToken);
+
     public async Task<Either<Error, List<Draft>>> GetWaiting(CancellationToken cancellationToken)
     {
         var waiting = await inner.GetWaiting(cancellationToken);
@@ -55,6 +58,9 @@ public sealed class DraftsFailingAfterFirstRead : IDraftRepository
 
     public Task<Either<Error, Option<Draft>>> Get(Guid draftId, CancellationToken cancellationToken)
         => inner.Get(draftId, cancellationToken);
+
+    public Task<Either<Error, Option<(Draft Draft, string ETag)>>> GetWithETag(Guid draftId, CancellationToken cancellationToken)
+        => inner.GetWithETag(draftId, cancellationToken);
 
     public async Task<Either<Error, List<Draft>>> GetWaiting(CancellationToken cancellationToken)
         => ++reads == 1 ? await inner.GetWaiting(cancellationToken) : Error.New("Cosmos is down.");
