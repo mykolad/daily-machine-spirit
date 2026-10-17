@@ -20,4 +20,10 @@ public sealed record PreceptBook
 
     /// <summary>How many of the Scribes' judgments the last distillation learned from.</summary>
     public Option<int> DistilledFrom { get; init; }
+
+    /// <summary>
+    /// When the newest judgment the last distillation read was made. A judgment made while the model answered isn't in
+    /// its answer, though it's older than <see cref="DistilledAtUtc"/>, so the weekly run compares with this instead.
+    /// </summary>
+    public Option<DateTime> NewestJudgmentReadUtc { get; init; }
 }

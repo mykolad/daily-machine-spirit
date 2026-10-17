@@ -32,7 +32,7 @@ public sealed class PreceptKeeping
     /// before another change is refused.</summary>
     public Task<Either<Error, StoredPrecepts>> View(CancellationToken cancellationToken) => precepts.Get(cancellationToken);
 
-    public Task<Either<Error, Unit>> Add(string text, string scribe, CancellationToken cancellationToken)
+    public Task<Either<Error, Unit>> AddPinned(string text, string scribe, CancellationToken cancellationToken)
         => Text(text).BindAsync(words => Change(book => book.Precepts.Count >= PreceptBook.MaxPrecepts
             ? Left<Error, (PreceptBook, AuditEntry)>(Full)
             : (book with { Precepts = [.. book.Precepts, new Precept { Id = Guid.NewGuid(), Text = words, Pinned = true, ByScribe = true }] },
@@ -40,8 +40,7 @@ public sealed class PreceptKeeping
             None,
             cancellationToken));
 
-    /// <summary>New words for the precept, pinned: a Scribe's words aren't for a model to replace.</summary>
-    public Task<Either<Error, Unit>> Edit(Guid preceptId, string etag, string text, string scribe, CancellationToken cancellationToken)
+    public Task<Either<Error, Unit>> EditAndPin(Guid preceptId, string etag, string text, string scribe, CancellationToken cancellationToken)
         => Text(text).BindAsync(words => Change(book => Find(book, preceptId).Map(found =>
             (Replace(book, found with { Text = words, Pinned = true, ByScribe = true }),
                 Audit(scribe, AuditAction.EditPrecept, words, Some($"was “{found.Text}”")))),
@@ -78,7 +77,7 @@ public sealed class PreceptKeeping
         CancellationToken cancellationToken)
         => precepts.Get(cancellationToken)
             .BindAsync(read => Seen(read, seen).Bind(change)
-                .BindAsync(changed => precepts.Save(read, changed.Changed, changed.Audit, cancellationToken)));
+                .BindAsync(changed => precepts.Save(read, PinnedFirst(changed.Changed), changed.Audit, cancellationToken)));
 
     // A change to a precept is made on the version the Scribe saw: changed since (another Scribe's edit, a distillation),
     // they look again rather than overwrite it. Adding one changes nobody's words, so it needs no version.
@@ -86,6 +85,11 @@ public sealed class PreceptKeeping
         => seen.ForAll(etag => read.ETag.Exists(current => current == etag))
             ? read.Book
             : ScriptoriumRepository.ChangedMeanwhile;
+
+    // The pinned lead, each group in the order it had: pinning a precept moves it to the end of the pinned, unpinning
+    // to the start of the rest, and a Scribe's new one joins the pinned. A distillation keeps the same order.
+    private static PreceptBook PinnedFirst(PreceptBook book)
+        => book with { Precepts = book.Precepts.OrderBy(precept => !precept.Pinned).ToList() };
 
     // Gone meanwhile: a distillation replaced it, or another Scribe deleted it.
     private static Either<Error, Precept> Find(PreceptBook book, Guid preceptId)

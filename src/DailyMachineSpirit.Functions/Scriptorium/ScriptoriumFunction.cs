@@ -115,7 +115,7 @@ public sealed class ScriptoriumFunction
             Some: id => audit.GetHistory(id, cancellationToken),
             None: () => audit.GetNewest(RecordShown, cancellationToken));
         return entries.Match(
-            Right: entries => Html(request, ScriptoriumPage.RenderRecord(entries, options.Value.Scribes, draft), StatusCodes.Status200OK),
+            Right: entries => Html(request, ScriptoriumPage.RenderRecord(entries, draft), StatusCodes.Status200OK),
             Left: error => Failed(request, error));
     }
 
