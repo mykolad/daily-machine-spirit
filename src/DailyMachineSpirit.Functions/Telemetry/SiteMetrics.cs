@@ -15,6 +15,7 @@ public sealed class SiteMetrics
     private readonly Counter<long> answers;
     private readonly Counter<long> published;
     private readonly Counter<long> judging;
+    private readonly Counter<long> duplicateChecks;
     private readonly Counter<long> refusals;
     private readonly Counter<long> signIns;
     private readonly Counter<long> pagePurges;
@@ -34,6 +35,8 @@ public sealed class SiteMetrics
         published = meter.CreateCounter<long>("dms.rites.published", "{rite}", "Rites published, by kind and model.");
         judging = meter.CreateCounter<long>("dms.judging.runs", "{run}",
             "Judging a new draft (its quality for the Augury, its scores for More rites): judged, failed or off.");
+        duplicateChecks = meter.CreateCounter<long>("dms.generation.duplicate_checks", "{check}",
+            "Checking a new draft repeats no rite already written: unique, repeated (written again or kept marked) or failed.");
         refusals = meter.CreateCounter<long>("dms.scriptorium.refusals", "{request}",
             "Scriptorium requests whose Access token was refused, by reason: the token check that failed, or keys-unavailable.");
         signIns = meter.CreateCounter<long>("dms.signins", "{sign-in}",
@@ -51,6 +54,8 @@ public sealed class SiteMetrics
         => published.Add(1, new("kind", rite.Writing.Kind.ToString().ToLowerInvariant()), new("model", rite.Writing.GeneratedByModel));
 
     public void Judging(string outcome) => judging.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
+
+    public void DuplicateCheck(string outcome) => duplicateChecks.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
 
     public void ScribeRefused(string reason) => refusals.Add(1, new KeyValuePair<string, object?>("reason", reason));
 

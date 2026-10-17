@@ -411,7 +411,7 @@ public sealed class ScribesTests : IAsyncLifetime
 
         Ok(await testbed.Refiller().Refill(CancellationToken.None));
 
-        var instructions = testbed.Models.Requests.Single().Messages.Single(message => message.Role == ChatRole.System).Text;
+        var instructions = testbed.Models.Requests.Single(request => request.Model == Sol).Messages.Single(message => message.Role == ChatRole.System).Text;
         Assert.Contains("* Litany of the Endless Spinner", instructions);
     }
 

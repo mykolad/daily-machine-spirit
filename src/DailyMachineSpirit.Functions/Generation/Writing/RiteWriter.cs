@@ -55,10 +55,10 @@ public sealed class RiteWriter
         this.logger = logger;
     }
 
-    /// <summary>A new draft of the kind, on a subject none of <paramref name="titlesToAvoid"/> has; not judged or saved yet.</summary>
-    public async Task<Either<Error, Draft>> Write(RiteKind kind, IReadOnlyList<string> titlesToAvoid, CancellationToken cancellationToken)
+    /// <summary>A new draft of the kind, repeating none of the <paramref name="taken"/> rites; not judged or saved yet.</summary>
+    public async Task<Either<Error, Draft>> Write(RiteKind kind, IReadOnlyList<TakenRite> taken, CancellationToken cancellationToken)
         => (await Answer(
-                [new(ChatRole.System, RitePrompt.Instructions(kind, titlesToAvoid, await Precepts(cancellationToken))), new(ChatRole.User, RitePrompt.Request(kind))],
+                [new(ChatRole.System, RitePrompt.Instructions(kind, taken, await Precepts(cancellationToken))), new(ChatRole.User, RitePrompt.Request(kind))],
                 kind,
                 Unhurried(),
                 $"No model wrote a usable {kind.ToString().ToLowerInvariant()}.",

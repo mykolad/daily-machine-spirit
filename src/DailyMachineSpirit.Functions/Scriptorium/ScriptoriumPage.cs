@@ -53,6 +53,7 @@ public static partial class ScriptoriumPage
         @keyframes acted { from { box-shadow: 0 0 0 4px rgba(240, 180, 90, .55); } to { box-shadow: 0 0 0 4px rgba(240, 180, 90, 0); } }
         .kicker { margin: 0; font: 700 13px Cinzel, serif; letter-spacing: .16em; text-transform: uppercase; color: #c9a25a; }
         .placed { color: #f0b45a; }
+        .resembles { margin: 0 0 12px; padding: 8px 12px; border-left: 4px solid #f0b45a; background: #241c12; border-radius: 8px; color: #ede3cf; }
         .text { font: 400 19px/1.55 "EB Garamond", serif; margin: 0 0 12px; }
         .truth { background: #141c1f; border: 1px solid #2e4248; border-radius: 16px; padding: 12px 16px; color: #dbe6e8; margin: 0 0 12px; }
         .truth-label { display: block; font: 500 14px "JetBrains Mono", monospace; letter-spacing: .14em; text-transform: uppercase; color: #8cc4ae; }
@@ -293,6 +294,8 @@ public static partial class ScriptoriumPage
             .IfNone("Not yet judged by the Augury");
         var placedBy = entry.PlacedByScribes ? """<span class="placed">Placed by the Scribes</span> · """ : string.Empty;
         html.Append($"""<p class="meta">{placedBy}{Encode(augury)} · written by <span class="nowrap">{Encode(draft.Writing.GeneratedByModel)}</span>{(draft.Writing.Edited ? ", amended by a Scribe" : string.Empty)} · <a href="/scriptorium/record?draft={id}">its record</a></p>""");
+        // Written again and again, it still repeated a rite: the Scribes decide whether it's new enough.
+        draft.Resembles.IfSome(title => html.Append($"""<p class="resembles">Much like “{WithCode(title)}”, already written.</p>"""));
 
         var reorder = new List<string>();
         if (place > 1)

@@ -87,13 +87,15 @@ public sealed class Amendments
                 .Map(amendable => amendable.Draft)
                 .ToEither(ScriptoriumRepository.ChangedMeanwhile)));
 
-    // Its old scores, quality and tags describe the old words, so they go; judging gives the new ones.
+    // Its old scores, quality, tags and likeness to another rite describe the old words, so they go; judging gives the new
+    // ones, and the Scribe who amended it has read it.
     private static Draft Amended(Draft draft, RiteContent words) => draft with
     {
         Writing = draft.Writing with { Title = words.Title, Text = words.Text, HereticalTruth = words.HereticalTruth, Edited = true },
         Similarity = None,
         Augury = None,
         Tags = None,
+        Resembles = None,
     };
 
     // A judge that fails, or is off, doesn't lose the Scribe's words: the draft waits unjudged, and the page says so.

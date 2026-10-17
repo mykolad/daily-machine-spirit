@@ -12,7 +12,7 @@ public static class RitePrompt
     public const int HereticalTruthLength = 250;
 
     /// <param name="precepts">The Scribes' Precepts (#12), learned from what they chose and burned.</param>
-    public static string Instructions(RiteKind kind, IReadOnlyList<string> titlesToAvoid, IReadOnlyList<string> precepts)
+    public static string Instructions(RiteKind kind, IReadOnlyList<TakenRite> taken, IReadOnlyList<string> precepts)
     {
         var sb = new StringBuilder();
         sb.AppendLine("You write for The Daily Machine Spirit, a satirical website. Its joke: AI and vibe coding turned software");
@@ -58,12 +58,13 @@ public static class RitePrompt
             }
         }
 
-        if (titlesToAvoid.Count > 0)
+        if (taken.Count > 0)
         {
-            sb.AppendLine("- These rites exist already: pick a different subject and title.");
-            foreach (var title in titlesToAvoid)
+            sb.AppendLine("- These rites exist already, each a title and its Heretical Truth. Write about another habit, with another");
+            sb.AppendLine("  lesson and title: the same lesson in new words is the same rite.");
+            foreach (var rite in taken)
             {
-                sb.AppendLine($"  * {title}");
+                sb.AppendLine($"  * {rite.Title}: {rite.HereticalTruth}");
             }
         }
 
