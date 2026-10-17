@@ -549,10 +549,11 @@ public static class Script
               }
             };
             // The rites join the subjects shown while they loaded; a subject the reader chose meanwhile stays chosen.
+            // By its id: an earlier search for the same words, settling later, brings its own copy of the option.
             const showFound = (subjectOptions, riteOptions) => {
-              const chosen = options()[active];
+              const chosen = options()[active]?.id;
               fill(subjectOptions, riteOptions);
-              choose(options().indexOf(chosen));
+              choose(options().findIndex((option) => option.id === chosen));
               showDrop(true);
             };
             const open = () => {
