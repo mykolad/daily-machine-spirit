@@ -137,8 +137,9 @@ observability/                    — the Grafana dashboard and alerts, and what
     under a rubric per month, 20 to a page, with Today's margins and altar. The left margin counts the rites kept and
     when they began, the right one indexes the months (`RiteRepository.GetDays`, numbers and days only); a month's link
     starts the Archive at that month (`?before=`), so it works without the script and however far back. The script
-    loads the next page into the month it belongs to. A tag's page is the same sheet, with the other subjects in the
-    right margin.
+    loads the next page into the month it belongs to. The sheet wears Today's frame (double rule, corners, code in the
+    margins), each row says its number, and the Archive's last page has Today's ribbon and wax seal hanging from the
+    sheet (`ArchiveSheet.Closing`). A tag's page is the same sheet, with the other subjects in the right margin.
   - **Cached until they change** (#37): browsers keep a page a minute, and Cloudflare keeps Today and a rite's page an
     hour (`s-maxage`, `EdgeLifetime.UntilPurged`), so their requests rarely reach the app. Whatever changes them purges
     them (`IPageCache`, `CloudflarePageCache`): a saved vote adds its rite's page and Today

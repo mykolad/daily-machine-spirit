@@ -207,6 +207,12 @@ public static class Script
             const rows = here.querySelector('.rows');
             return [...month.querySelectorAll('.rows > li')].map((row) => rows.appendChild(document.importNode(row, true)));
           });
+          // The margins' code runs as long as the sheet: each loaded page adds as much code as a page starts with, cut
+          // where the sheet ends. Measuring instead would miss margins hidden on a narrow screen that later widens. A
+          // search shown in place keeps the sheet and its code, so the code is never shorter than the rows.
+          const lengthenMargins = () => document.querySelectorAll('.margin-text[data-code]').forEach((margin) => {
+            margin.textContent += ` · ${Array(Number(margin.dataset.copies)).fill(margin.dataset.code).join(' · ')}`;
+          });
           let loading = false;
           // A keyboard user who follows the link while scrolling already started a load still gets focus moved.
           let focusWhenLoaded = false;
@@ -242,6 +248,7 @@ public static class Script
               const page = new DOMParser().parseFromString(await response.text(), 'text/html');
               if (search !== searches) return;
               const added = takeRows(document.querySelector('.months'), page);
+              lengthenMargins();
               const next = page.querySelector('.archive-more');
               // A keyboard user may have tabbed onto the link while scrolling loaded: replacing it mustn't drop focus.
               focusWhenLoaded ||= more.contains(document.activeElement);
