@@ -47,7 +47,7 @@ public static class ArchivePage
                 sub: sub,
                 search: ArchiveSheet.Search(string.Empty),
                 body: ArchiveRows.Months(rites, []),
-                below: ArchiveRows.More(olderThan.Map(Paths.ArchiveBefore), "Load older rites", "The archive ends here. Earlier knowledge is lost."),
+                below: ArchiveRows.More(olderThan.Map(Paths.ArchiveBefore), "Load older rites", "The archive ends here. Earlier knowledge is lost.", ArchiveSheet.Closing(days.Count)),
                 left: left,
                 right: right)}
             """);
@@ -76,7 +76,7 @@ public static class ArchivePage
             : ArchiveRows.Months(results.Shown, words);
         var below = found == 0
             ? string.Empty
-            : ArchiveRows.More(results.OlderThan.Map(number => Paths.ArchiveSearchBefore(typed, number)), "More results", "No more rites mention it.");
+            : ArchiveRows.More(results.OlderThan.Map(number => Paths.ArchiveSearchBefore(typed, number)), "More results", "No more rites mention it.", string.Empty);
         var left = $"""
             <aside class="marginalia" aria-label="About this search">
             {ArchiveSheet.Note("Sought", $"""<p class="margin-sought">{Html.Encode(quoted)}</p>""")}

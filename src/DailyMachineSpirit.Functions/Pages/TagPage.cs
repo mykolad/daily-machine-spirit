@@ -38,7 +38,7 @@ public static class TagPage
             sub: Html.Encode(about),
             search: string.Empty,
             body: ArchiveRows.Months(rites, []),
-            below: ArchiveRows.More(olderThan.Map(number => Paths.TagBefore(tag.Key, number)), "Load older rites", end),
+            below: ArchiveRows.More(olderThan.Map(number => Paths.TagBefore(tag.Key, number)), "Load older rites", end, string.Empty),
             left: left,
             right: right));
     }
