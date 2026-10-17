@@ -144,9 +144,9 @@ observability/                    — the Grafana dashboard and alerts, and what
     hour (`s-maxage`, `EdgeLifetime.UntilPurged`), so their requests rarely reach the app. Whatever changes them purges
     them (`IPageCache`, `CloudflarePageCache`): a saved vote adds its rite's page and Today
     (`Paths.ShowingVotesOf`) to the minute's batch (`PurgeBatcher`), so a vote never waits for Cloudflare and a page is
-    purged at most once a minute per instance; a new rite purges Today at once. The archive and a tag's page, which no
-    purge can find, stay a minute, as does any address with a query string (Cloudflare caches each apart). Purges go 30
-    URLs to a request. A purge never fails the change: it's logged and counted (`dms.pages.purges`), and the page
+    purged at most once a minute per instance; a new rite purges Today and the search index at once. The archive and a
+    tag's page, which no purge can find, stay a minute, as does any address with a query string (Cloudflare caches each
+    apart). Purges go 30 URLs to a request. A purge never fails the change: it's logged and counted (`dms.pages.purges`), and the page
     refreshes within the hour.
     Settings: `Cloudflare:ZoneId`, `:SiteUrl`, `:ApiToken` (a token that may only purge the zone); without them
     (staging, a local run) nothing is purged.
@@ -170,7 +170,17 @@ observability/                    — the Grafana dashboard and alerts, and what
     plain `CONTAINS` over a few hundred rites (each word a query parameter), plus their numbers and days for the count
     and the month index (`FindDays`); Cosmos's full-text index can take over when that grows. The words are never
     logged, and how many rites were found is in the page's title, which a screen reader reads when the results load.
-    Cloudflare rate-limits it. The nav's search icon leads to the Archive's field.
+    Cloudflare rate-limits it.
+    - **The Archive's field follows the typing:** a quarter of a second after the reader stops, the script fetches
+      `/archive?q=` and swaps the sheet, its margins and the address (`history.replaceState`), so live and shared
+      results come from the same renderer.
+    - **The nav's search** (every page but the Archive, where the icon leads to the page's field): the icon opens a
+      combobox, and up to five rites holding every word drop down under it. They're matched in the browser against
+      the search index (`/api/search-index`, `SearchIndexFunction`: not the rites, only each one's number, day, kind
+      and words as stored, so it matches what the Archive's search matches), loaded once when the field first opens
+      and kept at Cloudflare until a new rite purges it (`DailyRiteFunction`; any query string is redirected to the one
+      address, so it can't cause a read of its own), so what's typed there never leaves the browser until the reader
+      searches. Without the script the icon is a link to the Archive's field.
 - **Votes** (Blessed / Heresy, `Api/VotesFunction`): one per account per rite, which the reader can switch or
   take back, signed in as below. `POST /api/rites/{number}/vote` with `{"vote": "blessed" | "heresy" | null}`, and
   `GET /api/votes?rites=12` for the page to show the reader's own vote pressed.

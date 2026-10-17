@@ -276,7 +276,7 @@ public sealed class SitePagesTests : IAsyncLifetime
 
         Assert.Contains("""<form class="sheet-search" role="search" action="/archive" method="get">""", html);
         Assert.Contains("""name="q" value="" aria-label="Search the Archive" placeholder="Search the Archive" """, html);
-        Assert.DoesNotContain("Clear search", html);
+        Assert.DoesNotContain("""aria-label="Clear search">""", html);
         Assert.Contains("""<a class="nav-search" href="/archive#archive-search" aria-label="Search">""", html);
         Assert.DoesNotContain(">Search</a>", html);
     }
