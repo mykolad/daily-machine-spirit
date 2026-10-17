@@ -32,11 +32,11 @@ public sealed class JudgingAgain
 
     /// <param name="actor">Who asked, for the record: a Scribe's id, or the Machine Spirit.</param>
     public Task<Either<Error, Option<Augury>>> JudgeAgain(Guid draftId, string actor, CancellationToken cancellationToken)
-        => drafts.Get(draftId, cancellationToken)
+        => drafts.GetWithETag(draftId, cancellationToken)
             .BindAsync(found => found
-                .Filter(draft => draft.State == DraftState.Waiting && draft.Augury.IsNone)
+                .Filter(stored => stored.Draft.State == DraftState.Waiting && stored.Draft.Augury.IsNone)
                 .Match(
-                    Some: draft => Judged(draft, actor, cancellationToken),
+                    Some: stored => Judged(stored.Draft, stored.ETag, actor, cancellationToken),
                     None: () => Task.FromResult(Left<Error, Option<Augury>>(NothingToJudge))));
 
     // As the Machine Spirit: how many it judged now.
@@ -47,32 +47,22 @@ public sealed class JudgingAgain
                 var judged = 0;
                 foreach (var draft in waiting.Where(draft => draft.Augury.IsNone))
                 {
-                    // Changed meanwhile (a Scribe amended or burned it) is no failure: there's simply nothing to save.
-                    var result = await Judged(draft, AuditEntry.MachineSpirit, cancellationToken);
+                    var result = await JudgeAgain(draft.Id, AuditEntry.MachineSpirit, cancellationToken);
                     if (result.Exists(augury => augury.IsSome))
                     {
                         judged++;
                     }
-                    else
-                    {
-                        result.IfLeft(error =>
-                        {
-                            if (error != ScriptoriumRepository.ChangedMeanwhile)
-                            {
-                                logger.LogWarning(error.ToException(), "Draft {Title} couldn't be judged again: {Reason}",
-                                    draft.Writing.Title, error.Message);
-                            }
-                        });
-                    }
+                    result.IfLeft(error => LogUnlessChangedMeanwhile(draft, error));
                 }
                 return Right<Error, int>(judged);
             });
 
     // Still without a quality (the judge is off, or answered with nothing to save), nothing is saved and nothing recorded.
-    private async Task<Either<Error, Option<Augury>>> Judged(Draft draft, string actor, CancellationToken cancellationToken)
+    private async Task<Either<Error, Option<Augury>>> Judged(
+        Draft draft, string etag, string actor, CancellationToken cancellationToken)
         => await (await judge.Judge(draft, cancellationToken)).Match(
             Right: judged => judged.Augury.Match(
-                Some: augury => drafts.SaveJudgmentIfUnjudged(judged, Audit(actor, judged, augury), cancellationToken)
+                Some: augury => drafts.SaveJudgmentIfUnchanged(judged, etag, Audit(actor, judged, augury), cancellationToken)
                     .MapAsync(_ => Task.FromResult(Some(augury))),
                 None: () => Task.FromResult(Right<Error, Option<Augury>>(None))),
             Left: error =>
@@ -81,6 +71,16 @@ public sealed class JudgingAgain
                     draft.Writing.Title, error.Message);
                 return Task.FromResult(Right<Error, Option<Augury>>(None));
             });
+
+    // Amended, burned, published or judged since the refill listed it: no failure, just nothing left to judge.
+    private void LogUnlessChangedMeanwhile(Draft draft, Error error)
+    {
+        if (error != ScriptoriumRepository.ChangedMeanwhile && error != NothingToJudge)
+        {
+            logger.LogWarning(error.ToException(), "Draft {Title} couldn't be judged again: {Reason}",
+                draft.Writing.Title, error.Message);
+        }
+    }
 
     private AuditEntry Audit(string actor, Draft judged, Augury augury) => new()
     {

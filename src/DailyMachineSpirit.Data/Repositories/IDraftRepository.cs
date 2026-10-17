@@ -31,8 +31,9 @@ public interface IDraftRepository
     Task<Either<Error, Unit>> SaveTags(Guid draftId, string[] tags, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Saves a judgment (scores, quality, tags) with its record entry, if the draft still waits unjudged:
-    /// <see cref="ScriptoriumRepository.ChangedMeanwhile"/> when it was judged, amended, burned or published since.
+    /// Saves a judgment (scores, quality, tags) with its record entry, if the draft is still the version judged
+    /// (<paramref name="etag"/>): <see cref="ScriptoriumRepository.ChangedMeanwhile"/> when it was judged, amended, burned
+    /// or published since, so a judgment of old words never lands on new ones.
     /// </summary>
-    Task<Either<Error, Unit>> SaveJudgmentIfUnjudged(Draft judged, AuditEntry audit, CancellationToken cancellationToken);
+    Task<Either<Error, Unit>> SaveJudgmentIfUnchanged(Draft judged, string etag, AuditEntry audit, CancellationToken cancellationToken);
 }

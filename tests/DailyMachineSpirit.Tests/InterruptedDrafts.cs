@@ -42,8 +42,8 @@ public sealed class InterruptedDrafts : IDraftRepository
     public Task<Either<Error, Unit>> SaveTags(Guid draftId, string[] tags, CancellationToken cancellationToken)
         => inner.SaveTags(draftId, tags, cancellationToken);
 
-    public Task<Either<Error, Unit>> SaveJudgmentIfUnjudged(Draft judged, AuditEntry audit, CancellationToken cancellationToken)
-        => inner.SaveJudgmentIfUnjudged(judged, audit, cancellationToken);
+    public Task<Either<Error, Unit>> SaveJudgmentIfUnchanged(Draft judged, string etag, AuditEntry audit, CancellationToken cancellationToken)
+        => inner.SaveJudgmentIfUnchanged(judged, etag, audit, cancellationToken);
 }
 /// <summary>The real drafts, except that every read of the waiting ones after the first fails, as if Cosmos went down.</summary>
 public sealed class DraftsFailingAfterFirstRead : IDraftRepository
@@ -74,6 +74,6 @@ public sealed class DraftsFailingAfterFirstRead : IDraftRepository
     public Task<Either<Error, Unit>> SaveTags(Guid draftId, string[] tags, CancellationToken cancellationToken)
         => inner.SaveTags(draftId, tags, cancellationToken);
 
-    public Task<Either<Error, Unit>> SaveJudgmentIfUnjudged(Draft judged, AuditEntry audit, CancellationToken cancellationToken)
-        => inner.SaveJudgmentIfUnjudged(judged, audit, cancellationToken);
+    public Task<Either<Error, Unit>> SaveJudgmentIfUnchanged(Draft judged, string etag, AuditEntry audit, CancellationToken cancellationToken)
+        => inner.SaveJudgmentIfUnchanged(judged, etag, audit, cancellationToken);
 }

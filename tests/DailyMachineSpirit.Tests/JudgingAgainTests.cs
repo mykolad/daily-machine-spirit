@@ -70,14 +70,35 @@ public sealed class JudgingAgainTests : IAsyncLifetime
     public async Task AJudgmentSavedMeanwhile_IsntOverwritten()
     {
         var unjudged = await testbed.AddUnjudgedDraft("Litany of the Cold Cache");
+        var read = await ETag(unjudged);
         var first = unjudged with { Augury = new Augury { Quality = 0.8f, JudgedBy = "first" } };
         var second = unjudged with { Augury = new Augury { Quality = 0.2f, JudgedBy = "second" } };
-        Ok(await testbed.Drafts.SaveJudgmentIfUnjudged(first, Entry(unjudged), CancellationToken.None));
+        Ok(await testbed.Drafts.SaveJudgmentIfUnchanged(first, read, Entry(unjudged), CancellationToken.None));
 
-        var late = await testbed.Drafts.SaveJudgmentIfUnjudged(second, Entry(unjudged), CancellationToken.None);
+        var late = await testbed.Drafts.SaveJudgmentIfUnchanged(second, read, Entry(unjudged), CancellationToken.None);
 
         Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Failed(late));
         Assert.Equal(Some("first"), Ok(await testbed.Drafts.Get(unjudged.Id, CancellationToken.None)).Bind(draft => draft.Augury).Map(augury => augury.JudgedBy));
+    }
+
+    // Amended meanwhile, and the amendment couldn't be judged either: it's still unjudged, but a judgment of the old words
+    // mustn't land on the new ones.
+    [Fact]
+    public async Task AJudgmentOfOldWords_DoesntLandOnAnAmendmentSavedMeanwhile()
+    {
+        var unjudged = await testbed.AddUnjudgedDraft("Litany of the Cold Cache");
+        var read = await ETag(unjudged);
+        testbed.JevApiKey = "";
+        var amendable = Ok(await testbed.Amendments().FindWaiting(unjudged.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Not amendable."));
+        Ok(await testbed.Amendments().SaveAndJudgeAgain(unjudged.Id, amendable.ETag,
+            new("Litany of the Warm Cache", "O Machine Spirit, warm thy cache.", "A warm cache was read before."), "", Tester, CancellationToken.None));
+
+        var stale = await testbed.Drafts.SaveJudgmentIfUnchanged(
+            unjudged with { Augury = new Augury { Quality = 0.8f, JudgedBy = "old words" } }, read, Entry(unjudged), CancellationToken.None);
+
+        Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Failed(stale));
+        var saved = Ok(await testbed.Drafts.Get(unjudged.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Gone."));
+        Assert.Equal(("Litany of the Warm Cache", true), (saved.Writing.Title, saved.Augury.IsNone));
     }
 
     // Each refill judges the unjudged first, so an outage heals without a Scribe.
@@ -91,6 +112,10 @@ public sealed class JudgingAgainTests : IAsyncLifetime
 
         Assert.True(Ok(await testbed.Drafts.Get(unjudged.Id, CancellationToken.None)).Bind(draft => draft.Augury).IsSome);
     }
+
+    private async Task<string> ETag(Draft draft)
+        => Ok(await testbed.Drafts.GetWithETag(draft.Id, CancellationToken.None)).Map(found => found.ETag)
+            .IfNone(() => throw new Xunit.Sdk.XunitException("Gone."));
 
     private static AuditEntry Entry(Draft draft)
         => new() { Id = Guid.NewGuid(), Actor = Tester, Action = AuditAction.JudgeAgain, DraftId = draft.Id, Title = draft.Writing.Title };
