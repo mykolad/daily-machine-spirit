@@ -60,8 +60,9 @@ month, with Today's masthead, margins and altar, and search as the Archive filte
   hidden text, as the numerals are hidden from it. Each month in the index says "13 rites", not a bare "13".
 - **Tags stay on the rows** (the handoff dropped them), as red pills on the parchment, each at least 28px tall, above the
   24px WCAG 2.5.8 asks. A row's link is still its title, stretched over the row, so the tag links can sit inside it.
-- **What a rite was found by shows in its row:** the words are marked in the title and in a line around the first one;
-  a rite found by its Heretical Truth alone shows the words around them there, after "Heretical Truth:".
+- **What a rite was found by shows in its row:** the words are marked in the title and in a line around the first one
+  in its text. A rite found by its Heretical Truth alone shows its opening words instead: the truth stays sealed until
+  the reader breaks the seal on the rite's own page.
 - **How many rites were found is in the page's title** ("“cache”: 3 rites"), as before: a search is a new page, so the
   title is what a screen reader reads first.
 - **It works without the script:** the field is a plain form that sends `GET /archive?q=`, its clear button and "Clear
