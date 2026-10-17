@@ -26,9 +26,10 @@ public static class RiteChecks
 
     // The rites are recited in a far future that forgot the AI: none of them, nor its truth, names what was forgotten.
     // Whole words only, so "said" or "maintain" never count as "AI"; "AI" itself only in capitals, the way it's written.
-    // Not "model" or "prompt" alone: a data model or a command prompt belongs to the machine, not to the AI.
+    // Not "model" or "prompt" alone: a data model or a command prompt belongs to the machine, not to the AI. No letter
+    // or digit on either side, rather than \b, so "A.I." counts before a space or at the end, and "GPT-4o" whole.
     private static readonly Regex ForgottenWords = new(
-        @"\b(?:AI|A\.I\.|(?i:artificial intelligence|LLMs?|language models?|chatbots?|ChatGPT|GPT-\d|Copilot|vibe[- ]cod\w*|prompt engineering))\b",
+        @"(?<!\w)(?:AI|A\.I\.|(?i:artificial intelligence|LLMs?|language models?|chatbots?|ChatGPT|GPT-\d\w*|Copilot|vibe[- ]cod\w*|prompt engineering))(?!\w)",
         RegexOptions.CultureInvariant);
 
     /// <summary>The words, trimmed (and the title without backticks), or why they can't be a rite.</summary>
