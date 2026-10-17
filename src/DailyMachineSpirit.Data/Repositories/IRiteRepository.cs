@@ -14,22 +14,22 @@ public interface IRiteRepository
     /// <summary>The rites with these numbers, in no particular order; numbers without a rite are left out.</summary>
     Task<Either<Error, List<Rite>>> GetByNumbers(IReadOnlyCollection<int> numbers, CancellationToken cancellationToken);
 
-    /// <summary>A page of the archive, the newest first.</summary>
+    /// <summary>At most <paramref name="count"/> rites, the newest first.</summary>
     Task<Either<Error, List<Rite>>> GetOlderThan(int number, int count, CancellationToken cancellationToken);
 
     /// <summary>
-    /// A page of search results, the newest first: the rites whose title, text or Heretical Truth holds every one of
-    /// <paramref name="words"/>, ignoring case, and filed under <paramref name="tag"/> if one is given.
+    /// At most <paramref name="count"/> rites whose title, text or Heretical Truth holds every one of
+    /// <paramref name="words"/>, ignoring case, and tagged <paramref name="tag"/> if one is given, the newest first.
     /// </summary>
     Task<Either<Error, List<Rite>>> SearchOlderThan(IReadOnlyList<string> words, Option<string> tag, int number, int count, CancellationToken cancellationToken);
 
-    /// <summary>The number, day and tags of every rite <see cref="SearchOlderThan"/> finds, on every page, the newest first.</summary>
+    /// <summary>The number, day and tags of every rite <see cref="SearchOlderThan"/> finds, however many, the newest first.</summary>
     Task<Either<Error, List<FoundRite>>> FindDaysAndTags(IReadOnlyList<string> words, Option<string> tag, CancellationToken cancellationToken);
 
-    /// <summary>Every rite's number and day, the newest first: what the archive counts and indexes by month.</summary>
+    /// <summary>Every rite's number and day, the newest first.</summary>
     Task<Either<Error, List<RiteDay>>> GetDays(CancellationToken cancellationToken);
 
-    /// <summary>Every rite's words, the newest first, without scores, votes or tags: what the search index needs.</summary>
+    /// <summary>Every rite's words, the newest first, without scores, votes or tags.</summary>
     Task<Either<Error, List<RiteWords>>> GetAllWords(CancellationToken cancellationToken);
 
     /// <summary>
@@ -50,7 +50,7 @@ public interface IRiteRepository
 
     Task<Either<Error, Dictionary<int, float[]>>> GetScoresByRiteNumber(string scoresGeneratorVersion, CancellationToken cancellationToken);
 
-    /// <summary>A page of the rites with this tag, the newest first.</summary>
+    /// <summary>At most <paramref name="count"/> rites with this tag, the newest first.</summary>
     Task<Either<Error, List<Rite>>> GetTaggedOlderThan(string tag, int number, int count, CancellationToken cancellationToken);
 
     /// <summary>The rites judged before tags existed: with scores, without tags.</summary>
