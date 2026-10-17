@@ -77,7 +77,16 @@ public static class SlowActionScript
               fields.forEach((field) => { field.readOnly = false; });
               buttons.forEach((each) => { each.disabled = false; });
               noteNeeded();
-              say('The Machine Spirit couldn’t be reached. Try again in a moment.');
+              // A request that failed outright may be Cloudflare Access wanting a new sign-in, which a background request
+              // can't give: a new tab can, and this one keeps the Scribe's words for when they try again.
+              const signIn = document.createElement('a');
+              signIn.href = location.href;
+              signIn.target = '_blank';
+              signIn.rel = 'noopener';
+              signIn.textContent = 'open this page in a new tab';
+              status?.replaceChildren(
+                'The Machine Spirit couldn’t be reached. If your sign-in expired, ', signIn,
+                ' to sign in again, then come back and try again: your words are kept here.');
             }
           });
         })();

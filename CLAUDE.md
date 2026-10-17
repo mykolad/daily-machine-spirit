@@ -282,7 +282,9 @@ observability/                    — the Grafana dashboard and alerts, and what
     happening. A rewrite is posted in the background and its form replaces the old one, so the address stays the
     amending page's and a reload never resends it (a reload shows the saved words again); Rewrite waits for a note,
     which it needs. The fields a rewrite changed say "rewritten" in their labels, with an amber edge, and the first is
-    focused (`autofocus`, so it works without the script too). After a distillation, the new precepts are marked.
+    focused (`autofocus`, so it works without the script too). After a distillation, the new precepts are marked. A
+    rewrite request that fails outright (the network, or Cloudflare Access wanting a new sign-in, which a background
+    request can't give) keeps the words and offers the page in a new tab, to sign in there and try again here.
   - **The Scribes' order** (the `placements` document) comes first; the Augury orders the rest. Moving a draft places
     everything above it too, so the order stays what the Scribes saw.
   - **Every action is a lesson:** it saves a `ScribeDecision` with the draft as it was, the Augury's place and quality
