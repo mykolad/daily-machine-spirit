@@ -12,8 +12,9 @@ The rites belong to a far future that forgot the AI: it's long gone, forbidden, 
 work, so the habits survive as rites to the Machine Spirit. A rite and its truth never name AI, models, prompts or
 chatbots, and they're about habits any developer knows, not one tool's commands and flags.
 
-- Tagline: *In the grim darkness of the far future, no one reads the code.* Footer: *Knowledge is lost. The rituals
-  remain.*
+- Tagline: *In the grim darkness of the far future, no one reads the code.* Motto: *Knowledge is lost. The rituals
+  remain.* (`Layout.Motto`): under the rite on Today, where it's read, between brass rules (`.epigraph`), and in the
+  footer on every other page; Today's footer leaves it out, so it's said once.
 - Everything it runs on in Azure is its own, in one resource group defined in Bicep (`infra/`): the models, a Cosmos DB
   account, a Key Vault and a Functions app per environment. Only the Grafana Cloud stack is shared, with its own token.
 - Runs as **one Azure Functions app** (Flex Consumption, .NET 10 isolated worker): a timer generates the daily rite,
@@ -131,7 +132,7 @@ observability/                    — the Grafana dashboard and alerts, and what
   - **More rites** (a rite's own page): the three rites whose similarity scores are closest (cosine, `RelatedRites`),
     topped up with the newest others when there aren't enough scored ones. If it fails, the page goes without it.
   - **Recent rites** (Today): the four before today's, read with it in one query, so a new rite's purge of Today
-    refreshes them too.
+    refreshes them too. The motto sits between the countdown and them.
   - **Wide screens** (1280px and up) give the rite margins: the countdown and tags on the left, the votes on the right,
     nothing the parchment already says. The markup stays in reading order and the stylesheet places it
     (`docs/design/accessibility.md`). The Scriptorium puts its heading on the same altar: candles beside it, the glow
@@ -170,11 +171,12 @@ observability/                    — the Grafana dashboard and alerts, and what
       `tags` and restart the app.
   - **Search** (`/archive?q=`, #7): the Archive filtered to the rites holding every word typed (at most 6, quotes
     ignored) in their title, text or Heretical Truth, ignoring case, newest first, Today's too. Each row marks the words
-    (`Highlight`) and shows the words around the first match (`RowLine`), from the truth when only it holds them. A
-    plain `CONTAINS` over a few hundred rites (each word a query parameter), plus their numbers and days for the count
-    and the month index (`FindDays`); Cosmos's full-text index can take over when that grows. The words are never
-    logged, and how many rites were found is in the page's title, which a screen reader reads when the results load.
-    Cloudflare rate-limits it.
+    (`Highlight`) and shows the words around the first match in the text (`RowLine`); a rite found by its truth alone
+    shows its opening words, the truth staying sealed until the reader opens the rite. A plain `CONTAINS` over a few
+    hundred rites (each word a query parameter), plus their numbers and days for the count and the month index
+    (`FindDays`); Cosmos's full-text index can take over when that grows. The words are never logged, and how many
+    rites were found is in the page's title, which a screen reader reads when the results load. Cloudflare rate-limits
+    it.
     - **The Archive's field follows the typing:** a quarter of a second after the reader stops, the script fetches
       `/archive?q=` and swaps the sheet, its margins and the address (`history.replaceState`), so live and shared
       results come from the same renderer.
