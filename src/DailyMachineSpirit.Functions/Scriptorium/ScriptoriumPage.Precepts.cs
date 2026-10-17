@@ -68,7 +68,8 @@ public static partial class ScriptoriumPage
         return html.ToString();
     }
 
-    // Each precept's buttons name it for screen readers, since every entry has the same buttons.
+    // Each precept's buttons name it for screen readers, since every entry has the same buttons. Pin and Unpin say what
+    // they do in their title, as the calendar's buttons do: pinning only matters at the next distillation.
     private static void PreceptEntry(StringBuilder html, Precept precept, string version, Option<Guid> acted)
     {
         var id = precept.Id.ToString("D");
@@ -76,8 +77,8 @@ public static partial class ScriptoriumPage
         var named = $"""<span class="visually-hidden">: {Encode(precept.Text)}</span>""";
         var origin = precept.ByScribe ? "A Scribe's words" : "Distilled by the Machine Spirit";
         var pin = precept.Pinned
-            ? $"""<button class="outline" formaction="{action}/unpin">{ScriptoriumIcons.Pin}Unpin{named}</button>"""
-            : $"""<button class="outline" formaction="{action}/pin">{ScriptoriumIcons.Pin}Pin{named}</button>""";
+            ? $"""<button title="Lets the next distillation replace this precept with a new one." class="outline" formaction="{action}/unpin">{ScriptoriumIcons.Pin}Unpin{named}</button>"""
+            : $"""<button title="Keeps this precept, word for word, when the Precepts are distilled again. Pinned precepts come first." class="outline" formaction="{action}/pin">{ScriptoriumIcons.Pin}Pin{named}</button>""";
         html.Append($"""
             <li class="rite{(acted.Exists(found => found == precept.Id) ? " acted" : string.Empty)}" id="precept-{id}">
             <p class="text">{WithCode(precept.Text)}</p>

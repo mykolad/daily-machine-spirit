@@ -31,7 +31,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
     public async Task Page_ShowsEachPrecept_WhereItCameFrom_AndWhatCanBeDone()
     {
         await AJudgment();
-        Ok(await testbed.PreceptKeeping().Add("Name the command: `npm ci`.", Tester, CancellationToken.None));
+        Ok(await testbed.PreceptKeeping().AddPinned("Name the command: `npm ci`.", Tester, CancellationToken.None));
         testbed.Models.Answers(Sol, Distilled("Prefer the real fix."));
         Ok(await testbed.Distiller().Distil(Tester, CancellationToken.None));
 
@@ -43,6 +43,8 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         Assert.Contains("Distilled by the Machine Spirit", html);
         Assert.Contains("""Unpin<span class="visually-hidden">: Name the command: `npm ci`.</span>""", html);
         Assert.Contains("""Pin<span class="visually-hidden">: Prefer the real fix.</span>""", html);
+        Assert.Contains("<button title=\"Keeps this precept, word for word, when the Precepts are distilled again. Pinned precepts come first.\"", html);
+        Assert.Contains("<button title=\"Lets the next distillation replace this precept with a new one.\"", html);
         Assert.Contains("""<label for="precept-new">A precept of your own</label>""", html);
         Assert.Contains("""<a href="/scriptorium">Back to the Scriptorium</a>""", html);
     }
@@ -79,7 +81,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
     {
         for (var added = 0; added < PreceptBook.MaxPrecepts; added++)
         {
-            Ok(await testbed.PreceptKeeping().Add($"Precept {added}.", Tester, CancellationToken.None));
+            Ok(await testbed.PreceptKeeping().AddPinned($"Precept {added}.", Tester, CancellationToken.None));
         }
 
         Assert.DoesNotContain("precept-new", Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200));
@@ -127,7 +129,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
 
         for (var added = 0; added < PreceptBook.MaxPrecepts; added++)
         {
-            Ok(await testbed.PreceptKeeping().Add($"Precept {added}.", Tester, CancellationToken.None));
+            Ok(await testbed.PreceptKeeping().AddPinned($"Precept {added}.", Tester, CancellationToken.None));
         }
         var redirect = await function.Distil(Form(), CancellationToken.None);
         Assert.Equal("/scriptorium/precepts?done=distil-pinned", RedirectedTo(redirect));
@@ -141,7 +143,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         await AJudgment();
         testbed.Models.Then(Sol, [async () =>
         {
-            Ok(await testbed.PreceptKeeping().Add("Added while the model thought.", Tester, CancellationToken.None));
+            Ok(await testbed.PreceptKeeping().AddPinned("Added while the model thought.", Tester, CancellationToken.None));
             return Distilled("Prefer the real fix.");
         }]);
 
@@ -174,7 +176,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
     [Fact]
     public async Task AChange_FromAPageShownBeforeAnother_IsRefused()
     {
-        Ok(await testbed.PreceptKeeping().Add("Prefer the real fix.", Tester, CancellationToken.None));
+        Ok(await testbed.PreceptKeeping().AddPinned("Prefer the real fix.", Tester, CancellationToken.None));
         var id = Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts.Single().Id;
         var bothSaw = await Seen();
         var function = Function(enabled: true);
@@ -194,14 +196,14 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
     {
         var function = Function(enabled: true);
         Assert.Equal("/scriptorium/precepts?done=text-needed", RedirectedTo(await function.Add(Form(("text", " ")), CancellationToken.None)));
-        Ok(await testbed.PreceptKeeping().Add("Prefer the real fix.", Tester, CancellationToken.None));
+        Ok(await testbed.PreceptKeeping().AddPinned("Prefer the real fix.", Tester, CancellationToken.None));
         var id = Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts.Single().Id;
         var tooLong = await function.Change(Form(("text", new string('x', Precept.MaxLength + 1))), id, "edit", CancellationToken.None);
         Assert.Equal($"/scriptorium/precepts?done=too-long&precept={id:D}#precept-{id:D}", RedirectedTo(tooLong));
         Assert.Contains("at most 300 characters", Html(await function.Page(Following(tooLong), CancellationToken.None), 200));
         for (var added = 1; added < PreceptBook.MaxPrecepts; added++)
         {
-            Ok(await testbed.PreceptKeeping().Add($"Precept {added}.", Tester, CancellationToken.None));
+            Ok(await testbed.PreceptKeeping().AddPinned($"Precept {added}.", Tester, CancellationToken.None));
         }
         Assert.Equal("/scriptorium/precepts?done=full", RedirectedTo(await function.Add(Form(("text", "One too many.")), CancellationToken.None)));
     }
@@ -251,7 +253,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
     public async Task TheRecord_ShowsWhatWasDoneToThePrecepts()
     {
         await AJudgment();
-        Ok(await testbed.PreceptKeeping().Add("Prefer the real fix.", Tester, CancellationToken.None));
+        Ok(await testbed.PreceptKeeping().AddPinned("Prefer the real fix.", Tester, CancellationToken.None));
         testbed.Models.Answers(Sol, Distilled("Name the command."));
         Ok(await testbed.Distiller().Distil(AuditEntry.MachineSpirit, CancellationToken.None));
 
