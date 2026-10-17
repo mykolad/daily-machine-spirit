@@ -32,6 +32,13 @@ public sealed class RiteIndexFunction
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/rites")] HttpRequest request,
         CancellationToken cancellationToken)
     {
+        // Cloudflare keeps an address with a query string apart, so /api/rites?anything would read every rite again. One
+        // address for all: a redirect costs no read, and it's cached too.
+        if (request.QueryString.HasValue)
+        {
+            return new RedirectResult(Paths.RiteIndex, permanent: true);
+        }
+
         var headers = request.HttpContext.Response.Headers;
         headers.XContentTypeOptions = "nosniff";
         return (await rites.GetWritings(cancellationToken)).Match<IActionResult>(
@@ -53,11 +60,12 @@ public sealed class RiteIndexFunction
             });
     }
 
+    // The words as stored, backticks too, so the nav matches exactly what the Archive's search (CONTAINS) matches.
     private static RiteIndexEntry Entry(Rite rite) => new(
         rite.Number,
         Html.IsoDate(rite.PublishedOnUtc),
         rite.Writing.Kind == RiteKind.Prayer ? "prayer" : "ritual",
         rite.Writing.Title,
-        rite.Writing.Text.Replace("`", string.Empty),
-        rite.Writing.HereticalTruth.Replace("`", string.Empty));
+        rite.Writing.Text,
+        rite.Writing.HereticalTruth);
 }

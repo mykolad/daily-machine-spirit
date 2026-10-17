@@ -17,7 +17,8 @@ public sealed class RiteIndexFunctionTests : IAsyncLifetime
 
     public Task DisposeAsync() => cosmos.DisposeAsync();
 
-    // What the search field matches, newest first, without code's backticks; kept at the edge until a new rite purges it.
+    // What the search field matches, newest first, the words as stored (as the Archive's search reads them); kept at the
+    // edge until a new rite purges it.
     [Fact]
     public async Task Index_ListsEveryRitesWords_NewestFirst()
     {
@@ -33,10 +34,22 @@ public sealed class RiteIndexFunctionTests : IAsyncLifetime
         var entries = JsonSerializer.Deserialize<RiteIndexEntry[]>(result.Content ?? "[]", new JsonSerializerOptions(JsonSerializerDefaults.Web)) ?? [];
         Assert.Equal(
             [
-                new RiteIndexEntry(2, "2026-10-09", "ritual", "The Rite of Re-Run", "Press Re-run thrice, intoning it passed locally.", "Your test depends on timing."),
-                new RiteIndexEntry(1, "2026-10-08", "prayer", "The Litany of the Warm Cache", "Press Re-run thrice, intoning it passed locally.", "Your test depends on timing."),
+                new RiteIndexEntry(2, "2026-10-09", "ritual", "The Rite of Re-Run", "Press Re-run thrice, intoning `it passed locally`.", "Your test depends on `timing`."),
+                new RiteIndexEntry(1, "2026-10-08", "prayer", "The Litany of the Warm Cache", "Press Re-run thrice, intoning `it passed locally`.", "Your test depends on `timing`."),
             ],
             entries);
+    }
+
+    // Any query string would be its own cache entry, and its own read of every rite: one address answers for all.
+    [Fact]
+    public async Task Index_WithAQueryString_RedirectsToTheOneAddress()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.QueryString = new QueryString("?nonce=1");
+
+        var result = Assert.IsType<RedirectResult>(await Function(Repository).Index(context.Request, CancellationToken.None));
+
+        Assert.Equal(("/api/rites", true), (result.Url, result.Permanent));
     }
 
     [Fact]
