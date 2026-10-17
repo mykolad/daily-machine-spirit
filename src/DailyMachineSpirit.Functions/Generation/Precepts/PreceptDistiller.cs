@@ -32,6 +32,9 @@ public sealed class PreceptDistiller
     /// <summary>Every precept is pinned, which leaves no room for a new one.</summary>
     public static readonly Error AllPinned = Error.New("Every precept is pinned, so there's no room for a new one.");
 
+    public static readonly Error NothingWithinTheRules =
+        Error.New("Every precept the Machine Spirit distilled would have the writer break its rules, so the Precepts stay as they were.");
+
     private static readonly JsonSerializerOptions AnswerSerializerOptions = new(JsonSerializerOptions.Web)
     {
         RespectNullableAnnotations = true,
@@ -113,9 +116,15 @@ public sealed class PreceptDistiller
         };
         // Neither a pinned precept again nor one the Scribes deleted: the page promised it wouldn't come back.
         var excluded = pinned.Select(precept => precept.Text).Concat(book.Rejected).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        return await (await Answer(messages, room, excluded, cancellationToken)).MapAsync(async answered =>
+        return await (await Answer(messages, room, excluded, cancellationToken)).BindAsync(async answered =>
         {
             var distilled = await WithinTheRules(answered, cancellationToken);
+            // Nothing left to put in the unpinned ones' place: they stay, and so does what was last read, so the weekly run
+            // tries these judgments again.
+            if (distilled.Count == 0)
+            {
+                return Left<Error, PreceptBook>(NothingWithinTheRules);
+            }
             return book with
             {
                 Precepts = [.. pinned, .. distilled.Select(text => new Precept { Id = Guid.NewGuid(), Text = text })],

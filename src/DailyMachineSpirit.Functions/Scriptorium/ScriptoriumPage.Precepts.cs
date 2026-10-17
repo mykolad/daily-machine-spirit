@@ -29,7 +29,7 @@ public static partial class ScriptoriumPage
         Heading(html, "The Precepts",
             "What the Machine Spirit has learned from the Scribes' judgments. It follows them in every rite it writes.");
         html.Append("""<p class="record-link"><a href="/scriptorium">Back to the Scriptorium</a> · <a href="/scriptorium/record">The Record</a></p>""");
-        var status = refused.Map(precept => Encode($"Not saved: {precept.Reason} Reword it, or leave it as it was."))
+        var status = refused.Map(precept => Encode($"Not saved: {precept.Reason} {WhereTheWordsAre(precept, book)}"))
             | outcome.Map(PreceptStatus);
         html.Append($"""<p class="status" role="status" id="precepts-status">{status.IfNone(string.Empty)}</p>""");
 
@@ -107,6 +107,24 @@ public static partial class ScriptoriumPage
             """);
     }
 
+    // A refused precept's words go back in their field; when that field is gone (the precept was deleted or replaced
+    // while the check ran, or the Precepts filled up), the message carries them instead, so they aren't lost, and an
+    // edit doesn't quietly become an addition.
+    private static string WhereTheWordsAre(RefusedPrecept refused, PreceptBook book)
+    {
+        var fieldShown = refused.PreceptId.Match(
+            Some: id => book.Precepts.Exists(precept => precept.Id == id),
+            None: () => book.Precepts.Count < PreceptBook.MaxPrecepts);
+        if (fieldShown)
+        {
+            return "Reword it, or leave it as it was.";
+        }
+        var gone = refused.PreceptId.IsSome
+            ? "The precept changed meanwhile (another Scribe, or a distillation), so it isn't on the page any more."
+            : "The Precepts filled up meanwhile, so there's no room for it now.";
+        return $"{gone} Your words were: “{refused.Text}”";
+    }
+
     // The new precept's field, when the check refused what was typed in it: marked invalid, and described by the status
     // that says why.
     private static string Refusal(Option<RefusedPrecept> refused)
@@ -153,6 +171,7 @@ public static partial class ScriptoriumPage
         "distil" => "The Precepts were distilled again from the Scribes' judgments.",
         "distil-nothing" => PreceptDistiller.NothingToLearn.Message,
         "distil-pinned" => PreceptDistiller.AllPinned.Message,
+        "distil-refused" => PreceptDistiller.NothingWithinTheRules.Message,
         "distil-failed" => "The Machine Spirit couldn't distil them just now. Try again in a moment.",
         "add" => "Your precept was added, pinned.",
         "edit" => "The precept was changed and pinned: distilling again keeps it.",

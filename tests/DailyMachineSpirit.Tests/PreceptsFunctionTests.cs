@@ -1,4 +1,5 @@
 using DailyMachineSpirit.Data.Entities;
+using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions;
 using DailyMachineSpirit.Functions.Generation;
 using DailyMachineSpirit.Functions.Generation.Precepts;
@@ -221,6 +222,28 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         Assert.Contains("""<p class="status" role="status" id="precepts-status">Not saved: It mocks a group of people. Reword it, or leave it as it was.</p>""", html);
         Assert.Contains("""aria-invalid="true" aria-describedby="precepts-status" required>Mock &lt;managers&gt;.</textarea>""", html);
         Assert.Empty(Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts);
+    }
+
+    // While the check ran, the precept being edited was deleted or replaced, or the Precepts filled up: the field is
+    // gone, so the words come back in the message rather than being lost, or an edit becoming an addition.
+    [Fact]
+    public void ARefusedPrecept_WhoseFieldIsGone_ComesBackInTheMessage()
+    {
+        var refusal = "It mocks a group of people.";
+        var full = new PreceptBook
+        {
+            Precepts = Enumerable.Range(1, PreceptBook.MaxPrecepts).Select(n => new Precept { Id = Guid.NewGuid(), Text = $"Precept {n}.", Pinned = true }).ToList(),
+        };
+
+        var edited = ScriptoriumPage.RenderPrecepts(new StoredPrecepts(new PreceptBook(), None), [], None, None,
+            Some(new RefusedPrecept(Some(Guid.NewGuid()), "Mock the managers.", refusal)));
+        var added = ScriptoriumPage.RenderPrecepts(new StoredPrecepts(full, None), [], None, None,
+            Some(new RefusedPrecept(None, "Mock the managers.", refusal)));
+
+        Assert.Contains(
+            "Not saved: It mocks a group of people. The precept changed meanwhile (another Scribe, or a distillation), so it isn&#39;t on the page any more. Your words were: “Mock the managers.”",
+            edited);
+        Assert.Contains("The Precepts filled up meanwhile, so there&#39;s no room for it now. Your words were: “Mock the managers.”", added);
     }
 
     [Fact]

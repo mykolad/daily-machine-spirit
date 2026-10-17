@@ -82,6 +82,11 @@ public sealed class PreceptCheck
             {
                 return Error.New($"The answer names a precept beyond the {precepts.Count} it was given.");
             }
+            // A refusal must say why: without a reason, the Scribe couldn't act on it.
+            if (answer.Breaking.Any(broken => string.IsNullOrWhiteSpace(broken.Reason)))
+            {
+                return Error.New("The answer refuses a precept without saying why.");
+            }
             return answer.Breaking
                 .DistinctBy(broken => broken.Number)
                 .OrderBy(broken => broken.Number)

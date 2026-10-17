@@ -75,6 +75,10 @@ public sealed class PreceptsFunction
                     {
                         return Back("distil-pinned", None);
                     }
+                    if (error == PreceptDistiller.NothingWithinTheRules)
+                    {
+                        return Back("distil-refused", None);
+                    }
                     if (error == ScriptoriumRepository.ChangedMeanwhile)
                     {
                         return Back("changed", None);

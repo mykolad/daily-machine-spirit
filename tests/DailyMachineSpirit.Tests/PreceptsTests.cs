@@ -62,6 +62,7 @@ public sealed class PreceptsTests : IAsyncLifetime
     // A model outage mustn't stop the Scribes: a precept the check can't judge is saved, as an unjudged draft is kept.
     [Theory]
     [InlineData("""{"breaking": [{"number": 2, "reason": "Out of range."}]}""")]
+    [InlineData("""{"breaking": [{"number": 1, "reason": "  "}]}""")]
     [InlineData("not json at all")]
     [InlineData("")]
     public async Task APrecept_TheCheckCantJudge_IsSaved(string answer)
@@ -78,6 +79,28 @@ public sealed class PreceptsTests : IAsyncLifetime
         Ok(await testbed.PreceptKeeping().AddPinned(RealFix, Tester, CancellationToken.None));
 
         Assert.Equal([RealFix], await Texts());
+    }
+
+    // When every distilled precept breaks a rule, nothing replaces the unpinned ones: they stay.
+    [Fact]
+    public async Task Distil_WithEveryPreceptBreakingARule_LeavesThePreceptsAsTheyWere()
+    {
+        await AJudgment();
+        testbed.Models.Answers(Sol, Distilled(RealFix));
+        Ok(await testbed.Distiller().Distil(Tester, CancellationToken.None));
+        var before = Ok(await testbed.Precepts.Get(CancellationToken.None)).Book;
+        testbed.Time.Advance(TimeSpan.FromDays(7));
+        await AJudgment();
+        testbed.Models.Answers(Sol, Distilled("Quote the Litany of Ignition word for word."));
+        testbed.Models.Answers(Checker, Breaking((1, "It quotes the setting's text.")));
+
+        var refused = Failed(await testbed.Distiller().DistilIfJudgedSinceLast(CancellationToken.None));
+
+        Assert.Equal(PreceptDistiller.NothingWithinTheRules, refused);
+        var after = Ok(await testbed.Precepts.Get(CancellationToken.None)).Book;
+        Assert.Equal([RealFix], after.Precepts.Select(precept => precept.Text));
+        // What was last read stays, so next week's run tries these judgments again.
+        Assert.Equal((before.DistilledAtUtc, before.NewestJudgmentReadUtc), (after.DistilledAtUtc, after.NewestJudgmentReadUtc));
     }
 
     // Distilled, a precept breaking a rule is dropped: followed, it would fail drafts or be ignored.
