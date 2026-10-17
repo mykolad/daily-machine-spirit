@@ -8,6 +8,10 @@ Spirit, written ahead by an LLM and chosen by moderators, plus a **Heretical Tru
 what really happens. Either kind is a **rite** (the design's word, and `Rite` in the code). Readers vote with
 **Blessed** or **Heresy**.
 
+The rites belong to a far future that forgot the AI: it's long gone, forbidden, and nobody remembers how the machines
+work, so the habits survive as rites to the Machine Spirit. A rite and its truth never name AI, models, prompts or
+chatbots, and they're about habits any developer knows, not one tool's commands and flags.
+
 - Tagline: *In the grim darkness of the far future, no one reads the code.* Motto: *Knowledge is lost. The rituals
   remain.* (`Layout.Motto`): under the rite on Today, where it's read, between brass rules (`.epigraph`), and in the
   footer on every other page; Today's footer leaves it out, so it's said once.
@@ -236,8 +240,10 @@ observability/                    — the Grafana dashboard and alerts, and what
     neither publishes nor refills, while the Scriptorium still summons drafts. Both environments publish (production since
     launch, #35).
   - **Writing:** `RiteWriter` asks `gpt-6-sol` for a `RiteContent` (JSON schema output), up to 3 times, then
-    `gpt-6-luna` (`Generation:Models`). An answer that's empty, too long, uses a forbidden name or writes code outside
-    backticks (`UnquotedCode`) is asked for again, never cut (`RiteChecks`, which a Scribe's amendment passes too).
+    `gpt-6-luna` (`Generation:Models`). An answer that's empty, too long, uses a forbidden name, names what the far
+    future forgot (AI, LLMs, chatbots and the like, as whole words: not "model" or "prompt" alone) or writes code
+    outside backticks (`UnquotedCode`) is asked for again, never cut (`RiteChecks`, which a Scribe's amendment passes
+    too). The prompt asks for plain words over code: at most one widely known command or file name, without flags.
     Every draft and rewrite follows the Precepts (below); if they can't be read, the rite is written without them.
   - **Judging:** an `IRiteJudge` judges each draft (`JevJudge` for now, swappable like the models): its similarity
     scores for "More rites" and its quality for the Augury, in one request. A draft that can't be judged still joins
