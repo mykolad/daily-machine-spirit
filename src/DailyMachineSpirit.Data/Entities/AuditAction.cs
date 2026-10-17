@@ -25,6 +25,7 @@ public enum AuditAction
     PinPrecept,
     UnpinPrecept,
     DeletePrecept,
-    /// <summary>A waiting draft judging couldn't score was judged again: by a refill (the Machine Spirit) or a Scribe.</summary>
+
+    // A waiting draft judging couldn't score, judged again: by a refill (the Machine Spirit) or a Scribe.
     JudgeAgain,
 }
