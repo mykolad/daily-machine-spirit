@@ -69,9 +69,9 @@ public sealed class AuditTests : IAsyncLifetime
     public async Task AnAmendment_IsRecorded_WithTheTitleItHadBefore()
     {
         var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
-        var amendable = Ok(await testbed.Amendments().Get(draft.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Not amendable."));
+        var amendable = Ok(await testbed.Amendments().FindWaiting(draft.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Not amendable."));
 
-        Ok(await testbed.Amendments().Save(draft.Id, amendable.ETag,
+        Ok(await testbed.Amendments().SaveAndJudgeAgain(draft.Id, amendable.ETag,
             new RiteContent("Litany of the Warm Cache", "O Machine Spirit, warm the cache.", "A warm cache was read before."), "", Tester, CancellationToken.None));
 
         var entry = (await Entries()).Single(found => found.Action == AuditAction.Amend);

@@ -266,7 +266,10 @@ observability/                    — the Grafana dashboard and alerts, and what
     (burn: the draft is hidden, never deleted), **Restore from the Ashes**, **Summon New Rites** (a refill), **Let
     the Augury Decide** (forget the Scribes' order), and **Amend** (#8, `Amendments`, its own page): change a waiting
     draft's words by hand, or ask the writer to rewrite them as the Scribe's note says (`RiteWriter.Rewrite`; the
-    rewrite fills the form, unsaved, for the Scribe to read first). Saved words pass what a model's answer must
+    rewrite fills the form, unsaved, for the Scribe to read first). A rewrite is asked with less patience than a refill
+    (`Patience`, `RiteWriter.WhileTheScribeWaits`): each model once, 40 seconds each, within the 100 seconds Cloudflare
+    waits; a refill gives each model its three tries. Line breaks the form posts as CRLF count as one character, as the
+    field counted them. Saved words pass what a model's answer must
     (`RiteChecks`) and are judged again (scores, quality and tags describe what will be published; if the judge fails
     or is off, the draft waits unjudged). The draft keeps `GeneratedByModel` and gets `Edited`, carried into the rite;
     the rite never says which Scribe (the record does). The save is guarded by the draft's ETag, read with the page,
@@ -279,7 +282,7 @@ observability/                    — the Grafana dashboard and alerts, and what
   - **The Precepts** (`/scriptorium/precepts`, #12): rules for writing and choosing rites, learned from the Scribes'
     judgments, which the writer follows. One `precepts` document, each change recorded (#9). Its forms carry the
     version the page showed (its ETag), so a change from a page shown before another is refused.
-    - **Distilled** (`PreceptDistiller`): `gpt-6-sol` (then `gpt-6-luna`, one try of 30 seconds each) reads the
+    - **Distilled** (`PreceptDistiller`): `gpt-6-sol` (then `gpt-6-luna`, one try of 40 seconds each) reads the
       newest 100 judgments with their notes and answers at most 12 precepts (JSON schema output). An answer with a
       null, an overlong precept, or nothing but pinned and deleted ones goes to the next model. The `DistilPrecepts`
       timer runs Mondays at 01:00 UTC, as the Machine Spirit, unless no rite was judged since the last distillation

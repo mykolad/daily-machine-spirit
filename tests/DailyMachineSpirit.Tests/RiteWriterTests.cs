@@ -272,19 +272,24 @@ public sealed class RiteWriterTests : IDisposable
 
     // A model that hasn't answered in time gives way to the next, so the Scribe's page comes back.
     [Fact]
-    public async Task Rewrite_GivesUpOnAModelThatTakesTooLong()
+    public async Task Rewrite_GivesUpOnAModelThatTakesTooLong_AndTimesEachAnswer()
     {
+        var limit = RiteWriter.WhileTheScribeWaits.AttemptTime.IfNone(TimeSpan.Zero);
         models.Then(Sol, [() =>
         {
-            time.Advance(TimeSpan.FromSeconds(30));
+            time.Advance(limit);
             return new TaskCompletionSource<string>().Task;
         }]);
         models.Answers(Luna, GoodAnswer);
+        using var answerTimes = probe.Collect<double>("dms.generation.answer_duration");
 
         var rewritten = await Writer(retryDelaySeconds: 0).Rewrite(
             RiteKind.Ritual, new RiteContent("The Rite of Re-Run", "Press Re-run.", "It's flaky."), "Name the race.", CancellationToken.None);
 
         Assert.Equal("The Rite of Re-Run", Ok(rewritten).Title);
+        Assert.Equal(["model=gpt-6-sol asked=rewrite outcome=timed-out", "model=gpt-6-luna asked=rewrite outcome=answered"],
+            MetricsProbe.Tags(answerTimes, "model", "asked", "outcome"));
+        Assert.Equal([limit.TotalSeconds, 0], answerTimes.GetMeasurementSnapshot().Select(measurement => measurement.Value));
     }
 
     private RiteWriter Writer(int retryDelaySeconds)
