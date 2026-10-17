@@ -56,6 +56,9 @@ public interface IScriptoriumRepository
 
     /// <summary>The newest decisions first.</summary>
     Task<Either<Error, List<ScribeDecision>>> GetDecisions(int count, CancellationToken cancellationToken);
+
+    /// <summary>Every decision made on or after the day (UTC), in no particular order.</summary>
+    Task<Either<Error, List<ScribeDecision>>> GetDecisionsSince(DateOnly day, CancellationToken cancellationToken);
 }
 
 public class ScriptoriumRepository : IScriptoriumRepository
@@ -145,6 +148,15 @@ public class ScriptoriumRepository : IScriptoriumRepository
             new QueryDefinition("SELECT TOP @count * FROM c WHERE c.type = @type ORDER BY c.decidedAtUtc DESC")
                 .WithParameter("@count", count)
                 .WithParameter("@type", ScribeDecisionDocument.DecisionType),
+            cancellationToken)).Select(document => document.ToDecision()).ToList());
+
+    // Compared as strings, which is how the times are stored: any time on the day ("2026-10-01T00:00:00Z") sorts after
+    // the day alone, however many decimals it was written with.
+    public Task<Either<Error, List<ScribeDecision>>> GetDecisionsSince(DateOnly day, CancellationToken cancellationToken)
+        => Attempt(async () => (await container.Query<ScribeDecisionDocument>(
+            new QueryDefinition("SELECT * FROM c WHERE c.type = @type AND c.decidedAtUtc >= @day")
+                .WithParameter("@type", ScribeDecisionDocument.DecisionType)
+                .WithParameter("@day", day.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)),
             cancellationToken)).Select(document => document.ToDecision()).ToList());
 
     // Fails the batch (412) unless the draft still waits: setting its state to what it already is changes nothing, but

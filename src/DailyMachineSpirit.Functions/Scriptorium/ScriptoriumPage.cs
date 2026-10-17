@@ -84,6 +84,9 @@ public static partial class ScriptoriumPage
         .record li { background: #1a1612; border-radius: 12px; padding: 10px 14px; }
         .record time { display: block; font: 500 13px "JetBrains Mono", monospace; color: #b6a98f; }
         .record-link { margin: 0 0 16px; }
+        .agreement { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 15px; }
+        .agreement th, .agreement td { text-align: left; vertical-align: top; padding: 8px 10px 8px 0; border-bottom: 1px solid rgba(237,227,207,.12); }
+        .agreement thead th { font-weight: 600; color: #b6a98f; }
         .judgments cite { font-style: normal; font-weight: 600; }
         .note { display: block; font: italic 18px/1.4 "EB Garamond", serif; color: #cdbd9e; }
         a { color: #d9b874; }

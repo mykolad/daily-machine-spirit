@@ -84,6 +84,7 @@ builder.Services.Configure<ScriptoriumOptions>(builder.Configuration.GetSection(
 builder.Services.AddTransient<Scribes>();
 builder.Services.AddTransient<Amendments>();
 builder.Services.AddTransient<PreceptKeeping>();
+builder.Services.AddTransient<AgreementTrend>();
 builder.Services.AddScribeSignIn(builder.Configuration);
 
 // Readers sign in to vote, with each provider set up (GitHub for now); separate from the Scriptorium's sign-in.
