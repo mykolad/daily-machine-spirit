@@ -166,15 +166,15 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
         Assert.Equal(RefillBacklogFunction.AfterPublishing, message);
     }
 
-    // Today showed the rite before, kept at the edge until purged.
+    // Today showed the rite before, and the search field's index lacked the new one, both kept at the edge until purged.
     [Fact]
-    public async Task TimerFunction_PublishingANewRite_PurgesToday()
+    public async Task TimerFunction_PublishingANewRite_PurgesToday_AndTheSearchIndex()
     {
         await testbed.AddDraft("Next up", 0.9f);
 
         await Function().Run(new TimerInfo(), CancellationToken.None);
 
-        Assert.Equal(["/"], Assert.Single(pages.Purges));
+        Assert.Equal(["/", "/api/search-index"], Assert.Single(pages.Purges));
     }
 
     // A retry later in the day: the page already shows the day's rite.
