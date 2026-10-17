@@ -312,6 +312,8 @@ public static partial class ScriptoriumPage
             Button(id, draft.Writing.Title, "anoint", ScriptoriumIcons.Anoint, "Anoint", "primary"),
             .. reorder.Count == 0 ? [] : new[] { $"""<span class="pair" role="group" aria-label="Reorder">{string.Concat(reorder)}</span>""" },
             AmendLink(id, draft.Writing.Title),
+            // Only where judging couldn't score it: judging a judged draft again would change nothing its words did.
+            .. draft.Augury.IsSome ? [] : new[] { Button(id, draft.Writing.Title, "judge", ScriptoriumIcons.Augury, "Judge Again", "secondary") },
             Button(id, draft.Writing.Title, "burn", ScriptoriumIcons.Burn, "Consign to the Flames", "danger burn"),
         ]);
         html.Append("</article></li>");
@@ -377,6 +379,7 @@ public static partial class ScriptoriumPage
         "humble" => "Moves this rite one day later, swapping it with the next; both then keep the Scribes' order.",
         "burn" => "Takes this rite out of the calendar, into the Ashes. Nothing is deleted: it can be restored.",
         "amend" => "Changes its words by hand, or asks the Machine Spirit to rewrite them as your note says. It's judged again when saved.",
+        "judge" => "Asks the Augury to judge this rite now, as the next refill would: judging it failed, or was off, when it was written.",
         _ => "Puts this rite back in the calendar, where the Augury places it.",
     };
 
@@ -458,6 +461,8 @@ public static partial class ScriptoriumPage
         var ash = rite.Bind(id => view.Ashes.Where(burned => burned.Id == id).HeadOrNone());
         var title = (entry.Map(waiting => waiting.Draft) | ash).Map(draft => $"“{WithCode(draft.Writing.Title)}”");
         var date = entry.Map(waiting => Date(waiting.PublishesOnUtc));
+        var augury = entry.Bind(waiting => waiting.Draft.Augury)
+            .Map(judged => $", {judged.Quality.ToString("P0", CultureInfo.InvariantCulture)}").IfNone(string.Empty);
         string Named(string done) => title.Map(name => $"{done} {name}").IfNone(done);
         var restore = ash.Map(burned => $""" <a href="#rite-{burned.Id:D}">Restore it from the Ashes</a>.""").IfNone(string.Empty);
         return outcome switch
@@ -471,6 +476,8 @@ public static partial class ScriptoriumPage
             "summon" => "New rites are being summoned: look again in a few minutes.",
             "amend" => $"{Named("Amended")}: judged again, it waits{date.Map(day => $" for {day}").IfNone(string.Empty)}.",
             "amend-unjudged" => $"{Named("Amended")}, but it couldn't be judged again, so it waits unjudged{date.Map(day => $" for {day}").IfNone(string.Empty)}.",
+            "judged" => $"{Named("Judged")} again{augury}: the Augury places it{date.Map(day => $" for {day}").IfNone(string.Empty)}.",
+            "still-unjudged" => $"{Named("Still")} can't be judged: the judge is failing or off. The next refill tries again.",
             "augury" => "The Augury orders every draft again.",
             "changed" => "Another Scribe changed the calendar meanwhile. Look again before deciding.",
             "unmoved" => "It was already there, so nothing moved. Another Scribe may have moved it: look again.",
@@ -512,6 +519,7 @@ public static partial class ScriptoriumPage
             AuditAction.PinPrecept => $"pinned the precept {rite}",
             AuditAction.UnpinPrecept => $"unpinned the precept {rite}",
             AuditAction.DeletePrecept => $"deleted the precept {rite}",
+            AuditAction.JudgeAgain => $"judged {rite} again",
             _ => $"published {rite}{entry.RiteNumber.Map(number => $" as NO. {number}").IfNone(string.Empty)}",
         };
         return what + entry.Detail.Map(detail => $""" <span class="when">({Encode(detail)})</span>""").IfNone(string.Empty);

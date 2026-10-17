@@ -11,6 +11,8 @@ namespace DailyMachineSpirit.Data.Repositories;
 
 public class DraftRepository : IDraftRepository
 {
+    private static readonly string WaitingState = JsonNamingPolicy.CamelCase.ConvertName(nameof(DraftState.Waiting));
+
     private readonly Container container;
 
     public DraftRepository(Container container)
@@ -78,5 +80,33 @@ public class DraftRepository : IDraftRepository
             {
             }
             return unit;
+        });
+
+    // A patch, so nothing else on the draft is touched; judged meanwhile (an amendment judged it, or a refill did), or no
+    // longer waiting, the filter fails the batch, and the record gets no entry for a judgment that wasn't saved.
+    public Task<Either<Error, Unit>> SaveJudgmentIfUnjudged(Draft judged, AuditEntry audit, CancellationToken cancellationToken)
+        => AttemptEither(async () =>
+        {
+            var document = DraftDocument.From(judged);
+            using var response = await container.CreateTransactionalBatch(SharedPartitionKey)
+                .PatchItem(document.Id,
+                    [
+                        PatchOperation.Set("/similarity", document.Similarity),
+                        PatchOperation.Set("/augury", document.Augury),
+                        PatchOperation.Set("/tags", document.Tags),
+                    ],
+                    new TransactionalBatchPatchItemRequestOptions
+                    {
+                        FilterPredicate = $"FROM c WHERE c.state = '{WaitingState}' AND NOT IS_OBJECT(c.augury)",
+                    })
+                .CreateItem(AuditEntryDocument.From(audit))
+                .ExecuteAsync(cancellationToken);
+            if (response.IsSuccessStatusCode)
+            {
+                return Right<Error, Unit>(unit);
+            }
+            return response.Any(result => result.StatusCode == HttpStatusCode.PreconditionFailed)
+                ? ScriptoriumRepository.ChangedMeanwhile
+                : Error.New($"Saving the judgment failed: {response.StatusCode}. {response.ErrorMessage}");
         });
 }

@@ -76,6 +76,7 @@ builder.Services.AddHttpClient<IRiteJudge, JevJudge>(http => http.Timeout = Time
 builder.Services.AddHostedService<TagBackfill>();
 builder.Services.AddTransient<RiteWriter>();
 builder.Services.AddTransient<DuplicateCheck>();
+builder.Services.AddTransient<JudgingAgain>();
 builder.Services.AddTransient<BacklogRefiller>();
 builder.Services.AddTransient<DailyRitePublisher>();
 builder.Services.AddTransient<PreceptDistiller>();

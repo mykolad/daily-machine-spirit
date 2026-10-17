@@ -35,4 +35,6 @@ public enum AuditAction
     UnpinPrecept,
     /// <summary>A Scribe deleted a precept.</summary>
     DeletePrecept,
+    /// <summary>A waiting draft judging couldn't score was judged again: by a refill (the Machine Spirit) or a Scribe.</summary>
+    JudgeAgain,
 }

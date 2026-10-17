@@ -1,6 +1,7 @@
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Generation;
+using DailyMachineSpirit.Functions.Generation.Judging;
 using DailyMachineSpirit.Functions.Generation.Precepts;
 using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Scriptorium;
@@ -74,6 +75,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
             Scriptorium,
             Writer(options),
             new DuplicateCheck(Models, options, Time, Probe.Metrics),
+            JudgingAgain(),
             Jev.NewJudge(Time, JevApiKey),
             options,
             Probe.Metrics,
@@ -83,6 +85,8 @@ public sealed class BacklogTestbed : IAsyncLifetime
     public DailyRitePublisher Publisher() => new(Rites, Drafts, Scriptorium, Refiller(), Time, Probe.Metrics, NullLogger<DailyRitePublisher>.Instance);
 
     public Scribes Scribes() => new(Drafts, Rites, Scriptorium, Time);
+
+    public JudgingAgain JudgingAgain() => new(Drafts, Jev.NewJudge(Time, JevApiKey), Time, NullLogger<JudgingAgain>.Instance);
 
     public PreceptKeeping PreceptKeeping() => new(Precepts, Time);
 
@@ -126,6 +130,23 @@ public sealed class BacklogTestbed : IAsyncLifetime
         };
         return Expect.Ok(await Drafts.Add(draft, CancellationToken.None));
     }
+
+    /// <summary>A waiting draft judging couldn't score: no scores, no quality, no tags.</summary>
+    public async Task<Draft> AddUnjudgedDraft(string title)
+        => Expect.Ok(await Drafts.Add(new Draft
+        {
+            Id = Guid.NewGuid(),
+            State = DraftState.Waiting,
+            Writing = new RiteWriting
+            {
+                Kind = RiteKind.Prayer,
+                Title = title,
+                Text = "O Machine Spirit, let the cache be warm.",
+                HereticalTruth = "A cold cache is just a cache that hasn't been read yet.",
+                GeneratedByModel = Sol,
+                GeneratedAtUtc = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc),
+            },
+        }, CancellationToken.None));
 
     public async Task<Rite> AddRite(DateOnly day, string title)
         => Expect.Ok(await Rites.Add(new Rite
