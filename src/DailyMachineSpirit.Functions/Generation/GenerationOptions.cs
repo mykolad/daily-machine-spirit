@@ -24,6 +24,8 @@ public class GenerationOptions
 
     public string DuplicateCheckModel { get; set; } = "gpt-6-luna";
 
+    public string PreceptCheckModel { get; set; } = "gpt-6-luna";
+
     /// <summary>How many times a draft that repeats a rite is written again before it's kept, marked for the Scribes.</summary>
     public int DuplicateRewrites { get; set; } = 2;
 }

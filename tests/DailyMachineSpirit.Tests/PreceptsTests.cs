@@ -24,6 +24,111 @@ public sealed class PreceptsTests : IAsyncLifetime
 
     public static string Distilled(params string[] precepts) => JsonSerializer.Serialize(new { precepts });
 
+    /// <summary>The precept check's answer: which precepts, by number, break a rule, and why.</summary>
+    public static string Breaking(params (int Number, string Reason)[] breaking)
+        => JsonSerializer.Serialize(new { breaking = breaking.Select(broken => new { number = broken.Number, reason = broken.Reason }) });
+
+    // A precept that would have the writer break a rule has no effect: the Scribe is told why at once, and it isn't saved.
+    [Fact]
+    public async Task AScribesPrecept_BreakingARule_IsRefusedWithWhy()
+    {
+        var keeping = testbed.PreceptKeeping();
+        testbed.Models.Answers(Checker, Breaking((1, "It asks for the setting's names, which the writer never uses.")));
+
+        var refused = Failed(await keeping.AddPinned("Use Adeptus Mechanicus terms.", Tester, CancellationToken.None));
+
+        Assert.Equal((PreceptKeeping.BreaksARule, "It asks for the setting's names, which the writer never uses."), (refused.Code, refused.Message));
+        Assert.Empty(Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts);
+        var request = testbed.Models.Requests.Single(found => found.Model == Checker).Messages;
+        Assert.Contains("1. \"Use Adeptus Mechanicus terms.\"", request.Single(message => message.Role == ChatRole.User).Text);
+        Assert.Contains("Nothing abusive, hateful, racist, sexist", request.Single(message => message.Role == ChatRole.System).Text);
+    }
+
+    [Fact]
+    public async Task AnEdit_BreakingARule_IsRefused_AndTheWordsStay()
+    {
+        var keeping = testbed.PreceptKeeping();
+        testbed.Models.Answers(Checker, Breaking());
+        Ok(await keeping.AddPinned(RealFix, Tester, CancellationToken.None));
+        var id = Ok(await keeping.View(CancellationToken.None)).Book.Precepts.Single().Id;
+        testbed.Models.Answers(Checker, Breaking((1, "It mocks a group of people.")));
+
+        var refused = Failed(await keeping.EditAndPin(id, await Version(), "Mock the managers.", Tester, CancellationToken.None));
+
+        Assert.Equal(PreceptKeeping.BreaksARule, refused.Code);
+        Assert.Equal([RealFix], await Texts());
+    }
+
+    // A model outage mustn't stop the Scribes: a precept the check can't judge is saved, as an unjudged draft is kept.
+    [Theory]
+    [InlineData("""{"breaking": [{"number": 2, "reason": "Out of range."}]}""")]
+    [InlineData("""{"breaking": [{"number": 1, "reason": "  "}]}""")]
+    [InlineData("not json at all")]
+    [InlineData("")]
+    public async Task APrecept_TheCheckCantJudge_IsSaved(string answer)
+    {
+        if (answer.Length == 0)
+        {
+            testbed.Models.Fails(Checker, 1);
+        }
+        else
+        {
+            testbed.Models.Answers(Checker, answer);
+        }
+
+        Ok(await testbed.PreceptKeeping().AddPinned(RealFix, Tester, CancellationToken.None));
+
+        Assert.Equal([RealFix], await Texts());
+    }
+
+    // When every distilled precept breaks a rule, nothing replaces the unpinned ones: they stay.
+    [Fact]
+    public async Task Distil_WithEveryPreceptBreakingARule_LeavesThePreceptsAsTheyWere()
+    {
+        await AJudgment();
+        testbed.Models.Answers(Sol, Distilled(RealFix));
+        Ok(await testbed.Distiller().Distil(Tester, CancellationToken.None));
+        var before = Ok(await testbed.Precepts.Get(CancellationToken.None)).Book;
+        testbed.Time.Advance(TimeSpan.FromDays(7));
+        await AJudgment();
+        testbed.Models.Answers(Sol, Distilled("Quote the Litany of Ignition word for word."));
+        testbed.Models.Answers(Checker, Breaking((1, "It quotes the setting's text.")));
+
+        var refused = Failed(await testbed.Distiller().DistilIfJudgedSinceLast(CancellationToken.None));
+
+        Assert.Equal(PreceptDistiller.NothingWithinTheRules, refused);
+        var after = Ok(await testbed.Precepts.Get(CancellationToken.None)).Book;
+        Assert.Equal([RealFix], after.Precepts.Select(precept => precept.Text));
+        // What was last read stays, so next week's run tries these judgments again.
+        Assert.Equal((before.DistilledAtUtc, before.NewestJudgmentReadUtc), (after.DistilledAtUtc, after.NewestJudgmentReadUtc));
+    }
+
+    // Distilled, a precept breaking a rule is dropped: followed, it would fail drafts or be ignored.
+    [Fact]
+    public async Task Distil_DropsPreceptsThatBreakARule()
+    {
+        await AJudgment();
+        testbed.Models.Answers(Sol, Distilled(RealFix, "Quote the Litany of Ignition word for word."));
+        testbed.Models.Answers(Checker, Breaking((2, "It quotes the setting's text.")));
+
+        Ok(await testbed.Distiller().Distil(Tester, CancellationToken.None));
+
+        Assert.Equal([RealFix], await Texts());
+        Assert.Contains("2. \"Quote the Litany of Ignition word for word.\"",
+            testbed.Models.Requests.Single(found => found.Model == Checker).Messages.Single(message => message.Role == ChatRole.User).Text);
+    }
+
+    // The writer and the distillation read the same rules the check does.
+    [Fact]
+    public void TheWriterAndTheDistillation_AreToldTheRules()
+    {
+        var abuse = "Nothing abusive, hateful, racist, sexist or otherwise discriminating";
+        Assert.Contains(abuse, PreceptPrompt.Instructions(3));
+        Assert.Contains("Never propose a precept that would have the writer break one of its rules", PreceptPrompt.Instructions(3));
+        Assert.Contains(abuse, DailyMachineSpirit.Functions.Generation.Writing.RitePrompt.Instructions(RiteKind.Ritual, [], []));
+        Assert.Contains("never in a title, a Heretical Truth or a ritual", PreceptPrompt.Instructions(3));
+    }
+
     // The judgments and their notes go to the model; what it answers becomes the Precepts, recorded as who asked.
     [Fact]
     public async Task Distil_LearnsFromTheJudgments_AndRecordsWhoAsked()
@@ -39,7 +144,7 @@ public sealed class PreceptsTests : IAsyncLifetime
         Assert.Equal((Some(testbed.Time.GetUtcNow().UtcDateTime), Some(1)), (book.DistilledAtUtc, book.DistilledFrom));
         Assert.Equal([RealFix, NoRepeats], Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts.Select(precept => precept.Text));
 
-        var request = testbed.Models.Requests.Single().Messages.Single(message => message.Role == ChatRole.User).Text;
+        var request = Distilling().Single().Messages.Single(message => message.Role == ChatRole.User).Text;
         Assert.Contains("The truth says nothing about the race.", request);
         Assert.Contains("\"action\":\"burn\"", request);
         var entry = Ok(await testbed.Audit.GetNewest(10, CancellationToken.None)).Single(found => found.Action == AuditAction.Distil);
@@ -62,17 +167,17 @@ public sealed class PreceptsTests : IAsyncLifetime
         var second = Ok(await testbed.Distiller().Distil(AuditEntry.MachineSpirit, CancellationToken.None));
 
         Assert.Equal(["Keep the Omnissiah out of rituals.", "Name the command in backticks."], second.Precepts.Select(precept => precept.Text));
-        var request = testbed.Models.Requests.Last().Messages.Single(message => message.Role == ChatRole.User).Text;
+        var request = Distilling().Last().Messages.Single(message => message.Role == ChatRole.User).Text;
         Assert.Contains("Pinned precepts: [\"Keep the Omnissiah out of rituals.\"]", request);
         Assert.Contains($"Rejected precepts: [\"{NoRepeats}\"]", request);
-        Assert.Contains("at most 11 PRECEPTS", testbed.Models.Requests.Last().Messages.Single(message => message.Role == ChatRole.System).Text);
+        Assert.Contains("at most 11 PRECEPTS", Distilling().Last().Messages.Single(message => message.Role == ChatRole.System).Text);
     }
 
     [Fact]
     public async Task Distil_HasNothingToLearn_BeforeAnyJudgment()
     {
         Assert.Equal(PreceptDistiller.NothingToLearn, Failed(await testbed.Distiller().Distil(Tester, CancellationToken.None)));
-        Assert.Empty(testbed.Models.Requests);
+        Assert.Empty(Distilling());
     }
 
     [Fact]
@@ -85,7 +190,7 @@ public sealed class PreceptsTests : IAsyncLifetime
         }
 
         Assert.Equal(PreceptDistiller.AllPinned, Failed(await testbed.Distiller().Distil(Tester, CancellationToken.None)));
-        Assert.Empty(testbed.Models.Requests);
+        Assert.Empty(Distilling());
     }
 
     // An answer that breaks the rules isn't trusted: the next model is asked, and only room enough is taken.
@@ -99,7 +204,7 @@ public sealed class PreceptsTests : IAsyncLifetime
         var book = Ok(await testbed.Distiller().Distil(Tester, CancellationToken.None));
 
         Assert.Equal(PreceptBook.MaxPrecepts, book.Precepts.Count);
-        Assert.Equal([Sol, Luna], testbed.Models.Requests.Select(request => request.Model));
+        Assert.Equal([Sol, Luna], Distilling().Select(request => request.Model));
     }
 
     // The serializer checks the list, not what's in it.
@@ -340,6 +445,10 @@ public sealed class PreceptsTests : IAsyncLifetime
 
     private async Task<Guid> IdOf(string text)
         => Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts.Single(precept => precept.Text == text).Id;
+
+    // The distilling models' requests, without the precept check's.
+    private List<(string Model, List<ChatMessage> Messages)> Distilling()
+        => testbed.Models.Requests.Where(request => request.Model != Checker).ToList();
 
     // The version of the Precepts a Scribe's page would show now.
     private async Task<string> Version() => ETag(Ok(await testbed.Precepts.Get(CancellationToken.None)));

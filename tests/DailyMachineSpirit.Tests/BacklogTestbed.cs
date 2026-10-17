@@ -22,6 +22,9 @@ public sealed class BacklogTestbed : IAsyncLifetime
     public const string Sol = "gpt-6-sol";
     public const string Luna = "gpt-6-luna";
 
+    /// <summary>The precept check's own model, so a test that leaves it unanswered never takes another model's answer.</summary>
+    public const string Checker = "precept-checker";
+
     /// <summary>The Scribe the tests act as, as an Access id would name them.</summary>
     public const string Tester = "tester-0123456789";
 
@@ -88,10 +91,12 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public JudgingAgain JudgingAgain() => new(Drafts, Jev.NewJudge(Time, JevApiKey), Time, NullLogger<JudgingAgain>.Instance);
 
-    public PreceptKeeping PreceptKeeping() => new(Precepts, Time);
+    public PreceptKeeping PreceptKeeping() => new(Precepts, PreceptCheck(), Time, NullLogger<PreceptKeeping>.Instance);
 
     public PreceptDistiller Distiller()
-        => new(Scriptorium, Precepts, Models, Options.Create(new GenerationOptions()), Time, Probe.Metrics, NullLogger<PreceptDistiller>.Instance);
+        => new(Scriptorium, Precepts, Models, PreceptCheck(), Options.Create(new GenerationOptions()), Time, Probe.Metrics, NullLogger<PreceptDistiller>.Instance);
+
+    public PreceptCheck PreceptCheck() => new(Models, Options.Create(new GenerationOptions { PreceptCheckModel = Checker }), Time, Probe.Metrics);
 
     public Amendments Amendments()
         => new(Drafts, Scriptorium, Scribes(), Jev.NewJudge(Time, JevApiKey), Writer(Options.Create(new GenerationOptions { RetryDelaySeconds = 0 })), Time, NullLogger<Amendments>.Instance);

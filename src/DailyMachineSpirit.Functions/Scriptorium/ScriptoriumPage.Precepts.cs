@@ -16,8 +16,9 @@ public static partial class ScriptoriumPage
     /// <param name="outcome">What the last action did, if anything.</param>
     /// <param name="acted">The precept it acted on, marked so the eye finds it.</param>
     /// <param name="trend">How far the Scribes agreed with the Augury, month by month, the newest first.</param>
+    /// <param name="refused">A precept the check refused, kept in its field with why.</param>
     public static string RenderPrecepts(
-        StoredPrecepts stored, IReadOnlyList<AgreementMonth> trend, Option<string> outcome, Option<Guid> acted)
+        StoredPrecepts stored, IReadOnlyList<AgreementMonth> trend, Option<string> outcome, Option<Guid> acted, Option<RefusedPrecept> refused)
     {
         var book = stored.Book;
         // Sent back with each change to a precept: a page shown before another change is told to look again.
@@ -28,7 +29,9 @@ public static partial class ScriptoriumPage
         Heading(html, "The Precepts",
             "What the Machine Spirit has learned from the Scribes' judgments. It follows them in every rite it writes.");
         html.Append("""<p class="record-link"><a href="/scriptorium">Back to the Scriptorium</a> · <a href="/scriptorium/record">The Record</a></p>""");
-        html.Append($"""<p class="status" role="status">{outcome.Map(PreceptStatus).IfNone(string.Empty)}</p>""");
+        var status = refused.Map(precept => Encode($"Not saved: {precept.Reason} {WhereTheWordsAre(precept, book)}"))
+            | outcome.Map(PreceptStatus);
+        html.Append($"""<p class="status" role="status" id="precepts-status">{status.IfNone(string.Empty)}</p>""");
 
         html.Append($"""
             <p>{Encode(Distilled(book))} Pinned precepts stay as they are; the others make way for the new ones.</p>
@@ -47,17 +50,18 @@ public static partial class ScriptoriumPage
             html.Append("""<ol class="calendar">""");
             foreach (var precept in book.Precepts)
             {
-                PreceptEntry(html, precept, version, acted);
+                PreceptEntry(html, precept, version, acted, refused.Filter(found => found.PreceptId.Exists(id => id == precept.Id)));
             }
             html.Append("</ol>");
         }
 
+        var newRefused = refused.Filter(precept => precept.PreceptId.IsNone);
         if (book.Precepts.Count < PreceptBook.MaxPrecepts)
         {
             html.Append($"""
                 <form method="post" action="/scriptorium/precepts/add" class="amend">
                 <label for="precept-new">A precept of your own</label>
-                <textarea id="precept-new" name="text" rows="2" maxlength="{Precept.MaxLength}" required></textarea>
+                <textarea id="precept-new" name="text" rows="2" maxlength="{Precept.MaxLength}"{Refusal(newRefused)} required>{Encode(newRefused.Map(precept => precept.Text).IfNone(string.Empty))}</textarea>
                 <div class="buttons"><button class="secondary">{ScriptoriumIcons.Add}Add the Precept</button></div>
                 </form>
                 """);
@@ -70,7 +74,8 @@ public static partial class ScriptoriumPage
 
     // Each precept's buttons name it for screen readers, since every entry has the same buttons. Pin and Unpin say what
     // they do in their title, as the calendar's buttons do: pinning only matters at the next distillation.
-    private static void PreceptEntry(StringBuilder html, Precept precept, string version, Option<Guid> acted)
+    /// <param name="refused">This precept's edit, if the check refused it: the fold opens on the Scribe's words.</param>
+    private static void PreceptEntry(StringBuilder html, Precept precept, string version, Option<Guid> acted, Option<RefusedPrecept> refused)
     {
         var id = precept.Id.ToString("D");
         var action = $"/scriptorium/precepts/{id}";
@@ -83,13 +88,13 @@ public static partial class ScriptoriumPage
             <li class="rite{(acted.Exists(found => found == precept.Id) ? " acted" : string.Empty)}" id="precept-{id}">
             <p class="text">{WithCode(precept.Text)}</p>
             <p class="meta">{(precept.Pinned ? """<span class="placed">Pinned</span> · """ : string.Empty)}{Encode(origin)}</p>
-            <details class="fold">
+            <details class="fold"{(refused.IsSome ? " open" : string.Empty)}>
             <summary>{ScriptoriumIcons.Note}Edit{named}</summary>
             <form method="post" action="{action}/edit" class="amend">
             {version}
             <label for="precept-{id}-text">Its words</label>
             <p class="hint" id="precept-{id}-hint">Saving pins it, so distilling again keeps your words.</p>
-            <textarea id="precept-{id}-text" name="text" rows="2" maxlength="{Precept.MaxLength}" aria-describedby="precept-{id}-hint" required>{Encode(precept.Text)}</textarea>
+            <textarea id="precept-{id}-text" name="text" rows="2" maxlength="{Precept.MaxLength}" aria-describedby="precept-{id}-hint{(refused.IsSome ? " precepts-status" : string.Empty)}"{(refused.IsSome ? " aria-invalid=\"true\"" : string.Empty)} required>{Encode(refused.Map(found => found.Text).IfNone(precept.Text))}</textarea>
             <div class="buttons"><button class="primary">{ScriptoriumIcons.Save}Save{named}</button></div>
             </form>
             </details>
@@ -101,6 +106,29 @@ public static partial class ScriptoriumPage
             </li>
             """);
     }
+
+    // A refused precept's words go back in their field; when that field is gone (the precept was deleted or replaced
+    // while the check ran, or the Precepts filled up), the message carries them instead, so they aren't lost, and an
+    // edit doesn't quietly become an addition.
+    private static string WhereTheWordsAre(RefusedPrecept refused, PreceptBook book)
+    {
+        var fieldShown = refused.PreceptId.Match(
+            Some: id => book.Precepts.Exists(precept => precept.Id == id),
+            None: () => book.Precepts.Count < PreceptBook.MaxPrecepts);
+        if (fieldShown)
+        {
+            return "Reword it, or leave it as it was.";
+        }
+        var gone = refused.PreceptId.IsSome
+            ? "The precept changed meanwhile (another Scribe, or a distillation), so it isn't on the page any more."
+            : "The Precepts filled up meanwhile, so there's no room for it now.";
+        return $"{gone} Your words were: “{refused.Text}”";
+    }
+
+    // The new precept's field, when the check refused what was typed in it: marked invalid, and described by the status
+    // that says why.
+    private static string Refusal(Option<RefusedPrecept> refused)
+        => refused.IsSome ? " aria-invalid=\"true\" aria-describedby=\"precepts-status\"" : string.Empty;
 
     // Knowing when the Augury is good enough: a table, so a screen reader can tell each figure's month and meaning.
     private static void Agreement(StringBuilder html, IReadOnlyList<AgreementMonth> trend)
@@ -143,6 +171,7 @@ public static partial class ScriptoriumPage
         "distil" => "The Precepts were distilled again from the Scribes' judgments.",
         "distil-nothing" => PreceptDistiller.NothingToLearn.Message,
         "distil-pinned" => PreceptDistiller.AllPinned.Message,
+        "distil-refused" => PreceptDistiller.NothingWithinTheRules.Message,
         "distil-failed" => "The Machine Spirit couldn't distil them just now. Try again in a moment.",
         "add" => "Your precept was added, pinned.",
         "edit" => "The precept was changed and pinned: distilling again keeps it.",

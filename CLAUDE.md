@@ -254,7 +254,8 @@ observability/                    — the Grafana dashboard and alerts, and what
     `gpt-6-luna` (`Generation:Models`). An answer that's empty, too long, uses a forbidden name, names what the far
     future forgot (AI, LLMs, chatbots and the like, as whole words: not "model" or "prompt" alone) or writes code
     outside backticks (`UnquotedCode`) is asked for again, never cut (`RiteChecks`, which a Scribe's amendment passes
-    too). The prompt asks for plain words over code: at most one widely known command or file name, without flags.
+    too). The prompt asks for plain words over code: at most one widely known command or file name, without flags. Its
+    rules (`RiteRules`) also forbid anything abusive, hateful or discriminating; the Precepts are checked against them.
     Every draft and rewrite follows the Precepts (below); if they can't be read, the rite is written without them.
   - **Judging:** an `IRiteJudge` judges each draft (`JevJudge` for now, swappable like the models): its similarity
     scores for "More rites" and its quality for the Augury, in one request. A draft that can't be judged still joins
@@ -295,6 +296,15 @@ observability/                    — the Grafana dashboard and alerts, and what
       stay when distilled again, the rest make way for the new ones; a Scribe's words are pinned. Pinned ones come first,
       on the page and in the writer's prompt; Pin and Unpin say what they do in their `title`. Deleted ones are
       remembered (the newest 30): the model is told not to propose them, and any it does are dropped.
+    - **Within the writer's rules** (#86, `PreceptCheck`): `gpt-6-luna` (`Generation:PreceptCheckModel`, 15 seconds,
+      all of them in one request) says which precepts would have the writer break one of its rules (`RiteRules`), or
+      are abusive or discriminating, and why. A Scribe's is refused with that reason: the page comes back (422) with
+      their words in the field, or in the message when that field went meanwhile. A distilled one is dropped, and
+      distilling is told the rules, so it rarely proposes one; if none is left, the Precepts stay as they were, what
+      was last read too, so the next run tries again. A check that can't answer (failing, past its time, a refusal
+      without a reason) lets them through, as judging does: the writer still puts its rules first, and `RiteChecks`
+      still refuses what breaks the ones it can check. No word list for precepts: one may name a forbidden thing to
+      forbid it.
     - **Not yet the judge's:** the Augury still orders by Jev's quality; #10 tests a model judge with the Precepts.
     - **Do the Scribes agree with the Augury?** (`AgreementTrend`, on the Precepts' page): for each of the last six
       months, how many of the Augury's top three picks were burned, and how many places, on average, an anoint, exalt
