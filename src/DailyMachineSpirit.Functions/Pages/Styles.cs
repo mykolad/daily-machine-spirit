@@ -34,9 +34,9 @@ public static class Styles
         .brand{display:flex;align-items:center;gap:10px;font-family:Cinzel,serif;font-weight:700;font-size:16px;letter-spacing:.04em;color:#ede3cf;text-decoration:none;padding:4px 8px;border-radius:999px}
         .brand:hover{color:#ede3cf}
         nav{display:flex;gap:4px}
-        nav a{padding:10px 16px;border-radius:999px;font-family:Cinzel,serif;font-weight:700;font-size:14px;letter-spacing:.12em;color:#ede3cf;text-decoration:none}
-        nav a[aria-current=page]{background:rgba(201,162,90,.16)}
-        nav a:hover{background:rgba(201,162,90,.22);color:#ede3cf}
+        nav>a{padding:10px 16px;border-radius:999px;font-family:Cinzel,serif;font-weight:700;font-size:14px;letter-spacing:.12em;color:#ede3cf;text-decoration:none}
+        nav>a[aria-current=page]{background:rgba(201,162,90,.16)}
+        nav>a:hover{background:rgba(201,162,90,.22);color:#ede3cf}
         main{width:100%;flex:1;display:flex;flex-direction:column;align-items:center}
         main:focus-visible{outline:none}
         .masthead{display:flex;flex-direction:column;align-items:center;gap:14px;margin-bottom:clamp(32px,5vw,52px)}
@@ -215,6 +215,34 @@ public static class Styles
         .other-subjects{width:100%;margin-top:56px;display:flex;flex-direction:column;align-items:center;gap:12px}
         .other-subjects h2{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:22px}
         nav .nav-search{display:grid;place-items:center;width:44px;height:44px;padding:0;color:#d9b874}
+        .nav-find{position:relative;display:flex;align-items:center;width:44px;height:44px;border:1px solid transparent;border-radius:999px;transition:width 250ms ease}
+        .nav-find.open{width:320px;border-color:#84662c}
+        .nav-find:has(.nav-find-field:focus-visible){outline:2px solid #f0b45a;outline-offset:4px}
+        .nav-find-open,.nav-find-close{flex:none;display:grid;place-items:center;width:42px;height:42px;padding:0;border:0;border-radius:999px;background:transparent;cursor:pointer}
+        .nav-find-open{color:#d9b874}
+        .nav-find-close{display:none;color:#b6a98f}
+        .nav-find.open .nav-find-close{display:grid}
+        .nav-find-field{flex:1;min-width:0;width:0;height:42px;padding:0;border:0;background:transparent;color:#ede3cf;font:16px Figtree,system-ui,sans-serif}
+        .nav-find:not(.open) .nav-find-field{visibility:hidden}
+        .nav-find-field:focus-visible{outline:none}
+        .nav-find-field::placeholder{color:#8f8068;opacity:1}
+        .nav-find-drop{position:absolute;top:calc(100% + 8px);right:0;z-index:30;width:400px;max-width:calc(100vw - 32px);max-height:calc(100dvh - 96px);overflow-y:auto;overscroll-behavior:contain;padding:8px;border-radius:14px;background:#ebdfc2;color:#2b2117;text-align:left;box-shadow:0 14px 30px rgba(0,0,0,.55),inset 0 0 0 4px #ebdfc2,inset 0 0 0 5px #8f2a20}
+        .nav-find-drop[hidden]{display:none}
+        .nav-find-drop :focus-visible{outline-color:#8f2a20;outline-offset:2px}
+        .nav-find-label{margin:0;padding:8px 12px 4px;font-family:'EB Garamond',serif;font-style:italic;font-size:15px;color:#5c4a33}
+        .nav-find-none{margin:0;padding:4px 12px 8px;font-family:'EB Garamond',serif;font-size:17px;line-height:1.4}
+        .nav-find-drop [role=option]{position:relative;display:flex;flex-direction:column;justify-content:center;gap:2px;min-height:44px;padding:10px 12px;border-radius:6px;text-decoration:none}
+        .nav-find-drop [role=option]:hover{background:#dfcda2}
+        .nav-find-drop [aria-selected=true]{background:#dfcda2;outline:2px solid #8f2a20;outline-offset:-2px}
+        .nav-find-title{font-family:Cinzel,serif;font-weight:700;font-size:16px;line-height:1.25;color:#8f2a20}
+        .nav-find-meta{font-weight:600;font-size:13px;color:#5c4a33}
+        .nav-find-all{position:relative;display:flex;align-items:center;min-height:44px;margin-top:4px;padding:8px 12px;border-top:1px solid rgba(143,42,32,.25);font-weight:600;font-size:14px;color:#8f2a20;text-decoration:none}
+        .nav-find-all:hover{color:#8f2a20;text-decoration:underline}
+        @media (max-width:699px){
+        nav:has(.nav-find.open)>a{display:none}
+        .nav-find.open{width:min(358px,calc(100vw - 32px))}
+        .nav-find-drop{left:0;width:auto;max-width:none}
+        }
         .archive-end{margin:0;font-family:'EB Garamond',serif;font-style:italic;font-size:19px;color:#b6a98f}
         .state{display:flex;flex-direction:column;align-items:center;gap:16px;max-width:580px;padding:24px 0}
         .state h1,.state h2{margin:0;font-family:Cinzel,serif;font-size:clamp(26px,3.6vw,36px);line-height:1.15}
