@@ -41,6 +41,7 @@ public sealed class PreceptDistiller
     private readonly IScriptoriumRepository scriptorium;
     private readonly IPreceptRepository precepts;
     private readonly IChatClients chatClients;
+    private readonly PreceptCheck check;
     private readonly IOptions<GenerationOptions> options;
     private readonly TimeProvider time;
     private readonly SiteMetrics metrics;
@@ -50,6 +51,7 @@ public sealed class PreceptDistiller
         IScriptoriumRepository scriptorium,
         IPreceptRepository precepts,
         IChatClients chatClients,
+        PreceptCheck check,
         IOptions<GenerationOptions> options,
         TimeProvider time,
         SiteMetrics metrics,
@@ -58,6 +60,7 @@ public sealed class PreceptDistiller
         this.scriptorium = scriptorium;
         this.precepts = precepts;
         this.chatClients = chatClients;
+        this.check = check;
         this.options = options;
         this.time = time;
         this.metrics = metrics;
@@ -110,14 +113,37 @@ public sealed class PreceptDistiller
         };
         // Neither a pinned precept again nor one the Scribes deleted: the page promised it wouldn't come back.
         var excluded = pinned.Select(precept => precept.Text).Concat(book.Rejected).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        return (await Answer(messages, room, excluded, cancellationToken)).Map(distilled => book with
+        return await (await Answer(messages, room, excluded, cancellationToken)).MapAsync(async answered =>
         {
-            Precepts = [.. pinned, .. distilled.Select(text => new Precept { Id = Guid.NewGuid(), Text = text })],
-            DistilledAtUtc = time.GetUtcNow().UtcDateTime,
-            DistilledFrom = decisions.Count,
-            NewestJudgmentReadUtc = decisions.Max(decision => decision.DecidedAtUtc),
+            var distilled = await WithinTheRules(answered, cancellationToken);
+            return book with
+            {
+                Precepts = [.. pinned, .. distilled.Select(text => new Precept { Id = Guid.NewGuid(), Text = text })],
+                DistilledAtUtc = time.GetUtcNow().UtcDateTime,
+                DistilledFrom = decisions.Count,
+                NewestJudgmentReadUtc = decisions.Max(decision => decision.DecidedAtUtc),
+            };
         });
     }
+
+    // A distilled precept that would have the writer break its rules is dropped: followed, it would fail drafts on
+    // RiteChecks or be ignored. A check that can't answer keeps them all, as the writer still puts its rules first.
+    private async Task<List<string>> WithinTheRules(List<string> distilled, CancellationToken cancellationToken)
+        => (await check.Breaches(distilled, cancellationToken)).Match(
+            Right: breaches =>
+            {
+                foreach (var breach in breaches)
+                {
+                    logger.LogWarning("A distilled precept was dropped for breaking the rules: {Precept} ({Reason})", breach.Precept, breach.Reason);
+                }
+                var dropped = breaches.Select(breach => breach.Precept).ToHashSet();
+                return distilled.Where(text => !dropped.Contains(text)).ToList();
+            },
+            Left: error =>
+            {
+                logger.LogWarning(error.ToException(), "The distilled precepts couldn't be checked against the rules, so they're kept: {Reason}", error.Message);
+                return distilled;
+            });
 
     // Each model once, in order, for AttemptTime at most: a Scribe waits for the answer, and the weekly run can wait for
     // next week.

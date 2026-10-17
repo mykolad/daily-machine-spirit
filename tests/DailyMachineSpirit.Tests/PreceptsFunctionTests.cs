@@ -208,6 +208,37 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         Assert.Equal("/scriptorium/precepts?done=full", RedirectedTo(await function.Add(Form(("text", "One too many.")), CancellationToken.None)));
     }
 
+    // A precept breaking the writer's rules comes back on the page, not saved, with the Scribe's words in their field and
+    // why: a redirect couldn't carry them.
+    [Fact]
+    public async Task APrecept_BreakingARule_ComesBack_WithTheScribesWordsAndWhy()
+    {
+        var function = Function(enabled: true);
+        testbed.Models.Answers(Checker, PreceptsTests.Breaking((1, "It mocks a group of people.")));
+
+        var html = Html(await function.Add(Form(("text", "Mock <managers>.")), CancellationToken.None), 422);
+
+        Assert.Contains("""<p class="status" role="status" id="precepts-status">Not saved: It mocks a group of people. Reword it, or leave it as it was.</p>""", html);
+        Assert.Contains("""aria-invalid="true" aria-describedby="precepts-status" required>Mock &lt;managers&gt;.</textarea>""", html);
+        Assert.Empty(Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts);
+    }
+
+    [Fact]
+    public async Task AnEdit_BreakingARule_ComesBack_OpenOnTheScribesWords()
+    {
+        testbed.Models.Answers(Checker, PreceptsTests.Breaking());
+        Ok(await testbed.PreceptKeeping().AddPinned("Prefer the real fix.", Tester, CancellationToken.None));
+        var id = Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts.Single().Id;
+        testbed.Models.Answers(Checker, PreceptsTests.Breaking((1, "It asks for the setting's names.")));
+
+        var html = Html(await Function(enabled: true).Change(Form(("text", "Use Imperium words."), await Seen()), id, "edit", CancellationToken.None), 422);
+
+        Assert.Contains($"""<li class="rite acted" id="precept-{id:D}">""", html);
+        Assert.Contains("""<details class="fold" open>""", html);
+        Assert.Contains($"""aria-describedby="precept-{id:D}-hint precepts-status" aria-invalid="true" required>Use Imperium words.</textarea>""", html);
+        Assert.Equal("Prefer the real fix.", Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts.Single().Text);
+    }
+
     [Fact]
     public async Task OnlyThePagesForms_AndActions_AreTaken()
     {
@@ -232,7 +263,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
     [InlineData("full", "There are 12 precepts already: delete or edit one instead.")]
     [InlineData("changed", "The Precepts changed meanwhile: another Scribe, or a distillation. Look again.")]
     public async Task Page_SaysWhatTheLastActionDid(string outcome, string message)
-        => Assert.Contains($"""<p class="status" role="status">{message}</p>""",
+        => Assert.Contains($"""<p class="status" role="status" id="precepts-status">{message}</p>""",
             Html(await Function(enabled: true).Page(Get($"?done={outcome}"), CancellationToken.None), 200));
 
     // Cosmos down: the page says the Scriptorium is silent, as its other pages do.
@@ -296,8 +327,8 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
             Options.Create(new ScriptoriumOptions { Enabled = enabled }), NullLogger<PreceptsFunction>.Instance);
 
     private PreceptsFunction Function(FakePrecepts precepts)
-        => new(new PreceptKeeping(precepts, testbed.Time),
-            new PreceptDistiller(testbed.Scriptorium, precepts, testbed.Models, Options.Create(new GenerationOptions()), testbed.Time, testbed.Probe.Metrics, NullLogger<PreceptDistiller>.Instance),
+        => new(new PreceptKeeping(precepts, testbed.PreceptCheck(), testbed.Time, NullLogger<PreceptKeeping>.Instance),
+            new PreceptDistiller(testbed.Scriptorium, precepts, testbed.Models, testbed.PreceptCheck(), Options.Create(new GenerationOptions()), testbed.Time, testbed.Probe.Metrics, NullLogger<PreceptDistiller>.Instance),
             new AgreementTrend(testbed.Scriptorium, testbed.Time),
             new EveryoneIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), NullLogger<PreceptsFunction>.Instance);
 
