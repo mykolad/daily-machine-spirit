@@ -49,6 +49,23 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         Assert.Contains("""<a href="/scriptorium">Back to the Scriptorium</a>""", html);
     }
 
+    // A table, so each figure is read with its month and what it counts.
+    [Fact]
+    public async Task Page_ShowsWhetherTheScribesAgreeWithTheAugury()
+    {
+        var best = await testbed.AddDraft("Best", 0.9f);
+        var worst = await testbed.AddDraft("Worst", 0.3f);
+        Ok(await testbed.Scribes().Anoint(worst.Id, "", Tester, CancellationToken.None));
+        Ok(await testbed.Scribes().Burn(best.Id, "", Tester, CancellationToken.None));
+
+        var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+
+        Assert.Contains("""<h2 id="agreement-heading">Do the Scribes Agree with the Augury?</h2>""", html);
+        Assert.Contains("""<th scope="col">Top picks burned</th>""", html);
+        Assert.Contains("""<tr><th scope="row">Oct 2026</th><td>2</td><td>1 of 1 burn</td><td>1 place (1 move)</td></tr>""", html);
+        Assert.Contains("""<tr><th scope="row">Sep 2026</th><td>0</td><td>No burns</td><td>No moves</td></tr>""", html);
+    }
+
     [Fact]
     public async Task Page_BeforeAnyPrecept_SaysSo()
     {
@@ -275,12 +292,13 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
     private PreceptsFunction Function(bool enabled) => Function(new EveryoneIsScribeSignIn(), enabled);
 
     private PreceptsFunction Function(IScribeSignIn signIn, bool enabled)
-        => new(testbed.PreceptKeeping(), testbed.Distiller(), signIn,
+        => new(testbed.PreceptKeeping(), testbed.Distiller(), new AgreementTrend(testbed.Scriptorium, testbed.Time), signIn,
             Options.Create(new ScriptoriumOptions { Enabled = enabled }), NullLogger<PreceptsFunction>.Instance);
 
     private PreceptsFunction Function(FakePrecepts precepts)
         => new(new PreceptKeeping(precepts, testbed.Time),
             new PreceptDistiller(testbed.Scriptorium, precepts, testbed.Models, Options.Create(new GenerationOptions()), testbed.Time, NullLogger<PreceptDistiller>.Instance),
+            new AgreementTrend(testbed.Scriptorium, testbed.Time),
             new EveryoneIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), NullLogger<PreceptsFunction>.Instance);
 
     private DistilPreceptsFunction Timer(bool enabled)

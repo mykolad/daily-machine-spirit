@@ -21,18 +21,21 @@ public sealed class PreceptsFunction
 {
     private readonly PreceptKeeping keeping;
     private readonly PreceptDistiller distiller;
+    private readonly AgreementTrend trend;
     private readonly ScriptoriumGate gate;
     private readonly ILogger<PreceptsFunction> logger;
 
     public PreceptsFunction(
         PreceptKeeping keeping,
         PreceptDistiller distiller,
+        AgreementTrend trend,
         IScribeSignIn signIn,
         IOptions<ScriptoriumOptions> options,
         ILogger<PreceptsFunction> logger)
     {
         this.keeping = keeping;
         this.distiller = distiller;
+        this.trend = trend;
         gate = new ScriptoriumGate(signIn, options);
         this.logger = logger;
     }
@@ -48,8 +51,10 @@ public sealed class PreceptsFunction
 
         var outcome = Optional(request.Query["done"].ToString()).Filter(done => done.Length > 0);
         var acted = Optional(request.Query["precept"].ToString()).Bind(text => Guid.TryParse(text, out var id) ? Some(id) : None);
-        return (await keeping.View(cancellationToken)).Match(
-            Right: stored => Html(request, ScriptoriumPage.RenderPrecepts(stored, outcome, acted), StatusCodes.Status200OK),
+        var page = await keeping.View(cancellationToken)
+            .BindAsync(stored => trend.Months(cancellationToken).MapAsync(months => Task.FromResult((stored, months))));
+        return page.Match(
+            Right: found => Html(request, ScriptoriumPage.RenderPrecepts(found.stored, found.months, outcome, acted), StatusCodes.Status200OK),
             Left: error => Failed(request, error));
     }
 

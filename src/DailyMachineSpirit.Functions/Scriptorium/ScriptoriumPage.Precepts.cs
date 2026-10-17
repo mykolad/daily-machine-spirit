@@ -15,7 +15,9 @@ public static partial class ScriptoriumPage
     /// </summary>
     /// <param name="outcome">What the last action did, if anything.</param>
     /// <param name="acted">The precept it acted on, marked so the eye finds it.</param>
-    public static string RenderPrecepts(StoredPrecepts stored, Option<string> outcome, Option<Guid> acted)
+    /// <param name="trend">How far the Scribes agreed with the Augury, month by month, the newest first.</param>
+    public static string RenderPrecepts(
+        StoredPrecepts stored, IReadOnlyList<AgreementMonth> trend, Option<string> outcome, Option<Guid> acted)
     {
         var book = stored.Book;
         // Sent back with each change to a precept: a page shown before another change is told to look again.
@@ -60,6 +62,7 @@ public static partial class ScriptoriumPage
                 </form>
                 """);
         }
+        Agreement(html, trend);
         html.Append("</main>");
         Footer(html, withScript: false);
         return html.ToString();
@@ -98,6 +101,36 @@ public static partial class ScriptoriumPage
             </li>
             """);
     }
+
+    // Knowing when the Augury is good enough: a table, so a screen reader can tell each figure's month and meaning.
+    private static void Agreement(StringBuilder html, IReadOnlyList<AgreementMonth> trend)
+    {
+        html.Append($"""
+            <section aria-labelledby="agreement-heading">
+            <h2 id="agreement-heading">Do the Scribes Agree with the Augury?</h2>
+            <p>How many of the Augury's top {AgreementTrend.TopPickPlaces} picks the Scribes burned, and how far they moved
+            drafts from the places it gave them. When both stay low, the Augury can be left to choose on its own.</p>
+            <table class="agreement">
+            <thead><tr><th scope="col">Month</th><th scope="col">Judgments</th>
+            <th scope="col">Top picks burned</th><th scope="col">Moved, on average</th></tr></thead>
+            <tbody>
+            """);
+        foreach (var month in trend)
+        {
+            var burned = month.DraftsBurned == 0 ? "No burns" : $"{month.AuguryTopPicksBurned} of {Count(month.DraftsBurned, "burn")}";
+            var moved = month.AveragePlacesFromAuguryPlace.Match(
+                Some: distance => $"{Places(distance)} ({Count(month.JudgedDraftsMoved, "move")})",
+                None: () => "No moves");
+            html.Append($"""<tr><th scope="row">{month.FirstDayUtc.ToString("MMM yyyy", CultureInfo.InvariantCulture)}</th>"""
+                + $"<td>{month.ScribeDecisions}</td><td>{burned}</td><td>{moved}</td></tr>");
+        }
+        html.Append("</tbody></table></section>");
+    }
+
+    private static string Count(int count, string what) => count == 1 ? $"1 {what}" : $"{count} {what}s";
+
+    private static string Places(double distance)
+        => distance == 1 ? "1 place" : $"{distance.ToString("0.#", CultureInfo.InvariantCulture)} places";
 
     private static string Distilled(PreceptBook book)
         => book.DistilledAtUtc.Match(

@@ -23,12 +23,15 @@ internal sealed record PreceptsDocument
 
     public int? DistilledFrom { get; init; }
 
+    public DateTime? NewestJudgmentReadUtc { get; init; }
+
     public static PreceptsDocument From(PreceptBook book) => new()
     {
         Precepts = book.Precepts,
         Rejected = book.Rejected,
         DistilledAtUtc = book.DistilledAtUtc.Map(Utc.From).OrNullable(),
         DistilledFrom = book.DistilledFrom.OrNullable(),
+        NewestJudgmentReadUtc = book.NewestJudgmentReadUtc.Map(Utc.From).OrNullable(),
     };
 
     public PreceptBook ToBook() => new()
@@ -37,5 +40,6 @@ internal sealed record PreceptsDocument
         Rejected = Rejected,
         DistilledAtUtc = Optional(DistilledAtUtc),
         DistilledFrom = Optional(DistilledFrom),
+        NewestJudgmentReadUtc = Optional(NewestJudgmentReadUtc),
     };
 }

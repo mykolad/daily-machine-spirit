@@ -219,6 +219,31 @@ public sealed class PreceptsTests : IAsyncLifetime
         Assert.Equal(["Prefer short rituals."], await Texts());
     }
 
+    // A judgment made while the model answered isn't in its answer, though it's older than the distillation: the next
+    // weekly run learns from it.
+    [Fact]
+    public async Task AJudgmentMadeWhileDistilling_IsLearnedTheNextWeek()
+    {
+        await AJudgment();
+        testbed.Models.Then(Sol,
+        [
+            async () =>
+            {
+                testbed.Time.Advance(TimeSpan.FromSeconds(10));
+                await AJudgment();
+                testbed.Time.Advance(TimeSpan.FromSeconds(10));
+                return Distilled(RealFix);
+            },
+        ]);
+        Ok(await testbed.Distiller().DistilIfJudgedSinceLast(CancellationToken.None));
+        testbed.Time.Advance(TimeSpan.FromDays(7));
+        testbed.Models.Answers(Sol, Distilled(NoRepeats));
+
+        Ok(await testbed.Distiller().DistilIfJudgedSinceLast(CancellationToken.None));
+
+        Assert.Equal([NoRepeats], await Texts());
+    }
+
     // The pinned lead, on the page and in the writer's prompt; each group keeps its order.
     [Fact]
     public async Task ThePinned_ComeFirst()
