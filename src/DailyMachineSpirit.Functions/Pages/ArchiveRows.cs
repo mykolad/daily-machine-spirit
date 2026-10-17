@@ -38,10 +38,11 @@ public static class ArchiveRows
     /// <param name="older">The next page, or None when these are the oldest.</param>
     /// <param name="moreLabel">The link's words ("Load older rites").</param>
     /// <param name="end">Said instead of the link at the end.</param>
-    public static string More(Option<string> older, string moreLabel, string end)
+    /// <param name="closing">What hangs from the sheet at the end (the Archive's seal), or empty.</param>
+    public static string More(Option<string> older, string moreLabel, string end, string closing)
         => $"""<div class="archive-more">{older.Match(
             Some: href => $"""<a class="button button-outline" href="{Html.Encode(href)}">{moreLabel}</a>""",
-            None: () => $"""<p class="archive-end">{end}</p>""")}</div>""";
+            None: () => $"""{closing}<p class="archive-end">{end}</p>""")}</div>""";
 
     // The title is the row's link, stretched over the whole row, so the tags can be links of their own: a link can't
     // hold another. It comes first among the row's links, where the script moves focus.
@@ -54,7 +55,7 @@ public static class ArchiveRows
             : $"""<span class="row-tags"><span class="sr-only">Filed under </span>{TagLinks.Render(tags)}</span>""";
         return $"""
             <li class="row">
-            <span class="row-meta"><time class="row-date" datetime="{Html.IsoDate(rite.PublishedOnUtc)}">{Html.DayAndMonth(rite.PublishedOnUtc)}</time><span class="kind">{(rite.Writing.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL")}</span></span>
+            <span class="row-meta"><time class="row-date" datetime="{Html.IsoDate(rite.PublishedOnUtc)}">{Html.DayAndMonth(rite.PublishedOnUtc)}</time><span class="kind">{(rite.Writing.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL")}</span><span class="row-number"><span aria-hidden="true">NO. </span><span class="sr-only">Rite </span>{rite.Number}</span></span>
             <span class="row-main"><a class="row-title" href="{Paths.Rite(rite.Number)}">{Highlight.Of(rite.Writing.Title, words)}</a><span class="row-line">{Highlight.Of(line, words)}</span>{Counts(rite)}{tagLinks}</span>
             </li>
             """;
