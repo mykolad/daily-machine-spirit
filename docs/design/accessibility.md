@@ -68,6 +68,12 @@ month, with Today's masthead, margins and altar, and search as the Archive filte
 - **It works without the script:** the field is a plain form that sends `GET /archive?q=`, its clear button and "Clear
   search" are links to `/archive`, and "Load older rites" and "More results" are links. The old `/search?q=` address
   redirects there for good.
+- **Narrowing to a subject** (#69): the chip under the field says "Filed under" visibly and is a link named "Remove
+  filter: Caches", which keeps its visible label in its name (WCAG 2.5.3) and says what it does. It's 32px tall, above
+  the 24px WCAG 2.5.8 asks, rubric red on the parchment like the field's edge, with the parchment's red focus ring.
+  The subjects to narrow to are tag links on the dark background, under the sheet below 1280px and beside it above,
+  each with its count ("Builds (2)"). The page's title names the subject ("“cache” in Caches: 1 rite"), so a screen
+  reader hears what the results are before anything else.
 - **The sheet wears Today's frame, as decoration only:** the double rule, the corners and the code in its margins
   ("NOTHING IS FORGOTTEN" in hex, "KEPT" in binary) are hidden from screen readers, and the corners and code show from
   700px, where the sheet's padding leaves them room clear of the rows. The seal hanging from the sheet at the
