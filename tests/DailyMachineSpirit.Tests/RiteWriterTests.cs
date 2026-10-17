@@ -54,6 +54,11 @@ public sealed class RiteWriterTests : IDisposable
         Assert.Contains("* Litany of the Clean Cache", instructions);
         Assert.Contains("* The Rite of Re-Run", instructions);
         Assert.Contains("Never quote or paraphrase Games Workshop", instructions);
+        // The far future forgot the AI, and its rites are about habits anyone knows, not a tool's flags.
+        Assert.Contains("The AI is long gone, forbidden and forgotten", instructions);
+        Assert.Contains("without flags", instructions);
+        Assert.DoesNotContain("flattering an AI", instructions);
+        Assert.DoesNotContain("--no-verify", instructions);
         Assert.Equal("Write a prayer.", messages.Single(message => message.Role == ChatRole.User).Text);
     }
 
@@ -143,6 +148,13 @@ public sealed class RiteWriterTests : IDisposable
     [InlineData(RiteKind.Prayer, "Title", "Text.", "The Omnissiah won't fix a race.")]
     [InlineData(RiteKind.Ritual, "Title", "Lay sleep 5 upon the altar.", "Truth.")]
     [InlineData(RiteKind.Prayer, "Title", "Text.", "Delete node_modules, then wait.")]
+    // What the far future forgot.
+    [InlineData(RiteKind.Prayer, "Title", "Text.", "Flattery does not make an AI's patch reliable.")]
+    [InlineData(RiteKind.Ritual, "Title", "Whisper to the language model thrice.", "Truth.")]
+    [InlineData(RiteKind.Ritual, "The Rite of the Chatbot", "Text.", "Truth.")]
+    [InlineData(RiteKind.Prayer, "Title", "Text.", "LLMs guess; read what they wrote.")]
+    [InlineData(RiteKind.Ritual, "Title", "The vibe-coded build obeys no one.", "Truth.")]
+    [InlineData(RiteKind.Prayer, "Title", "Text.", "Artificial intelligence won't read the logs for you.")]
     public async Task Write_AsksAgain_WhenTheAnswerBreaksTheRules(RiteKind kind, string title, string text, string hereticalTruth)
     {
         models.Answers(Sol, FakeChatClients.Answer(title, text, hereticalTruth), GoodAnswer);
@@ -150,6 +162,21 @@ public sealed class RiteWriterTests : IDisposable
         var draft = Ok(await Writer(retryDelaySeconds: 0).Write(kind, [], CancellationToken.None));
 
         Assert.Equal("The Rite of Re-Run", draft.Writing.Title);
+    }
+
+    // Whole words, and only what the far future forgot: the machine's own words stay.
+    [Theory]
+    [InlineData("He said the cache would maintain itself.")]
+    [InlineData("The data model drifted from the schema.")]
+    [InlineData("Wait for the command prompt to return.")]
+    [InlineData("The rain on the server room roof.")]
+    public async Task Write_KeepsWordsTheFarFutureStillKnows(string truth)
+    {
+        models.Answers(Sol, FakeChatClients.Answer("Title", "Text.", truth));
+
+        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, [], CancellationToken.None));
+
+        Assert.Equal(truth, draft.Writing.HereticalTruth);
     }
 
     [Fact]

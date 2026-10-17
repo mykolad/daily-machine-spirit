@@ -15,25 +15,32 @@ public static class RitePrompt
     public static string Instructions(RiteKind kind, IReadOnlyList<string> titlesToAvoid, IReadOnlyList<string> precepts)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("You write for The Daily Machine Spirit, a satirical website. Its joke: AI and vibe coding are turning");
-        sb.AppendLine("software engineers into tech-priests who recite rituals and prompts instead of understanding their tools.");
+        sb.AppendLine("You write for The Daily Machine Spirit, a satirical website. Its joke: AI and vibe coding turned software");
+        sb.AppendLine("engineers into tech-priests who recite rituals instead of understanding their tools.");
+        sb.AppendLine();
+        sb.AppendLine("The setting is the far future. The AI is long gone, forbidden and forgotten, and nobody remembers how the");
+        sb.AppendLine("machines work. What's left are the habits, handed down as rites to the Machine Spirit. So neither a rite nor");
+        sb.AppendLine("its Heretical Truth mentions AI, models, prompts, chatbots or vibe coding: the truth explains the machine itself.");
         sb.AppendLine();
         sb.AppendLine(kind == RiteKind.Prayer
             ? "Write one PRAYER to the Machine Spirit: a short, solemn plea that a computer, build, service or device works."
             : "Write one RITUAL: a solemn procedure performed to make a computer, build, service or device work.");
-        sb.AppendLine("Base it on a real software habit people follow without understanding it: re-running CI until it passes,");
-        sb.AppendLine("clearing caches, deleting `node_modules`, restarting things, flattering an AI model in prompts, adding sleeps,");
-        sb.AppendLine("bumping timeouts, copying answers without reading them, and so on.");
+        sb.AppendLine("Base it on a common software habit people follow without understanding it, one any developer recognises:");
+        sb.AppendLine("re-running a failed build until it passes, clearing caches, deleting and reinstalling dependencies, restarting");
+        sb.AppendLine("things, adding sleeps, raising timeouts, copying answers without reading them, and so on. Not a habit that");
+        sb.AppendLine("needs a particular tool's commands or settings to understand.");
         sb.AppendLine();
-        sb.AppendLine("Then write the HERETICAL TRUTH: one or two plain, technically accurate sentences on what really happens");
-        sb.AppendLine("and what would actually fix it. No mysticism there: that contrast is the point.");
+        sb.AppendLine("Then write the HERETICAL TRUTH: one or two plain, technically accurate sentences on what really happens and");
+        sb.AppendLine("what would actually fix it, in general terms (two steps racing each other, a stale cache, a missing check),");
+        sb.AppendLine("not a specific command. No mysticism there: that contrast is the point.");
         sb.AppendLine();
         sb.AppendLine("Rules:");
         sb.AppendLine($"- Title: at most {TitleLength} characters, like the name of a rite (\"The Rite of Re-Run\", \"Litany of the Clean Cache\").");
         sb.AppendLine($"- Text: one to three sentences, at most {TextLength} characters, in solemn liturgical language (thee, thy, O Machine Spirit).");
         sb.AppendLine($"- Heretical Truth: one or two sentences, at most {HereticalTruthLength} characters, in plain modern English.");
-        sb.AppendLine("- Every command (with its arguments), flag, file or folder name and setting goes in `backticks`, in the text");
-        sb.AppendLine("  and in the Heretical Truth alike: `sleep 5`, `rm -rf node_modules`, `--no-verify`, `.env`. The title has no code and no backticks.");
+        sb.AppendLine("- Plain words over code. If a command or file name is truly needed, use at most one, widely known, without flags");
+        sb.AppendLine("  or parameters (`node_modules`, `git push`), and put it in `backticks`. The title has no code and no backticks.");
+        sb.AppendLine("- Never mention AI, artificial intelligence, models, LLMs, chatbots, prompts or vibe coding: this future forgot them.");
         sb.AppendLine("- Everything must be original. Never quote or paraphrase Games Workshop or Warhammer 40,000 text, and don't use");
         sb.AppendLine("  their names (no Adeptus Mechanicus, no Imperium, no Space Marines).");
         sb.AppendLine(kind == RiteKind.Prayer

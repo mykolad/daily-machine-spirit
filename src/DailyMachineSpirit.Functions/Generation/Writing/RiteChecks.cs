@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using DailyMachineSpirit.Data.Entities;
 using LanguageExt;
 using LanguageExt.Common;
@@ -6,7 +7,8 @@ namespace DailyMachineSpirit.Functions.Generation.Writing;
 
 /// <summary>
 /// What every rite's words must pass, whoever wrote them: a model's answer (<see cref="RiteWriter"/>) or a Scribe's
-/// amendment. Nothing empty, nothing past the ceilings, none of the setting's names, and code in backticks.
+/// amendment. Nothing empty, nothing past the ceilings, none of the setting's names, nothing the far future forgot,
+/// and code in backticks.
 /// </summary>
 public static class RiteChecks
 {
@@ -21,6 +23,13 @@ public static class RiteChecks
         "Aquila", "Primarch", "Ultramarine", "Horus Heresy", "Emperor of Mankind", "Astra Militarum", "Ecclesiarchy",
         "Tyranid", "Necron", "Eldar", "Aeldari",
     ];
+
+    // The rites are recited in a far future that forgot the AI: none of them, nor its truth, names what was forgotten.
+    // Whole words only, so "said" or "maintain" never count as "AI"; "AI" itself only in capitals, the way it's written.
+    // Not "model" or "prompt" alone: a data model or a command prompt belongs to the machine, not to the AI.
+    private static readonly Regex ForgottenWords = new(
+        @"\b(?:AI|A\.I\.|(?i:artificial intelligence|LLMs?|language models?|chatbots?|ChatGPT|GPT-\d|Copilot|vibe[- ]cod\w*|prompt engineering))\b",
+        RegexOptions.CultureInvariant);
 
     /// <summary>The words, trimmed (and the title without backticks), or why they can't be a rite.</summary>
     public static Either<Error, RiteContent> Check(RiteContent answer, RiteKind kind)
@@ -50,6 +59,11 @@ public static class RiteChecks
         if (forbidden.Count > 0)
         {
             return Error.New($"The answer uses forbidden names: {string.Join(", ", forbidden)}.");
+        }
+        var forgotten = ForgottenWords.Matches(everything).Select(match => match.Value).Distinct().ToList();
+        if (forgotten.Count > 0)
+        {
+            return Error.New($"The answer names what the far future forgot: {string.Join(", ", forgotten)}.");
         }
         // A prayer may call on the Omnissiah once; a heading, a Heretical Truth or a ritual never names it.
         var allowedInText = kind == RiteKind.Prayer ? 1 : 0;
