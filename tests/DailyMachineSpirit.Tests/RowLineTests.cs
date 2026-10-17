@@ -21,9 +21,8 @@ public class RowLineTests
     {
         var text = $"{Words} the cache was warm {Words}";
 
-        var (line, fromTruth) = RowLine.For(Rite(text, "Truth."), ["CACHE"]);
+        var line = RowLine.For(Rite(text, "Truth."), ["CACHE"]);
 
-        Assert.False(fromTruth);
         Assert.StartsWith("…", line);
         Assert.EndsWith("…", line);
         Assert.Contains("the cache was warm", line);
@@ -33,7 +32,7 @@ public class RowLineTests
     [Fact]
     public void For_AMatchNearTheStart_ShowsTheOpeningWords()
     {
-        var (line, _) = RowLine.For(Rite($"The cache {Words}", "Truth."), ["cache"]);
+        var line = RowLine.For(Rite($"The cache {Words}", "Truth."), ["cache"]);
 
         Assert.StartsWith("The cache word", line);
         Assert.EndsWith("…", line);
@@ -45,18 +44,19 @@ public class RowLineTests
     {
         const string text = "O Spirit, bless the `Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions` before the build is done and green.";
 
-        var (line, _) = RowLine.For(Rite(text, "Truth."), ["Microsoft"]);
+        var line = RowLine.For(Rite(text, "Truth."), ["Microsoft"]);
 
         Assert.Equal("O Spirit, bless the Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions…", line);
     }
 
     [Fact]
     public void For_AMatchInTheTitleAlone_ShowsTheOpeningWords()
-        => Assert.Equal(("Delete node_modules and pray.", false), RowLine.For(Rite("Delete `node_modules` and pray.", "It was stale.", "The Warm Cache"), ["cache"]));
+        => Assert.Equal("Delete node_modules and pray.", RowLine.For(Rite("Delete `node_modules` and pray.", "It was stale.", "The Warm Cache"), ["cache"]));
 
+    // The truth stays sealed: a rite found by it shows its opening words, and the reader breaks the seal on its page.
     [Fact]
-    public void For_AMatchInTheTruthAlone_ShowsTheTruthsWords()
-        => Assert.Equal(("Your cache was stale.", true), RowLine.For(Rite("Delete `node_modules` and pray.", "Your `cache` was stale."), ["cache"]));
+    public void For_AMatchInTheTruthAlone_ShowsTheOpeningWords_NotTheTruth()
+        => Assert.Equal("Delete node_modules and pray.", RowLine.For(Rite("Delete `node_modules` and pray.", "Your `cache` was stale."), ["cache"]));
 
     private static Rite Rite(string text, string truth) => Rite(text, truth, "The Vigil");
 

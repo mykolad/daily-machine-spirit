@@ -48,7 +48,7 @@ public static class ArchiveRows
     // hold another. It comes first among the row's links, where the script moves focus.
     private static string Row(Rite rite, IReadOnlyList<string> words)
     {
-        var (line, fromTruth) = words.Count == 0 ? (RowLine.Opening(rite), false) : RowLine.For(rite, words);
+        var line = words.Count == 0 ? RowLine.Opening(rite) : RowLine.For(rite, words);
         var tags = RiteTags.Of(rite.Tags);
         var tagLinks = tags.Count == 0
             ? string.Empty
@@ -56,7 +56,7 @@ public static class ArchiveRows
         return $"""
             <li class="row">
             <span class="row-meta"><time class="row-date" datetime="{Html.IsoDate(rite.PublishedOnUtc)}">{Html.DayAndMonth(rite.PublishedOnUtc)}</time><span class="kind">{(rite.Writing.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL")}</span><span class="row-number"><span aria-hidden="true">NO. </span><span class="sr-only">Rite </span>{rite.Number}</span></span>
-            <span class="row-main"><a class="row-title" href="{Paths.Rite(rite.Number)}">{Highlight.Of(rite.Writing.Title, words)}</a><span class="row-line">{(fromTruth ? """<span class="row-truth">Heretical Truth:</span> """ : string.Empty)}{Highlight.Of(line, words)}</span>{Counts(rite)}{tagLinks}</span>
+            <span class="row-main"><a class="row-title" href="{Paths.Rite(rite.Number)}">{Highlight.Of(rite.Writing.Title, words)}</a><span class="row-line">{Highlight.Of(line, words)}</span>{Counts(rite)}{tagLinks}</span>
             </li>
             """;
     }

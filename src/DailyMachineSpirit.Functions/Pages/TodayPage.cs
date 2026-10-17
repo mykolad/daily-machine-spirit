@@ -9,6 +9,9 @@ public static class TodayPage
     /// <summary>How many rites before today's the page shows.</summary>
     public const int RecentShown = 4;
 
+    // The motto under the day's rite, between brass rules, where it's read; on Today it leaves the footer, so it's said once.
+    private const string Epigraph = $"""<p class="epigraph">{Layout.Motto}</p>""";
+
     /// <param name="recent">The rites before today's, newest first; the section is left out when there are none.</param>
     public static string Render(Rite rite, IReadOnlyList<Rite> recent, DateTimeOffset now)
     {
@@ -23,6 +26,7 @@ public static class TodayPage
             <div class="countdown-line">{Svg.CandleLeft}<p>Next litany in <span class="amber" data-countdown>{countdown}</span></p>{Svg.CandleRight}</div>
             <p class="countdown-note">A new rite is published every day at 00:00 UTC.</p>
             </div>
+            {Epigraph}
             {Recent(recent)}
             """);
     }
@@ -36,6 +40,7 @@ public static class TodayPage
             <h2>The Machine Spirit slumbers.</h2>
             <p class="state-body">The first litany arrives in <strong class="amber" data-countdown>{Countdown.ToNextRite(now)}</strong>.</p>
             </div>
+            {Epigraph}
             """);
 
     // Small parchments, kind and day and title alone: enough to pick one, and the archive is a link away. Each card is
