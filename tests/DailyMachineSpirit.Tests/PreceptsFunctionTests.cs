@@ -64,7 +64,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
 
         Assert.Contains($"""<li class="rite acted" id="precept-{book.Precepts.Single(precept => !precept.Pinned).Id:D}">""", html);
         Assert.Contains($"""<li class="rite" id="precept-{book.Precepts.Single(precept => precept.Pinned).Id:D}">""", html);
-        Assert.Contains("""data-slow="The Machine Spirit is distilling the Precepts… usually seconds, at most a minute and a half." data-busy-label="Distilling…">""", html);
+        Assert.Contains("""data-slow="The Machine Spirit is distilling the Precepts…" data-busy-label="Distilling…">""", html);
         Assert.Contains(SlowActionScript.Js, html);
     }
 

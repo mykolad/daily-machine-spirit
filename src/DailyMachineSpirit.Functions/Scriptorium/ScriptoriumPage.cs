@@ -16,9 +16,10 @@ namespace DailyMachineSpirit.Functions.Scriptorium;
 /// </summary>
 public static partial class ScriptoriumPage
 {
-    // What a slow action's button says while the Machine Spirit works: both take seconds, at most a minute and a half.
+    // What the status says while the Machine Spirit works on a slow action. Distilling's button has a hint beside it that
+    // says how long it takes; rewriting's doesn't, so its message does.
     private const string Rewriting = "The Machine Spirit is rewriting it… usually a few seconds, at most a minute and a half.";
-    private const string Distilling = "The Machine Spirit is distilling the Precepts… usually seconds, at most a minute and a half.";
+    private const string Distilling = "The Machine Spirit is distilling the Precepts…";
 
     private const string Styles = """
         :root { color-scheme: dark; }
