@@ -590,7 +590,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         await testbed.AddDraft("Best", 0.9f);
         var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
-        Ok(await testbed.Scribes().Anoint(draft.Id, "", CancellationToken.None));
+        Ok(await testbed.Scribes().Anoint(draft.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         testbed.JevApiKey = "";
 
         var response = await Function(enabled: true).Decide(
