@@ -163,7 +163,8 @@ public static class Styles
         .more-title{font-family:Cinzel,serif;font-weight:700;font-size:19px;line-height:1.2}
         .sheet{position:relative;width:100%;max-width:740px;padding:12px;border-radius:18px;background:#ebdfc2;color:#2b2117;text-align:left;box-shadow:0 0 120px rgba(240,180,90,.16),0 24px 70px rgba(0,0,0,.55),inset 0 0 80px rgba(140,100,40,.2)}
         .sheet::before{content:'';position:absolute;left:50%;top:320px;z-index:-1;width:600px;height:920px;transform:translate(-50%,-50%);background:radial-gradient(ellipse 300px 460px,#2b2117 0%,#18140f 55%,rgba(16,14,11,0) 100%);pointer-events:none}
-        .sheet-inner{padding:28px 18px 14px;border:1px solid #8f2a20;border-radius:10px}
+        .sheet-inner{padding:28px 18px 14px}
+        .sheet .corner{display:none}
         .sheet :focus-visible{outline-color:#8f2a20;outline-offset:2px}
         .sheet-head{text-align:center}
         .sheet-kicker{margin:0 0 8px;font-family:Cinzel,serif;font-weight:700;font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#8f2a20}
@@ -181,12 +182,14 @@ public static class Styles
         .sheet-clear:hover{background:#e0d0a8;color:#2b2117}
         .month-rubric{display:flex;align-items:center;gap:16px;margin:24px 0 4px;font-family:Cinzel,serif;font-weight:700;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:#8f2a20}
         .month-rubric::before,.month-rubric::after{content:'';flex:1;height:1px;background:rgba(143,42,32,.3)}
+        .month-rubric>span::before,.month-rubric>span::after{content:'';display:inline-block;width:5px;height:5px;margin:0 12px;background:#8f2a20;transform:rotate(45deg);vertical-align:middle}
         .rows{list-style:none;margin:0;padding:0}
         .row{position:relative;display:flex;flex-direction:column;gap:2px;padding:12px 6px;border-radius:8px}
         .row:hover{background:#e0d0a8}
         .sheet .row:has(.row-title:focus-visible){outline:2px solid #8f2a20;outline-offset:2px}
         .row-meta{display:flex;align-items:baseline;gap:10px}
         .row-date{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:12px;color:#5c4a33}
+        .row-number{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:12px;letter-spacing:.06em;color:#5c4a33}
         .kind{font-family:Cinzel,serif;font-weight:700;font-size:13px;letter-spacing:.16em;color:#c9a25a}
         .row .kind{font-size:10px;letter-spacing:.2em;color:#8f2a20}
         .row-main{min-width:0;display:flex;flex-direction:column;gap:2px}
@@ -212,6 +215,10 @@ public static class Styles
         .archive-loading{width:100%;display:flex;flex-direction:column;gap:12px;margin-top:12px}
         .skeleton-row{height:118px;border-radius:20px;background:#1a1612}
         .archive-more{display:flex;justify-content:center;padding-top:28px}
+        .archive-more:has(.archive-seal){flex-direction:column;align-items:center;padding-top:0}
+        .archive-seal{display:flex;flex-direction:column;align-items:center;margin-bottom:24px}
+        .closing-seal{display:block;margin-top:-30px;line-height:0}
+        .archive-seal .purity-strip{margin:-18px 0 0;border-radius:4px;transform:rotate(-3deg)}
         .tags{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px 10px;margin:18px 0 0;font-size:15px;color:#bfb39a}
         .tag{display:inline-flex;align-items:center;min-height:32px;padding:4px 14px;border-radius:999px;border:1px solid rgba(201,162,90,.45);font-size:14px;font-weight:600;color:#d9b874;text-decoration:none;white-space:nowrap}
         .tag:hover{background:rgba(201,162,90,.12);color:#f0d59a}
@@ -265,7 +272,8 @@ public static class Styles
         .masthead-rule{width:224px}
         .masthead .site-name{font-size:44px}
         .tagline{font-size:18px}
-        .sheet-inner{padding:48px 52px 32px}
+        .sheet-inner{padding:56px 64px 72px}
+        .sheet .corner{display:block}
         .sheet-title{font-size:34px}
         .sheet-sub{font-size:16px}
         .sheet-search{height:40px}
@@ -296,6 +304,7 @@ public static class Styles
         .tags .margin-label{flex-basis:100%;margin-bottom:0}
         .hero>.sheet{grid-column:2;grid-row:1}
         .hero>.archive-more{grid-column:2;grid-row:2}
+        .hero:has(.archive-seal)>.sheet{align-self:stretch}
         .archive-hero .marginalia{display:flex}
         .side{grid-row:1;align-self:start;display:flex;flex-direction:column;gap:56px;margin-top:80px}
         .side-left{grid-column:1}
