@@ -409,7 +409,8 @@ public static class Script
             // where they matched.
             const marked = (text, words, atWordStart) => {
               const lower = text.toLowerCase();
-              const ranges = words
+              // An empty word would be found everywhere, forever.
+              const ranges = words.filter(Boolean)
                 .flatMap((word) => {
                   const found = [];
                   for (let at = lower.indexOf(word); at >= 0; at = lower.indexOf(word, at + 1)) {
@@ -442,9 +443,11 @@ public static class Script
               return words.every((word) => its.some((each) => each.startsWith(word)));
             };
             // A subject is suggested when every word typed starts a word of its name, or of what its rites are about
-            // (so "flaky" suggests Builds): at most three, those the name matches first.
+            // (so "flaky" suggests Builds): at most three, those the name matches first. A word that folds away to
+            // nothing (a lone accent) would start every word, so it's no word.
             const subjectsFor = (words) => {
-              const folded = words.map(fold);
+              const folded = words.map(fold).filter(Boolean);
+              if (folded.length === 0) return [];
               const named = subjects.filter((subject) => startsEvery(subject.label, folded));
               const about = subjects.filter((subject) => !named.includes(subject) && startsEvery(`${subject.label} ${subject.about}`, folded));
               return [...named, ...about].slice(0, 3);
@@ -498,12 +501,20 @@ public static class Script
                 status.textContent = '';
                 return;
               }
-              // They need no index, so they're offered even when it can't be loaded.
+              // They need no index, so they're shown at once, while it loads, and even when it can't be.
               const filed = subjectsFor(words);
-              const subjectOptions = () => filed.map((subject) => optionOf(`search-subject-${subject.key}`, `/tags/${subject.key}`,
-                marked(subject.label, words.map(fold), true), marked(`Rites about ${subject.about}`, words.map(fold), true)));
+              const folded = words.map(fold).filter(Boolean);
+              const subjectOptions = filed.map((subject) => optionOf(`search-subject-${subject.key}`, `/tags/${subject.key}`,
+                marked(subject.label, folded, true), marked(`Rites about ${subject.about}`, folded, true)));
               const announced = (text) => (filed.length === 0 ? text
                 : `${filed.length} ${filed.length === 1 ? 'subject' : 'subjects'}. ${text}`);
+              if (filed.length > 0) {
+                label.textContent = 'Looking through the rites…';
+                none.hidden = true;
+                fill(subjectOptions, []);
+                choose(-1);
+                showDrop(true);
+              }
               try {
                 rites ??= fetch('/api/search-index').then((response) => {
                   if (!response.ok) throw new Error(String(response.status));
@@ -520,7 +531,7 @@ public static class Script
                   ? `${found.length} ${found.length === 1 ? 'rite mentions' : 'rites mention'} ${quoted}`
                   : filed.length > 0 ? `No rite mentions ${quoted}` : `Nothing found for ${quoted}`;
                 none.hidden = found.length > 0 || filed.length > 0;
-                fill(subjectOptions(), found.slice(0, 5).map((rite) => {
+                showFound(subjectOptions, found.slice(0, 5).map((rite) => {
                   const [, month, day] = rite.day.split('-').map(Number);
                   return optionOf(`search-option-${rite.number}`, `/r/${rite.number}`, marked(rite.title, words, false),
                     `${rite.kind === 'prayer' ? 'Prayer' : 'Ritual'} · ${day} ${monthNames[month - 1]}`);
@@ -532,10 +543,15 @@ public static class Script
                 if (outdated(typed)) return;
                 label.textContent = 'The rites couldn’t be loaded.';
                 none.hidden = true;
-                fill(subjectOptions(), []);
+                showFound(subjectOptions, []);
                 status.textContent = announced(label.textContent);
               }
-              choose(-1);
+            };
+            // The rites join the subjects shown while they loaded; a subject the reader chose meanwhile stays chosen.
+            const showFound = (subjectOptions, riteOptions) => {
+              const chosen = options()[active];
+              fill(subjectOptions, riteOptions);
+              choose(options().indexOf(chosen));
               showDrop(true);
             };
             const open = () => {
