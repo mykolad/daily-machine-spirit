@@ -79,7 +79,7 @@ public sealed class ScribeNameFunction
 
     // The suggestions carried by a suggestion's link or the form, so they stay the same; none, and the model is asked.
     private static List<string> Carried(Microsoft.Extensions.Primitives.StringValues suggestions)
-        => suggestions.Select(name => name ?? string.Empty).Where(ScribeNaming.Choosable).Take(NameSuggester.Count).ToList();
+        => suggestions.Select(name => ScribeNaming.Acceptable(name ?? string.Empty)).Rights().Take(NameSuggester.Count).ToList();
 
     private async Task<IActionResult> Render(
         HttpRequest request, string scribe, List<string> carried, Option<string> typed, Option<string> message, int status, CancellationToken cancellationToken)

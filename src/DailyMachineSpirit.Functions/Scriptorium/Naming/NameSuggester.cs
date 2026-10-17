@@ -5,6 +5,7 @@ using DailyMachineSpirit.Functions.Telemetry;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using LanguageExt;
 
 namespace DailyMachineSpirit.Functions.Scriptorium.Naming;
 
@@ -35,6 +36,10 @@ public sealed class NameSuggester
         "Acolyte Timeout", "Prior Rebase", "Archivist Flake", "Vicar Restart", "Abbess Lockfile", "Brother Stacktrace",
     ];
 
+    // And past those, every title with every word.
+    private static readonly string[] Titles = ["Brother", "Sister", "Deacon", "Magos", "Cantor", "Lector", "Acolyte", "Prior", "Archivist", "Vicar"];
+    private static readonly string[] Words = ["Kernel", "Heap", "Commit", "Socket", "Buffer", "Daemon", "Cron", "Thread", "Mutex", "Patch"];
+
     private static readonly JsonSerializerOptions AnswerSerializerOptions = new(JsonSerializerOptions.Web)
     {
         RespectNullableAnnotations = true,
@@ -60,12 +65,38 @@ public sealed class NameSuggester
     public async Task<List<string>> Suggest(IReadOnlyList<string> taken, CancellationToken cancellationToken)
     {
         var fromTheModel = await Ask(taken, cancellationToken);
-        return fromTheModel.Concat(Ours)
-            .Select(name => name.Trim())
-            .Where(name => ScribeNaming.Choosable(name) && !taken.Any(other => ScribeNaming.SameName(other, name)))
+        // Tidied and checked as a name the Scribe typed would be, so a suggestion can always be taken as it is.
+        return fromTheModel.Concat(Fallbacks())
+            .Select(ScribeNaming.Acceptable)
+            .Rights()
+            .Where(name => !taken.Any(other => ScribeNaming.SameName(other, name)))
             .DistinctBy(name => name.ToUpperInvariant())
             .Take(Count)
             .ToList();
+    }
+
+    // The site's own, then every title with every word, then its own again, numbered: however many are taken, there are
+    // always three more.
+    private static IEnumerable<string> Fallbacks()
+    {
+        foreach (var name in Ours)
+        {
+            yield return name;
+        }
+        foreach (var title in Titles)
+        {
+            foreach (var word in Words)
+            {
+                yield return $"{title} {word}";
+            }
+        }
+        for (var number = 2; ; number++)
+        {
+            foreach (var name in Ours)
+            {
+                yield return $"{name} {Pages.RomanNumeral.Of(number)}";
+            }
+        }
     }
 
     // Whatever the model answered, or nothing when it couldn't: a failure here only costs the page its fresh names.

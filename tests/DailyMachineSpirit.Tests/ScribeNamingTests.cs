@@ -65,6 +65,7 @@ public sealed class ScribeNamingTests : IAsyncLifetime
     [InlineData("A Scribe on Staging", "The Record gives that name to others. Choose another.")]
     [InlineData("A Scribe (…d0f3b)", "The Record gives that name to others. Choose another.")]
     [InlineData(" \t ", "Write a name first.")]
+    [InlineData("scribe@example.com", "A name or an alias, never an email address: the Record isn't a place for one.")]
     [InlineData("A name far, far longer than the forty characters allowed", "A name can be at most 40 characters.")]
     public async Task ANameThatCantBeTaken_IsRefusedWithWhy(string name, string why)
     {
@@ -105,6 +106,36 @@ public sealed class ScribeNamingTests : IAsyncLifetime
 
         Assert.Equal(["Cantor Kernel", "Brother Ferrum", "Deacon Null"], suggested);
         Assert.Contains("[\"Sister Cache\"]", testbed.Models.Requests.Single().Messages.Last().Text);
+    }
+
+    // Suggestions are tidied as a typed name is before they're compared: a spacing of a taken name, or of one already
+    // suggested, isn't offered, nor is an email.
+    [Fact]
+    public async Task Suggestions_AreComparedAsTheyWouldBeSaved()
+    {
+        testbed.Models.Answers(Namer, Names("Sister  Cache", "Cantor Kernel", "cantor   kernel", "scribe@example.com"));
+
+        var suggested = await testbed.NameSuggester().Suggest(["Sister Cache"], CancellationToken.None);
+
+        Assert.Equal(["Cantor Kernel", "Brother Ferrum", "Deacon Null"], suggested);
+    }
+
+    // However many names are taken, there are three more: past its own and every title with every word, the site
+    // numbers its own.
+    [Fact]
+    public async Task Suggestions_NeverRunOut()
+    {
+        string[] titles = ["Brother", "Sister", "Deacon", "Magos", "Cantor", "Lector", "Acolyte", "Prior", "Archivist", "Vicar"];
+        string[] words = ["Kernel", "Heap", "Commit", "Socket", "Buffer", "Daemon", "Cron", "Thread", "Mutex", "Patch"];
+        List<string> taken =
+        [
+            "Brother Ferrum", "Sister Cache", "Deacon Null", "Magos Rerun", "Cantor Retry", "Lector Semicolon",
+            "Acolyte Timeout", "Prior Rebase", "Archivist Flake", "Vicar Restart", "Abbess Lockfile", "Brother Stacktrace",
+            .. titles.SelectMany(title => words.Select(word => $"{title} {word}")),
+        ];
+        testbed.Models.Fails(Namer, 1);
+
+        Assert.Equal(["Brother Ferrum II", "Sister Cache II", "Deacon Null II"], await testbed.NameSuggester().Suggest(taken, CancellationToken.None));
     }
 
     [Fact]
@@ -150,6 +181,16 @@ public sealed class ScribeNamingTests : IAsyncLifetime
         Assert.Contains("""value="Sister Cache" maxlength="40" aria-describedby="scribe-name-hint name-status" aria-invalid="true" """, page);
         Assert.Contains("Cantor Kernel", page);
         Assert.Empty(testbed.Models.Requests);
+    }
+
+    [Fact]
+    public async Task AnEmail_ComesBack_WithWhyAndTheWords()
+    {
+        var page = Html(await Function(Ferrum).Choose(Form(("name", "scribe@example.com"), ("s", "Cantor Kernel")), CancellationToken.None), 422);
+
+        Assert.Contains("never an email address", page);
+        Assert.Contains("""value="scribe@example.com" maxlength="40" aria-describedby="scribe-name-hint name-status" aria-invalid="true" """, page);
+        Assert.Equal(Option<string>.None, Ok(await testbed.ScribeNaming().NameOf(Ferrum, CancellationToken.None)));
     }
 
     [Fact]

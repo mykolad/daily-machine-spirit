@@ -310,10 +310,12 @@ observability/                    — the Grafana dashboard and alerts, and what
       by the last six characters of their id (`ScribeNames`). The Record keeps ids, so a name shows on past entries too.
     - **Names** (#84, `/scriptorium/name`, `Scriptorium/Naming/`): a Scribe chooses the name the Record shows them by,
       a name or an alias, which only the Scribes see. One `scribe-names` document, by Access id, saved with its record
-      entry and guarded by its ETag, so two Scribes can't take one name at once. Names are unique, whatever their
-      case, and none passes for the Record's own ("The Machine Spirit", "A Scribe on staging", "A Scribe (…)"). The
+      entry and guarded by its ETag, so two Scribes can't take one name at once. Names are tidied (one line, single
+      spaces), unique whatever their case, never an email address, and none passes for the Record's own ("The Machine
+      Spirit", "A Scribe on staging", "A Scribe (…)"): `ScribeNaming.Acceptable`, which suggestions pass too. The
       page offers three names `gpt-6-luna` suggests (`NameSuggester`, `Generation:ScribeNameModel`, 10 seconds, the
-      taken ones left out), filled from the site's own when it can't; the first is in the field, to take or change,
+      taken ones left out), filled from the site's own when it can't (its list, every title with every word, then its
+      list numbered, so it never runs out); the first is in the field, to take or change,
       and each suggestion's link puts it there instead, carrying the others so the model isn't asked again; Suggest
       Others asks anew. The Scriptorium invites an unnamed Scribe to choose, and a named one to change. On staging,
       with every Scribe one actor, there's no name to choose.

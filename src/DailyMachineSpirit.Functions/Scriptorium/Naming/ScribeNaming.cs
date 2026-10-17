@@ -25,6 +25,8 @@ public sealed partial class ScribeNaming
 
     public static readonly Error Reserved = Error.New(Refused, "The Record gives that name to others. Choose another.");
 
+    public static readonly Error Email = Error.New(Refused, "A name or an alias, never an email address: the Record isn't a place for one.");
+
     public static readonly Error NoNamesOnStaging = Error.New(Refused, "Without a sign-in, every Scribe on staging is one: \"A Scribe on staging\".");
 
     private readonly IScribeNameRepository names;
@@ -48,7 +50,7 @@ public sealed partial class ScribeNaming
     /// Saves the name for the Scribe and returns it as saved (spaces tidied). Their own name again changes nothing.
     /// </summary>
     public Task<Either<Error, string>> Choose(string scribe, string typed, CancellationToken cancellationToken)
-        => Tidied(scribe, typed).BindAsync(name => names.Get(cancellationToken).BindAsync(read =>
+        => NameFor(scribe, typed).BindAsync(name => names.Get(cancellationToken).BindAsync(read =>
         {
             var current = read.Names.Where(found => found.AccessId == scribe).HeadOrNone();
             if (current.Exists(found => found.Name == name))
@@ -72,26 +74,25 @@ public sealed partial class ScribeNaming
             return names.Save(read, changed, audit, cancellationToken).MapAsync(_ => Task.FromResult(name));
         }));
 
-    /// <summary>Whether a suggested name could be chosen: short enough, readable, and none of the Record's own.</summary>
-    public static bool Choosable(string name)
-        => Tidied(name).Exists(tidied => tidied.Length <= ScribeName.MaxLength && !IsReserved(tidied));
+    /// <summary>
+    /// The name as it would be saved, tidied, or why it can't be: empty, too long, one the Record gives to others, or an
+    /// email address. Whether it's taken is the saved names' to say. Suggestions pass the same rules.
+    /// </summary>
+    public static Either<Error, string> Acceptable(string typed)
+        => Tidy(typed).ToEither(NameNeeded).Bind(name =>
+            name.Length > ScribeName.MaxLength ? Left<Error, string>(TooLong)
+            : IsReserved(name) ? Left<Error, string>(Reserved)
+            // An address is more than a name: only the Scribes see the Record, but it keeps entries for as long as the rites.
+            : name.Contains('@') ? Left<Error, string>(Email)
+            : Right<Error, string>(name));
 
     public static bool SameName(string one, string other) => string.Equals(one, other, StringComparison.OrdinalIgnoreCase);
 
-    private static Either<Error, string> Tidied(string scribe, string typed)
-    {
-        if (scribe == AuditEntry.StagingScribe)
-        {
-            return NoNamesOnStaging;
-        }
-        return Tidied(typed).ToEither(NameNeeded).Bind(name =>
-            name.Length > ScribeName.MaxLength ? Left<Error, string>(TooLong)
-            : IsReserved(name) ? Left<Error, string>(Reserved)
-            : Right<Error, string>(name));
-    }
+    private static Either<Error, string> NameFor(string scribe, string typed)
+        => scribe == AuditEntry.StagingScribe ? NoNamesOnStaging : Acceptable(typed);
 
     // Runs of spaces, tabs and line breaks become one space, and control characters go: a name is one plain line.
-    private static Option<string> Tidied(string typed)
+    private static Option<string> Tidy(string typed)
     {
         var name = Spaces().Replace(new string(typed.Where(character => !char.IsControl(character) || char.IsWhiteSpace(character)).ToArray()), " ").Trim();
         return name.Length == 0 ? None : Some(name);
