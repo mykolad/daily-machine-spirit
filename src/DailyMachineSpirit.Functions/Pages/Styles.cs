@@ -127,6 +127,9 @@ public static class Styles
         .countdown-line p{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:18px;letter-spacing:.06em;color:#b6a98f}
         .amber{color:#f0b45a;font-variant-numeric:tabular-nums}
         .countdown-note{margin:0;font-size:15px;color:#b6a98f}
+        .epigraph{display:flex;align-items:center;gap:16px;width:min(100%,680px);margin:40px auto 0;text-align:center;font-family:Cinzel,serif;font-weight:700;font-size:clamp(17px,2.4vw,22px);line-height:1.35;letter-spacing:.08em;color:#c9a25a}
+        .epigraph::before,.epigraph::after{content:"";flex:1 1 24px;min-width:24px;height:1px;background:linear-gradient(90deg,transparent,#8a6f3c)}
+        .epigraph::after{background:linear-gradient(90deg,#8a6f3c,transparent)}
         .candle ellipse{transform-box:fill-box;transform-origin:50% 100%;animation:flicker 2.4s ease-in-out infinite}
         .candle-late ellipse{animation-duration:3.1s;animation-delay:.7s}
         @keyframes flicker{0%,100%{transform:scaleY(1)}40%{transform:scaleY(.86) skewX(3deg)}70%{transform:scaleY(1.05) skewX(-2deg)}}
