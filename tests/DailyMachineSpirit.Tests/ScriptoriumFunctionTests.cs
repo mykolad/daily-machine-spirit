@@ -581,6 +581,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var html = Html(await Function(enabled: true).Page(Following(response.Result), CancellationToken.None), 200);
         Assert.Contains("Amended “The Litany of the Warm Cache”: judged again, it waits for Wed 7 Oct.", html);
         Assert.Contains("""written by <span class="nowrap">gpt-6-sol</span>, amended by a Scribe""", html);
+        Assert.Contains("Amended: <cite>Litany of the Cold Cache</cite>", html);
     }
 
     // Refused, the page comes back with what the Scribe typed and why: nothing they wrote is lost.

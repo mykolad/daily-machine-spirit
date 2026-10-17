@@ -126,6 +126,14 @@ public sealed class Scribes
                         .MapAsync(_ => Task.FromResult(unit)),
                     None: () => Task.FromResult(Left<Error, Unit>(ScriptoriumRepository.ChangedMeanwhile))))));
 
+    /// <summary>
+    /// Where a waiting draft is in the calendar (1 is next), and where the Augury alone would put it: what an amendment's
+    /// decision keeps, as every other decision does. None when it isn't waiting.
+    /// </summary>
+    public Task<Either<Error, Option<(int CalendarPlace, int AuguryPlace)>>> PlacesOf(Guid draftId, CancellationToken cancellationToken)
+        => Calendar(cancellationToken).MapAsync(calendar => Task.FromResult(
+            calendar.Find(draftId).Map(found => (found.Place, calendar.AuguryPlace(found.Draft)))));
+
     /// <summary>Forgets the Scribes' order, so the Augury orders every draft.</summary>
     public Task<Either<Error, Unit>> LetTheAuguryDecide(CancellationToken cancellationToken)
         => scriptorium.GetPlacements(cancellationToken)

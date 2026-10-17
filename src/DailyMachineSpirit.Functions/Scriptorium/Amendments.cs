@@ -24,15 +24,23 @@ public sealed class Amendments
 
     private readonly IDraftRepository drafts;
     private readonly IScriptoriumRepository scriptorium;
+    private readonly Scribes scribes;
     private readonly IRiteJudge judge;
     private readonly RiteWriter writer;
     private readonly TimeProvider time;
     private readonly ILogger<Amendments> logger;
 
     public Amendments(
-        IDraftRepository drafts, IScriptoriumRepository scriptorium, IRiteJudge judge, RiteWriter writer, TimeProvider time, ILogger<Amendments> logger)
+        IDraftRepository drafts,
+        IScriptoriumRepository scriptorium,
+        Scribes scribes,
+        IRiteJudge judge,
+        RiteWriter writer,
+        TimeProvider time,
+        ILogger<Amendments> logger)
     {
         this.drafts = drafts;
+        this.scribes = scribes;
         this.scriptorium = scriptorium;
         this.judge = judge;
         this.writer = writer;
@@ -54,10 +62,12 @@ public sealed class Amendments
     public Task<Either<Error, bool>> Save(Guid draftId, string etag, RiteContent words, string note, CancellationToken cancellationToken)
         => Note(note).BindAsync(checkedNote => Current(draftId, etag, cancellationToken)
             .BindAsync(draft => RiteChecks.Check(words, draft.Writing.Kind).MapLeft(Refusal)
-                .MapAsync(checkedWords => Judged(Amended(draft, checkedWords), cancellationToken))
-                .BindAsync(judged => scriptorium
-                    .Amend(judged.Draft, etag, Decision(draft, checkedNote), cancellationToken)
-                    .MapAsync(_ => Task.FromResult(judged.Judged)))));
+                .BindAsync(checkedWords => scribes.PlacesOf(draft.Id, cancellationToken)
+                    .MapAsync(async places =>
+                        (Judged: await Judged(Amended(draft, checkedWords), cancellationToken), Places: places)))
+                .BindAsync(amended => scriptorium
+                    .Amend(amended.Judged.Draft, etag, Decision(draft, checkedNote, amended.Places), cancellationToken)
+                    .MapAsync(_ => Task.FromResult(amended.Judged.Judged)))));
 
     /// <summary>The words rewritten by the writer as the note asks; not saved, for the Scribe to read first.</summary>
     public Task<Either<Error, RiteContent>> Rewrite(Guid draftId, RiteContent words, string note, CancellationToken cancellationToken)
@@ -84,17 +94,19 @@ public sealed class Amendments
         Tags = None,
     };
 
-    // A judge that fails doesn't lose the Scribe's words: the draft waits unjudged, and the page says so.
+    // A judge that fails, or is off, doesn't lose the Scribe's words: the draft waits unjudged, and the page says so.
     private async Task<(Draft Draft, bool Judged)> Judged(Draft amended, CancellationToken cancellationToken)
         => (await judge.Judge(amended, cancellationToken)).Match(
-            Right: judged => (judged, true),
+            // A judge that's turned off answers the draft as it was: with its quality cleared, it's still unjudged.
+            Right: judged => (judged, judged.Augury.IsSome),
             Left: error =>
             {
                 logger.LogWarning(error.ToException(), "The amended draft {DraftId} couldn't be judged again: {Reason}", amended.Id, error.Message);
                 return (amended, false);
             });
 
-    private ScribeDecision Decision(Draft before, Option<string> note) => new()
+    // The words and places as they were before the amendment, read before it was judged again.
+    private ScribeDecision Decision(Draft before, Option<string> note, Option<(int CalendarPlace, int AuguryPlace)> places) => new()
     {
         Id = Guid.NewGuid(),
         DraftId = before.Id,
@@ -103,8 +115,8 @@ public sealed class Amendments
         Title = before.Writing.Title,
         Text = before.Writing.Text,
         HereticalTruth = before.Writing.HereticalTruth,
-        CalendarPlace = None,
-        AuguryPlace = None,
+        CalendarPlace = places.Map(found => found.CalendarPlace),
+        AuguryPlace = places.Map(found => found.AuguryPlace),
         AuguryQuality = before.Augury.Map(augury => augury.Quality),
         Note = note,
         DecidedAtUtc = time.GetUtcNow().UtcDateTime,
