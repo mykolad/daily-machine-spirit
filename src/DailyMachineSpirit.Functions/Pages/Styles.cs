@@ -301,6 +301,7 @@ public static class Styles
         .tags .margin-label{flex-basis:100%;margin-bottom:0}
         .hero>.sheet{grid-column:2;grid-row:1}
         .hero>.archive-more{grid-column:2;grid-row:2}
+        .hero:has(.archive-seal)>.sheet{align-self:stretch}
         .archive-hero .marginalia{display:flex}
         .side{grid-row:1;align-self:start;display:flex;flex-direction:column;gap:56px;margin-top:80px}
         .side-left{grid-column:1}
