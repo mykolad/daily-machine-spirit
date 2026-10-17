@@ -458,15 +458,18 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.Contains("""<a href="/archive?q=cache#m-2026-10">""", single);
     }
 
-    // A rite found by its Heretical Truth alone shows the words around them there, so the reader sees why.
+    // A rite found by its Heretical Truth alone is listed, but its truth stays sealed: the row shows the opening words,
+    // and breaking the seal is the reader's choice, on the rite's own page.
     [Fact]
-    public async Task Archive_WithWordsOnlyInATruth_ShowsTheTruthsWords()
+    public async Task Archive_WithWordsOnlyInATruth_ListsTheRite_WithoutRevealingTheTruth()
     {
         await Add(Day, "The Rite of Re-Run");
 
         var (_, html) = await Searched("timing", "");
 
-        Assert.Contains("""<span class="row-line"><span class="row-truth">Heretical Truth:</span> Your test depends on <mark>timing</mark>.</span>""", html);
+        Assert.Equal(["The Rite of Re-Run"], Titles(html));
+        Assert.Contains("""<span class="row-line">Press Re-run thrice, intoning it passed locally, for the Machine Spirit rewards the…</span>""", html);
+        Assert.DoesNotContain("depends on", html);
     }
 
     [Fact]
