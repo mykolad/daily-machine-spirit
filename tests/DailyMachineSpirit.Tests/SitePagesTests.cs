@@ -241,8 +241,8 @@ public sealed class SitePagesTests : IAsyncLifetime
 
         Assert.Contains("""<span class="rule-outer" aria-hidden="true"></span><span class="rule-inner" aria-hidden="true"></span>""", html);
         Assert.Contains("""<svg class="corner corner-tl" """, html);
-        Assert.Contains("""<span class="margin-text margin-left" aria-hidden="true">4E 4F 54 48 49 4E 47 20 49 53 20 46 4F 52 47 4F 54 54 45 4E · """, html);
-        Assert.Contains("""<span class="margin-text margin-right" aria-hidden="true">01001011 01000101 01010000 01010100 · """, html);
+        Assert.Contains("""<span class="margin-text margin-left" aria-hidden="true" data-code="4E 4F 54 48 49 4E 47 20 49 53 20 46 4F 52 47 4F 54 54 45 4E" data-copies="12">4E 4F 54 48 49 4E 47 20 49 53 20 46 4F 52 47 4F 54 54 45 4E · """, html);
+        Assert.Contains("""<span class="margin-text margin-right" aria-hidden="true" data-code="01001011 01000101 01010000 01010100" data-copies="12">01001011 01000101 01010000 01010100 · """, html);
         Assert.Contains("""<span class="row-number"><span aria-hidden="true">NO. </span><span class="sr-only">Rite </span>1</span>""", html);
     }
 
