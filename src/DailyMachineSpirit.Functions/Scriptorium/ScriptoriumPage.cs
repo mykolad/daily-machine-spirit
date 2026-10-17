@@ -108,7 +108,7 @@ public static partial class ScriptoriumPage
             """);
         Heading(html, "The Scriptorium",
             "Unconsecrated rites await the judgment of the Scribes. Your notes teach the Augury what to choose when no Scribe is watching.");
-        html.Append("""<p class="record-link"><a href="/scriptorium/record">The Record</a>: every change to the calendar, and who made it.</p>""");
+        html.Append("""<p class="record-link"><a href="/scriptorium/precepts">The Precepts</a>: what the Machine Spirit has learned from your judgments. <a href="/scriptorium/record">The Record</a>: every change, and who made it.</p>""");
         html.Append($"""<p class="status" role="status">{status.IfNone(string.Empty)}</p>""");
 
         html.Append($"""
@@ -246,7 +246,7 @@ public static partial class ScriptoriumPage
         Head(html, "The Record");
         html.Append("""<main id="main">""");
         Heading(html, "The Record",
-            "Every change to the calendar and the rites, and who made it, newest first: the Scribes' actions and the Machine Spirit's own.");
+            "Every change to the calendar, the rites and the Precepts, and who made it, newest first: the Scribes' actions and the Machine Spirit's own.");
         html.Append(draft.Match(
             Some: _ => """<p>One rite's record. <a href="/scriptorium/record">The whole record</a> · <a href="/scriptorium">Back to the Scriptorium</a></p>""",
             None: () => """<p><a href="/scriptorium">Back to the Scriptorium</a></p>"""));
@@ -482,7 +482,7 @@ public static partial class ScriptoriumPage
         _ => "Restored from the ashes",
     };
 
-    // What an entry records, after who: the rite named by its title then, linking to its own record.
+    // What an entry records, after who: the rite (or precept) named by its words then, a rite linking to its own record.
     private static string Did(AuditEntry entry)
     {
         var rite = entry.DraftId.Match(
@@ -499,6 +499,12 @@ public static partial class ScriptoriumPage
             AuditAction.Summon => "summoned new rites",
             AuditAction.LetTheAuguryDecide => "let the Augury decide",
             AuditAction.Write => $"wrote {rite}",
+            AuditAction.Distil => """distilled <a href="/scriptorium/precepts">the Precepts</a>""",
+            AuditAction.AddPrecept => $"added the precept {rite}",
+            AuditAction.EditPrecept => $"edited the precept {rite}",
+            AuditAction.PinPrecept => $"pinned the precept {rite}",
+            AuditAction.UnpinPrecept => $"unpinned the precept {rite}",
+            AuditAction.DeletePrecept => $"deleted the precept {rite}",
             _ => $"published {rite}{entry.RiteNumber.Map(number => $" as NO. {number}").IfNone(string.Empty)}",
         };
         return what + entry.Detail.Map(detail => $""" <span class="when">({Encode(detail)})</span>""").IfNone(string.Empty);

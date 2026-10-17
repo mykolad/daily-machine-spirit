@@ -1,5 +1,6 @@
 using System.Text.Json;
 using DailyMachineSpirit.Data.Entities;
+using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Generation.Chat;
 using DailyMachineSpirit.Functions.Telemetry;
 using LanguageExt;
@@ -32,15 +33,22 @@ public sealed class RiteWriter
     };
 
     private readonly IChatClients chatClients;
+    private readonly IPreceptRepository precepts;
     private readonly IOptions<GenerationOptions> options;
     private readonly TimeProvider time;
     private readonly SiteMetrics metrics;
     private readonly ILogger<RiteWriter> logger;
 
     public RiteWriter(
-        IChatClients chatClients, IOptions<GenerationOptions> options, TimeProvider time, SiteMetrics metrics, ILogger<RiteWriter> logger)
+        IChatClients chatClients,
+        IPreceptRepository precepts,
+        IOptions<GenerationOptions> options,
+        TimeProvider time,
+        SiteMetrics metrics,
+        ILogger<RiteWriter> logger)
     {
         this.chatClients = chatClients;
+        this.precepts = precepts;
         this.options = options;
         this.time = time;
         this.metrics = metrics;
@@ -50,7 +58,7 @@ public sealed class RiteWriter
     /// <summary>A new draft of the kind, on a subject none of <paramref name="titlesToAvoid"/> has; not judged or saved yet.</summary>
     public async Task<Either<Error, Draft>> Write(RiteKind kind, IReadOnlyList<string> titlesToAvoid, CancellationToken cancellationToken)
         => (await Answer(
-                [new(ChatRole.System, RitePrompt.Instructions(kind, titlesToAvoid)), new(ChatRole.User, RitePrompt.Request(kind))],
+                [new(ChatRole.System, RitePrompt.Instructions(kind, titlesToAvoid, await Precepts(cancellationToken))), new(ChatRole.User, RitePrompt.Request(kind))],
                 kind,
                 Unhurried(),
                 $"No model wrote a usable {kind.ToString().ToLowerInvariant()}.",
@@ -76,12 +84,22 @@ public sealed class RiteWriter
     /// </summary>
     public async Task<Either<Error, RiteContent>> Rewrite(RiteKind kind, RiteContent words, string note, CancellationToken cancellationToken)
         => (await Answer(
-                [new(ChatRole.System, RitePrompt.Instructions(kind, [])), new(ChatRole.User, RitePrompt.Rewrite(kind, words, note))],
+                [new(ChatRole.System, RitePrompt.Instructions(kind, [], await Precepts(cancellationToken))), new(ChatRole.User, RitePrompt.Rewrite(kind, words, note))],
                 kind,
                 WhileTheScribeWaits,
                 "No model rewrote it usably.",
                 cancellationToken))
             .Map(written => written.Content);
+
+    // The Precepts' words (#12). Writing matters more than following them: without them, the rite is still written.
+    private async Task<IReadOnlyList<string>> Precepts(CancellationToken cancellationToken)
+        => (await precepts.Get(cancellationToken)).Match(
+            Right: read => read.Book.Precepts.Select(precept => precept.Text).ToList(),
+            Left: error =>
+            {
+                logger.LogWarning(error.ToException(), "The Precepts couldn't be read, so the rite is written without them: {Reason}", error.Message);
+                return [];
+            });
 
     // The first usable answer to the messages, and the model that gave it.
     private async Task<Either<Error, (RiteContent Content, string Model)>> Answer(

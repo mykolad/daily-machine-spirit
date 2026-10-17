@@ -15,4 +15,14 @@ public enum AuditAction
     // The Machine Spirit's own.
     Write,
     Publish,
+
+    // Weekly by the Machine Spirit, or when a Scribe asks (#12).
+    Distil,
+
+    // A Scribe's changes to the Precepts. A pinned precept stays when they're distilled again.
+    AddPrecept,
+    EditPrecept,
+    PinPrecept,
+    UnpinPrecept,
+    DeletePrecept,
 }

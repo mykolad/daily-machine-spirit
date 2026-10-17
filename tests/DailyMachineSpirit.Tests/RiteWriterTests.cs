@@ -19,6 +19,7 @@ public sealed class RiteWriterTests : IDisposable
 
     private readonly FakeTimeProvider time = new(new DateTimeOffset(2026, 10, 7, 0, 0, 5, TimeSpan.Zero));
     private readonly FakeChatClients models = new();
+    private readonly FakePrecepts precepts = new();
     private readonly MetricsProbe probe = new();
 
     public void Dispose() => probe.Dispose();
@@ -54,6 +55,38 @@ public sealed class RiteWriterTests : IDisposable
         Assert.Contains("* The Rite of Re-Run", instructions);
         Assert.Contains("Never quote or paraphrase Games Workshop", instructions);
         Assert.Equal("Write a prayer.", messages.Single(message => message.Role == ChatRole.User).Text);
+    }
+
+    // So drafts improve at the source, not only in the ranking (#12): a rewrite follows them too.
+    [Fact]
+    public async Task WriteAndRewrite_FollowThePrecepts()
+    {
+        precepts.Hold("Prefer rites whose Heretical Truth names the real fix.", "Avoid `node_modules` this month.");
+        models.Answers(Sol, GoodAnswer, GoodAnswer);
+
+        await Writer(retryDelaySeconds: 0).Write(RiteKind.Prayer, [], CancellationToken.None);
+        await Writer(retryDelaySeconds: 0).Rewrite(
+            RiteKind.Prayer, new RiteContent("The Rite of Re-Run", "Press Re-run.", "It's flaky."), "Shorter.", CancellationToken.None);
+
+        Assert.All(models.Requests, request =>
+        {
+            var instructions = request.Messages.Single(message => message.Role == ChatRole.System).Text;
+            Assert.Contains("Follow their Precepts", instructions);
+            Assert.Contains("  * Prefer rites whose Heretical Truth names the real fix.", instructions);
+            Assert.Contains("  * Avoid `node_modules` this month.", instructions);
+        });
+    }
+
+    // Writing matters more than following the Precepts: unreadable, the rite is written without them.
+    [Fact]
+    public async Task Write_GoesOnWithoutThePrecepts_WhenTheyCantBeRead()
+    {
+        precepts.Stored = LanguageExt.Common.Error.New("Cosmos is down.");
+        models.Answers(Sol, GoodAnswer);
+
+        Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Prayer, [], CancellationToken.None));
+
+        Assert.DoesNotContain("Precepts", models.Requests.Single().Messages.Single(message => message.Role == ChatRole.System).Text);
     }
 
     [Fact]
@@ -221,5 +254,5 @@ public sealed class RiteWriterTests : IDisposable
     }
 
     private RiteWriter Writer(int retryDelaySeconds)
-        => new(models, Options.Create(new GenerationOptions { RetryDelaySeconds = retryDelaySeconds }), time, probe.Metrics, NullLogger<RiteWriter>.Instance);
+        => new(models, precepts, Options.Create(new GenerationOptions { RetryDelaySeconds = retryDelaySeconds }), time, probe.Metrics, NullLogger<RiteWriter>.Instance);
 }

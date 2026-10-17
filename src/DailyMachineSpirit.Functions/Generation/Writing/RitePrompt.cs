@@ -11,7 +11,8 @@ public static class RitePrompt
     public const int TextLength = 400;
     public const int HereticalTruthLength = 250;
 
-    public static string Instructions(RiteKind kind, IReadOnlyList<string> titlesToAvoid)
+    /// <param name="precepts">The Scribes' Precepts (#12), learned from what they chose and burned.</param>
+    public static string Instructions(RiteKind kind, IReadOnlyList<string> titlesToAvoid, IReadOnlyList<string> precepts)
     {
         var sb = new StringBuilder();
         sb.AppendLine("You write for The Daily Machine Spirit, a satirical website. Its joke: AI and vibe coding are turning");
@@ -39,6 +40,16 @@ public static class RitePrompt
             ? "- \"The Omnissiah\" may appear at most once, in the text only (never in the title or the Heretical Truth)."
             : "- Don't name \"the Omnissiah\".");
         sb.AppendLine("- Family-friendly. No real people or companies mocked by name.");
+
+        if (precepts.Count > 0)
+        {
+            sb.AppendLine("- The Scribes, who choose what's published, have learned what makes a good rite. Follow their Precepts,");
+            sb.AppendLine("  as long as they don't break a rule above:");
+            foreach (var precept in precepts)
+            {
+                sb.AppendLine($"  * {precept}");
+            }
+        }
 
         if (titlesToAvoid.Count > 0)
         {

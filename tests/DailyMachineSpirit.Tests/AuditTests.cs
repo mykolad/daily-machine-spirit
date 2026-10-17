@@ -131,5 +131,33 @@ public sealed class AuditTests : IAsyncLifetime
         Assert.Equal(name, ScribeNames.Of(actor));
     }
 
+    // Each entry reads as a sentence: who, then what they did to which rite or precept.
+    [Theory]
+    [InlineData(AuditAction.Anoint, "anointed “Litany”")]
+    [InlineData(AuditAction.Exalt, "exalted “Litany”")]
+    [InlineData(AuditAction.Humble, "humbled “Litany”")]
+    [InlineData(AuditAction.Burn, "consigned “Litany” to the flames")]
+    [InlineData(AuditAction.Restore, "restored “Litany” from the ashes")]
+    [InlineData(AuditAction.Amend, "amended “Litany”")]
+    [InlineData(AuditAction.Summon, "summoned new rites")]
+    [InlineData(AuditAction.LetTheAuguryDecide, "let the Augury decide")]
+    [InlineData(AuditAction.Write, "wrote “Litany”")]
+    [InlineData(AuditAction.Publish, "published “Litany” as NO. 7")]
+    [InlineData(AuditAction.Distil, "distilled <a href=\"/scriptorium/precepts\">the Precepts</a>")]
+    [InlineData(AuditAction.AddPrecept, "added the precept “Litany”")]
+    [InlineData(AuditAction.EditPrecept, "edited the precept “Litany”")]
+    [InlineData(AuditAction.PinPrecept, "pinned the precept “Litany”")]
+    [InlineData(AuditAction.UnpinPrecept, "unpinned the precept “Litany”")]
+    [InlineData(AuditAction.DeletePrecept, "deleted the precept “Litany”")]
+    public void TheRecord_SaysWhatEachActionDid(AuditAction action, string did)
+    {
+        var entry = new AuditEntry { Id = Guid.NewGuid(), Actor = Tester, Action = action, Title = "Litany", RiteNumber = Some(7) };
+
+        Assert.Contains($"A Scribe (…456789) {did}</li>", ScriptoriumPage.RenderRecord([entry], None));
+    }
+
+    [Fact]
+    public void AnEmptyRecord_SaysSo() => Assert.Contains("Nothing is recorded yet.", ScriptoriumPage.RenderRecord([], None));
+
     private async Task<List<AuditEntry>> Entries() => Ok(await testbed.Audit.GetNewest(50, CancellationToken.None));
 }
