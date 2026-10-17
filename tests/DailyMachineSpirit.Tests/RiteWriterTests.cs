@@ -158,6 +158,10 @@ public sealed class RiteWriterTests : IDisposable
     [InlineData(RiteKind.Prayer, "Title", "Text.", "LLMs guess; read what they wrote.")]
     [InlineData(RiteKind.Ritual, "Title", "The vibe-coded build obeys no one.", "Truth.")]
     [InlineData(RiteKind.Prayer, "Title", "Text.", "Artificial intelligence won't read the logs for you.")]
+    [InlineData(RiteKind.Ritual, "Title", "The A.I. wrote the patch.", "Truth.")]
+    [InlineData(RiteKind.Prayer, "Title", "Text.", "Nobody reviewed what came from the A.I.")]
+    [InlineData(RiteKind.Ritual, "Title", "Ask GPT-4o thrice.", "Truth.")]
+    [InlineData(RiteKind.Prayer, "Title", "Text.", "GPT-10 guessed the fix.")]
     public async Task Write_AsksAgain_WhenTheAnswerBreaksTheRules(RiteKind kind, string title, string text, string hereticalTruth)
     {
         models.Answers(Sol, FakeChatClients.Answer(title, text, hereticalTruth), GoodAnswer);
