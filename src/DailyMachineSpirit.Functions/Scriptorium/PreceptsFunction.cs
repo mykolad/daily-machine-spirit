@@ -92,7 +92,7 @@ public sealed class PreceptsFunction
         => await (await gate.ActingScribe(request, cancellationToken)).Match(
             Left: refused => Task.FromResult(refused),
             Right: async scribe => await (await ReadForm(request, cancellationToken)).Match(
-                Some: async fields => Answer(request, "add", None, await keeping.Add(fields["text"].ToString(), scribe, cancellationToken)),
+                Some: async fields => Answer(request, "add", None, await keeping.AddPinned(fields["text"].ToString(), scribe, cancellationToken)),
                 None: () => Task.FromResult<IActionResult>(new BadRequestResult())));
 
     [Function("ScriptoriumPrecept")]
@@ -115,7 +115,7 @@ public sealed class PreceptsFunction
         return action switch
         {
             "edit" => Answer(request, action, preceptId,
-                await keeping.Edit(preceptId, etag, fields["text"].ToString(), scribe, cancellationToken)),
+                await keeping.EditAndPin(preceptId, etag, fields["text"].ToString(), scribe, cancellationToken)),
             "pin" => Answer(request, action, preceptId, await keeping.Pin(preceptId, etag, scribe, cancellationToken)),
             "unpin" => Answer(request, action, preceptId, await keeping.Unpin(preceptId, etag, scribe, cancellationToken)),
             // Gone from the page, so the message is where the eye goes.

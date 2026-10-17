@@ -15,8 +15,7 @@ public sealed class AgreementTrend
     /// <summary>How many months the trend shows, this one included.</summary>
     public const int MonthsShown = 6;
 
-    /// <summary>The Augury's top picks: the drafts it would publish in the next three days.</summary>
-    public const int TopPicks = 3;
+    public const int TopPickPlaces = 3;
 
     private readonly IScriptoriumRepository scriptorium;
     private readonly TimeProvider time;
@@ -52,14 +51,16 @@ public sealed class AgreementTrend
             distances.Count == 0 ? None : Some(distances.Average()));
     }
 
-    // Only a judged draft: an unjudged one is placed by age alone, so burning it says nothing against the Augury.
+    // Only a draft the Augury ranked by its quality: an unjudged one, or one an older judge scored, is placed by age
+    // alone, so burning it says nothing against the Augury.
     private static bool WasATopPick(ScribeDecision decision)
-        => decision.AuguryQuality.IsSome && decision.AuguryPlace.Exists(place => place <= TopPicks);
+        => decision.AuguryRankedByQuality && decision.AuguryPlace.Exists(place => place <= TopPickPlaces);
 
     // How far a move took the draft from the Augury's place for it. Its new place follows from the action and the place
-    // before. An unjudged draft has a place too, but only by age: moving it says nothing about the Augury's judgment.
+    // before. A draft the Augury didn't rank by quality has a place too, but only by age: moving it says nothing about
+    // the Augury's judgment.
     private static Option<double> Distance(ScribeDecision decision)
-        => decision.AuguryQuality.Bind(_ => decision.CalendarPlace)
+        => (decision.AuguryRankedByQuality ? decision.CalendarPlace : None)
             .Bind(before => NewPlace(decision.Action, before))
             .Bind(after => decision.AuguryPlace.Map(augury => (double)Math.Abs(after - augury)));
 

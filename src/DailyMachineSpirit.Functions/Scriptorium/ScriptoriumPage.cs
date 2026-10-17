@@ -111,7 +111,7 @@ public static partial class ScriptoriumPage
             """);
         Heading(html, "The Scriptorium",
             "Unconsecrated rites await the judgment of the Scribes. Your notes teach the Augury what to choose when no Scribe is watching.");
-        html.Append("""<p class="record-link"><a href="/scriptorium/precepts">The Precepts</a>: what the Machine Spirit has learned from your judgments. <a href="/scriptorium/record">The Record</a>: every change, and who made it.</p>""");
+        html.Append("""<p class="record-link"><a href="/scriptorium/precepts">The Precepts</a>: what the Machine Spirit has learned from your judgments, and whether the Scribes agree with the Augury. <a href="/scriptorium/record">The Record</a>: every change, and who made it.</p>""");
         html.Append($"""<p class="status" role="status">{status.IfNone(string.Empty)}</p>""");
 
         html.Append($"""
