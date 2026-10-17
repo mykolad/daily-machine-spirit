@@ -569,6 +569,33 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Equal($"/scriptorium?done=changed&rite={draft.Id:D}#rite-{draft.Id:D}", Assert.IsType<RedirectResult>(result).Url);
     }
 
+    // A textarea's maxlength counts a line break as one character, but the browser posts it as two (CRLF): words that
+    // fit the field fit here too.
+    [Fact]
+    public async Task Amend_TakesMultilineWords_UpToTheFieldsLimits()
+    {
+        var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
+        var text = Lines(RiteWriting.MaxTextLength);
+        var truth = Lines(RiteWriting.MaxHereticalTruthLength);
+        var form = string.Join("&", new[] { ("etag", await ETag(draft)), ("title", "The Long Litany"), ("text", text), ("truth", truth), ("note", "") }
+            .Select(field => $"{field.Item1}={Uri.EscapeDataString(field.Item2)}"));
+
+        var response = await Function(enabled: true).Decide(Post("application/x-www-form-urlencoded", form), draft.Id, "amend", CancellationToken.None);
+
+        Assert.StartsWith("/scriptorium?done=amend", Assert.IsType<RedirectResult>(response.Result).Url);
+        var saved = Assert.Single(await testbed.Waiting());
+        Assert.Equal((text.Replace("\r\n", "\n"), truth.Replace("\r\n", "\n")), (saved.Writing.Text, saved.Writing.HereticalTruth));
+
+        // As a textarea counts it: each line break one character, the whole at the limit.
+        static string Lines(int limit)
+        {
+            var lines = Enumerable.Repeat(new string('O', 99), limit / 100).ToList();
+            var counted = lines.Sum(line => line.Length) + lines.Count - 1;
+            lines[^1] += new string('O', limit - counted);
+            return string.Join("\r\n", lines);
+        }
+    }
+
     [Fact]
     public async Task Amend_SavesTheWords_AndTheCalendarSaysSo()
     {
@@ -720,7 +747,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         }.Select(field => $"{field.Item1}={Uri.EscapeDataString(field.Item2)}")));
 
     private async Task<string> ETag(Draft draft)
-        => Ok(await testbed.Amendments().Get(draft.Id, CancellationToken.None))
+        => Ok(await testbed.Amendments().FindWaiting(draft.Id, CancellationToken.None))
             .Map(amendable => amendable.ETag)
             .IfNone(() => throw new Xunit.Sdk.XunitException("The draft isn't amendable."));
 

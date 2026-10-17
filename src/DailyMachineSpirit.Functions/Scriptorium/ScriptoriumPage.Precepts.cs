@@ -34,7 +34,7 @@ public static partial class ScriptoriumPage
             <p>{Encode(Distilled(book))} Pinned precepts stay as they are; the others make way for the new ones.</p>
             <form method="post" action="/scriptorium/precepts/distil" class="actions">
             <button class="primary" aria-describedby="distil-hint">{ScriptoriumIcons.Summon}Distil the Precepts Now</button>
-            <span class="hint" id="distil-hint">Takes up to a minute.</span>
+            <span class="hint" id="distil-hint">Usually seconds, at most a minute and a half.</span>
             </form>
             """);
 

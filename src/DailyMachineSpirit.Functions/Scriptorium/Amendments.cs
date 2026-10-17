@@ -48,40 +48,35 @@ public sealed class Amendments
         this.logger = logger;
     }
 
-    /// <summary>The draft, if it's still waiting: a burned or published one can't be amended.</summary>
-    public Task<Either<Error, Option<AmendableDraft>>> Get(Guid draftId, CancellationToken cancellationToken)
+    public Task<Either<Error, Option<AmendableDraft>>> FindWaiting(Guid draftId, CancellationToken cancellationToken)
         => drafts.GetWithETag(draftId, cancellationToken)
             .MapAsync(found => Task.FromResult(found
                 .Filter(stored => stored.Draft.State == DraftState.Waiting)
                 .Map(stored => new AmendableDraft(stored.Draft, stored.ETag))));
 
-    /// <summary>
-    /// Saves the words if the draft is still the version the Scribe read (<paramref name="etag"/>): true when it was
-    /// judged again, false when the judge failed and it waits without scores, as a draft that couldn't be judged does.
-    /// </summary>
-    public Task<Either<Error, bool>> Save(
+    /// <param name="etag">The version the Scribe read: changed since, nothing is saved.</param>
+    public Task<Either<Error, SavedAmendment>> SaveAndJudgeAgain(
         Guid draftId, string etag, RiteContent words, string note, string scribe, CancellationToken cancellationToken)
-        => Note(note).BindAsync(checkedNote => Current(draftId, etag, cancellationToken)
+        => CheckedNote(note).BindAsync(checkedNote => AsTheScribeRead(draftId, etag, cancellationToken)
             .BindAsync(draft => RiteChecks.Check(words, draft.Writing.Kind).MapLeft(Refusal)
                 .BindAsync(checkedWords => scribes.PlacesOf(draft.Id, cancellationToken)
                     .MapAsync(async places =>
-                        (Judged: await Judged(Amended(draft, checkedWords), cancellationToken), Places: places)))
+                        (Judged: await JudgedAgain(WithNewWords(draft, checkedWords), cancellationToken), Places: places)))
                 .BindAsync(amended => scriptorium
                     .Amend(amended.Judged.Draft, etag, Decision(draft, checkedNote, amended.Places),
                         Audit(scribe, draft, amended.Judged.Draft), cancellationToken)
-                    .MapAsync(_ => Task.FromResult(amended.Judged.Judged)))));
+                    .MapAsync(_ => Task.FromResult(new SavedAmendment(amended.Judged.Judged))))));
 
-    /// <summary>The words rewritten by the writer as the note asks; not saved, for the Scribe to read first.</summary>
-    public Task<Either<Error, RiteContent>> Rewrite(Guid draftId, RiteContent words, string note, CancellationToken cancellationToken)
-        => Note(note).Bind(checkedNote => checkedNote.ToEither(NoteNeeded))
-            .BindAsync(checkedNote => Get(draftId, cancellationToken)
+    public Task<Either<Error, RiteContent>> ProposeRewrite(Guid draftId, RiteContent words, string note, CancellationToken cancellationToken)
+        => CheckedNote(note).Bind(checkedNote => checkedNote.ToEither(NoteNeeded))
+            .BindAsync(checkedNote => FindWaiting(draftId, cancellationToken)
                 .BindAsync(found => found.Match(
                     Some: amendable => writer.Rewrite(amendable.Draft.Writing.Kind, words, checkedNote, cancellationToken),
                     None: () => Task.FromResult(Left<Error, RiteContent>(ScriptoriumRepository.ChangedMeanwhile)))));
 
     // The draft as the Scribe read it: gone, burned, published or amended since, it's a change to look at again.
-    private Task<Either<Error, Draft>> Current(Guid draftId, string etag, CancellationToken cancellationToken)
-        => Get(draftId, cancellationToken)
+    private Task<Either<Error, Draft>> AsTheScribeRead(Guid draftId, string etag, CancellationToken cancellationToken)
+        => FindWaiting(draftId, cancellationToken)
             .BindAsync(found => Task.FromResult(found
                 .Filter(amendable => amendable.ETag == etag)
                 .Map(amendable => amendable.Draft)
@@ -89,7 +84,7 @@ public sealed class Amendments
 
     // Its old scores, quality, tags and likeness to another rite describe the old words, so they go; judging gives the new
     // ones, and the Scribe who amended it has read it.
-    private static Draft Amended(Draft draft, RiteContent words) => draft with
+    private static Draft WithNewWords(Draft draft, RiteContent words) => draft with
     {
         Writing = draft.Writing with { Title = words.Title, Text = words.Text, HereticalTruth = words.HereticalTruth, Edited = true },
         Similarity = None,
@@ -99,7 +94,7 @@ public sealed class Amendments
     };
 
     // A judge that fails, or is off, doesn't lose the Scribe's words: the draft waits unjudged, and the page says so.
-    private async Task<(Draft Draft, bool Judged)> Judged(Draft amended, CancellationToken cancellationToken)
+    private async Task<(Draft Draft, bool Judged)> JudgedAgain(Draft amended, CancellationToken cancellationToken)
         => (await judge.Judge(amended, cancellationToken)).Match(
             // A judge that's turned off answers the draft as it was: with its quality cleared, it's still unjudged.
             Right: judged => (judged, judged.Augury.IsSome),
@@ -135,7 +130,7 @@ public sealed class Amendments
     private static Error Refusal(Error why) => Error.New(Refused, why.Message);
 
     // An empty note is no note, as with every other decision.
-    private static Either<Error, Option<string>> Note(string note)
+    private static Either<Error, Option<string>> CheckedNote(string note)
     {
         var trimmed = note.Trim();
         if (trimmed.Length > ScribeDecision.MaxNoteLength)

@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Functions.Generation.Chat;
+using DailyMachineSpirit.Functions.Telemetry;
 using LanguageExt;
 using LanguageExt.Common;
 using Microsoft.Extensions.AI;
@@ -39,12 +40,14 @@ public sealed class DuplicateCheck
     private readonly IChatClients chatClients;
     private readonly IOptions<GenerationOptions> options;
     private readonly TimeProvider time;
+    private readonly SiteMetrics metrics;
 
-    public DuplicateCheck(IChatClients chatClients, IOptions<GenerationOptions> options, TimeProvider time)
+    public DuplicateCheck(IChatClients chatClients, IOptions<GenerationOptions> options, TimeProvider time, SiteMetrics metrics)
     {
         this.chatClients = chatClients;
         this.options = options;
         this.time = time;
+        this.metrics = metrics;
     }
 
     /// <summary>The taken rite the draft repeats, if any; an error when the model couldn't tell.</summary>
@@ -57,11 +60,13 @@ public sealed class DuplicateCheck
 
         using var timeout = new CancellationTokenSource(AttemptTime, time);
         using var attempt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
+        var started = time.GetTimestamp();
         try
         {
             var response = await chatClients.For(options.Value.DuplicateCheckModel).GetResponseAsync<DuplicateAnswer>(
                 [new(ChatRole.System, Instructions), new(ChatRole.User, Request(draft, taken))],
                 AnswerSerializerOptions, options: null, useJsonSchemaResponseFormat: true, attempt.Token);
+            metrics.AnswerTime(options.Value.DuplicateCheckModel, "check", "answered", time.GetElapsedTime(started));
             if (!response.TryGetResult(out var answer))
             {
                 return Error.New("The answer isn't a number.");
@@ -77,6 +82,7 @@ public sealed class DuplicateCheck
         // cancellation stops.
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
+            metrics.AnswerTime(options.Value.DuplicateCheckModel, "check", timeout.IsCancellationRequested ? "timed-out" : "failed", time.GetElapsedTime(started));
             return Error.New(ex);
         }
     }

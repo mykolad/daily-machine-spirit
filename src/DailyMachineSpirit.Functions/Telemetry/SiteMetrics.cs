@@ -13,6 +13,7 @@ public sealed class SiteMetrics
 
     private readonly Histogram<double> invocations;
     private readonly Counter<long> answers;
+    private readonly Histogram<double> answerTimes;
     private readonly Counter<long> published;
     private readonly Counter<long> judging;
     private readonly Counter<long> duplicateChecks;
@@ -30,6 +31,9 @@ public sealed class SiteMetrics
                 // From a font served from memory to a model writing a rite.
                 HistogramBucketBoundaries = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120],
             });
+        answerTimes = meter.CreateHistogram<double>("dms.generation.answer_duration", "s",
+            "How long a model took to answer, by model, what it was asked (write, rewrite, distil, check) and outcome: the measure for each time limit.",
+            advice: new InstrumentAdvice<double> { HistogramBucketBoundaries = [1, 2.5, 5, 10, 15, 20, 30, 40, 60, 90, 120] });
         answers = meter.CreateCounter<long>("dms.generation.answers", "{answer}",
             "The models' answers when asked for a rite: accepted, refused (it broke a rule) or failed (no usable answer).");
         published = meter.CreateCounter<long>("dms.rites.published", "{rite}", "Rites published, by kind and model.");
@@ -49,6 +53,9 @@ public sealed class SiteMetrics
         => invocations.Record(duration.TotalSeconds, new("function", function), new("outcome", outcome));
 
     public void Answer(string model, string outcome) => answers.Add(1, new("model", model), new("outcome", outcome));
+
+    public void AnswerTime(string model, string asked, string outcome, TimeSpan duration)
+        => answerTimes.Record(duration.TotalSeconds, new("model", model), new("asked", asked), new("outcome", outcome));
 
     public void Published(Rite rite)
         => published.Add(1, new("kind", rite.Writing.Kind.ToString().ToLowerInvariant()), new("model", rite.Writing.GeneratedByModel));

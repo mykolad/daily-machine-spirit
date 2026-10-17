@@ -2,6 +2,7 @@ using System.Text.Json;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Generation.Chat;
+using DailyMachineSpirit.Functions.Telemetry;
 using LanguageExt;
 using LanguageExt.Common;
 using Microsoft.Extensions.AI;
@@ -20,8 +21,8 @@ public sealed class PreceptDistiller
     /// <summary>How many of the newest judgments a distillation reads: a few months of a weekly visit's.</summary>
     public const int JudgmentsRead = 100;
 
-    /// <summary>How long a model may take: two of them stay within the minute the page promises.</summary>
-    public static readonly TimeSpan AttemptTime = TimeSpan.FromSeconds(30);
+    /// <summary>How long a model may take: two of them stay within the 100 seconds Cloudflare waits for an answer.</summary>
+    public static readonly TimeSpan AttemptTime = TimeSpan.FromSeconds(40);
 
     /// <summary>The Scribes haven't judged anything yet: there's nothing to learn from.</summary>
     public static readonly Error NothingToLearn = Error.New("The Scribes haven't judged any rite yet, so there's nothing to learn from.");
@@ -40,6 +41,7 @@ public sealed class PreceptDistiller
     private readonly IChatClients chatClients;
     private readonly IOptions<GenerationOptions> options;
     private readonly TimeProvider time;
+    private readonly SiteMetrics metrics;
     private readonly ILogger<PreceptDistiller> logger;
 
     public PreceptDistiller(
@@ -48,6 +50,7 @@ public sealed class PreceptDistiller
         IChatClients chatClients,
         IOptions<GenerationOptions> options,
         TimeProvider time,
+        SiteMetrics metrics,
         ILogger<PreceptDistiller> logger)
     {
         this.scriptorium = scriptorium;
@@ -55,6 +58,7 @@ public sealed class PreceptDistiller
         this.chatClients = chatClients;
         this.options = options;
         this.time = time;
+        this.metrics = metrics;
         this.logger = logger;
     }
 
@@ -124,10 +128,12 @@ public sealed class PreceptDistiller
     {
         using var timeout = new CancellationTokenSource(AttemptTime, time);
         using var attempt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
+        var started = time.GetTimestamp();
         try
         {
             var response = await chatClients.For(model).GetResponseAsync<DistilledPrecepts>(
                 messages, AnswerSerializerOptions, options: null, useJsonSchemaResponseFormat: true, attempt.Token);
+            metrics.AnswerTime(model, "distil", "answered", time.GetElapsedTime(started));
             return response.TryGetResult(out var distilled)
                 ? distilled
                 : Error.New("The answer isn't a list of precepts.");
@@ -136,6 +142,7 @@ public sealed class PreceptDistiller
         // cancellation stops.
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
+            metrics.AnswerTime(model, "distil", timeout.IsCancellationRequested ? "timed-out" : "failed", time.GetElapsedTime(started));
             return Error.New(ex);
         }
     }

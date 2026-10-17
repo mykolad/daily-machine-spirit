@@ -92,7 +92,7 @@ public sealed class ScriptoriumFunction
             return refused;
         }
 
-        return (await amendments.Get(draftId, cancellationToken)).Match(
+        return (await amendments.FindWaiting(draftId, cancellationToken)).Match(
             Right: found => found.Match(
                 Some: amendable => Html(request, ScriptoriumPage.RenderAmend(amendable, Words(amendable.Draft), string.Empty, None), StatusCodes.Status200OK),
                 // Burned or published since the calendar was shown: the page says to look again.
@@ -187,8 +187,8 @@ public sealed class ScriptoriumFunction
         var words = Words(fields);
         var note = fields["note"].ToString();
         var etag = fields["etag"].ToString();
-        return await (await amendments.Save(draftId, etag, words, note, scribe, cancellationToken)).Match(
-            Right: judged => Task.FromResult(new ScriptoriumResponse { Result = Back(judged ? "amend" : "amend-unjudged", draftId) }),
+        return await (await amendments.SaveAndJudgeAgain(draftId, etag, words, note, scribe, cancellationToken)).Match(
+            Right: saved => Task.FromResult(new ScriptoriumResponse { Result = Back(saved.JudgedAgain ? "amend" : "amend-unjudged", draftId) }),
             Left: error => IsTheScribes(error)
                 ? AmendAgain(request, draftId, etag, words, note, error.Message, StatusCodes.Status422UnprocessableEntity, cancellationToken)
                 : Task.FromResult(Failure(request, error, draftId)));
@@ -200,7 +200,7 @@ public sealed class ScriptoriumFunction
         var words = Words(fields);
         var note = fields["note"].ToString();
         var etag = fields["etag"].ToString();
-        return await (await amendments.Rewrite(draftId, words, note, cancellationToken)).Match(
+        return await (await amendments.ProposeRewrite(draftId, words, note, cancellationToken)).Match(
             Right: rewritten => AmendAgain(request, draftId, etag, rewritten, note,
                 "The Machine Spirit rewrote it as your note asks. Read it over, then save it, ask again, or leave it as it was.",
                 StatusCodes.Status200OK, cancellationToken),
@@ -226,7 +226,7 @@ public sealed class ScriptoriumFunction
     // save; gone from the calendar since, back to it to look again.
     private async Task<ScriptoriumResponse> AmendAgain(
         HttpRequest request, Guid draftId, string etag, RiteContent words, string note, string message, int status, CancellationToken cancellationToken)
-        => (await amendments.Get(draftId, cancellationToken)).Match(
+        => (await amendments.FindWaiting(draftId, cancellationToken)).Match(
             Right: found => found.Match(
                 Some: amendable => new ScriptoriumResponse
                 {
@@ -238,8 +238,12 @@ public sealed class ScriptoriumFunction
     // The Scribe's to fix on the page: words breaking a rule, a note too long, or no note to rewrite by.
     private static bool IsTheScribes(Error error) => error.Code == Amendments.Refused || error == Scribes.NoteTooLong;
 
+    // A browser posts a textarea's line breaks as CRLF, while its maxlength counted each as one character: as LF, words
+    // the field allowed fit the same limits here.
     private static RiteContent Words(IFormCollection fields)
-        => new(fields["title"].ToString(), fields["text"].ToString(), fields["truth"].ToString());
+        => new(fields["title"].ToString(), WithLineFeeds(fields["text"].ToString()), WithLineFeeds(fields["truth"].ToString()));
+
+    private static string WithLineFeeds(string text) => text.Replace("\r\n", "\n");
 
     private static RiteContent Words(Draft draft) => new(draft.Writing.Title, draft.Writing.Text, draft.Writing.HereticalTruth);
 

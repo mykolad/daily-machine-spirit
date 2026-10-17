@@ -20,10 +20,10 @@ namespace DailyMachineSpirit.Functions.Generation.Writing;
 public sealed class RiteWriter
 {
     /// <summary>
-    /// A rewrite's patience: each model once, 30 seconds each, so the Scribe gets their page back (with the rewrite or
-    /// their own words) well within the minute and a half Cloudflare waits for an answer.
+    /// A rewrite's patience: each model once, 40 seconds each, so the Scribe gets their page back (with the rewrite or
+    /// their own words) within the 100 seconds Cloudflare waits for an answer.
     /// </summary>
-    public static readonly Patience WhileTheScribeWaits = new(1, TimeSpan.Zero, Some(TimeSpan.FromSeconds(30)));
+    public static readonly Patience WhileTheScribeWaits = new(1, TimeSpan.Zero, Some(TimeSpan.FromSeconds(40)));
 
     private static readonly JsonSerializerOptions AnswerSerializerOptions = new(JsonSerializerOptions.Web)
     {
@@ -61,6 +61,7 @@ public sealed class RiteWriter
                 [new(ChatRole.System, RitePrompt.Instructions(kind, taken, await Precepts(cancellationToken))), new(ChatRole.User, RitePrompt.Request(kind))],
                 kind,
                 Unhurried(),
+                "write",
                 $"No model wrote a usable {kind.ToString().ToLowerInvariant()}.",
                 cancellationToken))
             .Map(written => new Draft
@@ -87,6 +88,7 @@ public sealed class RiteWriter
                 [new(ChatRole.System, RitePrompt.Instructions(kind, [], await Precepts(cancellationToken))), new(ChatRole.User, RitePrompt.Rewrite(kind, words, note))],
                 kind,
                 WhileTheScribeWaits,
+                "rewrite",
                 "No model rewrote it usably.",
                 cancellationToken))
             .Map(written => written.Content);
@@ -103,7 +105,12 @@ public sealed class RiteWriter
 
     // The first usable answer to the messages, and the model that gave it.
     private async Task<Either<Error, (RiteContent Content, string Model)>> Answer(
-        List<ChatMessage> messages, RiteKind kind, Patience patience, string noneUsable, CancellationToken cancellationToken)
+        List<ChatMessage> messages,
+        RiteKind kind,
+        Patience patience,
+        string asked,
+        string noneUsable,
+        CancellationToken cancellationToken)
     {
         var failures = new List<string>();
         foreach (var model in options.Value.Models)
@@ -116,7 +123,7 @@ public sealed class RiteWriter
                     await Task.Delay(patience.RetryDelay, time, cancellationToken);
                 }
 
-                var answer = await Ask(model, messages, patience.AttemptTime, cancellationToken);
+                var answer = await Ask(model, messages, patience.AttemptTime, asked, cancellationToken);
                 var written = answer.Bind(content => RiteChecks.Check(content, kind));
                 metrics.Answer(model, answer.IsLeft ? "failed" : written.IsLeft ? "refused" : "accepted");
                 if (written.IsRight)
@@ -141,17 +148,23 @@ public sealed class RiteWriter
     }
 
     private async Task<Either<Error, RiteContent>> Ask(
-        string model, List<ChatMessage> messages, Option<TimeSpan> attemptTime, CancellationToken cancellationToken)
+        string model,
+        List<ChatMessage> messages,
+        Option<TimeSpan> attemptTime,
+        string asked,
+        CancellationToken cancellationToken)
     {
         // Without a limit, the model's client times out on its own.
         using var timeout = attemptTime.Match(
             Some: limit => new CancellationTokenSource(limit, time),
             None: () => new CancellationTokenSource());
         using var attempt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
+        var started = time.GetTimestamp();
         try
         {
             var response = await chatClients.For(model).GetResponseAsync<RiteContent>(
                 messages, AnswerSerializerOptions, options: null, useJsonSchemaResponseFormat: true, attempt.Token);
+            metrics.AnswerTime(model, asked, "answered", time.GetElapsedTime(started));
             return response.TryGetResult(out var content)
                 ? content
                 : Error.New($"The answer isn't a rite: {Shorten(response.Text)}");
@@ -160,6 +173,7 @@ public sealed class RiteWriter
         // cancellation stops the writing.
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
+            metrics.AnswerTime(model, asked, timeout.IsCancellationRequested ? "timed-out" : "failed", time.GetElapsedTime(started));
             return Error.New(ex);
         }
     }

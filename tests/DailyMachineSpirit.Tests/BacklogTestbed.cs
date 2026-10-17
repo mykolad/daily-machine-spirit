@@ -73,7 +73,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
             Rites,
             Scriptorium,
             Writer(options),
-            new DuplicateCheck(Models, options, Time),
+            new DuplicateCheck(Models, options, Time, Probe.Metrics),
             Jev.NewJudge(Time, JevApiKey),
             options,
             Probe.Metrics,
@@ -87,7 +87,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
     public PreceptKeeping PreceptKeeping() => new(Precepts, Time);
 
     public PreceptDistiller Distiller()
-        => new(Scriptorium, Precepts, Models, Options.Create(new GenerationOptions()), Time, NullLogger<PreceptDistiller>.Instance);
+        => new(Scriptorium, Precepts, Models, Options.Create(new GenerationOptions()), Time, Probe.Metrics, NullLogger<PreceptDistiller>.Instance);
 
     public Amendments Amendments()
         => new(Drafts, Scriptorium, Scribes(), Jev.NewJudge(Time, JevApiKey), Writer(Options.Create(new GenerationOptions { RetryDelaySeconds = 0 })), Time, NullLogger<Amendments>.Instance);
