@@ -67,6 +67,11 @@ month, with Today's masthead, margins and altar, and search as the Archive filte
 - **It works without the script:** the field is a plain form that sends `GET /archive?q=`, its clear button and "Clear
   search" are links to `/archive`, and "Load older rites" and "More results" are links. The old `/search?q=` address
   redirects there for good.
+- **The sheet wears Today's frame, as decoration only:** the double rule, the corners and the code in its margins
+  ("NOTHING IS FORGOTTEN" in hex, "KEPT" in binary) are hidden from screen readers, and the corners and code show from
+  700px, where the sheet's padding leaves them room clear of the rows. The seal hanging from the sheet at the
+  Archive's end is hidden too: "The archive ends here" says the same in words.
+- **Each row's number reads "NO. 214" to the eye and "Rite 214" to a screen reader,** which would say "no" for "NO.".
 - **The margins say nothing the sheet says:** the Archive's left margin counts every rite kept and when they began, the
   right one indexes the months. Below 1280px there are no margins, and the count moves into the line under the heading;
   only one of the two is ever displayed, so a screen reader hears one.
