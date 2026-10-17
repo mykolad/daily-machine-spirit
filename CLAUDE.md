@@ -263,9 +263,8 @@ observability/                    — the Grafana dashboard and alerts, and what
     there's no change without its entry: the Scribes' actions, and the Machine Spirit's own (each draft it writes, each
     rite it publishes). Only Summon, which stores nothing itself, saves its entry alone, and goes ahead if that fails.
     - **Who:** a Scribe is their Access id (the token's `sub`), never their email; on staging, with no sign-in, every
-      Scribe is `staging`; the Machine Spirit is `machine-spirit`. The page shows an id by its name in
-      `Scriptorium:Scribes`, a list of `Id` and `Name` (a setting's name can't hold an id's hyphens), which the Bicep
-      makes from `productionAccess.scribes` in `resources.bicep`; else by its last six characters (`ScribeNames`).
+      Scribe is `staging`; the Machine Spirit is `machine-spirit`. The page shows a Scribe by the last six
+      characters of their id (`ScribeNames`), until the Scribes choose their names.
     - **Kept** as long as the drafts and rites, with ids, titles and where a draft went; never a visitor.
   - **Concurrency:** each change uses an ETag, so two Scribes can't overwrite each other: the later one is told to look
     again.
