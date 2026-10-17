@@ -469,8 +469,10 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.Equal(StatusCodes.Status200OK, status);
         Assert.Equal(["The Warm Cache"], Titles(html));
         Assert.Contains("<title>“cache” in Caches: 1 rite · The Daily Machine Spirit</title>", html);
-        Assert.Contains("""<p class="sheet-sub">1 rite filed under Caches mentions it.</p>""", html);
+        Assert.Contains("""<p class="sheet-sub">1 rite mentions it.</p>""", html);
         Assert.Contains("""<input type="hidden" name="tag" value="caches">""", html);
+        // Said once, by the chip: not again in the margin.
+        Assert.DoesNotContain("""<p class="margin-label">Filed under</p>""", html);
         Assert.Contains("""<a class="filter-chip" href="/archive?q=cache" aria-label="Remove filter: Caches">Caches""", html);
         Assert.Contains("""<h2 id="narrow">Other subjects</h2>""", html);
         Assert.Contains("""<a class="tag" href="/archive?q=cache&amp;tag=builds">Builds (1)</a>""", html);
@@ -499,7 +501,7 @@ public sealed class SitePagesTests : IAsyncLifetime
 
         var (_, html) = await SearchedWithin("cold", "caches");
 
-        Assert.Contains("""<p class="sheet-sub">No rite filed under Caches mentions it.</p>""", html);
+        Assert.Contains("""<p class="sheet-sub">No rite mentions it.</p>""", html);
         Assert.Contains("""<a class="sheet-button" href="/archive?q=cold">Search every subject</a>""", html);
     }
 

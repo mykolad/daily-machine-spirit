@@ -62,15 +62,14 @@ public static class ArchivePage
     {
         var quoted = $"“{typed}”";
         var tagKey = tag.Map(filter => filter.Key);
-        var filedUnder = tag.Map(filter => $" filed under {filter.Label}").IfNone(string.Empty);
         var found = results.Found.Count;
         var first = results.Found.HeadOrNone().Map(rite => rite.Number);
-        var sub = Html.Encode(found switch
+        var sub = found switch
         {
-            0 => $"No rite{filedUnder} mentions it.",
-            1 => $"1 rite{filedUnder} mentions it.",
-            _ => $"{Html.Count(found)} rites{filedUnder} mention it, newest first.",
-        });
+            0 => "No rite mentions it.",
+            1 => "1 rite mentions it.",
+            _ => $"{Html.Count(found)} rites mention it, newest first.",
+        };
         // Narrowed to a subject, the way out is the same words in every subject, rather than the whole Archive.
         var elsewhere = tag.Match(
             Some: filter => $"""<a class="sheet-button" href="{Html.Encode(Paths.ArchiveSearch(typed))}">Search every subject</a>""",
@@ -86,11 +85,9 @@ public static class ArchivePage
         var below = found == 0
             ? string.Empty
             : ArchiveRows.More(results.OlderThan.Map(number => Paths.ArchiveSearchBefore(typed, tagKey, number)), "More results", "No more rites mention it.", string.Empty);
-        var subject = tag.Map(filter => ArchiveSheet.Note("Filed under", $"""<p class="margin-sought">{Html.Encode(filter.Label)}</p>""")).IfNone(string.Empty);
         var left = $"""
             <aside class="marginalia" aria-label="About this search">
             {ArchiveSheet.Note("Sought", $"""<p class="margin-sought">{Html.Encode(quoted)}</p>""")}
-            {subject}
             {ArchiveSheet.Note("Found", $"""<p class="margin-number">{Rites(found)}</p>""")}
             <a class="margin-clear" href="{Paths.Archive}">Clear search</a>
             {ArchiveSheet.Countdown(now)}
