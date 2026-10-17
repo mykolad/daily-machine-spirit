@@ -467,7 +467,7 @@ public static partial class ScriptoriumPage
             "restore" => $"{Named("Restored")} from the ashes{date.Map(day => $": it waits for {day}").IfNone(string.Empty)}.",
             "summon" => "New rites are being summoned: look again in a few minutes.",
             "amend" => $"{Named("Amended")}: judged again, it waits{date.Map(day => $" for {day}").IfNone(string.Empty)}.",
-            "amend-unjudged" => $"{Named("Amended")}, but the judge didn't answer, so it waits unjudged: the Augury places it last.",
+            "amend-unjudged" => $"{Named("Amended")}, but it couldn't be judged again, so it waits unjudged: the Augury places it last.",
             "augury" => "The Augury orders every draft again.",
             "changed" => "Another Scribe changed the calendar meanwhile. Look again before deciding.",
             "unmoved" => "It was already there, so nothing moved. Another Scribe may have moved it: look again.",
@@ -482,6 +482,7 @@ public static partial class ScriptoriumPage
         ScribeAction.Exalt => "Exalted",
         ScribeAction.Humble => "Humbled",
         ScribeAction.Burn => "Consigned to the flames",
+        ScribeAction.Amend => "Amended",
         _ => "Restored from the ashes",
     };
 

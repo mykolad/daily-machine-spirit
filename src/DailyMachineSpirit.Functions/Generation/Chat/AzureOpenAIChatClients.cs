@@ -5,17 +5,18 @@ using Microsoft.Extensions.AI;
 namespace DailyMachineSpirit.Functions.Generation.Chat;
 
 /// <summary>
-/// Signs in with Entra ID (the app's managed identity in Azure, your <c>az login</c> locally): the account's keys stay
-/// off, as with Cosmos DB.
+/// Signs in with Entra ID (the app's managed identity in Azure, your <c>az login</c>): the account's keys stay off, as
+/// with Cosmos DB. The client is made when a model is first asked for, not with this: the Scriptorium's functions take
+/// the writer (for rewrites), and they must still serve every other request where <c>AzureOpenAI:Endpoint</c> isn't set.
 /// </summary>
 public sealed class AzureOpenAIChatClients : IChatClients
 {
-    private readonly AzureOpenAIClient client;
+    private readonly Lazy<AzureOpenAIClient> client;
 
-    public AzureOpenAIChatClients(Uri endpoint)
+    public AzureOpenAIChatClients(string endpoint)
     {
-        client = new AzureOpenAIClient(endpoint, new DefaultAzureCredential());
+        client = new Lazy<AzureOpenAIClient>(() => new AzureOpenAIClient(new Uri(endpoint), new DefaultAzureCredential()));
     }
 
-    public IChatClient For(string model) => client.GetChatClient(model).AsIChatClient();
+    public IChatClient For(string model) => client.Value.GetChatClient(model).AsIChatClient();
 }

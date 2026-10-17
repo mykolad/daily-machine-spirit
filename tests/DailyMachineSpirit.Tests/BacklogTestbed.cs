@@ -86,7 +86,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
         => new(Scriptorium, Precepts, Models, Options.Create(new GenerationOptions()), Time, NullLogger<PreceptDistiller>.Instance);
 
     public Amendments Amendments()
-        => new(Drafts, Scriptorium, Jev.NewJudge(Time, JevApiKey), Writer(Options.Create(new GenerationOptions { RetryDelaySeconds = 0 })), Time, NullLogger<Amendments>.Instance);
+        => new(Drafts, Scriptorium, Scribes(), Jev.NewJudge(Time, JevApiKey), Writer(Options.Create(new GenerationOptions { RetryDelaySeconds = 0 })), Time, NullLogger<Amendments>.Instance);
 
     /// <summary>Scribes whose every read fails, as when Cosmos is down: the container doesn't exist.</summary>
     public Scribes ScribesWithoutCosmos()
