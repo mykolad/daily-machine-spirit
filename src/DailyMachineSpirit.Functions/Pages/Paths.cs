@@ -7,6 +7,12 @@ public static class Paths
 
     public const string Archive = "/archive";
 
+    /// <summary>
+    /// Not the rites, but what the nav's search field matches them on as the reader types: each rite's number, day,
+    /// kind and words (<c>SearchIndexEntry</c>).
+    /// </summary>
+    public const string SearchIndex = "/api/search-index";
+
     public static string Rite(int number) => $"/r/{number}";
 
     public static string ArchiveBefore(int number) => $"{Archive}?before={number}";
