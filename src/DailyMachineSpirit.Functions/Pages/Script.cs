@@ -514,6 +514,7 @@ public static class Script
                 fill(subjectOptions, []);
                 choose(-1);
                 showDrop(true);
+                status.textContent = announced(label.textContent);
               }
               try {
                 rites ??= fetch('/api/search-index').then((response) => {
