@@ -79,18 +79,18 @@ public sealed class Scribes
     }
 
     /// <summary>Makes the draft the next to be published; for the first, it keeps it there, ahead of the Augury's later picks.</summary>
-    public Task<Either<Error, Unit>> Anoint(Guid draftId, string note, CancellationToken cancellationToken)
-        => Reorder(draftId, ScribeAction.Anoint, note, (order, index) => Some<List<Guid>>([order[index], .. order[..index]]), cancellationToken);
+    public Task<Either<Error, Unit>> Anoint(Guid draftId, string note, string scribe, CancellationToken cancellationToken)
+        => Reorder(draftId, ScribeAction.Anoint, note, scribe, (order, index) => Some<List<Guid>>([order[index], .. order[..index]]), cancellationToken);
 
     /// <summary>Moves the draft up one place; everything above it is now in the Scribes' order.</summary>
-    public Task<Either<Error, Unit>> Exalt(Guid draftId, string note, CancellationToken cancellationToken)
-        => Reorder(draftId, ScribeAction.Exalt, note, (order, index) => index == 0
+    public Task<Either<Error, Unit>> Exalt(Guid draftId, string note, string scribe, CancellationToken cancellationToken)
+        => Reorder(draftId, ScribeAction.Exalt, note, scribe, (order, index) => index == 0
             ? None
             : Some<List<Guid>>([.. order[..(index - 1)], order[index], order[index - 1]]), cancellationToken);
 
     /// <summary>Moves the draft down one place; the one it swaps with is now in the Scribes' order too.</summary>
-    public Task<Either<Error, Unit>> Humble(Guid draftId, string note, CancellationToken cancellationToken)
-        => Reorder(draftId, ScribeAction.Humble, note, (order, index) => index == order.Count - 1
+    public Task<Either<Error, Unit>> Humble(Guid draftId, string note, string scribe, CancellationToken cancellationToken)
+        => Reorder(draftId, ScribeAction.Humble, note, scribe, (order, index) => index == order.Count - 1
             ? None
             : Some<List<Guid>>([.. order[..index], order[index + 1], order[index]]), cancellationToken);
 
@@ -100,13 +100,14 @@ public sealed class Scribes
     /// later one sees none left. None when that count fails: the burn is saved all the same, and the caller can't tell
     /// whether any draft is left.
     /// </summary>
-    public Task<Either<Error, Option<int>>> Burn(Guid draftId, string note, CancellationToken cancellationToken)
+    public Task<Either<Error, Option<int>>> Burn(Guid draftId, string note, string scribe, CancellationToken cancellationToken)
         => Note(note).BindAsync(checkedNote => Calendar(cancellationToken)
             .BindAsync(calendar => calendar.Find(draftId).Match(
                 Some: found => scriptorium
                     .ChangeState(draftId, DraftState.Waiting, DraftState.Burned,
                         Decision(found.Draft, ScribeAction.Burn, checkedNote, Some(found.Place), Some(calendar.AuguryPlace(found.Draft))),
                         WithoutDraft(calendar.Placements, draftId),
+                        AuditEntries.Of(time, scribe, AuditAction.Burn, found.Draft, $"from #{found.Place}"),
                         cancellationToken)
                     .MapAsync(async _ => (await drafts.GetWaiting(cancellationToken)).Match(
                         Right: waiting => Some(waiting.Count),
@@ -114,7 +115,7 @@ public sealed class Scribes
                 None: () => Task.FromResult(Left<Error, Option<int>>(ScriptoriumRepository.ChangedMeanwhile)))));
 
     /// <summary>Restores a burned draft, however long ago it burned: it waits again, in the Augury's order.</summary>
-    public Task<Either<Error, Unit>> Restore(Guid draftId, string note, CancellationToken cancellationToken)
+    public Task<Either<Error, Unit>> Restore(Guid draftId, string note, string scribe, CancellationToken cancellationToken)
         => Note(note).BindAsync(checkedNote => drafts.Get(draftId, cancellationToken)
             .BindAsync(stored => scriptorium.GetPlacements(cancellationToken)
                 .BindAsync(placements => stored.Filter(draft => draft.State == DraftState.Burned).Match(
@@ -122,6 +123,7 @@ public sealed class Scribes
                         .ChangeState(draftId, DraftState.Burned, DraftState.Waiting,
                             Decision(draft, ScribeAction.Restore, checkedNote, None, None),
                             WithoutDraft(placements, draftId),
+                            AuditEntries.Of(time, scribe, AuditAction.Restore, draft, None),
                             cancellationToken)
                         .MapAsync(_ => Task.FromResult(unit)),
                     None: () => Task.FromResult(Left<Error, Unit>(ScriptoriumRepository.ChangedMeanwhile))))));
@@ -135,14 +137,16 @@ public sealed class Scribes
             calendar.Find(draftId).Map(found => (found.Place, calendar.AuguryPlace(found.Draft)))));
 
     /// <summary>Forgets the Scribes' order, so the Augury orders every draft.</summary>
-    public Task<Either<Error, Unit>> LetTheAuguryDecide(CancellationToken cancellationToken)
+    public Task<Either<Error, Unit>> LetTheAuguryDecide(string scribe, CancellationToken cancellationToken)
         => scriptorium.GetPlacements(cancellationToken)
-            .BindAsync(placements => scriptorium.SavePlacements(placements with { Order = [] }, None, [], cancellationToken));
+            .BindAsync(placements => scriptorium.SavePlacements(placements with { Order = [] }, None, [],
+                AuditEntries.Of(time, scribe, AuditAction.LetTheAuguryDecide, None, None), cancellationToken));
 
     private DateOnly Today => DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime);
 
     private Task<Either<Error, Unit>> Reorder(
-        Guid draftId, ScribeAction action, string note, Func<List<Guid>, int, Option<List<Guid>>> reorder, CancellationToken cancellationToken)
+        Guid draftId, ScribeAction action, string note, string scribe, Func<List<Guid>, int, Option<List<Guid>>> reorder,
+        CancellationToken cancellationToken)
         => Note(note).BindAsync(checkedNote => Calendar(cancellationToken)
             .BindAsync(calendar => calendar.Find(draftId).Match(
                 Some: found => reorder(calendar.Ordered.Select(draft => draft.Id).ToList(), found.Place - 1).Match(
@@ -151,6 +155,7 @@ public sealed class Scribes
                         calendar.Placements with { Order = KeepingTheRest(moved, calendar) },
                         Decision(found.Draft, action, checkedNote, Some(found.Place), Some(calendar.AuguryPlace(found.Draft))),
                         moved,
+                        AuditEntries.Of(time, scribe, Audited(action), found.Draft, $"from #{found.Place} to #{moved.IndexOf(draftId) + 1}"),
                         cancellationToken),
                     // Already at the top (or bottom): nothing changes, so there's nothing to learn, and the page says so.
                     None: () => Task.FromResult(Left<Error, Unit>(NothingToMove))),
@@ -198,6 +203,13 @@ public sealed class Scribes
             Note = note,
             DecidedAtUtc = time.GetUtcNow().UtcDateTime,
         };
+
+    private static AuditAction Audited(ScribeAction action) => action switch
+    {
+        ScribeAction.Anoint => AuditAction.Anoint,
+        ScribeAction.Exalt => AuditAction.Exalt,
+        _ => AuditAction.Humble,
+    };
 
     // An empty note is no note.
     private static Either<Error, Option<string>> Note(string note)

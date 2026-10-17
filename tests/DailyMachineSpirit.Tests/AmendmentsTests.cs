@@ -33,7 +33,7 @@ public sealed class AmendmentsTests : IAsyncLifetime
         var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
         var amendable = Ok(await testbed.Amendments().Get(draft.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Not amendable."));
 
-        var judged = Ok(await testbed.Amendments().Save(draft.Id, amendable.ETag, Sharper, "The truth was wrong.", CancellationToken.None));
+        var judged = Ok(await testbed.Amendments().Save(draft.Id, amendable.ETag, Sharper, "The truth was wrong.", BacklogTestbed.Tester, CancellationToken.None));
 
         Assert.True(judged);
         var saved = Assert.Single(await testbed.Waiting());
@@ -56,10 +56,10 @@ public sealed class AmendmentsTests : IAsyncLifetime
     {
         await testbed.AddDraft("Best", 0.9f);
         var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
-        Ok(await testbed.Scribes().Anoint(draft.Id, "", CancellationToken.None));
+        Ok(await testbed.Scribes().Anoint(draft.Id, "", Tester, CancellationToken.None));
         var amendable = Ok(await testbed.Amendments().Get(draft.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Not amendable."));
 
-        Ok(await testbed.Amendments().Save(draft.Id, amendable.ETag, Sharper, "", CancellationToken.None));
+        Ok(await testbed.Amendments().Save(draft.Id, amendable.ETag, Sharper, "", Tester, CancellationToken.None));
 
         var amend = Ok(await testbed.Scribes().View(CancellationToken.None)).Decisions.Single(found => found.Action == ScribeAction.Amend);
         Assert.Equal((Some(1), Some(2)), (amend.CalendarPlace, amend.AuguryPlace));
@@ -73,7 +73,7 @@ public sealed class AmendmentsTests : IAsyncLifetime
         testbed.JevApiKey = "";
         var amendable = Ok(await testbed.Amendments().Get(draft.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Not amendable."));
 
-        var judged = Ok(await testbed.Amendments().Save(draft.Id, amendable.ETag, Sharper, "", CancellationToken.None));
+        var judged = Ok(await testbed.Amendments().Save(draft.Id, amendable.ETag, Sharper, "", Tester, CancellationToken.None));
 
         Assert.False(judged);
         Assert.True(Assert.Single(await testbed.Waiting()).Augury.IsNone);
@@ -85,7 +85,7 @@ public sealed class AmendmentsTests : IAsyncLifetime
         var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
         var amendable = Ok(await testbed.Amendments().Get(draft.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Not amendable."));
 
-        var refused = await testbed.Amendments().Save(draft.Id, amendable.ETag, Sharper with { Text = "Praise the Warhammer of builds." }, "", CancellationToken.None);
+        var refused = await testbed.Amendments().Save(draft.Id, amendable.ETag, Sharper with { Text = "Praise the Warhammer of builds." }, "", BacklogTestbed.Tester, CancellationToken.None);
 
         var error = Assert.Single(refused.LeftToSeq());
         Assert.Equal(Amendments.Refused, error.Code);
@@ -102,11 +102,11 @@ public sealed class AmendmentsTests : IAsyncLifetime
         var other = await testbed.AddDraft("The Rite of Re-Run", 0.5f);
         var read = Ok(await testbed.Amendments().Get(draft.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Not amendable."));
         var readOther = Ok(await testbed.Amendments().Get(other.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Not amendable."));
-        Ok(await testbed.Amendments().Save(draft.Id, read.ETag, Sharper, "", CancellationToken.None));
-        Ok(await testbed.Scribes().Burn(other.Id, "", CancellationToken.None));
+        Ok(await testbed.Amendments().Save(draft.Id, read.ETag, Sharper, "", BacklogTestbed.Tester, CancellationToken.None));
+        Ok(await testbed.Scribes().Burn(other.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
-        var again = await testbed.Amendments().Save(draft.Id, read.ETag, Sharper with { Title = "Another" }, "", CancellationToken.None);
-        var burned = await testbed.Amendments().Save(other.Id, readOther.ETag, Sharper, "", CancellationToken.None);
+        var again = await testbed.Amendments().Save(draft.Id, read.ETag, Sharper with { Title = "Another" }, "", BacklogTestbed.Tester, CancellationToken.None);
+        var burned = await testbed.Amendments().Save(other.Id, readOther.ETag, Sharper, "", BacklogTestbed.Tester, CancellationToken.None);
 
         Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Assert.Single(again.LeftToSeq()));
         Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Assert.Single(burned.LeftToSeq()));
@@ -122,7 +122,7 @@ public sealed class AmendmentsTests : IAsyncLifetime
         testbed.Jev = new FakeJev(HttpStatusCode.InternalServerError, "");
         var amendable = Ok(await testbed.Amendments().Get(draft.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Not amendable."));
 
-        var judged = Ok(await testbed.Amendments().Save(draft.Id, amendable.ETag, Sharper, "", CancellationToken.None));
+        var judged = Ok(await testbed.Amendments().Save(draft.Id, amendable.ETag, Sharper, "", BacklogTestbed.Tester, CancellationToken.None));
 
         Assert.False(judged);
         var saved = Assert.Single(await testbed.Waiting());
@@ -135,7 +135,7 @@ public sealed class AmendmentsTests : IAsyncLifetime
     {
         var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
         var amendable = Ok(await testbed.Amendments().Get(draft.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Not amendable."));
-        Ok(await testbed.Amendments().Save(draft.Id, amendable.ETag, Sharper, "", CancellationToken.None));
+        Ok(await testbed.Amendments().Save(draft.Id, amendable.ETag, Sharper, "", BacklogTestbed.Tester, CancellationToken.None));
 
         var rite = Ok(await testbed.Rites.Publish(draft.Id, Today, CancellationToken.None));
 

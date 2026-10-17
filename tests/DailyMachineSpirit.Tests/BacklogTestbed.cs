@@ -20,6 +20,9 @@ public sealed class BacklogTestbed : IAsyncLifetime
     public const string Sol = "gpt-6-sol";
     public const string Luna = "gpt-6-luna";
 
+    /// <summary>The Scribe the tests act as, as an Access id would name them.</summary>
+    public const string Tester = "tester-0123456789";
+
     public static readonly DateOnly Today = new(2026, 10, 7);
 
     private readonly CosmosTestContainer cosmos = new();
@@ -42,6 +45,8 @@ public sealed class BacklogTestbed : IAsyncLifetime
     public DraftRepository Drafts => new(cosmos.Container);
 
     public ScriptoriumRepository Scriptorium => new(cosmos.Container);
+
+    public AuditRepository Audit => new(cosmos.Container);
 
     public static string Answer(string title)
         => FakeChatClients.Answer(title, "Press Re-run thrice, O Machine Spirit.", "The test is flaky: fix its race instead.");

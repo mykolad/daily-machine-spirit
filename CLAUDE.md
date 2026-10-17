@@ -250,13 +250,22 @@ observability/                    — the Grafana dashboard and alerts, and what
     draft's words by hand, or ask the writer to rewrite them as the Scribe's note says (`RiteWriter.Rewrite`; the
     rewrite fills the form, unsaved, for the Scribe to read first). Saved words pass what a model's answer must
     (`RiteChecks`) and are judged again (scores, quality and tags describe what will be published; if the judge fails
-    or is off, the draft waits unjudged). The draft keeps `GeneratedByModel` and gets `Edited`, carried into the rite; nothing
-    says which Scribe. The save is guarded by the draft's ETag, read with the page, and records an `Amend` decision
-    with the words and places as they were. The amending page posts plain forms, without the calendar's script.
+    or is off, the draft waits unjudged). The draft keeps `GeneratedByModel` and gets `Edited`, carried into the rite;
+    the rite never says which Scribe (the record does). The save is guarded by the draft's ETag, read with the page,
+    and records an `Amend` decision with the words and places as they were. The amending page posts plain forms,
+    without the calendar's script.
   - **The Scribes' order** (the `placements` document) comes first; the Augury orders the rest. Moving a draft places
     everything above it too, so the order stays what the Scribes saw.
   - **Every action is a lesson:** it saves a `ScribeDecision` with the draft as it was, the Augury's place and quality
     for it, and the Scribe's optional note, in the same batch as the change. #12 teaches the Augury from them.
+  - **The Record** (`/scriptorium/record`, #9): who changed what, newest first, the last 100; `?draft=` gives one
+    draft's whole history. An `AuditEntry` (documents of type `audit`) is saved in the same batch as each change, so
+    there's no change without its entry: the Scribes' actions, and the Machine Spirit's own (each draft it writes, each
+    rite it publishes). Only Summon, which stores nothing itself, saves its entry alone, and goes ahead if that fails.
+    - **Who:** a Scribe is their Access id (the token's `sub`), never their email; on staging, with no sign-in, every
+      Scribe is `staging`; the Machine Spirit is `machine-spirit`. The page shows a Scribe by the last six
+      characters of their id (`ScribeNames`), until the Scribes choose their names.
+    - **Kept** as long as the drafts and rites, with ids, titles and where a draft went; never a visitor.
   - **Concurrency:** each change uses an ETag, so two Scribes can't overwrite each other: the later one is told to look
     again.
   - **Refills:** burning the last waiting draft asks for a refill at once (the `backlog-refills` queue), as does
@@ -279,7 +288,8 @@ observability/                    — the Grafana dashboard and alerts, and what
     (`Scriptorium/SignIn/`), chosen to fail closed (`AddScribeSignIn`):
     - **Cloudflare Access** (`CloudflareAccess:TeamDomain` and `:Audience` set, production): every request must carry
       Access's signed token (`Cf-Access-Jwt-Assertion`), checked against the team's keys, issuer and the application's
-      audience, so going around Cloudflare to the app's own address gets nowhere. The keys are kept for an hour and
+      audience, so going around Cloudflare to the app's own address gets nowhere. Its `sub` names the Scribe for the
+      record; a token without one is refused. The keys are kept for an hour and
       fetched again when a token names a new one. Refusals are counted (`dms.scriptorium.refusals`, by reason), not
       logged: anyone can send a token to the public address. A failed key fetch is logged once, and the next waits
       five minutes.

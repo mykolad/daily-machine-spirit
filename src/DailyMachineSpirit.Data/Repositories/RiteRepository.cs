@@ -173,6 +173,17 @@ public class RiteRepository : IRiteRepository
                 Some: draft => batch.ReplaceItem(draft.Published.Id, draft.Published,
                     new TransactionalBatchItemRequestOptions { IfMatchEtag = draft.ETag }),
                 None: () => batch);
+            // Last, so the positions above stay what the checks below read. The rite's publishing is the Machine Spirit's.
+            batch = batch.CreateItem(AuditEntryDocument.From(new AuditEntry
+            {
+                Id = Guid.NewGuid(),
+                AtUtc = DateTime.UtcNow,
+                Actor = AuditEntry.MachineSpirit,
+                Action = AuditAction.Publish,
+                DraftId = fromDraft.Map(draft => Guid.Parse(draft.Published.Id)),
+                RiteNumber = number,
+                Title = rite.Writing.Title,
+            }));
 
             using var response = await batch.ExecuteAsync(cancellationToken);
             if (response.IsSuccessStatusCode)
