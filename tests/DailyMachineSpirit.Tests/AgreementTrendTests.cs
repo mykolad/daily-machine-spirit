@@ -1,5 +1,6 @@
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Functions.Scriptorium;
+using LanguageExt;
 using static DailyMachineSpirit.Tests.BacklogTestbed;
 using static DailyMachineSpirit.Tests.Expect;
 using static LanguageExt.Prelude;
@@ -34,7 +35,7 @@ public sealed class AgreementTrendTests : IAsyncLifetime
 
         Assert.Equal(AgreementTrend.MonthsShown, months.Count);
         Assert.Equal([new DateOnly(2026, 11, 1), new DateOnly(2026, 10, 1), new DateOnly(2026, 6, 1)],
-            [months[0].Month, months[1].Month, months[^1].Month]);
+            [months[0].FirstDayUtc, months[1].FirstDayUtc, months[^1].FirstDayUtc]);
         Assert.Equal(new AgreementMonth(new DateOnly(2026, 11, 1), 0, 0, 0, 0, None), months[0]);
         Assert.Equal(new AgreementMonth(new DateOnly(2026, 10, 1), 3, 1, 1, 2, Some(1.5)), months[1]);
     }
@@ -48,6 +49,23 @@ public sealed class AgreementTrendTests : IAsyncLifetime
         var second = await Unjudged("Second");
         Ok(await testbed.Scribes().Anoint(second.Id, "", Tester, CancellationToken.None));
         Ok(await testbed.Scribes().Burn(first.Id, "", Tester, CancellationToken.None));
+
+        var october = Ok(await new AgreementTrend(testbed.Scriptorium, testbed.Time).Months(CancellationToken.None))[0];
+
+        Assert.Equal(new AgreementMonth(new DateOnly(2026, 10, 1), 2, 1, 0, 0, None), october);
+    }
+
+    // After a new judge, the drafts an older one scored wait behind, by age, as unjudged ones do: the Augury placed them
+    // second and third, but burning or moving them says nothing about its judgment.
+    [Fact]
+    public async Task DraftsAnOlderJudgeScored_CountOnlyAsJudgments()
+    {
+        var judgedEarlier = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
+        await JudgedBy("jev-1.13.0/quality-q1", judgedEarlier.AddDays(1), "Current", 0.5f);
+        var older = await JudgedBy("jev-1.12.0/quality-q1", judgedEarlier, "Older", 0.9f);
+        var olderStill = await JudgedBy("jev-1.12.0/quality-q1", judgedEarlier, "Older still", 0.8f);
+        Ok(await testbed.Scribes().Anoint(olderStill.Id, "", Tester, CancellationToken.None));
+        Ok(await testbed.Scribes().Burn(older.Id, "", Tester, CancellationToken.None));
 
         var october = Ok(await new AgreementTrend(testbed.Scriptorium, testbed.Time).Months(CancellationToken.None))[0];
 
@@ -71,11 +89,17 @@ public sealed class AgreementTrendTests : IAsyncLifetime
     }
 
     // A draft judging couldn't score: it waits, placed by age.
-    private async Task<Draft> Unjudged(string title)
+    private Task<Draft> Unjudged(string title) => Waiting(title, None);
+
+    private Task<Draft> JudgedBy(string judge, DateTime judgedAtUtc, string title, float quality)
+        => Waiting(title, new Augury { Quality = quality, JudgedBy = judge, JudgedAtUtc = judgedAtUtc });
+
+    private async Task<Draft> Waiting(string title, Option<Augury> augury)
         => Ok(await testbed.Drafts.Add(new Draft
         {
             Id = Guid.NewGuid(),
             State = DraftState.Waiting,
+            Augury = augury,
             Writing = new RiteWriting
             {
                 Kind = RiteKind.Prayer,

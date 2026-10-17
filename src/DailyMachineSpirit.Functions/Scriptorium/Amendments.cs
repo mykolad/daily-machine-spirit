@@ -110,7 +110,7 @@ public sealed class Amendments
             });
 
     // The words and places as they were before the amendment, read before it was judged again.
-    private ScribeDecision Decision(Draft before, Option<string> note, Option<(int CalendarPlace, int AuguryPlace)> places) => new()
+    private ScribeDecision Decision(Draft before, Option<string> note, Option<DraftPlaces> places) => new()
     {
         Id = Guid.NewGuid(),
         DraftId = before.Id,
@@ -121,6 +121,7 @@ public sealed class Amendments
         HereticalTruth = before.Writing.HereticalTruth,
         CalendarPlace = places.Map(found => found.CalendarPlace),
         AuguryPlace = places.Map(found => found.AuguryPlace),
+        AuguryRankedByQuality = places.Exists(found => found.AuguryRankedByQuality),
         AuguryQuality = before.Augury.Map(augury => augury.Quality),
         Note = note,
         DecidedAtUtc = time.GetUtcNow().UtcDateTime,

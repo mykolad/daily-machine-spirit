@@ -40,6 +40,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Contains($"/scriptorium/drafts/{top:D}/anoint", html);
         Assert.DoesNotContain($"/scriptorium/drafts/{top:D}/exalt", html);
         Assert.Contains("“Spinners &lt;again&gt;.”", html);
+        Assert.Contains("and whether the Scribes agree with the Augury.", html);
         Assert.Contains("not affiliated with or endorsed by Games Workshop", html);
         Assert.Equal("no-store", request.HttpContext.Response.Headers.CacheControl.ToString());
         Assert.Equal("noindex", request.HttpContext.Response.Headers["X-Robots-Tag"].ToString());

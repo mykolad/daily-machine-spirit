@@ -105,7 +105,7 @@ public sealed class Scribes
             .BindAsync(calendar => calendar.Find(draftId).Match(
                 Some: found => scriptorium
                     .ChangeState(draftId, DraftState.Waiting, DraftState.Burned,
-                        Decision(found.Draft, ScribeAction.Burn, checkedNote, Some(found.Place), Some(calendar.AuguryPlace(found.Draft))),
+                        Decision(found.Draft, ScribeAction.Burn, checkedNote, Some(calendar.PlacesOf(found))),
                         WithoutDraft(calendar.Placements, draftId),
                         AuditEntries.Of(time, scribe, AuditAction.Burn, found.Draft, $"from #{found.Place}"),
                         cancellationToken)
@@ -121,7 +121,7 @@ public sealed class Scribes
                 .BindAsync(placements => stored.Filter(draft => draft.State == DraftState.Burned).Match(
                     Some: draft => scriptorium
                         .ChangeState(draftId, DraftState.Burned, DraftState.Waiting,
-                            Decision(draft, ScribeAction.Restore, checkedNote, None, None),
+                            Decision(draft, ScribeAction.Restore, checkedNote, None),
                             WithoutDraft(placements, draftId),
                             AuditEntries.Of(time, scribe, AuditAction.Restore, draft, None),
                             cancellationToken)
@@ -132,9 +132,8 @@ public sealed class Scribes
     /// Where a waiting draft is in the calendar (1 is next), and where the Augury alone would put it: what an amendment's
     /// decision keeps, as every other decision does. None when it isn't waiting.
     /// </summary>
-    public Task<Either<Error, Option<(int CalendarPlace, int AuguryPlace)>>> PlacesOf(Guid draftId, CancellationToken cancellationToken)
-        => Calendar(cancellationToken).MapAsync(calendar => Task.FromResult(
-            calendar.Find(draftId).Map(found => (found.Place, calendar.AuguryPlace(found.Draft)))));
+    public Task<Either<Error, Option<DraftPlaces>>> PlacesOf(Guid draftId, CancellationToken cancellationToken)
+        => Calendar(cancellationToken).MapAsync(calendar => Task.FromResult(calendar.Find(draftId).Map(calendar.PlacesOf)));
 
     /// <summary>Forgets the Scribes' order, so the Augury orders every draft.</summary>
     public Task<Either<Error, Unit>> LetTheAuguryDecide(string scribe, CancellationToken cancellationToken)
@@ -153,7 +152,7 @@ public sealed class Scribes
                     // Every draft in the moved stretch must still wait: it was read waiting, and the new order places it.
                     Some: moved => scriptorium.SavePlacements(
                         calendar.Placements with { Order = KeepingTheRest(moved, calendar) },
-                        Decision(found.Draft, action, checkedNote, Some(found.Place), Some(calendar.AuguryPlace(found.Draft))),
+                        Decision(found.Draft, action, checkedNote, Some(calendar.PlacesOf(found))),
                         moved,
                         AuditEntries.Of(time, scribe, Audited(action), found.Draft, $"from #{found.Place} to #{moved.IndexOf(draftId) + 1}"),
                         cancellationToken),
@@ -187,7 +186,7 @@ public sealed class Scribes
                         LiturgicalCalendar.Order(waiting, recent, []),
                         placements)))));
 
-    private ScribeDecision Decision(Draft draft, ScribeAction action, Option<string> note, Option<int> calendarPlace, Option<int> auguryPlace)
+    private ScribeDecision Decision(Draft draft, ScribeAction action, Option<string> note, Option<DraftPlaces> places)
         => new()
         {
             Id = Guid.NewGuid(),
@@ -197,8 +196,9 @@ public sealed class Scribes
             Title = draft.Writing.Title,
             Text = draft.Writing.Text,
             HereticalTruth = draft.Writing.HereticalTruth,
-            CalendarPlace = calendarPlace,
-            AuguryPlace = auguryPlace,
+            CalendarPlace = places.Map(found => found.CalendarPlace),
+            AuguryPlace = places.Map(found => found.AuguryPlace),
+            AuguryRankedByQuality = places.Exists(found => found.AuguryRankedByQuality),
             AuguryQuality = draft.Augury.Map(augury => augury.Quality),
             Note = note,
             DecidedAtUtc = time.GetUtcNow().UtcDateTime,
@@ -233,5 +233,8 @@ public sealed class Scribes
         }
 
         public int AuguryPlace(Draft draft) => AuguryOrder.FindIndex(other => other.Id == draft.Id) + 1;
+
+        public DraftPlaces PlacesOf((Draft Draft, int Place) found)
+            => new(found.Place, AuguryPlace(found.Draft), LiturgicalCalendar.RanksByQuality(found.Draft, AuguryOrder));
     }
 }
