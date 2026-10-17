@@ -24,5 +24,9 @@ public interface IDraftRepository
     /// <summary>The drafts judged before tags existed: with scores, without tags. Whatever their state.</summary>
     Task<Either<Error, List<Draft>>> GetUntagged(CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Tags a draft <see cref="GetUntagged"/> found, if it's still untagged and scored: changed since (an amendment
+    /// tagged it anew, or cleared its scores), it's left as it is.
+    /// </summary>
     Task<Either<Error, Unit>> SaveTags(Guid draftId, string[] tags, CancellationToken cancellationToken);
 }
