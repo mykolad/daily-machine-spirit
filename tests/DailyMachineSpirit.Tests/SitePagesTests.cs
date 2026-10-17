@@ -46,7 +46,10 @@ public sealed class SitePagesTests : IAsyncLifetime
 
         Assert.Equal(1, today.Split(motto).Length - 1);
         Assert.Contains($"""<p class="epigraph">{motto}</p>""", today);
-        Assert.True(today.IndexOf("rite-title", StringComparison.Ordinal) < today.IndexOf("epigraph", StringComparison.Ordinal));
+        // The rendered elements, not the stylesheet's selectors (which come first, in the head): the rite, then the motto.
+        var heading = today.IndexOf("""<h2 class="rite-title" id="rite-title">""", StringComparison.Ordinal);
+        var epigraph = today.IndexOf("""<p class="epigraph">""", StringComparison.Ordinal);
+        Assert.True(heading >= 0 && epigraph > heading, $"The rite's heading is at {heading}, the motto at {epigraph}.");
         Assert.Contains($"""<p class="motto">{motto}</p>""", archive);
         Assert.Contains($"""<p class="motto">{motto}</p>""", notFound);
     }
