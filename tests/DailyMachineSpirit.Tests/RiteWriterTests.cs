@@ -190,7 +190,36 @@ public sealed class RiteWriterTests : IDisposable
             () => Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, [], new CancellationToken(canceled: true)));
     }
 
+    // A Scribe waits for a rewrite: each model is asked once, without pausing, rather than three times 30 seconds apart.
+    [Fact]
+    public async Task Rewrite_AsksEachModelOnce_WithoutPausing()
+    {
+        models.Fails(Sol, 1).Answers(Luna, GoodAnswer);
+
+        var rewritten = Ok(await Writer(retryDelaySeconds: 30).Rewrite(
+            RiteKind.Ritual, new RiteContent("The Rite of Re-Run", "Press Re-run.", "It's flaky."), "Name the race.", CancellationToken.None));
+
+        Assert.Equal("The Rite of Re-Run", rewritten.Title);
+        Assert.Equal([Sol, Luna], models.Requests.Select(request => request.Model));
+    }
+
+    // A model that hasn't answered in time gives way to the next, so the Scribe's page comes back.
+    [Fact]
+    public async Task Rewrite_GivesUpOnAModelThatTakesTooLong()
+    {
+        models.Then(Sol, [() =>
+        {
+            time.Advance(TimeSpan.FromSeconds(30));
+            return new TaskCompletionSource<string>().Task;
+        }]);
+        models.Answers(Luna, GoodAnswer);
+
+        var rewritten = await Writer(retryDelaySeconds: 0).Rewrite(
+            RiteKind.Ritual, new RiteContent("The Rite of Re-Run", "Press Re-run.", "It's flaky."), "Name the race.", CancellationToken.None);
+
+        Assert.Equal("The Rite of Re-Run", Ok(rewritten).Title);
+    }
+
     private RiteWriter Writer(int retryDelaySeconds)
         => new(models, Options.Create(new GenerationOptions { RetryDelaySeconds = retryDelaySeconds }), time, probe.Metrics, NullLogger<RiteWriter>.Instance);
-
 }

@@ -7,6 +7,7 @@ using LanguageExt.Common;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Functions.Generation.Writing;
 
@@ -17,6 +18,12 @@ namespace DailyMachineSpirit.Functions.Generation.Writing;
 /// </summary>
 public sealed class RiteWriter
 {
+    /// <summary>
+    /// A rewrite's patience: each model once, 30 seconds each, so the Scribe gets their page back (with the rewrite or
+    /// their own words) well within the minute and a half Cloudflare waits for an answer.
+    /// </summary>
+    public static readonly Patience WhileTheScribeWaits = new(1, TimeSpan.Zero, Some(TimeSpan.FromSeconds(30)));
+
     private static readonly JsonSerializerOptions AnswerSerializerOptions = new(JsonSerializerOptions.Web)
     {
         // A missing or null field makes the answer unusable, rather than a rite with a hole in it.
@@ -45,6 +52,7 @@ public sealed class RiteWriter
         => (await Answer(
                 [new(ChatRole.System, RitePrompt.Instructions(kind, titlesToAvoid)), new(ChatRole.User, RitePrompt.Request(kind))],
                 kind,
+                Unhurried(),
                 $"No model wrote a usable {kind.ToString().ToLowerInvariant()}.",
                 cancellationToken))
             .Map(written => new Draft
@@ -70,27 +78,27 @@ public sealed class RiteWriter
         => (await Answer(
                 [new(ChatRole.System, RitePrompt.Instructions(kind, [])), new(ChatRole.User, RitePrompt.Rewrite(kind, words, note))],
                 kind,
+                WhileTheScribeWaits,
                 "No model rewrote it usably.",
                 cancellationToken))
             .Map(written => written.Content);
 
     // The first usable answer to the messages, and the model that gave it.
     private async Task<Either<Error, (RiteContent Content, string Model)>> Answer(
-        List<ChatMessage> messages, RiteKind kind, string noneUsable, CancellationToken cancellationToken)
+        List<ChatMessage> messages, RiteKind kind, Patience patience, string noneUsable, CancellationToken cancellationToken)
     {
-        var settings = options.Value;
         var failures = new List<string>();
-        foreach (var model in settings.Models)
+        foreach (var model in options.Value.Models)
         {
-            for (var attempt = 1; attempt <= settings.AttemptsPerModel; attempt++)
+            for (var attempt = 1; attempt <= patience.AttemptsPerModel; attempt++)
             {
                 // A pause before asking again: an overloaded or throttled model often answers a little later.
                 if (failures.Count > 0)
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(settings.RetryDelaySeconds), time, cancellationToken);
+                    await Task.Delay(patience.RetryDelay, time, cancellationToken);
                 }
 
-                var answer = await Ask(model, messages, cancellationToken);
+                var answer = await Ask(model, messages, patience.AttemptTime, cancellationToken);
                 var written = answer.Bind(content => RiteChecks.Check(content, kind));
                 metrics.Answer(model, answer.IsLeft ? "failed" : written.IsLeft ? "refused" : "accepted");
                 if (written.IsRight)
@@ -114,12 +122,18 @@ public sealed class RiteWriter
         return Error.New($"{noneUsable} {string.Join(" | ", failures)}");
     }
 
-    private async Task<Either<Error, RiteContent>> Ask(string model, List<ChatMessage> messages, CancellationToken cancellationToken)
+    private async Task<Either<Error, RiteContent>> Ask(
+        string model, List<ChatMessage> messages, Option<TimeSpan> attemptTime, CancellationToken cancellationToken)
     {
+        // Without a limit, the model's client times out on its own.
+        using var timeout = attemptTime.Match(
+            Some: limit => new CancellationTokenSource(limit, time),
+            None: () => new CancellationTokenSource());
+        using var attempt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
         try
         {
             var response = await chatClients.For(model).GetResponseAsync<RiteContent>(
-                messages, AnswerSerializerOptions, options: null, useJsonSchemaResponseFormat: true, cancellationToken);
+                messages, AnswerSerializerOptions, options: null, useJsonSchemaResponseFormat: true, attempt.Token);
             return response.TryGetResult(out var content)
                 ? content
                 : Error.New($"The answer isn't a rite: {Shorten(response.Text)}");
@@ -131,6 +145,10 @@ public sealed class RiteWriter
             return Error.New(ex);
         }
     }
+
+    // A refill's patience: nobody waits on it, so every model gets its tries, with pauses between them.
+    private Patience Unhurried()
+        => new(options.Value.AttemptsPerModel, TimeSpan.FromSeconds(options.Value.RetryDelaySeconds), None);
 
     private static string Shorten(string text) => text.Length <= 500 ? text : $"{text[..500]}…";
 }
