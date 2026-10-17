@@ -233,11 +233,12 @@ observability/                    — the Grafana dashboard and alerts, and what
     old lesson is the same rite. Then `DuplicateCheck` asks `gpt-6-luna` (`Generation:DuplicateCheckModel`) whether
     the draft repeats any of those or any rite ever published. One that does is written again, told of the rite it
     repeats, up to twice (`Generation:DuplicateRewrites`); still repeating, it's kept with `Resembles` (that rite's
-    title), and the Scriptorium shows it as "Much like …" for the Scribes to judge. A rewrite that fails on every model keeps the draft, marked the same way. The check reads the
-    waiting drafts again first, so a draft another refill saved meanwhile counts too. A check that fails keeps the draft
-    unchecked; checks are counted (`dms.generation.duplicate_checks`). Amending a draft clears the mark. A model, not
-    a measure: Jev's scores place a rite among broad topics (unrelated rites on one topic score nearly the same), and
-    two wordings of one lesson share few words.
+    title), and the Scriptorium shows it as "Much like …" for the Scribes to judge. A rewrite that fails on every
+    model keeps the draft, marked the same way. The check reads the waiting drafts again first, so a draft another
+    refill saved meanwhile counts too. A check that fails keeps the draft unchecked; checks are counted
+    (`dms.generation.duplicate_checks`). Amending a draft clears the mark. A model, not a measure: Jev's scores place a
+    rite among broad topics (unrelated rites on one topic score nearly the same), and two wordings of one lesson share
+    few words.
   - **Refilling:** the `RefillBacklog` function keeps `Generation:BacklogSize` (20) drafts waiting. Each draft is of
     the kind there are fewer of, repeating no rite already written (above). The timer asks for a
     refill after publishing, by a message on the `backlog-refills` queue: a full refill takes minutes, longer than a
