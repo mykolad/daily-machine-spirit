@@ -25,6 +25,11 @@ Proposal.dc.html`, `scriptorium-icons.md`): icons, grouped buttons, folded notes
   for) are tied to their fields with `aria-describedby`. "Amend" on the calendar is a link, since it only opens the
   page: the page's buttons change things. Why words were refused, or that the Machine Spirit rewrote them, is the
   page's `role="status"` message, and the fields keep what the Scribe typed.
+- **The name page** (#84) has one field, with a visible label and a hint tied to it, and takes focus, since choosing a
+  name is all the page is for. The suggestions are links, each named by its name, under a heading, so a screen reader
+  can list them; picking one only fills the field, so nothing is taken without pressing Take This Name. A name that
+  can't be taken comes back in the field, marked `aria-invalid="true"` and described by the `role="status"` message
+  that says why.
 
 ## Tags
 
