@@ -237,11 +237,11 @@ observability/                    — the Grafana dashboard and alerts, and what
     the Augury Decide** (forget the Scribes' order), and **Amend** (#8, `Amendments`, its own page): change a waiting
     draft's words by hand, or ask the writer to rewrite them as the Scribe's note says (`RiteWriter.Rewrite`; the
     rewrite fills the form, unsaved, for the Scribe to read first). Saved words pass what a model's answer must
-    (`RiteChecks`) and are judged again (scores, quality and tags describe what will be published; if the judge fails,
-    the draft waits unjudged). The draft keeps `GeneratedByModel` and gets `Edited`, carried into the rite; the rite
-    never says which Scribe (the record does). The save is guarded by the draft's ETag, read with the page, and
-    records an `Amend` decision with the words as they were. The amending page posts plain forms, without the
-    calendar's script.
+    (`RiteChecks`) and are judged again (scores, quality and tags describe what will be published; if the judge fails
+    or is off, the draft waits unjudged). The draft keeps `GeneratedByModel` and gets `Edited`, carried into the rite;
+    the rite never says which Scribe (the record does). The save is guarded by the draft's ETag, read with the page,
+    and records an `Amend` decision with the words and places as they were. The amending page posts plain forms,
+    without the calendar's script.
   - **The Scribes' order** (the `placements` document) comes first; the Augury orders the rest. Moving a draft places
     everything above it too, so the order stays what the Scribes saw.
   - **Every action is a lesson:** it saves a `ScribeDecision` with the draft as it was, the Augury's place and quality

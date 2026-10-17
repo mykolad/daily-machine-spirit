@@ -49,6 +49,36 @@ public sealed class AmendmentsTests : IAsyncLifetime
         Assert.Equal(Some(0.2f), decision.AuguryQuality);
     }
 
+    // As every decision on a waiting draft does, the amendment keeps where the draft waited and where the Augury put it,
+    // read before it was judged again.
+    [Fact]
+    public async Task Save_RecordsTheDraftsPlaces_BeforeTheAmendment()
+    {
+        await testbed.AddDraft("Best", 0.9f);
+        var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
+        Ok(await testbed.Scribes().Anoint(draft.Id, "", Tester, CancellationToken.None));
+        var amendable = Ok(await testbed.Amendments().Get(draft.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Not amendable."));
+
+        Ok(await testbed.Amendments().Save(draft.Id, amendable.ETag, Sharper, "", Tester, CancellationToken.None));
+
+        var amend = Ok(await testbed.Scribes().View(CancellationToken.None)).Decisions.Single(found => found.Action == ScribeAction.Amend);
+        Assert.Equal((Some(1), Some(2)), (amend.CalendarPlace, amend.AuguryPlace));
+    }
+
+    // With Jev off the judge answers the draft as it was, without a quality: it isn't "judged again".
+    [Fact]
+    public async Task Save_WithTheJudgeOff_SaysTheDraftWaitsUnjudged()
+    {
+        var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
+        testbed.JevApiKey = "";
+        var amendable = Ok(await testbed.Amendments().Get(draft.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Not amendable."));
+
+        var judged = Ok(await testbed.Amendments().Save(draft.Id, amendable.ETag, Sharper, "", Tester, CancellationToken.None));
+
+        Assert.False(judged);
+        Assert.True(Assert.Single(await testbed.Waiting()).Augury.IsNone);
+    }
+
     [Fact]
     public async Task Save_WordsBreakingARule_AreRefusedWithTheReason_AndNothingChanges()
     {
