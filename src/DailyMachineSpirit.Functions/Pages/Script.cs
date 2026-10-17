@@ -308,8 +308,12 @@ public static class Script
                 .filter((part) => !stays(part)).map((part) => document.importNode(part, true)));
               document.title = page.title;
             };
+            // Narrowed to a subject, the words are sought within it; clearing them clears the search, the subject too.
             const show = async (typed) => {
-              const url = typed ? `/archive?q=${encodeURIComponent(typed)}` : '/archive';
+              const tag = form.elements.tag;
+              if (!typed) tag?.remove();
+              const within = tag && typed ? `&tag=${encodeURIComponent(tag.value)}` : '';
+              const url = typed ? `/archive?q=${encodeURIComponent(typed)}${within}` : '/archive';
               request?.abort();
               request = new AbortController();
               try {

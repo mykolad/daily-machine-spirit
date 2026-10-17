@@ -19,12 +19,13 @@ public interface IRiteRepository
 
     /// <summary>
     /// The rites numbered below <paramref name="number"/> whose title, text or Heretical Truth holds every one of
-    /// <paramref name="words"/>, ignoring case, the newest first: a page of search results.
+    /// <paramref name="words"/>, ignoring case, and filed under <paramref name="tag"/> if one is given, the newest first:
+    /// a page of search results.
     /// </summary>
-    Task<Either<Error, List<Rite>>> Search(IReadOnlyList<string> words, int number, int count, CancellationToken cancellationToken);
+    Task<Either<Error, List<Rite>>> Search(IReadOnlyList<string> words, Option<string> tag, int number, int count, CancellationToken cancellationToken);
 
-    /// <summary>The number and day of every rite <see cref="Search"/> finds, on every page, the newest first.</summary>
-    Task<Either<Error, List<RiteDay>>> FindDays(IReadOnlyList<string> words, CancellationToken cancellationToken);
+    /// <summary>The number, day and tags of every rite <see cref="Search"/> finds, on every page, the newest first.</summary>
+    Task<Either<Error, List<FoundRite>>> FindDaysAndTags(IReadOnlyList<string> words, Option<string> tag, CancellationToken cancellationToken);
 
     /// <summary>Every rite's number and day, the newest first: what the archive counts and indexes by month.</summary>
     Task<Either<Error, List<RiteDay>>> GetDays(CancellationToken cancellationToken);

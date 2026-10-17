@@ -27,11 +27,11 @@ public sealed class RitesWithoutScores : IRiteRepository
     public Task<Either<Error, List<Rite>>> GetOlderThan(int number, int count, CancellationToken cancellationToken)
         => rites.GetOlderThan(number, count, cancellationToken);
 
-    public Task<Either<Error, List<Rite>>> Search(IReadOnlyList<string> words, int number, int count, CancellationToken cancellationToken)
-        => rites.Search(words, number, count, cancellationToken);
+    public Task<Either<Error, List<Rite>>> Search(IReadOnlyList<string> words, Option<string> tag, int number, int count, CancellationToken cancellationToken)
+        => rites.Search(words, tag, number, count, cancellationToken);
 
-    public Task<Either<Error, List<RiteDay>>> FindDays(IReadOnlyList<string> words, CancellationToken cancellationToken)
-        => rites.FindDays(words, cancellationToken);
+    public Task<Either<Error, List<FoundRite>>> FindDaysAndTags(IReadOnlyList<string> words, Option<string> tag, CancellationToken cancellationToken)
+        => rites.FindDaysAndTags(words, tag, cancellationToken);
 
     public Task<Either<Error, List<RiteDay>>> GetDays(CancellationToken cancellationToken) => rites.GetDays(cancellationToken);
 

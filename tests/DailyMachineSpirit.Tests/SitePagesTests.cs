@@ -458,6 +458,67 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.Contains("""<a href="/archive?q=cache#m-2026-10">""", single);
     }
 
+    // Narrowed to a subject, only its rites; the form carries the tag along, and the chip takes it off again.
+    [Fact]
+    public async Task Archive_WithWordsAndATag_ListsOnlyThatSubjectsRites()
+    {
+        await AddCaches();
+
+        var (status, html) = await SearchedWithin("cache", "caches");
+
+        Assert.Equal(StatusCodes.Status200OK, status);
+        Assert.Equal(["The Warm Cache"], Titles(html));
+        Assert.Contains("<title>“cache” in Caches: 1 rite · The Daily Machine Spirit</title>", html);
+        Assert.Contains("""<p class="sheet-sub">1 rite filed under Caches mentions it.</p>""", html);
+        Assert.Contains("""<input type="hidden" name="tag" value="caches">""", html);
+        Assert.Contains("""<a class="filter-chip" href="/archive?q=cache" aria-label="Remove filter: Caches">Caches""", html);
+        Assert.Contains("""<h2 id="narrow">Other subjects</h2>""", html);
+        Assert.Contains("""<a class="tag" href="/archive?q=cache&amp;tag=builds">Builds (1)</a>""", html);
+        Assert.DoesNotContain("tag=caches\">", html);
+    }
+
+    // Without the script, the subjects the found rites are filed under narrow the search, the most first.
+    [Fact]
+    public async Task Archive_WithWords_OffersTheFoundRitesSubjects()
+    {
+        await AddCaches();
+
+        var (_, html) = await Searched("cache", "");
+
+        Assert.Equal(["The Cold Cache", "The Build Cache", "The Warm Cache"], Titles(html));
+        Assert.Contains("""<h2 id="narrow">Narrow to a subject</h2>""", html);
+        Assert.Contains("""<a class="tag" href="/archive?q=cache&amp;tag=builds">Builds (2)</a> <a class="tag" href="/archive?q=cache&amp;tag=caches">Caches (1)</a>""", html);
+        Assert.DoesNotContain("""class="filter-chip" """, html);
+    }
+
+    // Nothing found within a subject: the way out is the same words in every subject.
+    [Fact]
+    public async Task Archive_WithATagNoRiteMatches_OffersEverySubject()
+    {
+        await AddCaches();
+
+        var (_, html) = await SearchedWithin("cold", "caches");
+
+        Assert.Contains("""<p class="sheet-sub">No rite filed under Caches mentions it.</p>""", html);
+        Assert.Contains("""<a class="sheet-button" href="/archive?q=cold">Search every subject</a>""", html);
+    }
+
+    // A tag without words is the tag's own page; a tag the site doesn't have is no filter at all.
+    [Fact]
+    public async Task Archive_WithATagAlone_IsTheTagsPage_AndAnUnknownTagIsIgnored()
+    {
+        await AddCaches();
+        var context = new DefaultHttpContext();
+        context.Request.QueryString = new QueryString("?tag=caches");
+
+        var redirect = Assert.IsType<RedirectResult>(await Pages().Archive(context.Request, CancellationToken.None));
+        var (_, unknown) = await SearchedWithin("cache", "nonsense");
+
+        Assert.Equal(("/tags/caches", false), (redirect.Url, redirect.Permanent));
+        Assert.Equal(3, Titles(unknown).Count);
+        Assert.DoesNotContain("""name="tag" """, unknown);
+    }
+
     // A rite found by its Heretical Truth alone is listed, but its truth stays sealed: the row shows the opening words,
     // and breaking the seal is the reader's choice, on the rite's own page.
     [Fact]
@@ -587,6 +648,23 @@ public sealed class SitePagesTests : IAsyncLifetime
         var query = QueryString.Create(before.Length == 0 ? [new("q", words)] : new KeyValuePair<string, string?>[] { new("q", words), new("before", before) });
         var page = await Read(context => Pages().Archive(context.Request, CancellationToken.None), "/archive", query.Value ?? "");
         return (page.Status, page.Html);
+    }
+
+    private async Task<(int Status, string Html)> SearchedWithin(string words, string tag)
+    {
+        var query = QueryString.Create([new("q", words), new KeyValuePair<string, string?>("tag", tag)]);
+        var page = await Read(context => Pages().Archive(context.Request, CancellationToken.None), "/archive", query.Value ?? "");
+        return (page.Status, page.Html);
+    }
+
+    // Three rites mentioning a cache: one filed under Caches and Builds, one under Builds, one under nothing.
+    private async Task AddCaches()
+    {
+        await Add(Day.AddDays(-2), "The Warm Cache");
+        await Tag(Day.AddDays(-2), "caches", "builds");
+        await Add(Day.AddDays(-1), "The Build Cache");
+        await Tag(Day.AddDays(-1), "builds");
+        await Add(Day, "The Cold Cache");
     }
 
     private static Task<(int Status, string Html, string CacheControl)> Read(Func<HttpContext, Task<IActionResult>> serve)

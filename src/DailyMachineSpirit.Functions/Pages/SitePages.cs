@@ -81,8 +81,9 @@ public sealed class SitePages
     /// Pages by number, newest first: <c>?before=&lt;number&gt;</c> starts below that number. The first page leaves
     /// out the newest rite, which Today shows: only the day's own rite is ever published, so the highest number is also
     /// the newest date. One rite more than a page is read, to know whether there are older ones. With <c>?q=</c>, the
-    /// rites holding every word the reader typed instead, Today's included; the words are never logged (a failure logs
-    /// the path alone).
+    /// rites holding every word the reader typed instead, Today's included, and with <c>&amp;tag=</c> only those filed
+    /// under that tag (a tag without words is the tag's own page); the words are never logged (a failure logs the path
+    /// alone).
     /// </summary>
     [Function("Archive")]
     public async Task<IActionResult> Archive(
@@ -92,14 +93,20 @@ public sealed class SitePages
         var now = time.GetUtcNow();
         var typed = SearchWords.Typed(request.Query["q"]);
         var words = SearchWords.From(typed);
+        var tag = RiteTags.Find(request.Query["tag"].ToString());
         var isFirstPage = !int.TryParse(request.Query["before"], out var before) || before < 1;
+        if (words.Count == 0 && tag.Case is Tag only)
+        {
+            return new RedirectResult(Paths.Tag(only.Key), permanent: false);
+        }
         if (words.Count > 0)
         {
-            var found = await rites.FindDays(words, cancellationToken)
-                .BindAsync(days => rites.Search(words, isFirstPage ? int.MaxValue : before, ArchivePage.PageSize + 1, cancellationToken)
+            var tagKey = tag.Map(filter => filter.Key);
+            var found = await rites.FindDaysAndTags(words, tagKey, cancellationToken)
+                .BindAsync(days => rites.Search(words, tagKey, isFirstPage ? int.MaxValue : before, ArchivePage.PageSize + 1, cancellationToken)
                     .MapAsync(page => Results(days, page)));
             return found.Match(
-                Right: results => Page(request, StatusCodes.Status200OK, ArchivePage.Results(typed, words, results, now)),
+                Right: results => Page(request, StatusCodes.Status200OK, ArchivePage.Results(typed, words, tag, results, now)),
                 Left: error => Failed(request, error));
         }
 
@@ -154,7 +161,7 @@ public sealed class SitePages
             Left: error => Failed(request, error));
     }
 
-    private static SearchResults Results(List<RiteDay> found, List<Rite> page)
+    private static SearchResults Results(List<FoundRite> found, List<Rite> page)
     {
         var (shown, olderThan) = OnePage(page);
         return new SearchResults(found, shown, olderThan);
