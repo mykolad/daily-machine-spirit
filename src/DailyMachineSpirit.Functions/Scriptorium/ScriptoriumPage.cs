@@ -86,6 +86,8 @@ public static partial class ScriptoriumPage
         .outline:hover, .secondary:hover { background: rgba(237,227,207,.08); border-color: rgba(237,227,207,.4); }
         .danger { background: #3b1814; color: #f6cfc6; border-color: #d0604d; }
         .danger:hover { background: #4a1f19; }
+        button:disabled { opacity: .55; cursor: not-allowed; }
+        form[data-busy] button:disabled { cursor: progress; }
         .judgments li { background: #1a1612; border-radius: 12px; padding: 10px 14px; }
         .record { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 8px; }
         .record li { background: #1a1612; border-radius: 12px; padding: 10px 14px; }
@@ -245,7 +247,7 @@ public static partial class ScriptoriumPage
             <textarea id="amend-note" name="note" rows="3" maxlength="{ScribeDecision.MaxNoteLength}" aria-describedby="amend-note-hint">{Encode(note)}</textarea>
             <div class="buttons">
             <button class="primary">{ScriptoriumIcons.Save}Save the Amendment</button>
-            <button class="secondary" formaction="/scriptorium/drafts/{id}/rewrite" data-needs-note data-in-place data-slow="{Encode(Rewriting)}">{ScriptoriumIcons.Summon}Ask the Machine Spirit to Rewrite</button>
+            <button class="secondary" formaction="/scriptorium/drafts/{id}/rewrite" data-needs-note data-in-place data-slow="{Encode(Rewriting)}" data-busy-label="Rewriting…">{ScriptoriumIcons.Summon}Ask the Machine Spirit to Rewrite</button>
             <a class="button-link" href="/scriptorium#rite-{id}">Leave It as It Was</a>
             </div>
             </form>

@@ -559,7 +559,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Contains($"""formaction="/scriptorium/drafts/{draft.Id:D}/rewrite" data-needs-note""", html);
         Assert.Contains(SlowActionScript.Js, html);
         Assert.DoesNotContain(ScriptoriumScript.Js, html);
-        Assert.Contains("""data-needs-note data-in-place data-slow="The Machine Spirit is rewriting it… usually a few seconds, at most a minute and a half.">""", html);
+        Assert.Contains("""data-needs-note data-in-place data-slow="The Machine Spirit is rewriting it… usually a few seconds, at most a minute and a half." data-busy-label="Rewriting…">""", html);
         Assert.Contains("Needed to ask for a rewrite, which follows it", html);
         Assert.DoesNotContain("""<span class="changed-mark">""", html);
     }

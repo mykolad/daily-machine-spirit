@@ -36,6 +36,10 @@ public static class SlowActionScript
             }
             form.dataset.busy = 'true';
             say(button.dataset.slow);
+            // The button says it too, where the Scribe is looking: the status message may be scrolled out of sight.
+            const label = button.lastChild;
+            const idle = label?.textContent;
+            if (label && button.dataset.busyLabel) label.textContent = button.dataset.busyLabel;
             const buttons = [...form.querySelectorAll('button')];
             // A distillation loads its page as usual; the buttons are disabled once the form has been sent.
             if (!button.hasAttribute('data-in-place')) {
@@ -65,6 +69,7 @@ public static class SlowActionScript
               (document.querySelector('form.amend [autofocus]') ?? document.getElementById('amend-title'))?.focus();
             } catch {
               delete form.dataset.busy;
+              if (label) label.textContent = idle;
               buttons.forEach((each) => { each.disabled = false; });
               noteNeeded();
               say('The Machine Spirit couldn’t be reached. Try again in a moment.');
