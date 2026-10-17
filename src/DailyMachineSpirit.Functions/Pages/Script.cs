@@ -411,7 +411,9 @@ public static class Script
               const ranges = words
                 .flatMap((word) => {
                   const found = [];
-                  for (let at = lower.indexOf(word); at >= 0; at = lower.indexOf(word, at + 1)) found.push([at, at + word.length]);
+                  for (let at = lower.indexOf(word); at >= 0; at = lower.indexOf(word, at + 1)) {
+                    if (!atWordStart || at === 0 || !/[\p{L}\p{N}]/u.test(lower[at - 1])) found.push([at, at + word.length]);
+                  }
                   return found;
                 })
                 .sort((a, b) => a[0] - b[0])
@@ -446,7 +448,7 @@ public static class Script
               const about = subjects.filter((subject) => !named.includes(subject) && startsEvery(`${subject.label} ${subject.about}`, folded));
               return [...named, ...about].slice(0, 3);
             };
-            const optionOf = (id, href, titleText, metaText, words) => {
+            const optionOf = (id, href, titleContent, metaContent) => {
               const option = document.createElement('a');
               option.id = id;
               option.setAttribute('role', 'option');
@@ -454,10 +456,10 @@ public static class Script
               option.tabIndex = -1;
               const title = document.createElement('span');
               title.className = 'nav-find-title';
-              title.append(marked(titleText, words));
+              title.append(titleContent);
               const meta = document.createElement('span');
               meta.className = 'nav-find-meta';
-              meta.textContent = metaText;
+              meta.append(metaContent);
               option.append(title, meta);
               return option;
             };
@@ -497,10 +499,10 @@ public static class Script
               }
               // They need no index, so they're offered even when it can't be loaded.
               const filed = subjectsFor(words);
-              const subjectOptions = () => filed.map((subject) => optionOf(
-                `search-subject-${subject.key}`, `/tags/${subject.key}`, subject.label, `Rites about ${subject.about}`, words.map(fold)));
+              const subjectOptions = () => filed.map((subject) => optionOf(`search-subject-${subject.key}`, `/tags/${subject.key}`,
+                marked(subject.label, words.map(fold), true), marked(`Rites about ${subject.about}`, words.map(fold), true)));
               const announced = (text) => (filed.length === 0 ? text
-                : `${filed.length} ${filed.length === 1 ? 'subject' : 'subjects'}; ${text}`);
+                : `${filed.length} ${filed.length === 1 ? 'subject' : 'subjects'}. ${text}`);
               try {
                 rites ??= fetch('/api/search-index').then((response) => {
                   if (!response.ok) throw new Error(String(response.status));
@@ -519,8 +521,8 @@ public static class Script
                 none.hidden = found.length > 0 || filed.length > 0;
                 fill(subjectOptions(), found.slice(0, 5).map((rite) => {
                   const [, month, day] = rite.day.split('-').map(Number);
-                  return optionOf(`search-option-${rite.number}`, `/r/${rite.number}`, rite.title,
-                    `${rite.kind === 'prayer' ? 'Prayer' : 'Ritual'} · ${day} ${monthNames[month - 1]}`, words);
+                  return optionOf(`search-option-${rite.number}`, `/r/${rite.number}`, marked(rite.title, words, false),
+                    `${rite.kind === 'prayer' ? 'Prayer' : 'Ritual'} · ${day} ${monthNames[month - 1]}`);
                 }));
                 status.textContent = announced(label.textContent);
               } catch {
