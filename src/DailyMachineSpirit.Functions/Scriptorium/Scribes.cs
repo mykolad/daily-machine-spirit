@@ -22,12 +22,6 @@ public class ScriptoriumOptions
     /// alone (staging). Elsewhere the Scribes sign in with Cloudflare Access, and with neither, nobody gets in.
     /// </summary>
     public bool WithoutSignIn { get; set; }
-
-    /// <summary>
-    /// The names the record (#9) shows for the Scribes, by their Cloudflare Access id. A Scribe without one is shown by
-    /// the end of their id.
-    /// </summary>
-    public List<ScribeName> Scribes { get; set; } = [];
 }
 
 /// <summary>A draft in the Liturgical Calendar, as the Scriptorium shows it.</summary>

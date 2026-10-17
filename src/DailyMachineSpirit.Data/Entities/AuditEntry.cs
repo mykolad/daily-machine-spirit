@@ -6,7 +6,7 @@ namespace DailyMachineSpirit.Data.Entities;
 /// One change to the drafts or the rites, and who made it (#9): every Scribe action, and what the Machine Spirit does
 /// on its own (writing drafts, publishing). Append-only, saved with the change it records, and kept for as long as the
 /// drafts and rites are: burned drafts stay, hidden, so an entry can always point at its draft. The actor is an id, not
-/// a person's name or email: a Scribe's Cloudflare Access id, which the Scriptorium shows by a name from its settings.
+/// a person's name or email: a Scribe's Cloudflare Access id.
 /// </summary>
 public sealed record AuditEntry
 {
