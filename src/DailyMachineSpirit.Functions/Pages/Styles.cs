@@ -195,7 +195,6 @@ public static class Styles
         .row-title:focus-visible{outline:none}
         .row-title::after{content:'';position:absolute;inset:0;border-radius:8px}
         .row-line{font-family:'EB Garamond',serif;font-size:16px;line-height:1.45;color:#2b2117;text-wrap:pretty}
-        .row-truth{font-style:italic;color:#5c4a33}
         .row-counts{display:flex;gap:16px;margin-top:4px;font-weight:600;font-size:13px;color:#5c4a33}
         .row-counts span{display:inline-flex;align-items:center;gap:6px}
         .row-counts svg{width:16px;height:16px}

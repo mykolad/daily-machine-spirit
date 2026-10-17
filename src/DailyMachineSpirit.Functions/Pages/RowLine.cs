@@ -5,8 +5,8 @@ namespace DailyMachineSpirit.Functions.Pages;
 
 /// <summary>
 /// The line of text under a title in the Archive's rows: the rite's opening words, or for a search, the words around
-/// the first match, so a reader sees why the rite was found. Plain text: backticks are dropped, since a cut could
-/// split a code span.
+/// the first match in the text, so a reader sees why the rite was found. Plain text: backticks are dropped, since a cut
+/// could split a code span.
 /// </summary>
 public static class RowLine
 {
@@ -21,22 +21,13 @@ public static class RowLine
     public static string Opening(Rite rite) => Clip(Plain(rite.Writing.Text), FirstLineLength, 0);
 
     /// <summary>
-    /// Around the first word found in the text; else the opening words when the title holds the words, and the words
-    /// around the first one in the Heretical Truth when only it does (then <c>FromTruth</c>).
+    /// Around the first word found in the text, else the opening words. Never the Heretical Truth, though search finds
+    /// rites by it too: the truth stays sealed until the reader breaks the seal on the rite's own page.
     /// </summary>
-    public static (string Line, bool FromTruth) For(Rite rite, IReadOnlyList<string> words)
+    public static string For(Rite rite, IReadOnlyList<string> words)
     {
         var text = Plain(rite.Writing.Text);
-        var inText = FirstMatch(text, words);
-        if (inText.IsSome || FirstMatch(rite.Writing.Title, words).IsSome)
-        {
-            return (inText.Match(Some: match => Around(text, match), None: () => Clip(text, FirstLineLength, 0)), false);
-        }
-
-        var truth = Plain(rite.Writing.HereticalTruth);
-        return FirstMatch(truth, words).Match(
-            Some: match => (Around(truth, match), true),
-            None: () => (Clip(text, FirstLineLength, 0), false));
+        return FirstMatch(text, words).Match(Some: match => Around(text, match), None: () => Clip(text, FirstLineLength, 0));
     }
 
     private static Option<(int Start, int Length)> FirstMatch(string text, IReadOnlyList<string> words)
