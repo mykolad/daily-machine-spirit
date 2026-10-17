@@ -268,7 +268,8 @@ observability/                    — the Grafana dashboard and alerts, and what
       timer runs Mondays at 01:00 UTC, as the Machine Spirit; a Scribe can ask sooner, and waits for the answer.
       Nothing judged yet, or every precept pinned, means nothing to do.
     - **The Scribes have the final say** (`PreceptKeeping`): they add, edit, pin or delete precepts. Pinned precepts
-      stay when distilled again, the rest make way for the new ones; a Scribe's words are pinned. Deleted ones are
+      stay when distilled again, the rest make way for the new ones; a Scribe's words are pinned. Pinned ones come first,
+      on the page and in the writer's prompt; Pin and Unpin say what they do in their `title`. Deleted ones are
       remembered (the newest 30): the model is told not to propose them, and any it does are dropped.
     - **Not yet the judge's:** the Augury still orders by Jev's quality; #10 tests a model judge with the Precepts.
   - **The Record** (`/scriptorium/record`, #9): who changed what, newest first, the last 100; `?draft=` gives one

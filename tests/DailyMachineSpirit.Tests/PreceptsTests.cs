@@ -53,7 +53,7 @@ public sealed class PreceptsTests : IAsyncLifetime
     {
         await AJudgment();
         var keeping = testbed.PreceptKeeping();
-        Ok(await keeping.Add("Keep the Omnissiah out of rituals.", Tester, CancellationToken.None));
+        Ok(await keeping.AddPinned("Keep the Omnissiah out of rituals.", Tester, CancellationToken.None));
         testbed.Models.Answers(Sol, Distilled(RealFix, NoRepeats));
         var first = Ok(await testbed.Distiller().Distil(AuditEntry.MachineSpirit, CancellationToken.None));
         Ok(await keeping.Delete(first.Precepts.Single(precept => precept.Text == NoRepeats).Id, await Version(), Tester, CancellationToken.None));
@@ -81,7 +81,7 @@ public sealed class PreceptsTests : IAsyncLifetime
         await AJudgment();
         for (var added = 0; added < PreceptBook.MaxPrecepts; added++)
         {
-            Ok(await testbed.PreceptKeeping().Add($"Precept {added}.", Tester, CancellationToken.None));
+            Ok(await testbed.PreceptKeeping().AddPinned($"Precept {added}.", Tester, CancellationToken.None));
         }
 
         Assert.Equal(PreceptDistiller.AllPinned, Failed(await testbed.Distiller().Distil(Tester, CancellationToken.None)));
@@ -120,7 +120,7 @@ public sealed class PreceptsTests : IAsyncLifetime
     public async Task Distil_NeverBringsBackADeletedPrecept()
     {
         await AJudgment();
-        Ok(await testbed.PreceptKeeping().Add(NoRepeats, Tester, CancellationToken.None));
+        Ok(await testbed.PreceptKeeping().AddPinned(NoRepeats, Tester, CancellationToken.None));
         var read = Ok(await testbed.Precepts.Get(CancellationToken.None));
         Ok(await testbed.PreceptKeeping().Delete(read.Book.Precepts.Single().Id, ETag(read), Tester, CancellationToken.None));
         testbed.Models.Answers(Sol, Distilled(NoRepeats.ToUpperInvariant()));
@@ -166,7 +166,7 @@ public sealed class PreceptsTests : IAsyncLifetime
     public async Task TheScribes_Add_Edit_Pin_AndUnpin_Precepts()
     {
         var keeping = testbed.PreceptKeeping();
-        Ok(await keeping.Add($"  {RealFix}  ", Tester, CancellationToken.None));
+        Ok(await keeping.AddPinned($"  {RealFix}  ", Tester, CancellationToken.None));
         testbed.Time.Advance(TimeSpan.FromMinutes(1));
         await AJudgment();
         testbed.Models.Answers(Sol, Distilled(NoRepeats));
@@ -174,7 +174,7 @@ public sealed class PreceptsTests : IAsyncLifetime
 
         // A minute apart, so newest first is one order.
         testbed.Time.Advance(TimeSpan.FromMinutes(1));
-        Ok(await keeping.Edit(distilled.Id, await Version(), "Avoid last week's subjects.", Tester, CancellationToken.None));
+        Ok(await keeping.EditAndPin(distilled.Id, await Version(), "Avoid last week's subjects.", Tester, CancellationToken.None));
         var edited = Ok(await keeping.View(CancellationToken.None)).Book.Precepts[1];
         testbed.Time.Advance(TimeSpan.FromMinutes(1));
         Ok(await keeping.Unpin(edited.Id, await Version(), Tester, CancellationToken.None));
@@ -197,6 +197,23 @@ public sealed class PreceptsTests : IAsyncLifetime
         ], record);
     }
 
+    // The pinned lead, on the page and in the writer's prompt; each group keeps its order.
+    [Fact]
+    public async Task ThePinned_ComeFirst()
+    {
+        await AJudgment();
+        testbed.Models.Answers(Sol, Distilled("First.", "Second.", "Third."));
+        Ok(await testbed.Distiller().Distil(Tester, CancellationToken.None));
+        var keeping = testbed.PreceptKeeping();
+
+        Ok(await keeping.AddPinned("Mine.", Tester, CancellationToken.None));
+        Assert.Equal(["Mine.", "First.", "Second.", "Third."], await Texts());
+        Ok(await keeping.Pin(await IdOf("Third."), await Version(), Tester, CancellationToken.None));
+        Assert.Equal(["Mine.", "Third.", "First.", "Second."], await Texts());
+        Ok(await keeping.Unpin(await IdOf("Mine."), await Version(), Tester, CancellationToken.None));
+        Assert.Equal(["Third.", "Mine.", "First.", "Second."], await Texts());
+    }
+
     // A deleted precept is remembered, the newest first, so it isn't proposed again; only so many are kept.
     [Fact]
     public async Task Deleting_RemembersTheWords_UpToALimit()
@@ -204,7 +221,7 @@ public sealed class PreceptsTests : IAsyncLifetime
         var keeping = testbed.PreceptKeeping();
         for (var deleted = 0; deleted <= PreceptBook.RejectedKept; deleted++)
         {
-            Ok(await keeping.Add($"Precept {deleted}.", Tester, CancellationToken.None));
+            Ok(await keeping.AddPinned($"Precept {deleted}.", Tester, CancellationToken.None));
             var added = Ok(await keeping.View(CancellationToken.None)).Book.Precepts.Single();
             Ok(await keeping.Delete(added.Id, await Version(), Tester, CancellationToken.None));
         }
@@ -220,7 +237,7 @@ public sealed class PreceptsTests : IAsyncLifetime
     [InlineData(null, "A precept can be at most 300 characters.")]
     public async Task APrecept_NeedsWords_ButNotTooMany(string? text, string message)
     {
-        var error = Failed(await testbed.PreceptKeeping().Add(text ?? new string('x', Precept.MaxLength + 1), Tester, CancellationToken.None));
+        var error = Failed(await testbed.PreceptKeeping().AddPinned(text ?? new string('x', Precept.MaxLength + 1), Tester, CancellationToken.None));
 
         Assert.Equal(message, error.Message);
     }
@@ -231,10 +248,10 @@ public sealed class PreceptsTests : IAsyncLifetime
         var keeping = testbed.PreceptKeeping();
         for (var added = 0; added < PreceptBook.MaxPrecepts; added++)
         {
-            Ok(await keeping.Add($"Precept {added}.", Tester, CancellationToken.None));
+            Ok(await keeping.AddPinned($"Precept {added}.", Tester, CancellationToken.None));
         }
 
-        Assert.Equal(PreceptKeeping.Full, Failed(await keeping.Add("One too many.", Tester, CancellationToken.None)));
+        Assert.Equal(PreceptKeeping.Full, Failed(await keeping.AddPinned("One too many.", Tester, CancellationToken.None)));
     }
 
     // Replaced by a distillation, or deleted by another Scribe, since the page was shown.
@@ -247,9 +264,9 @@ public sealed class PreceptsTests : IAsyncLifetime
     [Fact]
     public async Task Saving_FromAStaleRead_IsRefused()
     {
-        Ok(await testbed.PreceptKeeping().Add(RealFix, Tester, CancellationToken.None));
+        Ok(await testbed.PreceptKeeping().AddPinned(RealFix, Tester, CancellationToken.None));
         var read = Ok(await testbed.Precepts.Get(CancellationToken.None));
-        Ok(await testbed.PreceptKeeping().Add(NoRepeats, Tester, CancellationToken.None));
+        Ok(await testbed.PreceptKeeping().AddPinned(NoRepeats, Tester, CancellationToken.None));
 
         var stale = await testbed.Precepts.Save(read, read.Book with { Precepts = [] },
             new AuditEntry { Id = Guid.NewGuid(), Actor = Tester, Action = AuditAction.DeletePrecept }, CancellationToken.None);
@@ -263,13 +280,19 @@ public sealed class PreceptsTests : IAsyncLifetime
     public async Task TheFirstSave_IsRefused_WhenAnotherCameFirst()
     {
         var empty = Ok(await testbed.Precepts.Get(CancellationToken.None));
-        Ok(await testbed.PreceptKeeping().Add(RealFix, Tester, CancellationToken.None));
+        Ok(await testbed.PreceptKeeping().AddPinned(RealFix, Tester, CancellationToken.None));
 
         var late = await testbed.Precepts.Save(empty, empty.Book,
             new AuditEntry { Id = Guid.NewGuid(), Actor = Tester, Action = AuditAction.AddPrecept }, CancellationToken.None);
 
         Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Failed(late));
     }
+
+    private async Task<List<string>> Texts()
+        => Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts.Select(precept => precept.Text).ToList();
+
+    private async Task<Guid> IdOf(string text)
+        => Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts.Single(precept => precept.Text == text).Id;
 
     // The version of the Precepts a Scribe's page would show now.
     private async Task<string> Version() => ETag(Ok(await testbed.Precepts.Get(CancellationToken.None)));
