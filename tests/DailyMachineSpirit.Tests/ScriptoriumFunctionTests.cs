@@ -303,7 +303,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     public async Task Page_WhenCosmosFails_SaysTheScriptoriumIsSilent()
     {
         var function = new ScriptoriumFunction(
-            testbed.ScribesWithoutCosmos(), testbed.Amendments(), testbed.Audit, new EveryoneIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+            testbed.ScribesWithoutCosmos(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, new EveryoneIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
         var html = Html(await function.Page(Get(""), CancellationToken.None), 500);
 
@@ -359,7 +359,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var burned = await testbed.AddDraft("Burned", 0.5f);
         await testbed.AddDraft("Still waiting", 0.5f);
         var scribes = new Scribes(new DraftsFailingAfterFirstRead(testbed.Drafts), testbed.Rites, testbed.Scriptorium, testbed.Time);
-        var function = new ScriptoriumFunction(scribes, testbed.Amendments(), testbed.Audit, new EveryoneIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+        var function = new ScriptoriumFunction(scribes, testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, new EveryoneIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
         var response = await function.Decide(Post(""), burned.Id, "burn", CancellationToken.None);
 
@@ -499,7 +499,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var draft = await testbed.AddDraft("Kept", 0.5f);
         var function = new ScriptoriumFunction(
-            testbed.Scribes(), testbed.Amendments(), testbed.Audit, new NobodyIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+            testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, new NobodyIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
         var page = await function.Page(Get(""), CancellationToken.None);
         var decision = await function.Decide(Post(""), draft.Id, "burn", CancellationToken.None);
@@ -568,6 +568,41 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var result = await Function(enabled: true).AmendPage(Get(""), draft.Id, CancellationToken.None);
 
         Assert.Equal($"/scriptorium?done=changed&rite={draft.Id:D}#rite-{draft.Id:D}", Assert.IsType<RedirectResult>(result).Url);
+    }
+
+    // Only a draft judging couldn't score offers it: judging a judged one again would change nothing its words did.
+    [Fact]
+    public async Task JudgeAgain_IsOfferedOnlyForAnUnjudgedDraft_AndJudgesIt()
+    {
+        var unjudged = await testbed.AddUnjudgedDraft("Litany of the Cold Cache");
+        var judged = await testbed.AddDraft("Already judged", 0.9f);
+        var page = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+        Assert.Contains($"""formaction="/scriptorium/drafts/{unjudged.Id:D}/judge">""", page);
+        Assert.DoesNotContain($"/scriptorium/drafts/{judged.Id:D}/judge", page);
+
+        var response = await Function(enabled: true).Decide(Post(""), unjudged.Id, "judge", CancellationToken.None);
+
+        Assert.Equal($"/scriptorium?done=judged&rite={unjudged.Id:D}#rite-{unjudged.Id:D}", Assert.IsType<RedirectResult>(response.Result).Url);
+        var html = Html(await Function(enabled: true).Page(Following(response.Result), CancellationToken.None), 200);
+        Assert.Matches("Judged “Litany of the Cold Cache” again, \\d+ %: the Augury places it for ", html);
+        Assert.Contains($"""A Scribe on staging judged <a href="/scriptorium/record?draft={unjudged.Id:D}">“Litany of the Cold Cache”</a> again""", ScriptoriumPage.RenderRecord(
+            Ok(await testbed.Audit.GetHistory(unjudged.Id, CancellationToken.None)), LanguageExt.Prelude.None));
+    }
+
+    [Fact]
+    public async Task JudgeAgain_SaysWhenItStillCant_OrHasNothingToJudge()
+    {
+        var unjudged = await testbed.AddUnjudgedDraft("Litany of the Cold Cache");
+        var judged = await testbed.AddDraft("Already judged", 0.9f);
+        testbed.JevApiKey = "";
+
+        var still = await Function(enabled: true).Decide(Post(""), unjudged.Id, "judge", CancellationToken.None);
+        var nothing = await Function(enabled: true).Decide(Post(""), judged.Id, "judge", CancellationToken.None);
+
+        Assert.StartsWith("/scriptorium?done=still-unjudged", Assert.IsType<RedirectResult>(still.Result).Url);
+        Assert.Contains("Still “Litany of the Cold Cache” can't be judged",
+            Html(await Function(enabled: true).Page(Following(still.Result), CancellationToken.None), 200));
+        Assert.StartsWith("/scriptorium?done=changed", Assert.IsType<RedirectResult>(nothing.Result).Url);
     }
 
     // A textarea's maxlength counts a line break as one character, but the browser posts it as two (CRLF): words that
@@ -707,7 +742,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     [Fact]
     public async Task TheRecord_IsTheScribesAlone()
     {
-        var notAScribe = new ScriptoriumFunction(testbed.Scribes(), testbed.Amendments(), testbed.Audit, new NobodyIsScribeSignIn(),
+        var notAScribe = new ScriptoriumFunction(testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, new NobodyIsScribeSignIn(),
             Options.Create(new ScriptoriumOptions { Enabled = true }), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
         Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<StatusCodeResult>(await notAScribe.Record(Get(""), CancellationToken.None)).StatusCode);
@@ -715,7 +750,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     }
 
     private ScriptoriumFunction Function(bool enabled)
-        => new(testbed.Scribes(), testbed.Amendments(), testbed.Audit, new EveryoneIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = enabled }), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+        => new(testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, new EveryoneIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = enabled }), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
     private static HttpRequest Get(string query)
     {

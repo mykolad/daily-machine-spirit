@@ -29,4 +29,11 @@ public interface IDraftRepository
     /// tagged it anew, or cleared its scores), it's left as it is.
     /// </summary>
     Task<Either<Error, Unit>> SaveTags(Guid draftId, string[] tags, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Saves a judgment (scores, quality, tags) with its record entry, if the draft is still the version judged
+    /// (<paramref name="etag"/>): <see cref="ScriptoriumRepository.ChangedMeanwhile"/> when it was judged, amended, burned
+    /// or published since, so a judgment of old words never lands on new ones.
+    /// </summary>
+    Task<Either<Error, Unit>> SaveJudgmentIfUnchanged(Draft judged, string etag, AuditEntry audit, CancellationToken cancellationToken);
 }

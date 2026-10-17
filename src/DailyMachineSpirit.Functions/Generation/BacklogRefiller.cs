@@ -19,6 +19,7 @@ public sealed class BacklogRefiller
     private readonly IScriptoriumRepository scriptorium;
     private readonly RiteWriter writer;
     private readonly DuplicateCheck duplicates;
+    private readonly JudgingAgain judgingAgain;
     private readonly IRiteJudge judge;
     private readonly IOptions<GenerationOptions> options;
     private readonly SiteMetrics metrics;
@@ -30,6 +31,7 @@ public sealed class BacklogRefiller
         IScriptoriumRepository scriptorium,
         RiteWriter writer,
         DuplicateCheck duplicates,
+        JudgingAgain judgingAgain,
         IRiteJudge judge,
         IOptions<GenerationOptions> options,
         SiteMetrics metrics,
@@ -40,6 +42,7 @@ public sealed class BacklogRefiller
         this.scriptorium = scriptorium;
         this.writer = writer;
         this.duplicates = duplicates;
+        this.judgingAgain = judgingAgain;
         this.judge = judge;
         this.options = options;
         this.metrics = metrics;
@@ -52,6 +55,10 @@ public sealed class BacklogRefiller
     /// </summary>
     public async Task<Either<Error, int>> Refill(CancellationToken cancellationToken)
     {
+        // First the drafts judging couldn't score: an outage that's over heals here. It never stops the refill.
+        (await judgingAgain.JudgeTheUnjudged(cancellationToken))
+            .IfLeft(error => logger.LogWarning(error.ToException(), "Unjudged drafts couldn't be judged again: {Reason}", error.Message));
+
         for (var written = 0; ; written++)
         {
             var wroteOne = await drafts.GetWaiting(cancellationToken)

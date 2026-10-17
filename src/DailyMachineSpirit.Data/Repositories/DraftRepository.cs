@@ -79,4 +79,29 @@ public class DraftRepository : IDraftRepository
             }
             return unit;
         });
+
+    // A patch, so nothing else on the draft is touched. Changed in any way since the version judged (judged by another,
+    // amended, burned, published), the batch fails, and the record gets no entry for a judgment that wasn't saved.
+    public Task<Either<Error, Unit>> SaveJudgmentIfUnchanged(Draft judged, string etag, AuditEntry audit, CancellationToken cancellationToken)
+        => AttemptEither(async () =>
+        {
+            var document = DraftDocument.From(judged);
+            using var response = await container.CreateTransactionalBatch(SharedPartitionKey)
+                .PatchItem(document.Id,
+                    [
+                        PatchOperation.Set("/similarity", document.Similarity),
+                        PatchOperation.Set("/augury", document.Augury),
+                        PatchOperation.Set("/tags", document.Tags),
+                    ],
+                    new TransactionalBatchPatchItemRequestOptions { IfMatchEtag = etag })
+                .CreateItem(AuditEntryDocument.From(audit))
+                .ExecuteAsync(cancellationToken);
+            if (response.IsSuccessStatusCode)
+            {
+                return Right<Error, Unit>(unit);
+            }
+            return response.Any(result => result.StatusCode == HttpStatusCode.PreconditionFailed)
+                ? ScriptoriumRepository.ChangedMeanwhile
+                : Error.New($"Saving the judgment failed: {response.StatusCode}. {response.ErrorMessage}");
+        });
 }

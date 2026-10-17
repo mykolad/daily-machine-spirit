@@ -258,7 +258,10 @@ observability/                    — the Grafana dashboard and alerts, and what
     Every draft and rewrite follows the Precepts (below); if they can't be read, the rite is written without them.
   - **Judging:** an `IRiteJudge` judges each draft (`JevJudge` for now, swappable like the models): its similarity
     scores for "More rites" and its quality for the Augury, in one request. A draft that can't be judged still joins
-    the backlog, without scores. "Scores" are always the similarity scores, never the quality.
+    the backlog, without scores. It's judged again (`JudgingAgain`): by each refill, before it writes, so an outage
+    heals on its own, or at once by a Scribe's **Judge Again** (offered only on an unjudged draft). The judgment is
+    saved only if the draft is still the version judged (its ETag), and recorded (#9), but it's no lesson for the
+    Augury: it says nothing of the Scribes' taste. "Scores" are always the similarity scores, never the quality.
   - **Settings:** `AzureOpenAI:Endpoint` (the models are reached as the managed identity), `Jev:ApiKey` (a Key Vault
     reference in Azure; empty turns Jev off), and optionally `Generation:*` (`GenerationOptions`).
 - **The Scriptorium** (`/scriptorium`, `Scriptorium/`): where the **Scribes** (moderators) shape the Liturgical Calendar.
