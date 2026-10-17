@@ -192,86 +192,364 @@ public static class Script
           // The archive (and search results, and a tag's page) loads older rites as the reader nears the end, by fetching
           // the next page the "Load older rites" link points to and taking its rows. The link stays: a keyboard follows
           // it here too, and focus moves to the first new rite. Without the script, it's an ordinary link to that page.
-          const months = document.querySelector('.months');
-          const more = document.querySelector('.archive-more');
+          // A search on the Archive replaces the rows and the link, so they're looked up anew each time.
+          // Announcements go to a live region that's on the page from the start: one inserted already filled in isn't
+          // reliably read out.
+          const announcer = document.createElement('div');
+          announcer.className = 'sr-only';
+          announcer.setAttribute('role', 'status');
+          document.getElementById('main').append(announcer);
           // Each month's rows go under its rubric: a page can start in the middle of the month the last one ended in,
           // whose rubric is here already.
-          const takeRows = (page) => [...page.querySelectorAll('.months > .month')].flatMap((month) => {
+          const takeRows = (months, page) => [...page.querySelectorAll('.months > .month')].flatMap((month) => {
             const here = document.getElementById(month.querySelector('.month-rubric').id)?.closest('.month');
             if (!here) return [...months.appendChild(document.importNode(month, true)).querySelectorAll('.rows > li')];
             const rows = here.querySelector('.rows');
             return [...month.querySelectorAll('.rows > li')].map((row) => rows.appendChild(document.importNode(row, true)));
           });
-          if (months && more) {
-            let loading = false;
-            // A keyboard user who follows the link while scrolling already started a load still gets focus moved.
-            let focusWhenLoaded = false;
-            // Announcements go to a live region that's on the page from the start: one inserted already filled in
-            // isn't reliably read out.
-            const announcer = document.createElement('div');
-            announcer.className = 'sr-only';
-            announcer.setAttribute('role', 'status');
-            months.after(announcer);
-            const observer = new IntersectionObserver((entries) => {
-              const link = more.querySelector('a');
-              if (link && entries.some((entry) => entry.isIntersecting)) loadOlder(link, false);
-            }, { rootMargin: '200px' });
-            const loadOlder = async (link, moveFocus) => {
-              focusWhenLoaded ||= moveFocus;
-              if (loading) return;
-              loading = true;
-              // Not watched while loading: the placeholders push the link away, and taking them out after a failure
-              // would bring it back into view and start the same failing load again.
-              observer.unobserve(more);
-              const placeholders = document.createElement('div');
-              placeholders.className = 'archive-loading';
-              placeholders.setAttribute('aria-hidden', 'true');
-              placeholders.innerHTML = '<div class="skeleton-row"></div><div class="skeleton-row"></div>';
-              more.before(placeholders);
-              announcer.textContent = 'Loading older rites…';
-              try {
-                const response = await fetch(link.href);
-                if (!response.ok) throw new Error(String(response.status));
-                const page = new DOMParser().parseFromString(await response.text(), 'text/html');
-                const added = takeRows(page);
-                const next = page.querySelector('.archive-more');
-                // A keyboard user may have tabbed onto the link while scrolling loaded: replacing it mustn't drop focus.
-                focusWhenLoaded ||= more.contains(document.activeElement);
-                more.replaceChildren(...(next ? [...next.childNodes].map((node) => document.importNode(node, true)) : []));
-                announcer.textContent = `${added.length} older ${added.length === 1 ? 'rite' : 'rites'} loaded.`;
-                if (focusWhenLoaded && added.length > 0) added[0].querySelector('a').focus();
-                // Watched again, so a short page that still shows the end loads the next one too. Only after a load
-                // that worked: after a failure the link stays for the reader to try again, not a loop.
-                observer.observe(more);
-              } catch {
+          let loading = false;
+          // A keyboard user who follows the link while scrolling already started a load still gets focus moved.
+          let focusWhenLoaded = false;
+          // Counts the searches shown in place: a load started before one mustn't add its rows to the new ones.
+          let searches = 0;
+          const observer = new IntersectionObserver((entries) => {
+            const link = document.querySelector('.archive-more a');
+            if (link && entries.some((entry) => entry.isIntersecting)) loadOlder(link, false);
+          }, { rootMargin: '200px' });
+          const watchOlder = () => {
+            observer.disconnect();
+            const more = document.querySelector('.archive-more');
+            if (more && document.querySelector('.months')) observer.observe(more);
+          };
+          const loadOlder = async (link, moveFocus) => {
+            focusWhenLoaded ||= moveFocus;
+            if (loading) return;
+            loading = true;
+            const search = searches;
+            const more = link.closest('.archive-more');
+            // Not watched while loading: the placeholders push the link away, and taking them out after a failure
+            // would bring it back into view and start the same failing load again.
+            observer.disconnect();
+            const placeholders = document.createElement('div');
+            placeholders.className = 'archive-loading';
+            placeholders.setAttribute('aria-hidden', 'true');
+            placeholders.innerHTML = '<div class="skeleton-row"></div><div class="skeleton-row"></div>';
+            more.before(placeholders);
+            announcer.textContent = 'Loading older rites…';
+            try {
+              const response = await fetch(link.href);
+              if (!response.ok) throw new Error(String(response.status));
+              const page = new DOMParser().parseFromString(await response.text(), 'text/html');
+              if (search !== searches) return;
+              const added = takeRows(document.querySelector('.months'), page);
+              const next = page.querySelector('.archive-more');
+              // A keyboard user may have tabbed onto the link while scrolling loaded: replacing it mustn't drop focus.
+              focusWhenLoaded ||= more.contains(document.activeElement);
+              more.replaceChildren(...(next ? [...next.childNodes].map((node) => document.importNode(node, true)) : []));
+              announcer.textContent = `${added.length} older ${added.length === 1 ? 'rite' : 'rites'} loaded.`;
+              if (focusWhenLoaded && added.length > 0) added[0].querySelector('a').focus();
+              // Watched again, so a short page that still shows the end loads the next one too. Only after a load
+              // that worked: after a failure the link stays for the reader to try again, not a loop.
+              watchOlder();
+            } catch {
+              if (search === searches) {
                 announcer.textContent = '';
                 say('Older rites couldn’t be loaded. Try again.');
-              } finally {
-                placeholders.remove();
-                loading = false;
-                focusWhenLoaded = false;
+              }
+            } finally {
+              placeholders.remove();
+              loading = false;
+              focusWhenLoaded = false;
+              // A search replaced the rows meanwhile: its link may be in view already, waiting for this load to end.
+              if (search !== searches) watchOlder();
+            }
+          };
+          // Ctrl, Cmd, Shift or a middle click: the browser opens the page in a new tab or window, as it should.
+          const isPlainClick = (event) => event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey;
+          document.addEventListener('click', (event) => {
+            const link = event.target.closest('.archive-more a');
+            if (!link || !isPlainClick(event)) return;
+            event.preventDefault();
+            loadOlder(link, true);
+          });
+          watchOlder();
+
+          // The Archive's own field shows the results as the reader types: a quarter of a second after they stop, the
+          // results page is fetched and swapped into this one, and the address follows without a new history entry.
+          // One renderer, the server's, so results look the same however they're reached. Without the script it's a
+          // plain form, and Enter loads the results as a page.
+          const field = document.getElementById('archive-search');
+          if (field) {
+            const form = field.form;
+            let typing;
+            let request;
+            // Everything on the sheet but the field (which keeps focus and what's typed), and everything beside and
+            // below the sheet but the candles and traces.
+            const swap = (page) => {
+              const fresh = [...page.querySelector('.sheet-inner').children].map((part) => document.importNode(part, true));
+              const at = fresh.findIndex((part) => part.matches('.sheet-search'));
+              [...form.parentElement.children].filter((part) => part !== form).forEach((part) => part.remove());
+              form.before(...fresh.slice(0, at));
+              form.after(...fresh.slice(at + 1));
+              form.querySelector('.sheet-clear')?.remove();
+              const clearLink = fresh[at].querySelector('.sheet-clear');
+              if (clearLink) form.append(clearLink);
+              const hero = document.querySelector('.archive-hero');
+              const stays = (part) => part.matches('.sheet, .altar, .traces');
+              [...hero.children].filter((part) => !stays(part)).forEach((part) => part.remove());
+              hero.querySelector('.sheet').after(...[...page.querySelector('.archive-hero').children]
+                .filter((part) => !stays(part)).map((part) => document.importNode(part, true)));
+              document.title = page.title;
+            };
+            const show = async (typed) => {
+              const url = typed ? `/archive?q=${encodeURIComponent(typed)}` : '/archive';
+              request?.abort();
+              request = new AbortController();
+              try {
+                const response = await fetch(url, { signal: request.signal });
+                if (!response.ok) throw new Error(String(response.status));
+                const page = new DOMParser().parseFromString(await response.text(), 'text/html');
+                searches += 1;
+                swap(page);
+                history.replaceState(null, '', url);
+                watchOlder();
+                // What the line under the heading says as it's shown: "3 rites mention it", or the Archive's count.
+                announcer.textContent = document.querySelector('.sheet-sub')?.innerText ?? '';
+              } catch (error) {
+                if (error.name !== 'AbortError') say('The Archive couldn’t be searched. Try again.');
               }
             };
-            more.addEventListener('click', (event) => {
-              const link = event.target.closest('a');
-              // Ctrl, Cmd, Shift or a middle click: the browser opens the page in a new tab or window, as it should.
-              if (!link || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
-              event.preventDefault();
-              loadOlder(link, true);
+            field.addEventListener('input', () => {
+              clearTimeout(typing);
+              typing = setTimeout(() => show(field.value.trim()), 250);
             });
-            observer.observe(more);
+            // Esc, the field's clear button and "Clear search" bring back the whole Archive, focus staying in the field.
+            const clear = () => {
+              clearTimeout(typing);
+              field.value = '';
+              field.focus();
+              show('');
+            };
+            field.addEventListener('keydown', (event) => {
+              // Escape while an input method composes a word cancels the word, not the search.
+              if (event.isComposing || event.key !== 'Escape' || field.value === '') return;
+              event.preventDefault();
+              clear();
+            });
+            document.addEventListener('click', (event) => {
+              const link = event.target.closest('.sheet-clear, .margin-clear, .nav-search');
+              if (!link || !isPlainClick(event)) return;
+              event.preventDefault();
+              // The nav's search icon leads to this field: here it's the field itself.
+              if (link.matches('.nav-search')) field.focus();
+              else clear();
+            });
+            // Arriving from the nav's search, to search on.
+            if (location.hash === '#archive-search') field.focus();
           }
 
-          const countdowns = document.querySelectorAll('[data-countdown]');
+          // The nav's search, on every page but the Archive (whose field the icon leads to): the icon opens a field, and
+          // the rites holding every word typed drop down under it, up to five. They come from the search index (every
+          // rite's words), loaded once when the field first opens (/api/search-index), so what the reader types never
+          // leaves the browser until they search. Enter, or "Search all in the Archive", searches the Archive. Without
+          // the script the icon is a link to the Archive's field.
+          const navSearch = document.querySelector('.nav-search');
+          if (navSearch && !field) {
+            const box = document.createElement('div');
+            box.className = 'nav-find';
+            box.setAttribute('role', 'search');
+            box.innerHTML = `<button type="button" class="nav-find-open" aria-label="Search" aria-expanded="false" aria-controls="nav-find-field">${navSearch.innerHTML}</button>`
+              + '<input type="search" id="nav-find-field" class="nav-find-field" role="combobox" aria-autocomplete="list" aria-controls="search-list" aria-expanded="false" aria-label="Search the rites" placeholder="Search the rites" tabindex="-1" maxlength="100" autocomplete="off" spellcheck="false">'
+              + '<button type="button" class="nav-find-close" aria-label="Close search"><svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>'
+              + '<div class="nav-find-drop" hidden><p class="nav-find-label"></p><p class="nav-find-none" hidden>The Machine Spirit keeps its silence. Try another word.</p>'
+              + '<div role="listbox" id="search-list" aria-label="Rites"></div><a class="nav-find-all" href="/archive">Search all in the Archive →</a></div>';
+            navSearch.replaceWith(box);
+            const opener = box.querySelector('.nav-find-open');
+            const input = box.querySelector('.nav-find-field');
+            const drop = box.querySelector('.nav-find-drop');
+            const label = box.querySelector('.nav-find-label');
+            const none = box.querySelector('.nav-find-none');
+            const list = box.querySelector('[role=listbox]');
+            const all = box.querySelector('.nav-find-all');
+            const status = document.createElement('div');
+            status.className = 'sr-only';
+            status.setAttribute('role', 'status');
+            box.append(status);
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            let rites;
+            let typing;
+            let active = -1;
+            // As the server reads them (SearchWords): each word once, without quotes around it, at most six.
+            const wordsOf = (typed) => [...new Set(typed.toLowerCase().split(/\s+/)
+              .map((word) => word.replace(/^["`'“”‘’]+|["`'“”‘’]+$/g, '')).filter(Boolean))].slice(0, 6);
+            // The text with every word found in a <mark>, overlapping ones joined (as Highlight does on the server); built
+            // from text nodes, so nothing a model wrote is HTML here.
+            const marked = (text, words) => {
+              const lower = text.toLowerCase();
+              const ranges = words
+                .flatMap((word) => {
+                  const found = [];
+                  for (let at = lower.indexOf(word); at >= 0; at = lower.indexOf(word, at + 1)) found.push([at, at + word.length]);
+                  return found;
+                })
+                .sort((a, b) => a[0] - b[0])
+                .reduce((merged, range) => {
+                  const last = merged.at(-1);
+                  if (last && range[0] <= last[1]) last[1] = Math.max(last[1], range[1]);
+                  else merged.push([...range]);
+                  return merged;
+                }, []);
+              const parts = document.createDocumentFragment();
+              let at = 0;
+              for (const [start, end] of ranges) {
+                const mark = document.createElement('mark');
+                mark.textContent = text.slice(start, end);
+                parts.append(text.slice(at, start), mark);
+                at = end;
+              }
+              parts.append(text.slice(at));
+              return parts;
+            };
+            const choose = (next) => {
+              const options = [...list.children];
+              active = options.length === 0 ? -1 : next;
+              options.forEach((option, place) => option.setAttribute('aria-selected', String(place === active)));
+              if (active >= 0) {
+                input.setAttribute('aria-activedescendant', options[active].id);
+                // Focus stays in the field, so the browser won't bring the chosen rite into view by itself.
+                options[active].scrollIntoView({ block: 'nearest' });
+              } else {
+                input.removeAttribute('aria-activedescendant');
+              }
+            };
+            const showDrop = (shown) => {
+              drop.hidden = !shown;
+              input.setAttribute('aria-expanded', String(shown));
+            };
+            // Closed, or typed on, while the rites were loading: the next suggestions are on their way, or none are wanted.
+            const outdated = (typed) => !box.classList.contains('open') || input.value.trim() !== typed;
+            const suggest = async () => {
+              const typed = input.value.trim();
+              const words = wordsOf(typed);
+              if (words.length === 0) {
+                list.replaceChildren();
+                choose(-1);
+                showDrop(false);
+                status.textContent = '';
+                return;
+              }
+              try {
+                rites ??= fetch('/api/search-index').then((response) => {
+                  if (!response.ok) throw new Error(String(response.status));
+                  return response.json();
+                });
+                const index = await rites;
+                if (outdated(typed)) return;
+                const found = index.filter((rite) => {
+                  const words2 = `${rite.title}\n${rite.text}\n${rite.truth}`.toLowerCase();
+                  return words.every((word) => words2.includes(word));
+                });
+                const quoted = `“${typed}”`;
+                label.textContent = found.length === 0 ? `Nothing found for ${quoted}`
+                  : `${found.length} ${found.length === 1 ? 'rite mentions' : 'rites mention'} ${quoted}`;
+                none.hidden = found.length > 0;
+                list.replaceChildren(...found.slice(0, 5).map((rite) => {
+                  const option = document.createElement('a');
+                  option.id = `search-option-${rite.number}`;
+                  option.setAttribute('role', 'option');
+                  option.href = `/r/${rite.number}`;
+                  option.tabIndex = -1;
+                  const title = document.createElement('span');
+                  title.className = 'nav-find-title';
+                  title.append(marked(rite.title, words));
+                  const [, month, day] = rite.day.split('-').map(Number);
+                  const meta = document.createElement('span');
+                  meta.className = 'nav-find-meta';
+                  meta.textContent = `${rite.kind === 'prayer' ? 'Prayer' : 'Ritual'} · ${day} ${monthNames[month - 1]}`;
+                  option.append(title, meta);
+                  return option;
+                }));
+                status.textContent = label.textContent;
+              } catch {
+                // Tried again on the next keystroke; meanwhile the Archive can still search.
+                rites = undefined;
+                if (outdated(typed)) return;
+                label.textContent = 'The rites couldn’t be loaded.';
+                none.hidden = true;
+                list.replaceChildren();
+                status.textContent = label.textContent;
+              }
+              choose(-1);
+              showDrop(true);
+            };
+            const open = () => {
+              box.classList.add('open');
+              opener.setAttribute('aria-expanded', 'true');
+              input.tabIndex = 0;
+              input.focus();
+            };
+            const close = (refocus) => {
+              clearTimeout(typing);
+              box.classList.remove('open');
+              opener.setAttribute('aria-expanded', 'false');
+              input.tabIndex = -1;
+              input.value = '';
+              list.replaceChildren();
+              choose(-1);
+              showDrop(false);
+              status.textContent = '';
+              if (refocus) opener.focus();
+            };
+            opener.addEventListener('click', () => (box.classList.contains('open') ? input.focus() : open()));
+            box.querySelector('.nav-find-close').addEventListener('click', () => close(true));
+            // At once, so Enter and "Search all" search what's typed now, and no suggestion for older words can be opened;
+            // only the suggestions wait for a pause.
+            input.addEventListener('input', () => {
+              const typed = input.value.trim();
+              all.href = typed ? `/archive?q=${encodeURIComponent(typed)}#archive-search` : '/archive#archive-search';
+              list.replaceChildren();
+              choose(-1);
+              clearTimeout(typing);
+              typing = setTimeout(suggest, 150);
+            });
+            input.addEventListener('keydown', (event) => {
+              // Keys an input method uses while it composes a word (Enter picks its candidate) aren't the field's.
+              if (event.isComposing) return;
+              const count = list.children.length;
+              if (event.key === 'ArrowDown' && count > 0) {
+                event.preventDefault();
+                choose((active + 1) % count);
+              } else if (event.key === 'ArrowUp' && count > 0) {
+                event.preventDefault();
+                choose(active <= 0 ? count - 1 : active - 1);
+              } else if (event.key === 'Enter') {
+                event.preventDefault();
+                if (active >= 0) location.assign(list.children[active].href);
+                else if (input.value.trim()) location.assign(all.href);
+              } else if (event.key === 'Escape') {
+                event.preventDefault();
+                close(true);
+              }
+            });
+            // A click or a tab anywhere else closes it.
+            document.addEventListener('click', (event) => {
+              if (box.classList.contains('open') && !box.contains(event.target)) close(false);
+            });
+            box.addEventListener('focusout', (event) => {
+              if (box.classList.contains('open') && event.relatedTarget && !box.contains(event.relatedTarget)) close(false);
+            });
+          }
+
+          // Looked up at each tick: a search on the Archive brings in a new margin with its own.
           const tick = () => {
             const now = new Date();
             const next = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
             const minutes = Math.ceil((next - now.getTime()) / 60000);
             const text = minutes >= 60 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m` : `${minutes}m`;
-            countdowns.forEach((element) => { element.textContent = text; });
+            document.querySelectorAll('[data-countdown]').forEach((element) => { element.textContent = text; });
           };
           // Ticked at once too: a cached page may have been rendered up to an hour ago.
-          if (countdowns.length > 0) { tick(); setInterval(tick, 30000); }
+          if (document.querySelector('[data-countdown]')) { tick(); setInterval(tick, 30000); }
         })();
         """;
 }
