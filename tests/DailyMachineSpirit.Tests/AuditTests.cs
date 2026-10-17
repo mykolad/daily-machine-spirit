@@ -122,13 +122,15 @@ public sealed class AuditTests : IAsyncLifetime
         Assert.Contains(record, entry => entry.Action == AuditAction.Write);
     }
 
+    // A Scribe who chose a name is shown by it (#84); one who didn't, by the end of their id.
     [Theory]
     [InlineData(AuditEntry.MachineSpirit, "The Machine Spirit")]
     [InlineData(AuditEntry.StagingScribe, "A Scribe on staging")]
     [InlineData("0f7d1c2e-1111-2222-3333-4ab5c6d7e8f9", "A Scribe (…d7e8f9)")]
+    [InlineData("1a2b3c4d-0000-0000-0000-000000000000", "Sister Cache")]
     public void TheRecord_NamesEachActor(string actor, string name)
     {
-        Assert.Equal(name, ScribeNames.Of(actor));
+        Assert.Equal(name, ScribeNames.Of(actor, [new ScribeName("1a2b3c4d-0000-0000-0000-000000000000", "Sister Cache")]));
     }
 
     // Each entry reads as a sentence: who, then what they did to which rite or precept.
@@ -153,11 +155,11 @@ public sealed class AuditTests : IAsyncLifetime
     {
         var entry = new AuditEntry { Id = Guid.NewGuid(), Actor = Tester, Action = action, Title = "Litany", RiteNumber = Some(7) };
 
-        Assert.Contains($"A Scribe (…456789) {did}</li>", ScriptoriumPage.RenderRecord([entry], None));
+        Assert.Contains($"A Scribe (…456789) {did}</li>", ScriptoriumPage.RenderRecord([entry], [], None));
     }
 
     [Fact]
-    public void AnEmptyRecord_SaysSo() => Assert.Contains("Nothing is recorded yet.", ScriptoriumPage.RenderRecord([], None));
+    public void AnEmptyRecord_SaysSo() => Assert.Contains("Nothing is recorded yet.", ScriptoriumPage.RenderRecord([], [], None));
 
     private async Task<List<AuditEntry>> Entries() => Ok(await testbed.Audit.GetNewest(50, CancellationToken.None));
 }
