@@ -103,7 +103,7 @@ public sealed class SitePages
         {
             var tagKey = tag.Map(filter => filter.Key);
             var found = await rites.FindDaysAndTags(words, tagKey, cancellationToken)
-                .BindAsync(days => rites.Search(words, tagKey, isFirstPage ? int.MaxValue : before, ArchivePage.PageSize + 1, cancellationToken)
+                .BindAsync(days => rites.SearchOlderThan(words, tagKey, isFirstPage ? int.MaxValue : before, ArchivePage.PageSize + 1, cancellationToken)
                     .MapAsync(page => Results(days, page)));
             return found.Match(
                 Right: results => Page(request, StatusCodes.Status200OK, ArchivePage.Results(typed, words, tag, results, now)),
@@ -151,7 +151,7 @@ public sealed class SitePages
     {
         var now = time.GetUtcNow();
         var before = int.TryParse(request.Query["before"], out var number) && number > 0 ? number : int.MaxValue;
-        var page = await rites.GetTagged(tag.Key, before, ArchivePage.PageSize + 1, cancellationToken);
+        var page = await rites.GetTaggedOlderThan(tag.Key, before, ArchivePage.PageSize + 1, cancellationToken);
         return page.Match(
             Right: found =>
             {

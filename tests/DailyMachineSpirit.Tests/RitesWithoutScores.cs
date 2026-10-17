@@ -27,8 +27,8 @@ public sealed class RitesWithoutScores : IRiteRepository
     public Task<Either<Error, List<Rite>>> GetOlderThan(int number, int count, CancellationToken cancellationToken)
         => rites.GetOlderThan(number, count, cancellationToken);
 
-    public Task<Either<Error, List<Rite>>> Search(IReadOnlyList<string> words, Option<string> tag, int number, int count, CancellationToken cancellationToken)
-        => rites.Search(words, tag, number, count, cancellationToken);
+    public Task<Either<Error, List<Rite>>> SearchOlderThan(IReadOnlyList<string> words, Option<string> tag, int number, int count, CancellationToken cancellationToken)
+        => rites.SearchOlderThan(words, tag, number, count, cancellationToken);
 
     public Task<Either<Error, List<FoundRite>>> FindDaysAndTags(IReadOnlyList<string> words, Option<string> tag, CancellationToken cancellationToken)
         => rites.FindDaysAndTags(words, tag, cancellationToken);
@@ -48,8 +48,8 @@ public sealed class RitesWithoutScores : IRiteRepository
     public Task<Either<Error, Dictionary<int, float[]>>> GetScoresByRiteNumber(string scoresGeneratorVersion, CancellationToken cancellationToken)
         => Task.FromResult<Either<Error, Dictionary<int, float[]>>>(Error.New("Cosmos didn't answer."));
 
-    public Task<Either<Error, List<Rite>>> GetTagged(string tag, int number, int count, CancellationToken cancellationToken)
-        => rites.GetTagged(tag, number, count, cancellationToken);
+    public Task<Either<Error, List<Rite>>> GetTaggedOlderThan(string tag, int number, int count, CancellationToken cancellationToken)
+        => rites.GetTaggedOlderThan(tag, number, count, cancellationToken);
 
     public Task<Either<Error, List<Rite>>> GetUntagged(CancellationToken cancellationToken)
         => rites.GetUntagged(cancellationToken);

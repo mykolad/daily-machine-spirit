@@ -56,7 +56,7 @@ public class RiteRepository : IRiteRepository
                 .WithParameter("@number", number),
             cancellationToken)).Select(document => document.ToRite()).ToList());
 
-    public Task<Either<Error, List<Rite>>> Search(IReadOnlyList<string> words, Option<string> tag, int number, int count, CancellationToken cancellationToken)
+    public Task<Either<Error, List<Rite>>> SearchOlderThan(IReadOnlyList<string> words, Option<string> tag, int number, int count, CancellationToken cancellationToken)
         => Attempt(async () => (await container.Query<RiteDocument>(
             Holding(words, tag, "SELECT TOP @count * FROM c", "AND c.number < @number ORDER BY c.number DESC")
                 .WithParameter("@count", count)
@@ -114,7 +114,7 @@ public class RiteRepository : IRiteRepository
                 .WithParameter("@version", scoresGeneratorVersion),
             cancellationToken)).ToDictionary(r => r.Number, r => r.Scores));
 
-    public Task<Either<Error, List<Rite>>> GetTagged(string tag, int number, int count, CancellationToken cancellationToken)
+    public Task<Either<Error, List<Rite>>> GetTaggedOlderThan(string tag, int number, int count, CancellationToken cancellationToken)
         => Attempt(async () => (await container.Query<RiteDocument>(
             new QueryDefinition("SELECT TOP @count * FROM c WHERE c.type = @type AND ARRAY_CONTAINS(c.tags, @tag) AND c.number < @number ORDER BY c.number DESC")
                 .WithParameter("@count", count)

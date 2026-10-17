@@ -14,17 +14,16 @@ public interface IRiteRepository
     /// <summary>The rites with these numbers, in no particular order; numbers without a rite are left out.</summary>
     Task<Either<Error, List<Rite>>> GetByNumbers(IReadOnlyCollection<int> numbers, CancellationToken cancellationToken);
 
-    /// <summary>The rites numbered below <paramref name="number"/>, the newest first: a page of the archive.</summary>
+    /// <summary>A page of the archive, the newest first.</summary>
     Task<Either<Error, List<Rite>>> GetOlderThan(int number, int count, CancellationToken cancellationToken);
 
     /// <summary>
-    /// The rites numbered below <paramref name="number"/> whose title, text or Heretical Truth holds every one of
-    /// <paramref name="words"/>, ignoring case, and filed under <paramref name="tag"/> if one is given, the newest first:
-    /// a page of search results.
+    /// A page of search results, the newest first: the rites whose title, text or Heretical Truth holds every one of
+    /// <paramref name="words"/>, ignoring case, and filed under <paramref name="tag"/> if one is given.
     /// </summary>
-    Task<Either<Error, List<Rite>>> Search(IReadOnlyList<string> words, Option<string> tag, int number, int count, CancellationToken cancellationToken);
+    Task<Either<Error, List<Rite>>> SearchOlderThan(IReadOnlyList<string> words, Option<string> tag, int number, int count, CancellationToken cancellationToken);
 
-    /// <summary>The number, day and tags of every rite <see cref="Search"/> finds, on every page, the newest first.</summary>
+    /// <summary>The number, day and tags of every rite <see cref="SearchOlderThan"/> finds, on every page, the newest first.</summary>
     Task<Either<Error, List<FoundRite>>> FindDaysAndTags(IReadOnlyList<string> words, Option<string> tag, CancellationToken cancellationToken);
 
     /// <summary>Every rite's number and day, the newest first: what the archive counts and indexes by month.</summary>
@@ -51,8 +50,8 @@ public interface IRiteRepository
 
     Task<Either<Error, Dictionary<int, float[]>>> GetScoresByRiteNumber(string scoresGeneratorVersion, CancellationToken cancellationToken);
 
-    /// <summary>The rites with this tag numbered below <paramref name="number"/>, the newest first: a page of the tag's.</summary>
-    Task<Either<Error, List<Rite>>> GetTagged(string tag, int number, int count, CancellationToken cancellationToken);
+    /// <summary>A page of the rites with this tag, the newest first.</summary>
+    Task<Either<Error, List<Rite>>> GetTaggedOlderThan(string tag, int number, int count, CancellationToken cancellationToken);
 
     /// <summary>The rites judged before tags existed: with scores, without tags.</summary>
     Task<Either<Error, List<Rite>>> GetUntagged(CancellationToken cancellationToken);
