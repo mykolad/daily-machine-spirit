@@ -366,27 +366,32 @@ public static class Script
           }
 
           // The nav's search, on every page but the Archive (whose field the icon leads to): the icon opens a field, and
-          // the rites holding every word typed drop down under it, up to five. They come from the search index (every
-          // rite's words), loaded once when the field first opens (/api/search-index), so what the reader types never
-          // leaves the browser until they search. Enter, or "Search all in the Archive", searches the Archive. Without
-          // the script the icon is a link to the Archive's field.
+          // the subjects and the rites the words typed point to drop down under it. The subjects come with the page; the
+          // rites (up to five, holding every word) come from the search index (every rite's words), loaded once when the
+          // field first opens (/api/search-index), so what the reader types never leaves the browser until they search.
+          // Enter, or "Search all in the Archive", searches the Archive. Without the script the icon is a link to the
+          // Archive's field.
           const navSearch = document.querySelector('.nav-search');
           if (navSearch && !field) {
+            const subjects = JSON.parse(navSearch.dataset.subjects ?? '[]');
             const box = document.createElement('div');
             box.className = 'nav-find';
             box.setAttribute('role', 'search');
             box.innerHTML = `<button type="button" class="nav-find-open" aria-label="Search" aria-expanded="false" aria-controls="nav-find-field">${navSearch.innerHTML}</button>`
               + '<input type="search" id="nav-find-field" class="nav-find-field" role="combobox" aria-autocomplete="list" aria-controls="search-list" aria-expanded="false" aria-label="Search the rites" placeholder="Search the rites" tabindex="-1" maxlength="100" autocomplete="off" spellcheck="false">'
               + '<button type="button" class="nav-find-close" aria-label="Close search"><svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>'
-              + '<div class="nav-find-drop" hidden><p class="nav-find-label"></p><p class="nav-find-none" hidden>The Machine Spirit keeps its silence. Try another word.</p>'
-              + '<div role="listbox" id="search-list" aria-label="Rites"></div><a class="nav-find-all" href="/archive">Search all in the Archive →</a></div>';
+              + '<div class="nav-find-drop" hidden><div role="listbox" id="search-list" aria-label="Suggestions">'
+              + '<div role="group" aria-labelledby="search-subjects" hidden><p class="nav-find-label" id="search-subjects" role="presentation">Subjects</p></div>'
+              + '<div role="group" aria-labelledby="search-rites"><p class="nav-find-label" id="search-rites" role="presentation"></p></div></div>'
+              + '<p class="nav-find-none" hidden>The Machine Spirit keeps its silence. Try another word.</p><a class="nav-find-all" href="/archive">Search all in the Archive →</a></div>';
             navSearch.replaceWith(box);
             const opener = box.querySelector('.nav-find-open');
             const input = box.querySelector('.nav-find-field');
             const drop = box.querySelector('.nav-find-drop');
-            const label = box.querySelector('.nav-find-label');
+            const [subjectsGroup, ritesGroup] = box.querySelectorAll('[role=group]');
+            const subjectsLabel = subjectsGroup.querySelector('.nav-find-label');
+            const label = ritesGroup.querySelector('.nav-find-label');
             const none = box.querySelector('.nav-find-none');
-            const list = box.querySelector('[role=listbox]');
             const all = box.querySelector('.nav-find-all');
             const status = document.createElement('div');
             status.className = 'sr-only';
@@ -427,14 +432,49 @@ public static class Script
               parts.append(text.slice(at));
               return parts;
             };
+            // Accents and case aside, so "déploiement" is matched as "deploiement".
+            const fold = (text) => text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+            const startsEvery = (text, words) => {
+              const its = fold(text).split(/[^\p{L}\p{N}]+/u);
+              return words.every((word) => its.some((each) => each.startsWith(word)));
+            };
+            // A subject is suggested when every word typed starts a word of its name, or of what its rites are about
+            // (so "flaky" suggests Builds): at most three, those the name matches first.
+            const subjectsFor = (words) => {
+              const folded = words.map(fold);
+              const named = subjects.filter((subject) => startsEvery(subject.label, folded));
+              const about = subjects.filter((subject) => !named.includes(subject) && startsEvery(`${subject.label} ${subject.about}`, folded));
+              return [...named, ...about].slice(0, 3);
+            };
+            const optionOf = (id, href, titleText, metaText, words) => {
+              const option = document.createElement('a');
+              option.id = id;
+              option.setAttribute('role', 'option');
+              option.href = href;
+              option.tabIndex = -1;
+              const title = document.createElement('span');
+              title.className = 'nav-find-title';
+              title.append(marked(titleText, words));
+              const meta = document.createElement('span');
+              meta.className = 'nav-find-meta';
+              meta.textContent = metaText;
+              option.append(title, meta);
+              return option;
+            };
+            const fill = (subjectOptions, riteOptions) => {
+              subjectsGroup.replaceChildren(subjectsLabel, ...subjectOptions);
+              subjectsGroup.hidden = subjectOptions.length === 0;
+              ritesGroup.replaceChildren(label, ...riteOptions);
+            };
+            const options = () => [...box.querySelectorAll('[role=option]')];
             const choose = (next) => {
-              const options = [...list.children];
-              active = options.length === 0 ? -1 : next;
-              options.forEach((option, place) => option.setAttribute('aria-selected', String(place === active)));
+              const shown = options();
+              active = shown.length === 0 ? -1 : next;
+              shown.forEach((option, place) => option.setAttribute('aria-selected', String(place === active)));
               if (active >= 0) {
-                input.setAttribute('aria-activedescendant', options[active].id);
-                // Focus stays in the field, so the browser won't bring the chosen rite into view by itself.
-                options[active].scrollIntoView({ block: 'nearest' });
+                input.setAttribute('aria-activedescendant', shown[active].id);
+                // Focus stays in the field, so the browser won't bring the chosen suggestion into view by itself.
+                shown[active].scrollIntoView({ block: 'nearest' });
               } else {
                 input.removeAttribute('aria-activedescendant');
               }
@@ -449,12 +489,18 @@ public static class Script
               const typed = input.value.trim();
               const words = wordsOf(typed);
               if (words.length === 0) {
-                list.replaceChildren();
+                fill([], []);
                 choose(-1);
                 showDrop(false);
                 status.textContent = '';
                 return;
               }
+              // They need no index, so they're offered even when it can't be loaded.
+              const filed = subjectsFor(words);
+              const subjectOptions = () => filed.map((subject) => optionOf(
+                `search-subject-${subject.key}`, `/tags/${subject.key}`, subject.label, `Rites about ${subject.about}`, words.map(fold)));
+              const announced = (text) => (filed.length === 0 ? text
+                : `${filed.length} ${filed.length === 1 ? 'subject' : 'subjects'}; ${text}`);
               try {
                 rites ??= fetch('/api/search-index').then((response) => {
                   if (!response.ok) throw new Error(String(response.status));
@@ -467,34 +513,24 @@ public static class Script
                   return words.every((word) => words2.includes(word));
                 });
                 const quoted = `“${typed}”`;
-                label.textContent = found.length === 0 ? `Nothing found for ${quoted}`
-                  : `${found.length} ${found.length === 1 ? 'rite mentions' : 'rites mention'} ${quoted}`;
-                none.hidden = found.length > 0;
-                list.replaceChildren(...found.slice(0, 5).map((rite) => {
-                  const option = document.createElement('a');
-                  option.id = `search-option-${rite.number}`;
-                  option.setAttribute('role', 'option');
-                  option.href = `/r/${rite.number}`;
-                  option.tabIndex = -1;
-                  const title = document.createElement('span');
-                  title.className = 'nav-find-title';
-                  title.append(marked(rite.title, words));
+                label.textContent = found.length > 0
+                  ? `${found.length} ${found.length === 1 ? 'rite mentions' : 'rites mention'} ${quoted}`
+                  : filed.length > 0 ? `No rite mentions ${quoted}` : `Nothing found for ${quoted}`;
+                none.hidden = found.length > 0 || filed.length > 0;
+                fill(subjectOptions(), found.slice(0, 5).map((rite) => {
                   const [, month, day] = rite.day.split('-').map(Number);
-                  const meta = document.createElement('span');
-                  meta.className = 'nav-find-meta';
-                  meta.textContent = `${rite.kind === 'prayer' ? 'Prayer' : 'Ritual'} · ${day} ${monthNames[month - 1]}`;
-                  option.append(title, meta);
-                  return option;
+                  return optionOf(`search-option-${rite.number}`, `/r/${rite.number}`, rite.title,
+                    `${rite.kind === 'prayer' ? 'Prayer' : 'Ritual'} · ${day} ${monthNames[month - 1]}`, words);
                 }));
-                status.textContent = label.textContent;
+                status.textContent = announced(label.textContent);
               } catch {
                 // Tried again on the next keystroke; meanwhile the Archive can still search.
                 rites = undefined;
                 if (outdated(typed)) return;
                 label.textContent = 'The rites couldn’t be loaded.';
                 none.hidden = true;
-                list.replaceChildren();
-                status.textContent = label.textContent;
+                fill(subjectOptions(), []);
+                status.textContent = announced(label.textContent);
               }
               choose(-1);
               showDrop(true);
@@ -511,7 +547,7 @@ public static class Script
               opener.setAttribute('aria-expanded', 'false');
               input.tabIndex = -1;
               input.value = '';
-              list.replaceChildren();
+              fill([], []);
               choose(-1);
               showDrop(false);
               status.textContent = '';
@@ -524,7 +560,7 @@ public static class Script
             input.addEventListener('input', () => {
               const typed = input.value.trim();
               all.href = typed ? `/archive?q=${encodeURIComponent(typed)}#archive-search` : '/archive#archive-search';
-              list.replaceChildren();
+              fill([], []);
               choose(-1);
               clearTimeout(typing);
               typing = setTimeout(suggest, 150);
@@ -532,7 +568,7 @@ public static class Script
             input.addEventListener('keydown', (event) => {
               // Keys an input method uses while it composes a word (Enter picks its candidate) aren't the field's.
               if (event.isComposing) return;
-              const count = list.children.length;
+              const count = options().length;
               if (event.key === 'ArrowDown' && count > 0) {
                 event.preventDefault();
                 choose((active + 1) % count);
@@ -541,7 +577,7 @@ public static class Script
                 choose(active <= 0 ? count - 1 : active - 1);
               } else if (event.key === 'Enter') {
                 event.preventDefault();
-                if (active >= 0) location.assign(list.children[active].href);
+                if (active >= 0) location.assign(options()[active].href);
                 else if (input.value.trim()) location.assign(all.href);
               } else if (event.key === 'Escape') {
                 event.preventDefault();
