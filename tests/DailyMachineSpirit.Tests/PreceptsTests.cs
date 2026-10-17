@@ -197,6 +197,28 @@ public sealed class PreceptsTests : IAsyncLifetime
         ], record);
     }
 
+    // The same judgments would only reword the unpinned precepts: the weekly run waits for a new one, while a Scribe who
+    // asks always gets a distillation.
+    [Fact]
+    public async Task TheWeeklyDistillation_WaitsForANewJudgment()
+    {
+        await AJudgment();
+        testbed.Models.Answers(Sol, Distilled(RealFix), Distilled(NoRepeats), Distilled("Prefer short rituals."));
+        Ok(await testbed.Distiller().DistilIfJudgedSinceLast(CancellationToken.None));
+        testbed.Time.Advance(TimeSpan.FromDays(7));
+
+        Assert.Equal(PreceptDistiller.NothingNewToLearn, Failed(await testbed.Distiller().DistilIfJudgedSinceLast(CancellationToken.None)));
+        Assert.Equal([RealFix], await Texts());
+
+        await AJudgment();
+        testbed.Time.Advance(TimeSpan.FromDays(7));
+        Ok(await testbed.Distiller().DistilIfJudgedSinceLast(CancellationToken.None));
+        Assert.Equal([NoRepeats], await Texts());
+
+        Ok(await testbed.Distiller().Distil(Tester, CancellationToken.None));
+        Assert.Equal(["Prefer short rituals."], await Texts());
+    }
+
     // The pinned lead, on the page and in the writer's prompt; each group keeps its order.
     [Fact]
     public async Task ThePinned_ComeFirst()

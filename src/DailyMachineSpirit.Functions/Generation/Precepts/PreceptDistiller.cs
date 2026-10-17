@@ -26,6 +26,8 @@ public sealed class PreceptDistiller
     /// <summary>The Scribes haven't judged anything yet: there's nothing to learn from.</summary>
     public static readonly Error NothingToLearn = Error.New("The Scribes haven't judged any rite yet, so there's nothing to learn from.");
 
+    public static readonly Error NothingNewToLearn = Error.New("No rite was judged since the Precepts were last distilled, so there's nothing new to learn.");
+
     /// <summary>Every precept is pinned, which leaves no room for a new one.</summary>
     public static readonly Error AllPinned = Error.New("Every precept is pinned, so there's no room for a new one.");
 
@@ -58,15 +60,30 @@ public sealed class PreceptDistiller
         this.logger = logger;
     }
 
-    /// <summary>Distils and saves the Precepts; returns them.</summary>
-    /// <param name="actor">Who asked, for the record: the Machine Spirit (weekly) or a Scribe's id.</param>
-    public Task<Either<Error, PreceptBook>> Distil(string actor, CancellationToken cancellationToken)
+    /// <summary>Distils and saves the Precepts, as a Scribe asked; returns them.</summary>
+    public Task<Either<Error, PreceptBook>> Distil(string scribe, CancellationToken cancellationToken)
+        => Distil(scribe, onlyWhenJudgedSince: false, cancellationToken);
+
+    /// <summary>
+    /// The weekly run's, as the Machine Spirit: only when a rite was judged since the last distillation. The same
+    /// judgments would only reword the unpinned precepts, changing the writer's rules for no reason.
+    /// </summary>
+    public Task<Either<Error, PreceptBook>> DistilIfJudgedSinceLast(CancellationToken cancellationToken)
+        => Distil(AuditEntry.MachineSpirit, onlyWhenJudgedSince: true, cancellationToken);
+
+    private Task<Either<Error, PreceptBook>> Distil(string actor, bool onlyWhenJudgedSince, CancellationToken cancellationToken)
         => scriptorium.GetDecisions(JudgmentsRead, cancellationToken)
             .BindAsync(decisions => precepts.Get(cancellationToken)
-                .BindAsync(read => Distilled(read.Book, decisions, cancellationToken)
+                .BindAsync(read => (onlyWhenJudgedSince && !JudgedSince(read.Book, decisions)
+                        ? Task.FromResult(Left<Error, PreceptBook>(NothingNewToLearn))
+                        : Distilled(read.Book, decisions, cancellationToken))
                     .BindAsync(book => precepts
                         .Save(read, book, Audit(actor, book, decisions.Count), cancellationToken)
                         .MapAsync(_ => Task.FromResult(book)))));
+
+    // Never distilled counts as new: the first run learns from whatever there is.
+    private static bool JudgedSince(PreceptBook book, IReadOnlyList<ScribeDecision> decisions)
+        => book.DistilledAtUtc.ForAll(distilled => decisions.Any(decision => decision.DecidedAtUtc > distilled));
 
     private async Task<Either<Error, PreceptBook>> Distilled(
         PreceptBook book, IReadOnlyList<ScribeDecision> decisions, CancellationToken cancellationToken)

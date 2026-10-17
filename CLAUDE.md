@@ -265,7 +265,8 @@ observability/                    — the Grafana dashboard and alerts, and what
     - **Distilled** (`PreceptDistiller`): `gpt-6-sol` (then `gpt-6-luna`, one try of 30 seconds each) reads the
       newest 100 judgments with their notes and answers at most 12 precepts (JSON schema output). An answer with a
       null, an overlong precept, or nothing but pinned and deleted ones goes to the next model. The `DistilPrecepts`
-      timer runs Mondays at 01:00 UTC, as the Machine Spirit; a Scribe can ask sooner, and waits for the answer.
+      timer runs Mondays at 01:00 UTC, as the Machine Spirit, unless no rite was judged since the last distillation
+      (the same judgments would only reword the unpinned precepts); a Scribe can ask sooner, and waits for the answer.
       Nothing judged yet, or every precept pinned, means nothing to do.
     - **The Scribes have the final say** (`PreceptKeeping`): they add, edit, pin or delete precepts. Pinned precepts
       stay when distilled again, the rest make way for the new ones; a Scribe's words are pinned. Pinned ones come first,
