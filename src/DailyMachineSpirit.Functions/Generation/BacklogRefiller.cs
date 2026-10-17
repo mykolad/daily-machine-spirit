@@ -98,11 +98,30 @@ public sealed class BacklogRefiller
     private Task<Either<Error, Draft>> Unrepeated(
         RiteKind kind, IReadOnlyList<TakenRite> listed, IReadOnlyList<TakenRite> taken, int rewritesLeft, CancellationToken cancellationToken)
         => writer.Write(kind, listed, cancellationToken)
-            .BindAsync(async draft => await (await Repeated(draft, taken, cancellationToken)).Match(
+            .BindAsync(async draft => await (await Repeated(draft, await WithDraftsSavedMeanwhile(taken, cancellationToken), cancellationToken)).Match(
                 Some: same => rewritesLeft > 0
-                    ? Unrepeated(kind, [.. listed, same], taken, rewritesLeft - 1, cancellationToken)
+                    ? RewrittenOrMarked(draft, same, kind, [.. listed, same], taken, rewritesLeft - 1, cancellationToken)
                     : Task.FromResult(Right<Error, Draft>(draft with { Resembles = same.Title })),
                 None: () => Task.FromResult(Right<Error, Draft>(draft))));
+
+    // A rewrite that fails on every model keeps the draft already written, marked, rather than losing it: the backlog,
+    // or tonight's rite when the backlog is empty, needs a draft more than it needs a new one.
+    private async Task<Either<Error, Draft>> RewrittenOrMarked(
+        Draft repeating, TakenRite same, RiteKind kind, IReadOnlyList<TakenRite> listed, IReadOnlyList<TakenRite> taken, int rewritesLeft,
+        CancellationToken cancellationToken)
+        => (await Unrepeated(kind, listed, taken, rewritesLeft, cancellationToken)).BindLeft(error =>
+        {
+            logger.LogWarning(error.ToException(), "Draft {Title} repeats {Repeated} and couldn't be written again: {Reason}",
+                repeating.Writing.Title, same.Title, error.Message);
+            return Right<Error, Draft>(repeating with { Resembles = same.Title });
+        });
+
+    // Another refill may have saved drafts while this one wrote (Summon twice, or a burn's refill): read the waiting ones
+    // again just before the check. Two checks at the same moment can still miss each other; the Scribes see both.
+    private async Task<IReadOnlyList<TakenRite>> WithDraftsSavedMeanwhile(IReadOnlyList<TakenRite> taken, CancellationToken cancellationToken)
+        => (await drafts.GetWaiting(cancellationToken)).Match(
+            Right: waiting => (IReadOnlyList<TakenRite>)[.. taken.Concat(waiting.Select(Taken)).Distinct()],
+            Left: _ => taken);
 
     // Checking only guards the backlog: a draft the model couldn't check is kept rather than lost, as an unjudged one is.
     private async Task<Option<TakenRite>> Repeated(Draft draft, IReadOnlyList<TakenRite> taken, CancellationToken cancellationToken)

@@ -119,6 +119,43 @@ public sealed class BacklogRefillerTests : IAsyncLifetime
         Assert.Contains("""<p class="resembles">Much like “The Sacred Restart”, already written.</p>""", html);
     }
 
+    // A rewrite that fails on every model keeps the repeating draft, marked, rather than losing it: tonight's rite may
+    // depend on it.
+    [Fact]
+    public async Task Refill_KeepsARepeatingDraft_WhenItsRewriteFails()
+    {
+        testbed.BacklogSize = 1;
+        await testbed.AddRite(Today.AddDays(-1), "The Sacred Restart");
+        testbed.Models.Answers(Sol, Answer("Restart I")).Fails(Sol, 3);
+        testbed.Models.Answers(Luna, Repeats(1)).Fails(Luna, 3);
+
+        Ok(await testbed.Refiller().Refill(CancellationToken.None));
+
+        var saved = Assert.Single(await testbed.Waiting());
+        Assert.Equal(("Restart I", Some("The Sacred Restart")), (saved.Writing.Title, saved.Resembles));
+    }
+
+    // Another refill (Summon twice) may save a draft while this one writes: the check reads the waiting drafts again.
+    [Fact]
+    public async Task Refill_ChecksAgainstADraftSavedWhileItWrote()
+    {
+        testbed.BacklogSize = 1;
+        testbed.Models.Then(Sol,
+        [
+            async () =>
+            {
+                await testbed.AddDraft("Saved Meanwhile", 0.5f);
+                return Answer("Mine");
+            },
+        ]);
+        testbed.Models.Answers(Luna, Repeats(0));
+
+        Ok(await testbed.Refiller().Refill(CancellationToken.None));
+
+        var check = testbed.Models.Requests.Single(request => request.Model == Luna).Messages.Single(message => message.Role == ChatRole.User).Text;
+        Assert.Contains("Saved Meanwhile", check);
+    }
+
     // The prompt lists the recent rites; the check reads every rite ever published, and the drafts too.
     [Fact]
     public async Task Refill_ChecksAgainstEveryPublishedRite_NotOnlyTheRecentOnes()
