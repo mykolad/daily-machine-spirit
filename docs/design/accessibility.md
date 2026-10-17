@@ -67,6 +67,18 @@ month, with Today's masthead, margins and altar, and search as the Archive filte
 - **The margins say nothing the sheet says:** the Archive's left margin counts every rite kept and when they began, the
   right one indexes the months. Below 1280px there are no margins, and the count moves into the line under the heading;
   only one of the two is ever displayed, so a screen reader hears one.
+- **The nav's search field is an ARIA combobox** (the handoff's 3a, after the WAI-ARIA Authoring Practices pattern):
+  `role="combobox"`, `aria-autocomplete="list"`, `aria-controls` and `aria-expanded`, with the arrow keys moving
+  `aria-activedescendant` through the suggestions, so focus stays in the field. Enter opens the chosen rite (or
+  searches the Archive when none is chosen), Escape closes the field, clears it and returns focus to the icon, and a
+  click or a tab elsewhere closes it. A polite live region says how many rites were found ("3 rites mention “cache”").
+  Each suggestion is at least 44px tall. The chosen one has a red outline as well as its shade (the shade alone is
+  1.18:1), and it scrolls into view when the drop-down is cut short (zoomed in, a keyboard on screen); keys an input
+  method uses while composing a word are left to it. Without the script the icon is a link to the Archive's field.
+- **The drop-down's count line is ink-muted, not brass-dim,** for the same 4.05:1 reason as the sheet's.
+- **The Archive's results follow the typing without moving focus:** the field stays focused while the rows are
+  swapped, and the line under the heading ("3 rites mention it") is announced in a live region. Escape and the clear
+  buttons bring back the whole Archive with focus still in the field. Enter still loads the results as a page.
 
 ## The main region
 
