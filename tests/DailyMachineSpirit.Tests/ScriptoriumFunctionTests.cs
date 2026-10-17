@@ -545,7 +545,8 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Contains($"""href="/scriptorium/drafts/{draft.Id:D}/amend">""", html);
     }
 
-    // The draft's words in a plain form, which posts without the calendar's script.
+    // The draft's words in a plain form. Its script only says a rewrite is under way, and asks for it in the background;
+    // asking needs a note.
     [Fact]
     public async Task AmendPage_ShowsTheDraftsWords_InAPlainForm()
     {
@@ -555,8 +556,12 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
 
         Assert.Contains("""<input type="text" id="amend-title" name="title" value="Litany of the Cold Cache" """, html);
         Assert.Contains("""<input type="hidden" name="etag" value=""", html);
-        Assert.Contains($"""formaction="/scriptorium/drafts/{draft.Id:D}/rewrite">""", html);
-        Assert.DoesNotContain("<script>", html);
+        Assert.Contains($"""formaction="/scriptorium/drafts/{draft.Id:D}/rewrite" data-needs-note""", html);
+        Assert.Contains(SlowActionScript.Js, html);
+        Assert.DoesNotContain(ScriptoriumScript.Js, html);
+        Assert.Contains("""data-needs-note data-in-place data-slow="The Machine Spirit is rewriting it… usually a few seconds, at most a minute and a half." data-busy-label="Rewriting…">""", html);
+        Assert.Contains("Needed to ask for a rewrite, which follows it", html);
+        Assert.DoesNotContain("""<span class="changed-mark">""", html);
     }
 
     [Fact]
@@ -693,6 +698,25 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Contains("The Machine Spirit rewrote it as your note asks.", html);
         Assert.Contains("""value="The Litany of the Warm Cache" """, html);
         Assert.Equal("Litany of the Cold Cache", Assert.Single(await testbed.Waiting()).Writing.Title);
+    }
+
+    // What the rewrite changed says so in its label, and the first such field is focused; what it kept doesn't.
+    [Fact]
+    public async Task Rewrite_MarksTheFieldsItChanged()
+    {
+        var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
+        testbed.Models.Answers(BacklogTestbed.Sol,
+            FakeChatClients.Answer("Litany of the Cold Cache", "O Machine Spirit, let thy cache be warm.", "A warm cache is one that was read before."));
+
+        var response = await Function(enabled: true).Decide(
+            Amending(await ETag(draft), "Litany of the Cold Cache", "Warm it up."), draft.Id, "rewrite", CancellationToken.None);
+
+        var html = Html(response.Result, 200);
+        Assert.Contains("""<label for="amend-text">Text<span class="changed-mark"> · rewritten</span></label>""", html);
+        Assert.Contains("""<textarea id="amend-text" name="text" rows="6" maxlength="2000" class="changed" autofocus required>""", html);
+        Assert.Contains("""<label for="amend-title">Title</label>""", html);
+        Assert.Contains("""<label for="amend-truth">Heretical Truth</label>""", html);
+        Assert.Single(Regex.Matches(html, "class=\"changed\" autofocus"));
     }
 
     [Fact]
