@@ -49,6 +49,20 @@ public sealed class AmendmentsTests : IAsyncLifetime
         Assert.Equal(Some(0.2f), decision.AuguryQuality);
     }
 
+    // The mark said the old words repeated a rite; the Scribe who amended them has read them.
+    [Fact]
+    public async Task Save_ClearsTheMarkOfRepeatingARite()
+    {
+        var draft = Ok(await testbed.Drafts.Add(
+            (await testbed.AddDraft("Litany of the Cold Cache", 0.2f)) with { Id = Guid.NewGuid(), Resembles = Some("The Sacred Restart") },
+            CancellationToken.None));
+        var amendable = Ok(await testbed.Amendments().Get(draft.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Not amendable."));
+
+        Ok(await testbed.Amendments().Save(draft.Id, amendable.ETag, Sharper, "", Tester, CancellationToken.None));
+
+        Assert.True(Ok(await testbed.Drafts.Get(draft.Id, CancellationToken.None)).Bind(saved => saved.Resembles).IsNone);
+    }
+
     // As every decision on a waiting draft does, the amendment keeps where the draft waited and where the Augury put it,
     // read before it was judged again.
     [Fact]

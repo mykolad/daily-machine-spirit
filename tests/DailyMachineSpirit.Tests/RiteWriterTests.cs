@@ -42,17 +42,20 @@ public sealed class RiteWriterTests : IDisposable
     }
 
     [Fact]
-    public async Task Write_AsksForTheKind_AndListsTheTitlesToAvoid()
+    public async Task Write_AsksForTheKind_AndListsTheRitesTaken()
     {
         models.Answers(Sol, GoodAnswer);
 
-        await Writer(retryDelaySeconds: 0).Write(RiteKind.Prayer, ["Litany of the Clean Cache", "The Rite of Re-Run"], CancellationToken.None);
+        await Writer(retryDelaySeconds: 0).Write(RiteKind.Prayer,
+            [new TakenRite("Litany of the Clean Cache", "A stale cache hides a missing invalidation."), new TakenRite("The Rite of Re-Run", "The test is flaky.")],
+            CancellationToken.None);
 
         var messages = models.Requests.Single().Messages;
         var instructions = messages.Single(message => message.Role == ChatRole.System).Text;
         Assert.Contains("Write one PRAYER", instructions);
-        Assert.Contains("* Litany of the Clean Cache", instructions);
-        Assert.Contains("* The Rite of Re-Run", instructions);
+        Assert.Contains("  * Litany of the Clean Cache: A stale cache hides a missing invalidation.", instructions);
+        Assert.Contains("  * The Rite of Re-Run: The test is flaky.", instructions);
+        Assert.Contains("the same lesson in new words is the same rite", instructions);
         Assert.Contains("Never quote or paraphrase Games Workshop", instructions);
         // The far future forgot the AI, and its rites are about habits anyone knows, not a tool's flags.
         Assert.Contains("The AI is long gone, forbidden and forgotten", instructions);

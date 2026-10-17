@@ -20,6 +20,10 @@ public class GenerationOptions
 
     public int RetryDelaySeconds { get; set; } = 30;
 
-    /// <summary>How many recent titles the prompt lists, so the model picks another subject.</summary>
     public int RecentRitesInPrompt { get; set; } = 30;
+
+    public string DuplicateCheckModel { get; set; } = "gpt-6-luna";
+
+    /// <summary>How many times a draft that repeats a rite is written again before it's kept, marked for the Scribes.</summary>
+    public int DuplicateRewrites { get; set; } = 2;
 }

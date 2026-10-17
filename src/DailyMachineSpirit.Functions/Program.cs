@@ -75,6 +75,7 @@ builder.Services.AddHttpClient<IRiteJudge, JevJudge>(http => http.Timeout = Time
 // Tags the rites judged before tags existed, once per start (nothing left after the first).
 builder.Services.AddHostedService<TagBackfill>();
 builder.Services.AddTransient<RiteWriter>();
+builder.Services.AddTransient<DuplicateCheck>();
 builder.Services.AddTransient<BacklogRefiller>();
 builder.Services.AddTransient<DailyRitePublisher>();
 builder.Services.AddTransient<PreceptDistiller>();

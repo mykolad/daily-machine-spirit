@@ -25,6 +25,9 @@ public sealed record Draft
 
     public Option<DateTime> BurnedAtUtc { get; init; }
 
+    /// <summary>The title of the rite it repeats, when it still did after being written again: for the Scribes to judge.</summary>
+    public Option<string> Resembles { get; init; }
+
     public Rite ToRite(DateOnly publishedOnUtc) => new()
     {
         PublishedOnUtc = publishedOnUtc,

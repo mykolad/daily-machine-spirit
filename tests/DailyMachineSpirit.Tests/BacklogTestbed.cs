@@ -36,6 +36,9 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public int BacklogSize { get; set; } = 3;
 
+    /// <summary>How many recent rites the writer's prompt lists; the duplicate check reads every one.</summary>
+    public int RecentRitesInPrompt { get; set; } = 30;
+
     /// <summary>Empty turns judging off, as an empty <c>Jev:ApiKey</c> does.</summary>
     public string JevApiKey { get; set; } = FakeJev.ApiKey;
 
@@ -64,12 +67,13 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public BacklogRefiller Refiller()
     {
-        var options = Options.Create(new GenerationOptions { RetryDelaySeconds = 0, BacklogSize = BacklogSize });
+        var options = Options.Create(new GenerationOptions { RetryDelaySeconds = 0, BacklogSize = BacklogSize, RecentRitesInPrompt = RecentRitesInPrompt });
         return new BacklogRefiller(
             Drafts,
             Rites,
             Scriptorium,
             Writer(options),
+            new DuplicateCheck(Models, options, Time),
             Jev.NewJudge(Time, JevApiKey),
             options,
             Probe.Metrics,

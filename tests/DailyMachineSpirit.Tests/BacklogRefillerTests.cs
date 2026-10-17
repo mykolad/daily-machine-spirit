@@ -1,10 +1,17 @@
 using System.Net;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Functions;
+using DailyMachineSpirit.Functions.Scriptorium;
+using DailyMachineSpirit.Functions.Scriptorium.SignIn;
+using LanguageExt;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using static DailyMachineSpirit.Tests.BacklogTestbed;
 using static DailyMachineSpirit.Tests.Expect;
+using static DailyMachineSpirit.Tests.ScriptoriumRequests;
+using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Tests;
 
@@ -54,7 +61,7 @@ public sealed class BacklogRefillerTests : IAsyncLifetime
 
         await testbed.Refiller().Refill(CancellationToken.None);
 
-        var instructions = testbed.Models.Requests.Single().Messages.Single(message => message.Role == ChatRole.System).Text;
+        var instructions = testbed.Models.Requests.Single(request => request.Model == Sol).Messages.Single(message => message.Role == ChatRole.System).Text;
         Assert.Contains("Write one RITUAL", instructions);
         Assert.Equal(RiteKind.Ritual, (await testbed.Waiting()).Single(draft => draft.Writing.Title == "Second").Writing.Kind);
     }
@@ -69,9 +76,125 @@ public sealed class BacklogRefillerTests : IAsyncLifetime
 
         await testbed.Refiller().Refill(CancellationToken.None);
 
-        var instructions = testbed.Models.Requests.Single().Messages.Single(message => message.Role == ChatRole.System).Text;
+        var instructions = testbed.Models.Requests.Single(request => request.Model == Sol).Messages.Single(message => message.Role == ChatRole.System).Text;
         Assert.Contains("* The Sacred Restart", instructions);
         Assert.Contains("* Litany of the Clean Cache", instructions);
+    }
+
+    // A new title on an old lesson is the same rite: it's written again, the writer now told of the one it repeated.
+    [Fact]
+    public async Task Refill_WritesAgain_WhenADraftRepeatsARite()
+    {
+        testbed.BacklogSize = 1;
+        using var checks = testbed.Probe.Collect<long>("dms.generation.duplicate_checks");
+        await testbed.AddRite(Today.AddDays(-1), "The Sacred Restart");
+        testbed.Models.Answers(Sol, Answer("The Restart Renewed"), Answer("Litany of the Clean Cache"));
+        testbed.Models.Answers(Luna, Repeats(1), Repeats(0));
+
+        Ok(await testbed.Refiller().Refill(CancellationToken.None));
+
+        var saved = Assert.Single(await testbed.Waiting());
+        Assert.Equal(("Litany of the Clean Cache", Option<string>.None), (saved.Writing.Title, saved.Resembles));
+        var rewrite = testbed.Models.Requests.Where(request => request.Model == Sol).Last().Messages.Single(message => message.Role == ChatRole.System).Text;
+        Assert.Equal(2, rewrite.Split("* The Sacred Restart:").Length - 1);
+        Assert.Equal(["outcome=repeated", "outcome=unique"], MetricsProbe.Tags(checks, "outcome"));
+    }
+
+    // Still repeating once its rewrites run out, it's kept, marked with what it repeats, for the Scribes to judge.
+    [Fact]
+    public async Task Refill_KeepsADraftThatStillRepeats_MarkedForTheScribes()
+    {
+        testbed.BacklogSize = 1;
+        await testbed.AddRite(Today.AddDays(-1), "The Sacred Restart");
+        testbed.Models.Answers(Sol, Answer("Restart I"), Answer("Restart II"), Answer("Restart III"));
+        testbed.Models.Answers(Luna, Repeats(1), Repeats(1), Repeats(1));
+
+        Ok(await testbed.Refiller().Refill(CancellationToken.None));
+
+        var saved = Assert.Single(await testbed.Waiting());
+        Assert.Equal(("Restart III", Some("The Sacred Restart")), (saved.Writing.Title, saved.Resembles));
+        var html = Html(await new ScriptoriumFunction(testbed.Scribes(), testbed.Amendments(), testbed.Audit, new EveryoneIsScribeSignIn(),
+            Options.Create(new ScriptoriumOptions { Enabled = true }), testbed.Time, NullLogger<ScriptoriumFunction>.Instance)
+            .Page(Get(""), CancellationToken.None), 200);
+        Assert.Contains("""<p class="resembles">Much like “The Sacred Restart”, already written.</p>""", html);
+    }
+
+    // A rewrite that fails on every model keeps the repeating draft, marked, rather than losing it: tonight's rite may
+    // depend on it.
+    [Fact]
+    public async Task Refill_KeepsARepeatingDraft_WhenItsRewriteFails()
+    {
+        testbed.BacklogSize = 1;
+        await testbed.AddRite(Today.AddDays(-1), "The Sacred Restart");
+        testbed.Models.Answers(Sol, Answer("Restart I")).Fails(Sol, 3);
+        testbed.Models.Answers(Luna, Repeats(1)).Fails(Luna, 3);
+
+        Ok(await testbed.Refiller().Refill(CancellationToken.None));
+
+        var saved = Assert.Single(await testbed.Waiting());
+        Assert.Equal(("Restart I", Some("The Sacred Restart")), (saved.Writing.Title, saved.Resembles));
+    }
+
+    // Another refill (Summon twice) may save a draft while this one writes: the check reads the waiting drafts again.
+    [Fact]
+    public async Task Refill_ChecksAgainstADraftSavedWhileItWrote()
+    {
+        testbed.BacklogSize = 1;
+        testbed.Models.Then(Sol,
+        [
+            async () =>
+            {
+                await testbed.AddDraft("Saved Meanwhile", 0.5f);
+                return Answer("Mine");
+            },
+        ]);
+        testbed.Models.Answers(Luna, Repeats(0));
+
+        Ok(await testbed.Refiller().Refill(CancellationToken.None));
+
+        var check = testbed.Models.Requests.Single(request => request.Model == Luna).Messages.Single(message => message.Role == ChatRole.User).Text;
+        Assert.Contains("Saved Meanwhile", check);
+    }
+
+    // The prompt lists the recent rites; the check reads every rite ever published, and the drafts too.
+    [Fact]
+    public async Task Refill_ChecksAgainstEveryPublishedRite_NotOnlyTheRecentOnes()
+    {
+        testbed.BacklogSize = 2;
+        testbed.RecentRitesInPrompt = 1;
+        await testbed.AddRite(Today.AddDays(-2), "The Ancient Restart");
+        await testbed.AddRite(Today.AddDays(-1), "The Sacred Restart");
+        await testbed.AddDraft("Litany of the Clean Cache", 0.5f);
+        testbed.Models.Answers(Sol, Answer("Second"));
+        testbed.Models.Answers(Luna, Repeats(0));
+
+        await testbed.Refiller().Refill(CancellationToken.None);
+
+        var prompt = testbed.Models.Requests.Single(request => request.Model == Sol).Messages.Single(message => message.Role == ChatRole.System).Text;
+        Assert.DoesNotContain("The Ancient Restart", prompt);
+        var check = testbed.Models.Requests.Single(request => request.Model == Luna).Messages.Single(message => message.Role == ChatRole.User).Text;
+        Assert.Contains("The Ancient Restart", check);
+        Assert.Contains("The Sacred Restart", check);
+        Assert.Contains("Litany of the Clean Cache", check);
+    }
+
+    // Checking only guards the backlog: a draft the model couldn't check is kept, as an unjudged one is.
+    [Theory]
+    [InlineData("""{"sameAs": 7}""")]
+    [InlineData("not json at all")]
+    public async Task Refill_KeepsADraftThatCouldntBeChecked(string answer)
+    {
+        testbed.BacklogSize = 1;
+        using var checks = testbed.Probe.Collect<long>("dms.generation.duplicate_checks");
+        await testbed.AddRite(Today.AddDays(-1), "The Sacred Restart");
+        testbed.Models.Answers(Sol, Answer("Second"));
+        testbed.Models.Answers(Luna, answer);
+
+        Ok(await testbed.Refiller().Refill(CancellationToken.None));
+
+        var saved = Assert.Single(await testbed.Waiting());
+        Assert.Equal(("Second", Option<string>.None), (saved.Writing.Title, saved.Resembles));
+        Assert.Equal(["outcome=failed"], MetricsProbe.Tags(checks, "outcome"));
     }
 
     [Fact]
@@ -147,4 +270,7 @@ public sealed class BacklogRefillerTests : IAsyncLifetime
     }
 
     private RefillBacklogFunction Function() => new(testbed.Refiller(), NullLogger<RefillBacklogFunction>.Instance);
+
+    // The duplicate check's answer: the number of the rite the draft repeats, or 0.
+    private static string Repeats(int number) => $$"""{"sameAs": {{number}}}""";
 }
