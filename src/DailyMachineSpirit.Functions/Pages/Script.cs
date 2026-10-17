@@ -405,8 +405,9 @@ public static class Script
             const wordsOf = (typed) => [...new Set(typed.toLowerCase().split(/\s+/)
               .map((word) => word.replace(/^["`'“”‘’]+|["`'“”‘’]+$/g, '')).filter(Boolean))].slice(0, 6);
             // The text with every word found in a <mark>, overlapping ones joined (as Highlight does on the server); built
-            // from text nodes, so nothing a model wrote is HTML here.
-            const marked = (text, words) => {
+            // from text nodes, so nothing a model wrote is HTML here. A subject's are marked only at the starts of words,
+            // where they matched.
+            const marked = (text, words, atWordStart) => {
               const lower = text.toLowerCase();
               const ranges = words
                 .flatMap((word) => {
@@ -434,7 +435,7 @@ public static class Script
               parts.append(text.slice(at));
               return parts;
             };
-            // Accents and case aside, so "déploiement" is matched as "deploiement".
+            // Accents and case aside: "Débug" finds Debugging.
             const fold = (text) => text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
             const startsEvery = (text, words) => {
               const its = fold(text).split(/[^\p{L}\p{N}]+/u);
