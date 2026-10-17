@@ -29,11 +29,8 @@ public interface IRiteRepository
     /// <summary>Every rite's number and day, the newest first: what the archive counts and indexes by month.</summary>
     Task<Either<Error, List<RiteDay>>> GetDays(CancellationToken cancellationToken);
 
-    /// <summary>
-    /// Every rite's number, day and what was written, the newest first, without its scores, votes or tags: what the
-    /// search field matches as the reader types.
-    /// </summary>
-    Task<Either<Error, List<Rite>>> GetWritings(CancellationToken cancellationToken);
+    /// <summary>Every rite's words, the newest first, without scores, votes or tags: what the search index needs.</summary>
+    Task<Either<Error, List<RiteWords>>> GetAllWords(CancellationToken cancellationToken);
 
     /// <summary>
     /// The saved rite, with the next number; <see cref="RiteRepository.DayAlreadyHasRite"/> when that day already has one,

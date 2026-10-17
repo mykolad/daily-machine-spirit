@@ -9,7 +9,7 @@ using static DailyMachineSpirit.Tests.Expect;
 
 namespace DailyMachineSpirit.Tests;
 
-public sealed class RiteIndexFunctionTests : IAsyncLifetime
+public sealed class SearchIndexFunctionTests : IAsyncLifetime
 {
     private readonly CosmosTestContainer cosmos = new();
 
@@ -31,11 +31,11 @@ public sealed class RiteIndexFunctionTests : IAsyncLifetime
         Assert.Equal(StatusCodes.Status200OK, result.StatusCode);
         Assert.Equal("application/json; charset=utf-8", result.ContentType);
         Assert.Equal("public, max-age=60, s-maxage=3600", context.Response.Headers.CacheControl.ToString());
-        var entries = JsonSerializer.Deserialize<RiteIndexEntry[]>(result.Content ?? "[]", new JsonSerializerOptions(JsonSerializerDefaults.Web)) ?? [];
+        var entries = JsonSerializer.Deserialize<SearchIndexEntry[]>(result.Content ?? "[]", new JsonSerializerOptions(JsonSerializerDefaults.Web)) ?? [];
         Assert.Equal(
             [
-                new RiteIndexEntry(2, "2026-10-09", "ritual", "The Rite of Re-Run", "Press Re-run thrice, intoning `it passed locally`.", "Your test depends on `timing`."),
-                new RiteIndexEntry(1, "2026-10-08", "prayer", "The Litany of the Warm Cache", "Press Re-run thrice, intoning `it passed locally`.", "Your test depends on `timing`."),
+                new SearchIndexEntry(2, "2026-10-09", "ritual", "The Rite of Re-Run", "Press Re-run thrice, intoning `it passed locally`.", "Your test depends on `timing`."),
+                new SearchIndexEntry(1, "2026-10-08", "prayer", "The Litany of the Warm Cache", "Press Re-run thrice, intoning `it passed locally`.", "Your test depends on `timing`."),
             ],
             entries);
     }
@@ -49,7 +49,7 @@ public sealed class RiteIndexFunctionTests : IAsyncLifetime
 
         var result = Assert.IsType<RedirectResult>(await Function(Repository).Index(context.Request, CancellationToken.None));
 
-        Assert.Equal(("/api/rites", true), (result.Url, result.Permanent));
+        Assert.Equal(("/api/search-index", true), (result.Url, result.Permanent));
     }
 
     [Fact]
@@ -66,7 +66,7 @@ public sealed class RiteIndexFunctionTests : IAsyncLifetime
 
     private RiteRepository Repository => new(cosmos.Container, NullLogger<RiteRepository>.Instance);
 
-    private static RiteIndexFunction Function(IRiteRepository rites) => new(rites, NullLogger<RiteIndexFunction>.Instance);
+    private static SearchIndexFunction Function(IRiteRepository rites) => new(rites, NullLogger<SearchIndexFunction>.Instance);
 
     private async Task Add(DateOnly day, RiteKind kind, string title)
         => Ok(await Repository.Add(new Rite

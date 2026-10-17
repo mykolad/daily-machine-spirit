@@ -48,7 +48,7 @@ public sealed class DailyRiteFunction
         {
             // Today showed yesterday's rite (or the slumbering page), and the search field's index lacked the new one: both
             // are kept at the edge until purged.
-            await pages.Purge([Paths.Today, Paths.RiteIndex], cancellationToken);
+            await pages.Purge([Paths.Today, Paths.SearchIndex], cancellationToken);
         }
         return result.Match(
             Right: published =>

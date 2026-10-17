@@ -175,11 +175,11 @@ observability/                    — the Grafana dashboard and alerts, and what
       results come from the same renderer.
     - **The nav's search** (every page but the Archive, where the icon leads to the page's field): the icon opens a
       combobox, and up to five rites holding every word drop down under it. They're matched in the browser against
-      `/api/rites` (`RiteIndexFunction`: every rite's number, day, kind and words as stored, so it matches what the
-      Archive's search matches), loaded once when the field first opens and kept at Cloudflare until a new rite purges
-      it (`DailyRiteFunction`; any query string is redirected to the one address, so it can't cause a read of its own),
-      so what's typed there never leaves the browser until the reader searches. Without the script the icon is a link
-      to the Archive's field.
+      the search index (`/api/search-index`, `SearchIndexFunction`: not the rites, only each one's number, day, kind
+      and words as stored, so it matches what the Archive's search matches), loaded once when the field first opens
+      and kept at Cloudflare until a new rite purges it (`DailyRiteFunction`; any query string is redirected to the one
+      address, so it can't cause a read of its own), so what's typed there never leaves the browser until the reader
+      searches. Without the script the icon is a link to the Archive's field.
 - **Votes** (Blessed / Heresy, `Api/VotesFunction`): one per account per rite, which the reader can switch or
   take back, signed in as below. `POST /api/rites/{number}/vote` with `{"vote": "blessed" | "heresy" | null}`, and
   `GET /api/votes?rites=12` for the page to show the reader's own vote pressed.

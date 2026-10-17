@@ -174,7 +174,7 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
 
         await Function().Run(new TimerInfo(), CancellationToken.None);
 
-        Assert.Equal(["/", "/api/rites"], Assert.Single(pages.Purges));
+        Assert.Equal(["/", "/api/search-index"], Assert.Single(pages.Purges));
     }
 
     // A retry later in the day: the page already shows the day's rite.

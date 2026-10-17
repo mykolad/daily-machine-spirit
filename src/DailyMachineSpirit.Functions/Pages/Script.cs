@@ -349,10 +349,10 @@ public static class Script
           }
 
           // The nav's search, on every page but the Archive (whose field the icon leads to): the icon opens a field, and
-          // the rites holding every word typed drop down under it, up to five. They come from every rite's words, loaded
-          // once when the field first opens (/api/rites), so what the reader types never leaves the browser until they
-          // search. Enter, or "Search all in the Archive", searches the Archive. Without the script the icon is a link
-          // to the Archive's field.
+          // the rites holding every word typed drop down under it, up to five. They come from the search index (every
+          // rite's words), loaded once when the field first opens (/api/search-index), so what the reader types never
+          // leaves the browser until they search. Enter, or "Search all in the Archive", searches the Archive. Without
+          // the script the icon is a link to the Archive's field.
           const navSearch = document.querySelector('.nav-search');
           if (navSearch && !field) {
             const box = document.createElement('div');
@@ -439,7 +439,7 @@ public static class Script
                 return;
               }
               try {
-                rites ??= fetch('/api/rites').then((response) => {
+                rites ??= fetch('/api/search-index').then((response) => {
                   if (!response.ok) throw new Error(String(response.status));
                   return response.json();
                 });

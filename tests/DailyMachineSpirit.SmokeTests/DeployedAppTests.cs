@@ -50,7 +50,7 @@ public sealed partial class DeployedAppTests
     [Fact]
     public async Task TheSearchIndex_Answers()
     {
-        var page = await app.Get("/api/rites");
+        var page = await app.Get("/api/search-index");
 
         Assert.True(page.Status == HttpStatusCode.OK, $"{page.Path} answered {(int)page.Status}, not 200.");
         // A new environment has no rite yet, and its index is rightly empty.

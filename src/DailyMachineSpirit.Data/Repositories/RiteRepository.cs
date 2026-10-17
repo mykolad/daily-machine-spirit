@@ -68,12 +68,12 @@ public class RiteRepository : IRiteRepository
             Holding(words, "SELECT c.number, c.publishedOnUtc FROM c", "ORDER BY c.number DESC"),
             cancellationToken));
 
-    // Only the fields the index needs: the scores alone would be most of every document.
-    public Task<Either<Error, List<Rite>>> GetWritings(CancellationToken cancellationToken)
-        => Attempt(async () => (await container.Query<RiteDocument>(
+    // Only the words and where each rite stands: the scores alone would be most of every document.
+    public Task<Either<Error, List<RiteWords>>> GetAllWords(CancellationToken cancellationToken)
+        => Attempt(async () => await container.Query<RiteWords>(
             new QueryDefinition("SELECT c.number, c.publishedOnUtc, c.kind, c.title, c.text, c.hereticalTruth FROM c WHERE c.type = @type ORDER BY c.number DESC")
                 .WithParameter("@type", RiteDocument.RiteType),
-            cancellationToken)).Select(document => document.ToRite()).ToList());
+            cancellationToken));
 
     public Task<Either<Error, List<RiteDay>>> GetDays(CancellationToken cancellationToken)
         => Attempt(async () => await container.Query<RiteDay>(
