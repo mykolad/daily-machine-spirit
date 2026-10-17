@@ -73,7 +73,7 @@ public static partial class ScriptoriumPage
         .amend { max-width: 740px; }
         .amend label { display: block; margin: 20px 0 6px; font-weight: 600; }
         .hint { margin: 0 0 8px; font-size: 15px; color: #b6a98f; }
-        .amend .changed { border-color: #f0b45a; }
+        .amend input.changed[type=text], .amend textarea.changed { border-color: #f0b45a; }
         .changed-mark { font-weight: 400; color: #f0b45a; }
         .amend .buttons { margin-top: 20px; }
         .amend input[type=text], textarea { width: 100%; background: #100e0b; color: #ede3cf; border: 1px solid #b6a98f; border-radius: 12px; padding: 8px 12px; font: 16px/1.4 Figtree, sans-serif; margin-bottom: 8px; }

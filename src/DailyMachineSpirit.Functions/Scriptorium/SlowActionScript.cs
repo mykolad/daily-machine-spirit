@@ -14,11 +14,12 @@ public static class SlowActionScript
           const status = document.querySelector('main .status');
           const say = (text) => { if (status) status.textContent = text; };
 
-          // Rewriting follows the note, so without one there's nothing to ask; saving needs none.
+          // Rewriting follows the note, so without one there's nothing to ask; saving needs none. While a rewrite is
+          // under way, it stays disabled whatever the note says.
           const noteNeeded = () => {
             const note = document.getElementById('amend-note');
             document.querySelectorAll('[data-needs-note]').forEach((button) => {
-              button.disabled = !note || note.value.trim() === '';
+              button.disabled = Boolean(button.form?.dataset.busy) || !note || note.value.trim() === '';
             });
           };
           document.addEventListener('input', (event) => {
@@ -49,6 +50,9 @@ public static class SlowActionScript
 
             event.preventDefault();
             buttons.forEach((each) => { each.disabled = true; });
+            // The rewrite's form replaces this one, so words typed meanwhile would be lost: the fields wait too.
+            const fields = [...form.querySelectorAll('input:not([type=hidden]), textarea')];
+            fields.forEach((field) => { field.readOnly = true; });
             try {
               const response = await fetch(button.formAction, {
                 method: 'POST',
@@ -70,6 +74,7 @@ public static class SlowActionScript
             } catch {
               delete form.dataset.busy;
               if (label) label.textContent = idle;
+              fields.forEach((field) => { field.readOnly = false; });
               buttons.forEach((each) => { each.disabled = false; });
               noteNeeded();
               say('The Machine Spirit couldn’t be reached. Try again in a moment.');
