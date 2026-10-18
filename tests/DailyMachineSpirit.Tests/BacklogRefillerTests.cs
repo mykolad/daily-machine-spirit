@@ -1,6 +1,7 @@
 using System.Net;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Functions;
+using DailyMachineSpirit.Functions.Generation;
 using DailyMachineSpirit.Functions.Scriptorium;
 using DailyMachineSpirit.Functions.Scriptorium.SignIn;
 using LanguageExt;
@@ -113,8 +114,7 @@ public sealed class BacklogRefillerTests : IAsyncLifetime
 
         var saved = Assert.Single(await testbed.Waiting());
         Assert.Equal(("Restart III", Some("The Sacred Restart")), (saved.Writing.Title, saved.Resembles));
-        var html = Html(await new ScriptoriumFunction(testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, new EveryoneIsScribeSignIn(),
-            Options.Create(new ScriptoriumOptions { Enabled = true }), testbed.Time, NullLogger<ScriptoriumFunction>.Instance)
+        var html = Html(await new ScriptoriumFunction(testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance)
             .Page(Get(""), CancellationToken.None), 200);
         Assert.Contains("""<p class="resembles">Much like “The Sacred Restart”, already written.</p>""", html);
     }
@@ -161,8 +161,11 @@ public sealed class BacklogRefillerTests : IAsyncLifetime
     public async Task Refill_ChecksAgainstEveryPublishedRite_NotOnlyTheRecentOnes()
     {
         testbed.BacklogSize = 2;
-        testbed.RecentRitesInPrompt = 1;
-        await testbed.AddRite(Today.AddDays(-2), "The Ancient Restart");
+        await testbed.AddRite(Today.AddDays(-BacklogRefiller.RecentRitesInPrompt - 1), "The Ancient Restart");
+        for (var daysAgo = BacklogRefiller.RecentRitesInPrompt; daysAgo > 1; daysAgo--)
+        {
+            await testbed.AddRite(Today.AddDays(-daysAgo), $"Recent Rite {daysAgo}");
+        }
         await testbed.AddRite(Today.AddDays(-1), "The Sacred Restart");
         await testbed.AddDraft("Litany of the Clean Cache", 0.5f);
         testbed.Models.Answers(Sol, Answer("Second"));

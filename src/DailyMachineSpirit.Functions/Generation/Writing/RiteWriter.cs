@@ -13,12 +13,15 @@ using static LanguageExt.Prelude;
 namespace DailyMachineSpirit.Functions.Generation.Writing;
 
 /// <summary>
-/// Asks the models for a rite, each up to <see cref="GenerationOptions.AttemptsPerModel"/> times, in
+/// Asks the models for a rite, each up to <see cref="AttemptsPerModel"/> times, in
 /// <see cref="GenerationOptions.Models"/> order. An unusable answer (<see cref="RiteChecks"/>) is asked for again, never
 /// cut or patched up: a cut rite would read as broken, and a patched one isn't what the model wrote.
 /// </summary>
 public sealed class RiteWriter
 {
+    /// <summary>How many times a refill asks each model before trying the next.</summary>
+    public const int AttemptsPerModel = 3;
+
     /// <summary>
     /// A rewrite's patience: each model once, 40 seconds each, so the Scribe gets their page back (with the rewrite or
     /// their own words) within the 100 seconds Cloudflare waits for an answer.
@@ -180,7 +183,7 @@ public sealed class RiteWriter
 
     // A refill's patience: nobody waits on it, so every model gets its tries, with pauses between them.
     private Patience Unhurried()
-        => new(options.Value.AttemptsPerModel, TimeSpan.FromSeconds(options.Value.RetryDelaySeconds), None);
+        => new(AttemptsPerModel, TimeSpan.FromSeconds(options.Value.RetryDelaySeconds), None);
 
     private static string Shorten(string text) => text.Length <= 500 ? text : $"{text[..500]}…";
 }

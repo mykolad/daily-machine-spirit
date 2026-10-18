@@ -17,6 +17,7 @@ using Microsoft.Azure.Functions.Worker.OpenTelemetry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
@@ -67,7 +68,7 @@ builder.Services.AddSingleton<IPreceptRepository, PreceptRepository>();
 builder.Services.AddSingleton<IVoteRepository, VoteRepository>();
 
 // The daily rite and the backlog. Created only when the timer or a refill runs, so HTTP functions start without the generation settings.
-builder.Services.Configure<GenerationOptions>(builder.Configuration.GetSection(GenerationOptions.SectionName));
+builder.Services.AddSingleton(Options.Create(new GenerationOptions()));
 builder.Services.Configure<JevOptions>(builder.Configuration.GetSection(JevOptions.SectionName));
 var openAI = builder.Configuration.GetSection(AzureOpenAIOptions.SectionName).Get<AzureOpenAIOptions>() ?? new AzureOpenAIOptions();
 builder.Services.AddSingleton<IChatClients>(_ => new AzureOpenAIChatClients(openAI.Endpoint));
@@ -82,7 +83,6 @@ builder.Services.AddTransient<DailyRitePublisher>();
 builder.Services.AddTransient<PreceptDistiller>();
 
 // The Scriptorium: the Scribes' page.
-builder.Services.Configure<ScriptoriumOptions>(builder.Configuration.GetSection(ScriptoriumOptions.SectionName));
 builder.Services.AddTransient<Scribes>();
 builder.Services.AddTransient<Amendments>();
 builder.Services.AddTransient<PreceptKeeping>();

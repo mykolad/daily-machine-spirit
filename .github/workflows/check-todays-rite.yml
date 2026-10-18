@@ -3,8 +3,7 @@ name: Check Today's Rite
 # Every day, after the DailyRite timer and its retries (three, 20 minutes apart) have had their time, Today must show
 # today's rite. It looks at the page readers get, through Cloudflare, so it also catches a rite that was published but
 # not shown (a failed purge keeps the old page for up to an hour, which 02:00 leaves room for). A missing rite opens an
-# issue (once per day), which emails the owner. Until production publishes daily (publishesDaily in
-# infra/resources.bicep), there's nothing to check.
+# issue (once per day), which emails the owner.
 on:
   schedule:
     - cron: '0 2 * * *'
@@ -20,19 +19,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
-        with:
-          sparse-checkout: infra
-
       - name: Look for today's rite on Today
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if ! awk '/^module production/,/^}/' infra/resources.bicep | grep -q 'publishesDaily: true'; then
-            echo "Production doesn't publish daily yet (publishesDaily in infra/resources.bicep): nothing to check." >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-
           today=$(date -u +%F)
           # A page that doesn't answer at all hides the rite from readers too, so it's reported the same way.
           page=$(curl -sSf -m 30 --retry 3 --retry-all-errors https://dailymachinespirit.fyi/ 2> fetch-error.txt) || page=''

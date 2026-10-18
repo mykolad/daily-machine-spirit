@@ -240,28 +240,25 @@ observability/                    — the Grafana dashboard and alerts, and what
     - Drafts without a quality (Jev off or failing) go last.
   - **No rite twice:** the writer's prompt lists the 30 newest rites, the waiting drafts and the recently burned ones,
     each a title and its Heretical Truth (`TakenRite`): the truth says the habit and the lesson, and a new title on an
-    old lesson is the same rite. Then `DuplicateCheck` asks `gpt-6-luna` (`Generation:DuplicateCheckModel`) whether
-    the draft repeats any of those or any rite ever published. One that does is written again, told of the rite it
-    repeats, up to twice (`Generation:DuplicateRewrites`); still repeating, it's kept with `Resembles` (that rite's
-    title), and the Scriptorium shows it as "Much like …" for the Scribes to judge. A rewrite that fails on every
+    old lesson is the same rite. Then `DuplicateCheck` asks `gpt-6-luna` whether the draft repeats any of those or any
+    rite ever published. One that does is written again, told of the rite it repeats, up to twice
+    (`BacklogRefiller.DuplicateRewrites`); still repeating, it's kept with `Resembles` (that rite's title), and the
+    Scriptorium shows it as "Much like …" for the Scribes to judge. A rewrite that fails on every
     model keeps the draft, marked the same way. The check reads the waiting drafts again first, so a draft another
     refill saved meanwhile counts too. A check that fails keeps the draft unchecked; checks are counted
     (`dms.generation.duplicate_checks`). Amending a draft clears the mark. A model, not a measure: Jev's scores place a
     rite among broad topics (unrelated rites on one topic score nearly the same), and two wordings of one lesson share
     few words.
-  - **Refilling:** the `RefillBacklog` function keeps `Generation:BacklogSize` (20) drafts waiting. Each draft is of
-    the kind there are fewer of, repeating no rite already written (above). The timer asks for a
+  - **Refilling:** the `RefillBacklog` function keeps 20 drafts waiting (`GenerationOptions.BacklogSize`). Each draft
+    is of the kind there are fewer of, repeating no rite already written (above). The timer asks for a
     refill after publishing, by a message on the `backlog-refills` queue: a full refill takes minutes, longer than a
     request should wait. `host.json` takes one message at a time and tries a message 3 times, 10 minutes apart. The
     queue is declared in `infra/`. Instances can refill at once, but each counts the waiting drafts before every draft
     it writes, so the backlog overshoots by at most one draft per refill running.
   - **A new environment starts with an empty backlog,** so its first midnight writes a rite on the spot, unmoderated.
     To have moderated rites from the first day (production), summon a refill before the first midnight.
-  - **Daily publishing can be held** (`Generation:PublishDaily`, `publishesDaily` in `resources.bicep`): off, the timer
-    neither publishes nor refills, while the Scriptorium still summons drafts. Both environments publish (production since
-    launch, #35).
   - **Writing:** `RiteWriter` asks `gpt-6-sol` for a `RiteContent` (JSON schema output), up to 3 times, then
-    `gpt-6-luna` (`Generation:Models`). An answer that's empty, too long, uses a forbidden name, names what the far
+    `gpt-6-luna` (`GenerationOptions.Models`). An answer that's empty, too long, uses a forbidden name, names what the far
     future forgot (AI, LLMs, chatbots and the like, as whole words: not "model" or "prompt" alone) or writes code
     outside backticks (`UnquotedCode`) is asked for again, never cut (`RiteChecks`, which a Scribe's amendment passes
     too). The prompt asks for plain words over code: at most one widely known command or file name, without flags.
@@ -273,7 +270,8 @@ observability/                    — the Grafana dashboard and alerts, and what
     saved only if the draft is still the version judged (its ETag), and recorded (#9), but it's no lesson for the
     Augury: it says nothing of the Scribes' taste. "Scores" are always the similarity scores, never the quality.
   - **Settings:** `AzureOpenAI:Endpoint` (the models are reached as the managed identity), `Jev:ApiKey` (a Key Vault
-    reference in Azure; empty turns Jev off), and optionally `Generation:*` (`GenerationOptions`).
+    reference in Azure; empty turns Jev off). How rites are written (the models, the backlog's size, the pauses between
+    tries) is fixed in code (`GenerationOptions`, not read from configuration): no environment changes it, only tests.
 - **The Scriptorium** (`/scriptorium`, `Scriptorium/`): where the **Scribes** (moderators) shape the Liturgical Calendar.
   - **Actions:** **Anoint** (next to be published), **Exalt** / **Humble** (up or down one), **Consign to the Flames**
     (burn: the draft is hidden, never deleted), **Restore from the Ashes**, **Summon New Rites** (a refill), **Let
@@ -337,7 +335,7 @@ observability/                    — the Grafana dashboard and alerts, and what
     so it's announced; focus returns to the same button (after a burn, to the rite now in its place in the calendar,
     which the Augury may have reordered, without scrolling away). Anything unexpected (an error, Cloudflare Access wanting a new sign-in) loads `/scriptorium`
     afresh. Reduced motion: no slide, only the mark.
-  - **Access:** `Scriptorium:Enabled` is off by default. Who counts as a Scribe is an `IScribeSignIn`
+  - **Access:** who counts as a Scribe is an `IScribeSignIn`
     (`Scriptorium/SignIn/`), chosen to fail closed (`AddScribeSignIn`):
     - **Cloudflare Access** (`CloudflareAccess:TeamDomain` and `:Audience` set, production): every request must carry
       Access's signed token (`Cf-Access-Jwt-Assertion`), checked against the team's keys, issuer and the application's
@@ -348,7 +346,7 @@ observability/                    — the Grafana dashboard and alerts, and what
       five minutes.
     - **No sign-in** (`Scriptorium:WithoutSignIn`): staging, whose IP rule already admits its owner alone, and a local
       run (`local.settings.example.json` sets it).
-    - **Neither:** nobody gets in, even with the Scriptorium on.
+    - **Neither:** nobody gets in.
 
 ## Pull requests
 

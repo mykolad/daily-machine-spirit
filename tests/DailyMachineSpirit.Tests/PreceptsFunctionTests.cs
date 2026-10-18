@@ -35,7 +35,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         testbed.Models.Answers(Sol, Distilled("Prefer the real fix."));
         Ok(await testbed.Distiller().Distil(Tester, CancellationToken.None));
 
-        var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+        var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
         Assert.Contains("Distilled Wed 7 Oct, 00:00 UTC from 1 judgments, and again every Monday.", html);
         Assert.Contains("""<p class="text">Name the command: <code>npm ci</code>.</p>""", html);
@@ -58,7 +58,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         Ok(await testbed.Scribes().Anoint(worst.Id, "", Tester, CancellationToken.None));
         Ok(await testbed.Scribes().Burn(best.Id, "", Tester, CancellationToken.None));
 
-        var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+        var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
         Assert.Contains("""<h2 id="agreement-heading">Do the Scribes Agree with the Augury?</h2>""", html);
         Assert.Contains("""<th scope="col">Top picks burned</th>""", html);
@@ -69,7 +69,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
     [Fact]
     public async Task Page_BeforeAnyPrecept_SaysSo()
     {
-        var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+        var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
         Assert.Contains("Not distilled yet", html);
         Assert.Contains("There are no precepts yet.", html);
@@ -84,21 +84,19 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
             Ok(await testbed.PreceptKeeping().AddPinned($"Precept {added}.", Tester, CancellationToken.None));
         }
 
-        Assert.DoesNotContain("precept-new", Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200));
+        Assert.DoesNotContain("precept-new", Html(await Function().Page(Get(""), CancellationToken.None), 200));
     }
 
     [Fact]
     public async Task ThePrecepts_AreTheScribesAlone()
     {
-        var notAScribe = Function(new NobodyIsScribeSignIn(), enabled: true);
+        var notAScribe = Function(new NobodyIsScribeSignIn());
         var forged = Form(("text", "Burn everything."));
         forged.Headers["Sec-Fetch-Site"] = "cross-site";
 
-        Assert.IsType<NotFoundResult>(await Function(enabled: false).Page(Get(""), CancellationToken.None));
         Assert.Equal(403, Assert.IsType<StatusCodeResult>(await notAScribe.Page(Get(""), CancellationToken.None)).StatusCode);
         Assert.Equal(403, Assert.IsType<StatusCodeResult>(await notAScribe.Distil(Form(), CancellationToken.None)).StatusCode);
-        Assert.Equal(403, Assert.IsType<StatusCodeResult>(await Function(enabled: true).Add(forged, CancellationToken.None)).StatusCode);
-        Assert.IsType<NotFoundResult>(await Function(enabled: false).Change(Form(), Guid.NewGuid(), "pin", CancellationToken.None));
+        Assert.Equal(403, Assert.IsType<StatusCodeResult>(await Function().Add(forged, CancellationToken.None)).StatusCode);
         Assert.Empty(Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts);
     }
 
@@ -107,7 +105,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
     {
         await AJudgment();
         testbed.Models.Answers(Sol, Distilled("Prefer the real fix."));
-        var function = Function(enabled: true);
+        var function = Function();
 
         var redirect = await function.Distil(Form(), CancellationToken.None);
 
@@ -120,7 +118,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
     [Fact]
     public async Task Distil_SaysWhyNothingWasDistilled()
     {
-        var function = Function(enabled: true);
+        var function = Function();
         Assert.Equal("/scriptorium/precepts?done=distil-nothing", RedirectedTo(await function.Distil(Form(), CancellationToken.None)));
 
         await AJudgment();
@@ -147,13 +145,13 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
             return Distilled("Prefer the real fix.");
         }]);
 
-        Assert.Equal("/scriptorium/precepts?done=changed", RedirectedTo(await Function(enabled: true).Distil(Form(), CancellationToken.None)));
+        Assert.Equal("/scriptorium/precepts?done=changed", RedirectedTo(await Function().Distil(Form(), CancellationToken.None)));
     }
 
     [Fact]
     public async Task TheScribes_AddEditPinUnpinAndDelete_OverHttp()
     {
-        var function = Function(enabled: true);
+        var function = Function();
         Assert.Equal("/scriptorium/precepts?done=add", RedirectedTo(await function.Add(Form(("text", "Prefer the real fix.")), CancellationToken.None)));
         var id = Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts.Single().Id;
         var at = $"&precept={id:D}#precept-{id:D}";
@@ -179,7 +177,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         Ok(await testbed.PreceptKeeping().AddPinned("Prefer the real fix.", Tester, CancellationToken.None));
         var id = Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts.Single().Id;
         var bothSaw = await Seen();
-        var function = Function(enabled: true);
+        var function = Function();
         var first = await function.Change(Form(("text", "The first Scribe's words."), bothSaw), id, "edit", CancellationToken.None);
         Assert.StartsWith("/scriptorium/precepts?done=edit", RedirectedTo(first));
 
@@ -194,7 +192,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
     [Fact]
     public async Task TheScribesMistakes_ComeBackAsMessages()
     {
-        var function = Function(enabled: true);
+        var function = Function();
         Assert.Equal("/scriptorium/precepts?done=text-needed", RedirectedTo(await function.Add(Form(("text", " ")), CancellationToken.None)));
         Ok(await testbed.PreceptKeeping().AddPinned("Prefer the real fix.", Tester, CancellationToken.None));
         var id = Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts.Single().Id;
@@ -211,7 +209,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
     [Fact]
     public async Task OnlyThePagesForms_AndActions_AreTaken()
     {
-        var function = Function(enabled: true);
+        var function = Function();
         var notAForm = Form();
         notAForm.ContentType = "application/json";
 
@@ -233,7 +231,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
     [InlineData("changed", "The Precepts changed meanwhile: another Scribe, or a distillation. Look again.")]
     public async Task Page_SaysWhatTheLastActionDid(string outcome, string message)
         => Assert.Contains($"""<p class="status" role="status">{message}</p>""",
-            Html(await Function(enabled: true).Page(Get($"?done={outcome}"), CancellationToken.None), 200));
+            Html(await Function().Page(Get($"?done={outcome}"), CancellationToken.None), 200));
 
     // Cosmos down: the page says the Scriptorium is silent, as its other pages do.
     [Fact]
@@ -269,40 +267,38 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         await AJudgment();
         testbed.Models.Answers(Sol, Distilled("Prefer the real fix."));
 
-        await Timer(enabled: true).Run(new TimerInfo(), CancellationToken.None);
+        await Timer().Run(new TimerInfo(), CancellationToken.None);
 
         Assert.Equal("Prefer the real fix.", Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts.Single().Text);
         Assert.Contains(Ok(await testbed.Audit.GetNewest(10, CancellationToken.None)),
             entry => entry is { Action: AuditAction.Distil, Actor: AuditEntry.MachineSpirit });
     }
 
-    // Without the Scriptorium, or anything to learn from, there's nothing to do; a failure fails the run, to be retried.
+    // With nothing to learn from, there's nothing to do; a failure fails the run, to be retried.
     [Fact]
     public async Task TheWeeklyRun_IsQuiet_WithNothingToDo_AndFailsWhenTheModelsDo()
     {
-        await Timer(enabled: true).Run(new TimerInfo(), CancellationToken.None);
-        await AJudgment();
-        await Timer(enabled: false).Run(new TimerInfo(), CancellationToken.None);
+        await Timer().Run(new TimerInfo(), CancellationToken.None);
         Assert.Empty(testbed.Models.Requests);
 
+        await AJudgment();
         testbed.Models.Fails(Sol, 1).Fails(Luna, 1);
-        await Assert.ThrowsAnyAsync<Exception>(() => Timer(enabled: true).Run(new TimerInfo(), CancellationToken.None));
+        await Assert.ThrowsAnyAsync<Exception>(() => Timer().Run(new TimerInfo(), CancellationToken.None));
     }
 
-    private PreceptsFunction Function(bool enabled) => Function(new EveryoneIsScribeSignIn(), enabled);
+    private PreceptsFunction Function() => Function(new EveryoneIsScribeSignIn());
 
-    private PreceptsFunction Function(IScribeSignIn signIn, bool enabled)
-        => new(testbed.PreceptKeeping(), testbed.Distiller(), new AgreementTrend(testbed.Scriptorium, testbed.Time), signIn,
-            Options.Create(new ScriptoriumOptions { Enabled = enabled }), NullLogger<PreceptsFunction>.Instance);
+    private PreceptsFunction Function(IScribeSignIn signIn)
+        => new(testbed.PreceptKeeping(), testbed.Distiller(), new AgreementTrend(testbed.Scriptorium, testbed.Time), signIn, NullLogger<PreceptsFunction>.Instance);
 
     private PreceptsFunction Function(FakePrecepts precepts)
         => new(new PreceptKeeping(precepts, testbed.Time),
             new PreceptDistiller(testbed.Scriptorium, precepts, testbed.Models, Options.Create(new GenerationOptions()), testbed.Time, testbed.Probe.Metrics, NullLogger<PreceptDistiller>.Instance),
             new AgreementTrend(testbed.Scriptorium, testbed.Time),
-            new EveryoneIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), NullLogger<PreceptsFunction>.Instance);
+            new EveryoneIsScribeSignIn(), NullLogger<PreceptsFunction>.Instance);
 
-    private DistilPreceptsFunction Timer(bool enabled)
-        => new(testbed.Distiller(), Options.Create(new ScriptoriumOptions { Enabled = enabled }), NullLogger<DistilPreceptsFunction>.Instance);
+    private DistilPreceptsFunction Timer()
+        => new(testbed.Distiller(), NullLogger<DistilPreceptsFunction>.Instance);
 
     // The version of the Precepts the page shows now, as its forms send it.
     private async Task<(string Name, string Value)> Seen()

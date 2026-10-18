@@ -7,23 +7,6 @@ using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Functions.Scriptorium;
 
-public class ScriptoriumOptions
-{
-    public const string SectionName = "Scriptorium";
-
-    /// <summary>
-    /// Off unless set: on staging, which only its owner's address can reach. Production turns it on once the Scribes sign
-    /// in with Cloudflare Access.
-    /// </summary>
-    public bool Enabled { get; set; }
-
-    /// <summary>
-    /// Lets everyone who reaches the Scriptorium in, with no sign-in: only for an app that admits its owner's address
-    /// alone (staging). Elsewhere the Scribes sign in with Cloudflare Access, and with neither, nobody gets in.
-    /// </summary>
-    public bool WithoutSignIn { get; set; }
-}
-
 /// <summary>A draft in the Liturgical Calendar, as the Scriptorium shows it.</summary>
 public sealed record CalendarEntry(Draft Draft, DateOnly PublishesOnUtc, bool PlacedByScribes, int AuguryPlace);
 

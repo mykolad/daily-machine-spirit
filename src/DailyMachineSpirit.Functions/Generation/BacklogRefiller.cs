@@ -14,6 +14,12 @@ namespace DailyMachineSpirit.Functions.Generation;
 /// <summary>Keeps <see cref="GenerationOptions.BacklogSize"/> drafts waiting, so moderators always have a choice.</summary>
 public sealed class BacklogRefiller
 {
+    /// <summary>How many recent rites (and burned drafts) the writer's prompt lists; the duplicate check reads every rite.</summary>
+    public const int RecentRitesInPrompt = 30;
+
+    /// <summary>How many times a draft that repeats a rite is written again before it's kept, marked for the Scribes.</summary>
+    public const int DuplicateRewrites = 2;
+
     private readonly IDraftRepository drafts;
     private readonly IRiteRepository rites;
     private readonly IScriptoriumRepository scriptorium;
@@ -81,21 +87,21 @@ public sealed class BacklogRefiller
     /// Writes, judges and saves one draft, of the kind the backlog has fewer of, repeating no rite already written. The
     /// prompt lists the recent rites, the <paramref name="waiting"/> drafts and the recently burned ones (they teach the
     /// model what the Scribes didn't want), each with its truth; then a model checks the draft against those and every
-    /// rite ever published. One that repeats a rite is written again, up to <see cref="GenerationOptions.DuplicateRewrites"/>
+    /// rite ever published. One that repeats a rite is written again, up to <see cref="DuplicateRewrites"/>
     /// times, then kept, marked with what it repeats, for the Scribes to judge.
     /// </summary>
     public Task<Either<Error, Draft>> AddDraft(IReadOnlyList<Draft> waiting, CancellationToken cancellationToken)
         => rites.GetAllWords(cancellationToken)
-            .BindAsync(published => scriptorium.GetBurned(options.Value.RecentRitesInPrompt, cancellationToken)
+            .BindAsync(published => scriptorium.GetBurned(RecentRitesInPrompt, cancellationToken)
                 .BindAsync(burned =>
                 {
                     List<TakenRite> drafted = [.. waiting.Select(Taken), .. burned.Select(Taken)];
-                    var recent = published.Take(options.Value.RecentRitesInPrompt).Select(Taken);
+                    var recent = published.Take(RecentRitesInPrompt).Select(Taken);
                     return Unrepeated(
                         KindToWrite(waiting),
                         [.. recent, .. drafted],
                         [.. published.Select(Taken), .. drafted],
-                        options.Value.DuplicateRewrites,
+                        DuplicateRewrites,
                         cancellationToken);
                 }))
             .BindAsync(async draft => Right<Error, Draft>(await Judged(draft, cancellationToken)))

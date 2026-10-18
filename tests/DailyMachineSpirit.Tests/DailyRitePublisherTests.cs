@@ -190,19 +190,6 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
         Assert.Empty(pages.Purges);
     }
 
-    // Before launch: nothing published, and no refill asked for, while the Scriptorium can still summon drafts.
-    [Fact]
-    public async Task TimerFunction_WithDailyPublishingOff_PublishesNothing_AndAsksForNoRefill()
-    {
-        await testbed.AddDraft("Waits for launch", 0.9f);
-
-        var message = await Function(publishDaily: false).Run(new TimerInfo(), CancellationToken.None);
-
-        Assert.Null(message);
-        Assert.True(Ok(await testbed.Rites.GetPublishedOn(Today, CancellationToken.None)).IsNone);
-        Assert.Single(await testbed.Waiting());
-    }
-
     [Fact]
     public async Task TimerFunction_WhenPublishingFails_Throws_SoTheRunCountsAsFailed()
     {
@@ -211,8 +198,5 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
         await Assert.ThrowsAnyAsync<Exception>(() => Function().Run(new TimerInfo(), CancellationToken.None));
     }
 
-    private DailyRiteFunction Function() => Function(publishDaily: true);
-
-    private DailyRiteFunction Function(bool publishDaily)
-        => new(testbed.Publisher(), pages, Options.Create(new GenerationOptions { PublishDaily = publishDaily }), NullLogger<DailyRiteFunction>.Instance);
+    private DailyRiteFunction Function() => new(testbed.Publisher(), pages, NullLogger<DailyRiteFunction>.Instance);
 }

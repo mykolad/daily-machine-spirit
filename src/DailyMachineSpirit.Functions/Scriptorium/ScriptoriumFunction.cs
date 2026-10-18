@@ -45,7 +45,6 @@ public sealed class ScriptoriumFunction
     private readonly IAuditRepository audit;
     private readonly TimeProvider time;
     private readonly ScriptoriumGate gate;
-    private readonly IOptions<ScriptoriumOptions> options;
     private readonly ILogger<ScriptoriumFunction> logger;
 
     public ScriptoriumFunction(
@@ -54,7 +53,6 @@ public sealed class ScriptoriumFunction
         JudgingAgain judgingAgain,
         IAuditRepository audit,
         IScribeSignIn signIn,
-        IOptions<ScriptoriumOptions> options,
         TimeProvider time,
         ILogger<ScriptoriumFunction> logger)
     {
@@ -63,8 +61,7 @@ public sealed class ScriptoriumFunction
         this.judgingAgain = judgingAgain;
         this.audit = audit;
         this.time = time;
-        gate = new ScriptoriumGate(signIn, options);
-        this.options = options;
+        gate = new ScriptoriumGate(signIn);
         this.logger = logger;
     }
 

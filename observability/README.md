@@ -23,7 +23,7 @@ what to look at.
 
 | Alert | Fires when |
 |---|---|
-| **No rite today** | Today doesn't show today's rite at 02:00 UTC, after the timer and its retries. A workflow (**Check Today's Rite**), not Grafana: it reads the page readers get, through Cloudflare's cache, and opens an issue. Until production publishes daily (`publishesDaily` in `infra/resources.bicep`), it checks nothing. |
+| **No rite today** | Today doesn't show today's rite at 02:00 UTC, after the timer and its retries. A workflow (**Check Today's Rite**), not Grafana: it reads the page readers get, through Cloudflare's cache, and opens an issue. |
 | **Refills failing** | a backlog refill failed all three tries within an hour (its error logs) |
 | **Backlog ran empty** | publishing found no waiting draft more than once in a week (its warning logs) |
 | **Jev failing** | two or more drafts in a day couldn't be judged (the refiller's warning logs) |
