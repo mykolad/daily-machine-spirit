@@ -17,10 +17,7 @@ namespace DailyMachineSpirit.Functions.Scriptorium;
 /// </summary>
 public sealed class Amendments
 {
-    /// <summary>The words broke a rule every rite keeps: the error's message says which, for the Scribe to fix.</summary>
-    public const int Refused = 8001;
-
-    public static readonly Error NoteNeeded = Error.New(Refused, "Write a note first: it tells the Machine Spirit what to change.");
+    public static readonly Error NoteNeeded = new AmendmentRefused("Write a note first: it tells the Machine Spirit what to change.");
 
     private readonly IDraftRepository drafts;
     private readonly IScriptoriumRepository scriptorium;
@@ -128,7 +125,7 @@ public sealed class Amendments
             ? None
             : Some($"was “{before.Writing.Title}”"));
 
-    private static Error Refusal(Error why) => Error.New(Refused, why.Message);
+    private static Error Refusal(Error why) => new AmendmentRefused(why.Message);
 
     // An empty note is no note, as with every other decision.
     private static Either<Error, Option<string>> CheckedNote(string note)
