@@ -5,7 +5,7 @@ Each environment is its own service, named after its Functions app (`machinespir
 
 ## The dashboard
 
-`grafana/daily-machine-spirit.jsonc`: traffic, Cosmos DB, the daily rite and the backlog, .NET and logs. To add or update it, in
+`grafana/daily-machine-spirit.json`: traffic, Cosmos DB, the daily rite and the backlog, .NET and logs. To add or update it, in
 Grafana: **Dashboards → New → Import**, and upload the file. It keeps its uid, so importing a newer version replaces the
 old one. Change it in Grafana if you like, then export it (Share → Export, without "Export for sharing externally") back
 over this file, so the repository stays the truth.
