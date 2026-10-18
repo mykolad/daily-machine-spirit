@@ -34,7 +34,7 @@ public sealed class FakeJev : HttpMessageHandler
             """);
 
     public JevJudge NewJudge(TimeProvider time, string apiKey)
-        => new(new HttpClient(this), Options.Create(new JevOptions { ApiKey = apiKey }), time);
+        => new(new HttpClient(this), Options.Create(Settings.Jev with { ApiKey = apiKey }), time);
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {

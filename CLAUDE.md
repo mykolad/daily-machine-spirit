@@ -242,14 +242,14 @@ observability/                    — the Grafana dashboard and alerts, and what
     each a title and its Heretical Truth (`TakenRite`): the truth says the habit and the lesson, and a new title on an
     old lesson is the same rite. Then `DuplicateCheck` asks `gpt-6-luna` whether the draft repeats any of those or any
     rite ever published. One that does is written again, told of the rite it repeats, up to twice
-    (`BacklogRefiller.DuplicateRewrites`); still repeating, it's kept with `Resembles` (that rite's title), and the
+    (`Backlog:RewritesOfARepeatedRite`); still repeating, it's kept with `Resembles` (that rite's title), and the
     Scriptorium shows it as "Much like …" for the Scribes to judge. A rewrite that fails on every
     model keeps the draft, marked the same way. The check reads the waiting drafts again first, so a draft another
     refill saved meanwhile counts too. A check that fails keeps the draft unchecked; checks are counted
     (`dms.generation.duplicate_checks`). Amending a draft clears the mark. A model, not a measure: Jev's scores place a
     rite among broad topics (unrelated rites on one topic score nearly the same), and two wordings of one lesson share
     few words.
-  - **Refilling:** the `RefillBacklog` function keeps 20 drafts waiting (`GenerationOptions.BacklogSize`). Each draft
+  - **Refilling:** the `RefillBacklog` function keeps 20 drafts waiting (`Backlog:DraftsWaiting`). Each draft
     is of the kind there are fewer of, repeating no rite already written (above). The timer asks for a
     refill after publishing, by a message on the `backlog-refills` queue: a full refill takes minutes, longer than a
     request should wait. `host.json` takes one message at a time and tries a message 3 times, 10 minutes apart. The
@@ -258,7 +258,7 @@ observability/                    — the Grafana dashboard and alerts, and what
   - **A new environment starts with an empty backlog,** so its first midnight writes a rite on the spot, unmoderated.
     To have moderated rites from the first day (production), summon a refill before the first midnight.
   - **Writing:** `RiteWriter` asks `gpt-6-sol` for a `RiteContent` (JSON schema output), up to 3 times, then
-    `gpt-6-luna` (`GenerationOptions.Models`). An answer that's empty, too long, uses a forbidden name, names what the far
+    `gpt-6-luna` (`RiteWriting:Models`). An answer that's empty, too long, uses a forbidden name, names what the far
     future forgot (AI, LLMs, chatbots and the like, as whole words: not "model" or "prompt" alone) or writes code
     outside backticks (`UnquotedCode`) is asked for again, never cut (`RiteChecks`, which a Scribe's amendment passes
     too). The prompt asks for plain words over code: at most one widely known command or file name, without flags. Its
@@ -271,15 +271,23 @@ observability/                    — the Grafana dashboard and alerts, and what
     saved only if the draft is still the version judged (its ETag), and recorded (#9), but it's no lesson for the
     Augury: it says nothing of the Scribes' taste. "Scores" are always the similarity scores, never the quality.
   - **Settings:** `AzureOpenAI:Endpoint` (the models are reached as the managed identity), `Jev:ApiKey` (a Key Vault
-    reference in Azure; empty turns Jev off). How rites are written (the models, the backlog's size, the pauses between
-    tries) is fixed in code (`GenerationOptions`, not read from configuration): no environment changes it, only tests.
+    reference in Azure; empty turns Jev off).
+  - **Tuning: `machine-spirit.json`** (in the Functions project, copied with the app): every value worth tuning, in one
+    file with a section per thing it tunes (`RiteWriting`, `Backlog`, `DuplicateRiteCheck`, `PreceptDistilling`,
+    `PreceptCheck`, `ScribeNameSuggestions`, `Augury`, `Jev`, `PagePurging`, `PublicPages`, `ScriptoriumPages`), each
+    bound to an options class next to its code. Both environments use it as it is; an app setting of the same name
+    would override a value, but none needs to, so infra/ keeps only what differs between them. Each model call has a
+    **`Patience`**: tries per model, the pause between them, and how long a try or all of them may take. A key the
+    section doesn't have fails the binding, and `SettingsTests` check that every value is in the file and that what a
+    Scribe waits for fits in Cloudflare's 100 seconds. Tests run with the file's values (`Settings`), changing only
+    what they must. Limits that stored data or the pages depend on (lengths, a precept's size) stay in code.
 - **The Scriptorium** (`/scriptorium`, `Scriptorium/`): where the **Scribes** (moderators) shape the Liturgical Calendar.
   - **Actions:** **Anoint** (next to be published), **Exalt** / **Humble** (up or down one), **Consign to the Flames**
     (burn: the draft is hidden, never deleted), **Restore from the Ashes**, **Summon New Rites** (a refill), **Let
     the Augury Decide** (forget the Scribes' order), and **Amend** (#8, `Amendments`, its own page): change a waiting
     draft's words by hand, or ask the writer to rewrite them as the Scribe's note says (`RiteWriter.Rewrite`; the
     rewrite fills the form, unsaved, for the Scribe to read first). A rewrite is asked with less patience than a refill
-    (`Patience`, `RiteWriter.WhileTheScribeWaits`): each model once, 40 seconds each, within the 100 seconds Cloudflare
+    (`RiteWriting:PatienceWhileTheScribeWaits`): each model once, 40 seconds each, within the 100 seconds Cloudflare
     waits; a refill gives each model its three tries. Line breaks the form posts as CRLF count as one character, as the
     field counted them. Saved words pass what a model's answer must
     (`RiteChecks`) and are judged again (scores, quality and tags describe what will be published; if the judge fails
@@ -305,7 +313,7 @@ observability/                    — the Grafana dashboard and alerts, and what
       on the page and in the writer's prompt; Pin and Unpin say what they do in their `title`. Deleted ones are
       remembered (the newest 30): the model is told not to propose them, and any it does are dropped.
     - **Within the writer's rules** (#86, `PreceptCheck`): `gpt-6-luna`, then `gpt-6-sol` if it fails
-      (`GenerationOptions.PreceptCheckModels`, 15 seconds for both together, all the precepts in one request) says which
+      (`PreceptCheck` in `machine-spirit.json`, 15 seconds for both together, all the precepts in one request) says which
       precepts would have the writer break one of its rules (`RiteRules`), or are abusive or discriminating, and why. A
       Scribe's is refused with that reason: the page comes back (422) with their words in the field, or in the message
       when that field went meanwhile. A distilled one is dropped, and distilling is told the rules, so it rarely
@@ -332,7 +340,7 @@ observability/                    — the Grafana dashboard and alerts, and what
       entry and guarded by its ETag, so two Scribes can't take one name at once. Names are tidied (one line, single
       spaces), unique whatever their case, never an email address, and none passes for the Record's own ("The Machine
       Spirit", "A Scribe on staging", "A Scribe (…)"): `ScribeNaming.Acceptable`, which suggestions pass too. The
-      page offers three names `gpt-6-luna` suggests (`NameSuggester`, `GenerationOptions.ScribeNameModel`, 10 seconds, the
+      page offers three names `gpt-6-luna` suggests (`NameSuggester`, `ScribeNameSuggestions`, 10 seconds, the
       taken ones left out), filled from the site's own when it can't (its list, every title with every word, then its
       list numbered, so it never runs out); the first is in the field, to take or change, and each suggestion's link puts
       it there instead, carrying the others so the model isn't asked again (one another Scribe took since gives way to

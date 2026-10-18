@@ -11,17 +11,9 @@ namespace DailyMachineSpirit.Functions.Generation;
 /// </summary>
 public static class LiturgicalCalendar
 {
-    /// <summary>How many rites before a draft its resemblance is measured against: a week of reading.</summary>
-    public const int ResemblanceWindow = 7;
-
-    // Weighed against quality (0 to 1). A near copy of a rite in the window loses half a point: it has to be much better
-    // to go next. Following the same kind loses a little, enough to decide between drafts of similar quality.
-    private const float ResemblancePenalty = 0.5f;
-    private const float SameKindPenalty = 0.1f;
-
-    /// <param name="recent">Published rites, newest first (only the first <see cref="ResemblanceWindow"/> count).</param>
+    /// <param name="recent">Published rites, newest first (only the first <see cref="AuguryOptions.RecentRitesCompared"/> count).</param>
     /// <param name="placed">The Scribes' order; drafts in it that aren't waiting any more are skipped.</param>
-    public static List<Draft> Order(IReadOnlyList<Draft> waiting, IReadOnlyList<Rite> recent, IReadOnlyList<Guid> placed)
+    public static List<Draft> Order(IReadOnlyList<Draft> waiting, IReadOnlyList<Rite> recent, IReadOnlyList<Guid> placed, AuguryOptions augury)
     {
         var waitingById = waiting.ToDictionary(draft => draft.Id);
         var ordered = placed.Distinct().Where(waitingById.ContainsKey).Select(id => waitingById[id]).ToList();
@@ -29,7 +21,7 @@ public static class LiturgicalCalendar
         var unplaced = waiting.Where(draft => !placedIds.Contains(draft.Id)).ToList();
 
         // Oldest first: each pick joins the end, as the rite before the next one.
-        var before = recent.Take(ResemblanceWindow).Reverse().Select(rite => (rite.Writing.Kind, rite.Similarity))
+        var before = recent.Take(augury.RecentRitesCompared).Reverse().Select(rite => (rite.Writing.Kind, rite.Similarity))
             .Concat(ordered.Select(draft => (draft.Writing.Kind, draft.Similarity)))
             .ToList();
         var judge = NewestJudge(waiting);
@@ -40,7 +32,7 @@ public static class LiturgicalCalendar
         while (judged.Count > 0)
         {
             // The sort is stable, so of equal values the earlier draft wins.
-            var next = judged.OrderByDescending(draft => Value(draft, before)).First();
+            var next = judged.OrderByDescending(draft => Value(draft, before, augury)).First();
             judged.Remove(next);
             ordered.Add(next);
             before.Add((next.Writing.Kind, next.Similarity));
@@ -63,15 +55,15 @@ public static class LiturgicalCalendar
     private static bool JudgedBy(Draft draft, Option<string> judge)
         => draft.Augury.Exists(augury => judge.Exists(newest => newest == augury.JudgedBy));
 
-    private static float Value(Draft draft, List<(RiteKind Kind, Option<RiteSimilarity> Similarity)> before)
+    private static float Value(Draft draft, List<(RiteKind Kind, Option<RiteSimilarity> Similarity)> before, AuguryOptions augury)
     {
-        var quality = draft.Augury.Map(augury => augury.Quality).IfNone(0f);
-        var resemblance = before.TakeLast(ResemblanceWindow)
+        var quality = draft.Augury.Map(judgment => judgment.Quality).IfNone(0f);
+        var resemblance = before.TakeLast(augury.RecentRitesCompared)
             .Select(rite => Resemblance(draft.Similarity, rite.Similarity))
             .DefaultIfEmpty(0f)
             .Max();
-        var sameKind = before.Count > 0 && before[^1].Kind == draft.Writing.Kind ? SameKindPenalty : 0f;
-        return quality - ResemblancePenalty * resemblance - sameKind;
+        var sameKind = before.Count > 0 && before[^1].Kind == draft.Writing.Kind ? augury.SameKindPenalty : 0f;
+        return quality - augury.ResemblancePenalty * resemblance - sameKind;
     }
 
     // Cosine similarity of the scores: 1 for the same subject and act, 0 for nothing in common. Unknown, or from

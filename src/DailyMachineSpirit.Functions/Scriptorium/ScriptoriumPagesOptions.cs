@@ -12,7 +12,4 @@ public sealed record ScriptoriumPagesOptions
     public int RecordEntriesShown { get; init; }
 
     public int AgreementMonthsShown { get; init; }
-
-    /// <summary>How many of the Augury's top picks the agreement counts.</summary>
-    public int AuguryTopPicks { get; init; }
 }

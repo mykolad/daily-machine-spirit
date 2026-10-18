@@ -248,7 +248,8 @@ public sealed class ScribeNamingTests : IAsyncLifetime
         => new(testbed.ScribeNaming(), testbed.NameSuggester(), new SignedInScribe(scribe), NullLogger<ScribeNameFunction>.Instance);
 
     private ScriptoriumFunction Scriptorium(string scribe)
-        => new(testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), new SignedInScribe(scribe), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+        => new(testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), Options.Create(Settings.ScriptoriumPages),
+            new SignedInScribe(scribe), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
     private AuditEntry Entry(string scribe)
         => new() { Id = Guid.NewGuid(), AtUtc = testbed.Time.GetUtcNow().UtcDateTime, Actor = scribe, Action = AuditAction.ChooseName, Title = "Sister Cache" };

@@ -297,7 +297,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     public async Task Page_WhenCosmosFails_SaysTheScriptoriumIsSilent()
     {
         var function = new ScriptoriumFunction(
-            testbed.ScribesWithoutCosmos(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+            testbed.ScribesWithoutCosmos(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), Options.Create(Settings.ScriptoriumPages), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
         var html = Html(await function.Page(Get(""), CancellationToken.None), 500);
 
@@ -352,8 +352,8 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var burned = await testbed.AddDraft("Burned", 0.5f);
         await testbed.AddDraft("Still waiting", 0.5f);
-        var scribes = new Scribes(new DraftsFailingAfterFirstRead(testbed.Drafts), testbed.Rites, testbed.Scriptorium, testbed.Time);
-        var function = new ScriptoriumFunction(scribes, testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+        var scribes = new Scribes(new DraftsFailingAfterFirstRead(testbed.Drafts), testbed.Rites, testbed.Scriptorium, Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages), testbed.Time);
+        var function = new ScriptoriumFunction(scribes, testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), Options.Create(Settings.ScriptoriumPages), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
         var response = await function.Decide(Post(""), burned.Id, "burn", CancellationToken.None);
 
@@ -481,7 +481,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var draft = await testbed.AddDraft("Kept", 0.5f);
         var function = new ScriptoriumFunction(
-            testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), new NobodyIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+            testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), Options.Create(Settings.ScriptoriumPages), new NobodyIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
         var page = await function.Page(Get(""), CancellationToken.None);
         var decision = await function.Decide(Post(""), draft.Id, "burn", CancellationToken.None);
@@ -724,13 +724,13 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     [Fact]
     public async Task TheRecord_IsTheScribesAlone()
     {
-        var notAScribe = new ScriptoriumFunction(testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), new NobodyIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+        var notAScribe = new ScriptoriumFunction(testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), Options.Create(Settings.ScriptoriumPages), new NobodyIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
         Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<StatusCodeResult>(await notAScribe.Record(Get(""), CancellationToken.None)).StatusCode);
     }
 
     private ScriptoriumFunction Function()
-        => new(testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+        => new(testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), Options.Create(Settings.ScriptoriumPages), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
     private static HttpRequest Get(string query)
     {

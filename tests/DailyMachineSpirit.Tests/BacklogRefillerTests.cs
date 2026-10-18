@@ -114,7 +114,7 @@ public sealed class BacklogRefillerTests : IAsyncLifetime
 
         var saved = Assert.Single(await testbed.Waiting());
         Assert.Equal(("Restart III", Some("The Sacred Restart")), (saved.Writing.Title, saved.Resembles));
-        var html = Html(await new ScriptoriumFunction(testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance)
+        var html = Html(await new ScriptoriumFunction(testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), Options.Create(Settings.ScriptoriumPages), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance)
             .Page(Get(""), CancellationToken.None), 200);
         Assert.Contains("""<p class="resembles">Much like “The Sacred Restart”, already written.</p>""", html);
     }
@@ -161,8 +161,8 @@ public sealed class BacklogRefillerTests : IAsyncLifetime
     public async Task Refill_ChecksAgainstEveryPublishedRite_NotOnlyTheRecentOnes()
     {
         testbed.BacklogSize = 2;
-        await testbed.AddRite(Today.AddDays(-BacklogRefiller.RecentRitesInPrompt - 1), "The Ancient Restart");
-        for (var daysAgo = BacklogRefiller.RecentRitesInPrompt; daysAgo > 1; daysAgo--)
+        await testbed.AddRite(Today.AddDays(-Settings.Backlog.RecentRitesInPrompt - 1), "The Ancient Restart");
+        for (var daysAgo = Settings.Backlog.RecentRitesInPrompt; daysAgo > 1; daysAgo--)
         {
             await testbed.AddRite(Today.AddDays(-daysAgo), $"Recent Rite {daysAgo}");
         }

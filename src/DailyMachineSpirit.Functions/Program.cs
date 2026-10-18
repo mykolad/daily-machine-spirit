@@ -6,6 +6,7 @@ using DailyMachineSpirit.Functions.Generation.Chat;
 using DailyMachineSpirit.Functions.Generation.Judging;
 using DailyMachineSpirit.Functions.Generation.Precepts;
 using DailyMachineSpirit.Functions.Generation.Writing;
+using DailyMachineSpirit.Functions.Pages;
 using DailyMachineSpirit.Functions.Scriptorium;
 using DailyMachineSpirit.Functions.Scriptorium.Naming;
 using DailyMachineSpirit.Functions.Scriptorium.SignIn;
@@ -18,12 +19,21 @@ using Microsoft.Azure.Functions.Worker.OpenTelemetry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 
 var builder = FunctionsApplication.CreateBuilder(args);
+
+// How the Machine Spirit works: the values worth tuning, in one place (machine-spirit.json). The app's own settings come
+// after, so one of the same name (Section__Key) would override a value, though none needs to.
+builder.Configuration
+    .AddJsonFile(Path.Combine(AppContext.BaseDirectory, "machine-spirit.json"), optional: false, reloadOnChange: false)
+    .AddEnvironmentVariables();
+// A key the section doesn't have (a misspelling) fails when the settings are first used, rather than quietly leaving a
+// value unset (and SettingsTests read the file the same way).
+void Tuned<T>(string section) where T : class
+    => builder.Services.Configure<T>(builder.Configuration.GetSection(section), binder => binder.ErrorOnUnknownConfiguration = true);
 
 // ASP.NET Core integration: HTTP functions take HttpRequest and return IActionResult.
 builder.ConfigureFunctionsWebApplication();
@@ -70,11 +80,17 @@ builder.Services.AddSingleton<IScribeNameRepository, ScribeNameRepository>();
 builder.Services.AddSingleton<IVoteRepository, VoteRepository>();
 
 // The daily rite and the backlog. Created only when the timer or a refill runs, so HTTP functions start without the generation settings.
-builder.Services.AddSingleton(Options.Create(new GenerationOptions()));
-builder.Services.Configure<JevOptions>(builder.Configuration.GetSection(JevOptions.SectionName));
+Tuned<RiteWritingOptions>(RiteWritingOptions.SectionName);
+Tuned<BacklogOptions>(BacklogOptions.SectionName);
+Tuned<DuplicateRiteCheckOptions>(DuplicateRiteCheckOptions.SectionName);
+Tuned<PreceptDistillingOptions>(PreceptDistillingOptions.SectionName);
+Tuned<PreceptCheckOptions>(PreceptCheckOptions.SectionName);
+Tuned<AuguryOptions>(AuguryOptions.SectionName);
+Tuned<JevOptions>(JevOptions.SectionName);
+var jev = builder.Configuration.GetSection(JevOptions.SectionName).Get<JevOptions>() ?? new JevOptions();
 var openAI = builder.Configuration.GetSection(AzureOpenAIOptions.SectionName).Get<AzureOpenAIOptions>() ?? new AzureOpenAIOptions();
 builder.Services.AddSingleton<IChatClients>(_ => new AzureOpenAIChatClients(openAI.Endpoint));
-builder.Services.AddHttpClient<IRiteJudge, JevJudge>(http => http.Timeout = TimeSpan.FromSeconds(30));
+builder.Services.AddHttpClient<IRiteJudge, JevJudge>(http => http.Timeout = jev.Patience.TryLimit.IfNone(Timeout.InfiniteTimeSpan));
 // Tags the rites judged before tags existed, once per start (nothing left after the first).
 builder.Services.AddHostedService<TagBackfill>();
 builder.Services.AddTransient<RiteWriter>();
@@ -86,6 +102,8 @@ builder.Services.AddTransient<PreceptCheck>();
 builder.Services.AddTransient<PreceptDistiller>();
 
 // The Scriptorium: the Scribes' page.
+Tuned<ScriptoriumPagesOptions>(ScriptoriumPagesOptions.SectionName);
+Tuned<ScribeNameSuggestionsOptions>(ScribeNameSuggestionsOptions.SectionName);
 builder.Services.AddTransient<Scribes>();
 builder.Services.AddTransient<Amendments>();
 builder.Services.AddTransient<PreceptKeeping>();
@@ -102,6 +120,8 @@ builder.Services.AddSingleton<VoterSession>();
 
 // Cloudflare keeps the pages until they change; votes (batched, once a minute) and publishing purge them (production only).
 builder.Services.Configure<CloudflareOptions>(builder.Configuration.GetSection(CloudflareOptions.SectionName));
+Tuned<PagePurgingOptions>(PagePurgingOptions.SectionName);
+Tuned<PublicPagesOptions>(PublicPagesOptions.SectionName);
 builder.Services.AddHttpClient(CloudflarePageCache.HttpClientName, http => http.Timeout = TimeSpan.FromSeconds(10));
 builder.Services.AddSingleton<IPageCache, CloudflarePageCache>();
 builder.Services.AddSingleton<PurgeBatcher>();

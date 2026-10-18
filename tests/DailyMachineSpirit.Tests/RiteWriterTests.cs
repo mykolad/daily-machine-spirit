@@ -274,7 +274,7 @@ public sealed class RiteWriterTests : IDisposable
     [Fact]
     public async Task Rewrite_GivesUpOnAModelThatTakesTooLong_AndTimesEachAnswer()
     {
-        var limit = RiteWriter.WhileTheScribeWaits.AttemptTime.IfNone(TimeSpan.Zero);
+        var limit = Settings.RiteWriting.PatienceWhileTheScribeWaits.TryLimit.IfNone(TimeSpan.Zero);
         models.Then(Sol, [() =>
         {
             time.Advance(limit);
@@ -293,5 +293,5 @@ public sealed class RiteWriterTests : IDisposable
     }
 
     private RiteWriter Writer(int retryDelaySeconds)
-        => new(models, precepts, Options.Create(new GenerationOptions { RetryDelaySeconds = retryDelaySeconds }), time, probe.Metrics, NullLogger<RiteWriter>.Instance);
+        => new(models, precepts, Options.Create(Settings.RiteWriting with { Patience = Settings.RiteWriting.Patience with { PauseBetweenTries = TimeSpan.FromSeconds(retryDelaySeconds) } }), time, probe.Metrics, NullLogger<RiteWriter>.Instance);
 }

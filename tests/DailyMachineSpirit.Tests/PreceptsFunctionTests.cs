@@ -373,12 +373,12 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
     private PreceptsFunction Function() => Function(new EveryoneIsScribeSignIn());
 
     private PreceptsFunction Function(IScribeSignIn signIn)
-        => new(testbed.PreceptKeeping(), testbed.Distiller(), new AgreementTrend(testbed.Scriptorium, testbed.Time), signIn, NullLogger<PreceptsFunction>.Instance);
+        => new(testbed.PreceptKeeping(), testbed.Distiller(), new AgreementTrend(testbed.Scriptorium, Options.Create(Settings.ScriptoriumPages), testbed.Time), signIn, NullLogger<PreceptsFunction>.Instance);
 
     private PreceptsFunction Function(FakePrecepts precepts)
         => new(new PreceptKeeping(precepts, testbed.PreceptCheck(), testbed.Time, NullLogger<PreceptKeeping>.Instance),
-            new PreceptDistiller(testbed.Scriptorium, precepts, testbed.Models, testbed.PreceptCheck(), Options.Create(new GenerationOptions()), testbed.Time, testbed.Probe.Metrics, NullLogger<PreceptDistiller>.Instance),
-            new AgreementTrend(testbed.Scriptorium, testbed.Time),
+            new PreceptDistiller(testbed.Scriptorium, precepts, testbed.Models, testbed.PreceptCheck(), Options.Create(Settings.PreceptDistilling), testbed.Time, testbed.Probe.Metrics, NullLogger<PreceptDistiller>.Instance),
+            new AgreementTrend(testbed.Scriptorium, Options.Create(Settings.ScriptoriumPages), testbed.Time),
             new EveryoneIsScribeSignIn(), NullLogger<PreceptsFunction>.Instance);
 
     private DistilPreceptsFunction Timer()

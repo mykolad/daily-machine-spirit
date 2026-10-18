@@ -60,9 +60,11 @@
   "Augury": {
     // How many of the newest rites a draft is compared with.
     "RecentRitesCompared": 7,
-    // Taken off a draft's quality for each bit of resemblance (0 to 1) to those rites.
+    // Weighed against quality (0 to 1): a near copy of one of those rites loses half a point, so it has to be much
+    // better to go next.
     "ResemblancePenalty": 0.5,
-    // Taken off when it's of the same kind as the rite before it, so prayers and rituals take turns.
+    // Following the same kind loses a little, enough to decide between drafts of similar quality, so prayers and rituals
+    // take turns.
     "SameKindPenalty": 0.1
   },
 
@@ -95,8 +97,7 @@
     "AshesShown": 20,
     "JudgmentsShown": 20,
     "RecordEntriesShown": 100,
-    // Do the Scribes agree with the Augury? How many months, and how many of its top picks count.
-    "AgreementMonthsShown": 6,
-    "AuguryTopPicks": 3
+    // Do the Scribes agree with the Augury? How many months the table shows, this one included.
+    "AgreementMonthsShown": 6
   }
 }

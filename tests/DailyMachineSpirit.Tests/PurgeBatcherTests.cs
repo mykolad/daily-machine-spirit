@@ -1,5 +1,6 @@
 using DailyMachineSpirit.Functions.Caching;
 using Microsoft.Extensions.Time.Testing;
+using Microsoft.Extensions.Options;
 
 namespace DailyMachineSpirit.Tests;
 
@@ -11,7 +12,7 @@ public sealed class PurgeBatcherTests : IAsyncLifetime
 
     public PurgeBatcherTests()
     {
-        batcher = new PurgeBatcher(pages, time);
+        batcher = new PurgeBatcher(pages, Options.Create(Settings.PagePurging), time);
     }
 
     public Task InitializeAsync() => batcher.StartAsync(CancellationToken.None);
@@ -33,9 +34,9 @@ public sealed class PurgeBatcherTests : IAsyncLifetime
     [Fact]
     public async Task AMinuteWithoutChanges_PurgesNothing()
     {
-        time.Advance(PurgeBatcher.Interval);
+        time.Advance(Settings.PagePurging.BatchEvery);
         batcher.Add(["/r/3"]);
-        time.Advance(PurgeBatcher.Interval);
+        time.Advance(Settings.PagePurging.BatchEvery);
 
         Assert.Equal(["/r/3"], await pages.NextPurge());
         Assert.Single(pages.Purges);

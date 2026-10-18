@@ -111,14 +111,14 @@ public sealed class AuditTests : IAsyncLifetime
     public async Task OneDraftsRecord_IsWhole_PastTheRecordsLength()
     {
         var draft = await testbed.AddDraft("Much Debated", 0.5f);
-        for (var exalted = 0; exalted < ScriptoriumFunction.RecordShown; exalted++)
+        for (var exalted = 0; exalted < Settings.ScriptoriumPages.RecordEntriesShown; exalted++)
         {
             Ok(await testbed.Audit.Add(AuditEntries.Of(testbed.Time, Tester, AuditAction.Exalt, Some(draft), None), CancellationToken.None));
         }
 
         var record = Ok(await testbed.Audit.GetHistory(draft.Id, CancellationToken.None));
 
-        Assert.Equal(ScriptoriumFunction.RecordShown + 1, record.Count);
+        Assert.Equal(Settings.ScriptoriumPages.RecordEntriesShown + 1, record.Count);
         Assert.Contains(record, entry => entry.Action == AuditAction.Write);
     }
 

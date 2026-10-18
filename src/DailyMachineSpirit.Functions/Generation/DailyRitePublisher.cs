@@ -4,6 +4,7 @@ using DailyMachineSpirit.Functions.Telemetry;
 using LanguageExt;
 using LanguageExt.Common;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Functions.Generation;
@@ -18,6 +19,7 @@ public sealed class DailyRitePublisher
     private readonly IDraftRepository drafts;
     private readonly IScriptoriumRepository scriptorium;
     private readonly BacklogRefiller refiller;
+    private readonly IOptions<AuguryOptions> augury;
     private readonly TimeProvider time;
     private readonly SiteMetrics metrics;
     private readonly ILogger<DailyRitePublisher> logger;
@@ -27,6 +29,7 @@ public sealed class DailyRitePublisher
         IDraftRepository drafts,
         IScriptoriumRepository scriptorium,
         BacklogRefiller refiller,
+        IOptions<AuguryOptions> augury,
         TimeProvider time,
         SiteMetrics metrics,
         ILogger<DailyRitePublisher> logger)
@@ -35,6 +38,7 @@ public sealed class DailyRitePublisher
         this.drafts = drafts;
         this.scriptorium = scriptorium;
         this.refiller = refiller;
+        this.augury = augury;
         this.time = time;
         this.metrics = metrics;
         this.logger = logger;
@@ -86,8 +90,8 @@ public sealed class DailyRitePublisher
     private Task<Either<Error, Option<Draft>>> TopOfTheCalendar(CancellationToken cancellationToken)
         => scriptorium.GetPlacements(cancellationToken)
             .BindAsync(placements => drafts.GetWaiting(cancellationToken)
-                .BindAsync(waiting => rites.GetNewest(LiturgicalCalendar.ResemblanceWindow, cancellationToken)
-                    .MapAsync(recent => Task.FromResult(LiturgicalCalendar.Order(waiting, recent, placements.Order).HeadOrNone()))));
+                .BindAsync(waiting => rites.GetNewest(augury.Value.RecentRitesCompared, cancellationToken)
+                    .MapAsync(recent => Task.FromResult(LiturgicalCalendar.Order(waiting, recent, placements.Order, augury.Value).HeadOrNone()))));
 
     // Theirs stands, and this run's draft (if another) keeps waiting. When the day has no rite after all, or it can't be
     // read, the original error stands, and the retry chooses again.

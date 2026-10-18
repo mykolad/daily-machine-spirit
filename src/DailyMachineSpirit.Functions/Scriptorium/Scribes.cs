@@ -3,6 +3,7 @@ using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Generation;
 using LanguageExt;
 using LanguageExt.Common;
+using Microsoft.Extensions.Options;
 using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Functions.Scriptorium;
@@ -20,9 +21,6 @@ public sealed record ScriptoriumView(List<CalendarEntry> Calendar, List<Draft> A
 /// </summary>
 public sealed class Scribes
 {
-    /// <summary>How many burned drafts and decisions the Scriptorium shows.</summary>
-    public const int Shown = 20;
-
     public static readonly Error NoteTooLong = Error.New($"A note can be at most {ScribeDecision.MaxNoteLength} characters.");
 
     /// <summary>Exalting the first draft or humbling the last: a page shown before another Scribe moved it.</summary>
@@ -31,13 +29,23 @@ public sealed class Scribes
     private readonly IDraftRepository drafts;
     private readonly IRiteRepository rites;
     private readonly IScriptoriumRepository scriptorium;
+    private readonly IOptions<AuguryOptions> augury;
+    private readonly IOptions<ScriptoriumPagesOptions> pages;
     private readonly TimeProvider time;
 
-    public Scribes(IDraftRepository drafts, IRiteRepository rites, IScriptoriumRepository scriptorium, TimeProvider time)
+    public Scribes(
+        IDraftRepository drafts,
+        IRiteRepository rites,
+        IScriptoriumRepository scriptorium,
+        IOptions<AuguryOptions> augury,
+        IOptions<ScriptoriumPagesOptions> pages,
+        TimeProvider time)
     {
         this.drafts = drafts;
         this.rites = rites;
         this.scriptorium = scriptorium;
+        this.augury = augury;
+        this.pages = pages;
         this.time = time;
     }
 
@@ -46,8 +54,8 @@ public sealed class Scribes
         var today = Today;
         return Calendar(cancellationToken)
             .BindAsync(calendar => rites.GetPublishedOn(today, cancellationToken)
-                .BindAsync(todays => scriptorium.GetBurned(Shown, cancellationToken)
-                    .BindAsync(ashes => scriptorium.GetDecisions(Shown, cancellationToken)
+                .BindAsync(todays => scriptorium.GetBurned(pages.Value.AshesShown, cancellationToken)
+                    .BindAsync(ashes => scriptorium.GetDecisions(pages.Value.JudgmentsShown, cancellationToken)
                         .MapAsync(decisions =>
                         {
                             // The next one goes out at the coming midnight: tonight's, unless today's is still to come.
@@ -163,10 +171,10 @@ public sealed class Scribes
     private Task<Either<Error, CalendarState>> Calendar(CancellationToken cancellationToken)
         => scriptorium.GetPlacements(cancellationToken)
             .BindAsync(placements => drafts.GetWaiting(cancellationToken)
-                .BindAsync(waiting => rites.GetNewest(LiturgicalCalendar.ResemblanceWindow, cancellationToken)
+                .BindAsync(waiting => rites.GetNewest(augury.Value.RecentRitesCompared, cancellationToken)
                     .MapAsync(recent => Task.FromResult(new CalendarState(
-                        LiturgicalCalendar.Order(waiting, recent, placements.Order),
-                        LiturgicalCalendar.Order(waiting, recent, []),
+                        LiturgicalCalendar.Order(waiting, recent, placements.Order, augury.Value),
+                        LiturgicalCalendar.Order(waiting, recent, [], augury.Value),
                         placements)))));
 
     private ScribeDecision Decision(Draft draft, ScribeAction action, Option<string> note, Option<DraftPlaces> places)

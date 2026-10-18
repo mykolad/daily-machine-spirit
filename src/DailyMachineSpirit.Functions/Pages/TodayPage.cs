@@ -6,9 +6,6 @@ namespace DailyMachineSpirit.Functions.Pages;
 /// <summary>The home page: the masthead, the newest rite, the countdown to the next, and the rites before it.</summary>
 public static class TodayPage
 {
-    /// <summary>How many rites before today's the page shows.</summary>
-    public const int RecentShown = 4;
-
     // The motto under the day's rite, between brass rules, where it's read; on Today it leaves the footer, so it's said once.
     private const string Epigraph = $"""<p class="epigraph">{Layout.Motto}</p>""";
 
