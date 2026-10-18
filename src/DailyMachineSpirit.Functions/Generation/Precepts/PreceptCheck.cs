@@ -33,11 +33,17 @@ public sealed class PreceptCheck
         """;
 
     /// <summary>
-    /// How long the model may take. A Scribe who asks for a distillation waits for the distilling models (up to 40 seconds
-    /// each, two of them: <see cref="PreceptDistiller.AttemptTime"/>) and then for this check, and Cloudflare gives up
-    /// after 100 seconds: 80 + 15 leaves a margin.
+    /// How long the check may take, all its models together. A Scribe who asks for a distillation waits for the distilling
+    /// models (up to 40 seconds each, two of them: <see cref="PreceptDistiller.AttemptTime"/>) and then for this check,
+    /// and Cloudflare gives up after 100 seconds: 80 + 15 leaves a margin.
     /// </summary>
-    public static readonly TimeSpan AttemptTime = TimeSpan.FromSeconds(15);
+    public static readonly TimeSpan TimeAllowed = TimeSpan.FromSeconds(15);
+
+    /// <summary>
+    /// No model could tell in time whether the precepts break a rule. Nothing unchecked is saved: the writer would follow
+    /// it in every rite.
+    /// </summary>
+    public const int CouldNotCheck = 8602;
 
     private static readonly JsonSerializerOptions AnswerSerializerOptions = new(JsonSerializerOptions.Web)
     {
@@ -58,7 +64,10 @@ public sealed class PreceptCheck
         this.metrics = metrics;
     }
 
-    /// <summary>The precepts that break a rule, with why; an error when the model couldn't tell.</summary>
+    /// <summary>
+    /// The precepts that break a rule, with why; <see cref="CouldNotCheck"/> when no model could tell in time. The models
+    /// are asked in order, within <see cref="TimeAllowed"/> together: one failing at once leaves the next time to answer.
+    /// </summary>
     public async Task<Either<Error, List<PreceptBreach>>> Breaches(IReadOnlyList<string> precepts, CancellationToken cancellationToken)
     {
         if (precepts.Count == 0)
@@ -66,15 +75,34 @@ public sealed class PreceptCheck
             return new List<PreceptBreach>();
         }
 
-        var model = options.Value.PreceptCheckModel;
-        using var timeout = new CancellationTokenSource(AttemptTime, time);
+        using var timeout = new CancellationTokenSource(TimeAllowed, time);
         using var attempt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
+        var failures = new List<string>();
+        foreach (var model in options.Value.PreceptCheckModels)
+        {
+            if (timeout.IsCancellationRequested)
+            {
+                break;
+            }
+            var answer = await Ask(model, precepts, timeout, attempt.Token, cancellationToken);
+            if (answer.IsRight)
+            {
+                return answer;
+            }
+            answer.IfLeft(error => failures.Add($"{model}: {error.Message}"));
+        }
+        return Error.New(CouldNotCheck, $"No model could check the precepts. {string.Join(" ", failures)}");
+    }
+
+    private async Task<Either<Error, List<PreceptBreach>>> Ask(
+        string model, IReadOnlyList<string> precepts, CancellationTokenSource timeout, CancellationToken attempt, CancellationToken cancellationToken)
+    {
         var started = time.GetTimestamp();
         try
         {
             var response = await chatClients.For(model).GetResponseAsync<PreceptCheckAnswer>(
                 [new(ChatRole.System, $"{Instructions}\n{string.Join("\n", RiteRules.ForEitherKind)}"), new(ChatRole.User, PreceptsAsJson(precepts))],
-                AnswerSerializerOptions, options: null, useJsonSchemaResponseFormat: true, attempt.Token);
+                AnswerSerializerOptions, options: null, useJsonSchemaResponseFormat: true, attempt);
             metrics.AnswerTime(model, "precept-check", "answered", time.GetElapsedTime(started));
             if (!response.TryGetResult(out var answer))
             {

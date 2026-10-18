@@ -24,6 +24,8 @@ public sealed class PreceptKeeping
     /// <summary>The code of a precept refused for breaking the writer's rules (#86): its message says which.</summary>
     public const int BreaksARule = 8601;
 
+    public static readonly Error Unchecked = Error.New(PreceptCheck.CouldNotCheck, "The rules couldn't be checked just now.");
+
     private readonly IPreceptRepository precepts;
     private readonly PreceptCheck check;
     private readonly TimeProvider time;
@@ -107,8 +109,8 @@ public sealed class PreceptKeeping
     private static PreceptBook Replace(PreceptBook book, Precept changed)
         => book with { Precepts = book.Precepts.Select(precept => precept.Id == changed.Id ? changed : precept).ToList() };
 
-    // The words, unless they'd have the writer break its rules. A check that can't answer lets them through, as judging
-    // does: the writer still puts its rules first, and a model outage mustn't stop the Scribes.
+    // The words, once the check says they keep the writer within its rules. Unchecked, they aren't saved: the writer would
+    // follow them in every rite, and nothing would check them later.
     private Task<Either<Error, string>> WithinTheRules(string text, CancellationToken cancellationToken)
         => Text(text).BindAsync(async words => (await check.Breaches([words], cancellationToken)).Match(
             Right: breaches => breaches.HeadOrNone().Match(
@@ -116,8 +118,8 @@ public sealed class PreceptKeeping
                 None: () => Right<Error, string>(words)),
             Left: error =>
             {
-                logger.LogWarning(error.ToException(), "A precept couldn't be checked against the rules, so it's saved unchecked: {Reason}", error.Message);
-                return Right<Error, string>(words);
+                logger.LogWarning(error.ToException(), "A precept couldn't be checked against the rules, so it isn't saved: {Reason}", error.Message);
+                return Left<Error, string>(Unchecked);
             }));
 
     private static Either<Error, string> Text(string text)

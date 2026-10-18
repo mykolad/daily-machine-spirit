@@ -35,6 +35,9 @@ public sealed class PreceptDistiller
     public static readonly Error NothingWithinTheRules =
         Error.New("Every precept the Machine Spirit distilled would have the writer break its rules, so the Precepts stay as they were.");
 
+    public static readonly Error Unchecked =
+        Error.New("The distilled precepts couldn't be checked against the writer's rules just now, so the Precepts stay as they were.");
+
     private static readonly JsonSerializerOptions AnswerSerializerOptions = new(JsonSerializerOptions.Web)
     {
         RespectNullableAnnotations = true,
@@ -116,28 +119,23 @@ public sealed class PreceptDistiller
         };
         // Neither a pinned precept again nor one the Scribes deleted: the page promised it wouldn't come back.
         var excluded = pinned.Select(precept => precept.Text).Concat(book.Rejected).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        // Unchecked, or nothing left to put in the unpinned ones' place: they stay, and so does what was last read, so the
+        // weekly run tries these judgments again.
         return await (await Answer(messages, room, excluded, cancellationToken)).BindAsync(async answered =>
-        {
-            var distilled = await WithinTheRules(answered, cancellationToken);
-            // Nothing left to put in the unpinned ones' place: they stay, and so does what was last read, so the weekly run
-            // tries these judgments again.
-            if (distilled.Count == 0)
-            {
-                return Left<Error, PreceptBook>(NothingWithinTheRules);
-            }
-            return book with
-            {
-                Precepts = [.. pinned, .. distilled.Select(text => new Precept { Id = Guid.NewGuid(), Text = text })],
-                DistilledAtUtc = time.GetUtcNow().UtcDateTime,
-                DistilledFrom = decisions.Count,
-                NewestJudgmentReadUtc = decisions.Max(decision => decision.DecidedAtUtc),
-            };
-        });
+            (await WithinTheRules(answered, cancellationToken)).Bind(distilled => distilled.Count == 0
+                ? Left<Error, PreceptBook>(NothingWithinTheRules)
+                : book with
+                {
+                    Precepts = [.. pinned, .. distilled.Select(text => new Precept { Id = Guid.NewGuid(), Text = text })],
+                    DistilledAtUtc = time.GetUtcNow().UtcDateTime,
+                    DistilledFrom = decisions.Count,
+                    NewestJudgmentReadUtc = decisions.Max(decision => decision.DecidedAtUtc),
+                }));
     }
 
     // A distilled precept that would have the writer break its rules is dropped: followed, it would fail drafts on
-    // RiteChecks or be ignored. A check that can't answer keeps them all, as the writer still puts its rules first.
-    private async Task<List<string>> WithinTheRules(List<string> distilled, CancellationToken cancellationToken)
+    // RiteChecks or be ignored. Unchecked, none is kept: the writer would follow them in every rite.
+    private async Task<Either<Error, List<string>>> WithinTheRules(List<string> distilled, CancellationToken cancellationToken)
         => (await check.Breaches(distilled, cancellationToken)).Match(
             Right: breaches =>
             {
@@ -146,12 +144,12 @@ public sealed class PreceptDistiller
                     logger.LogWarning("A distilled precept was dropped for breaking the rules: {Precept} ({Reason})", breach.Precept, breach.Reason);
                 }
                 var dropped = breaches.Select(breach => breach.Precept).ToHashSet();
-                return distilled.Where(text => !dropped.Contains(text)).ToList();
+                return Right<Error, List<string>>(distilled.Where(text => !dropped.Contains(text)).ToList());
             },
             Left: error =>
             {
-                logger.LogWarning(error.ToException(), "The distilled precepts couldn't be checked against the rules, so they're kept: {Reason}", error.Message);
-                return distilled;
+                logger.LogWarning(error.ToException(), "The distilled precepts couldn't be checked against the rules: {Reason}", error.Message);
+                return Left<Error, List<string>>(Unchecked);
             });
 
     // Each model once, in order, for AttemptTime at most: a Scribe waits for the answer, and the weekly run can wait for

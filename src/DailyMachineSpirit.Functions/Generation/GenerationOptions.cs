@@ -24,7 +24,8 @@ public class GenerationOptions
 
     public string DuplicateCheckModel { get; set; } = "gpt-6-luna";
 
-    public string PreceptCheckModel { get; set; } = "gpt-6-luna";
+    /// <summary>Tried in order within <see cref="Precepts.PreceptCheck.TimeAllowed"/>, so another answers when one fails.</summary>
+    public string[] PreceptCheckModels { get; set; } = ["gpt-6-luna", "gpt-6-sol"];
 
     /// <summary>How many times a draft that repeats a rite is written again before it's kept, marked for the Scribes.</summary>
     public int DuplicateRewrites { get; set; } = 2;

@@ -224,6 +224,36 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         Assert.Empty(Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts);
     }
 
+    // Unchecked, it comes back the same way, with what to do: try again, the words still in their field.
+    [Fact]
+    public async Task APrecept_NoModelCanCheck_ComesBack_ToTryAgain()
+    {
+        var function = Function(enabled: true);
+        testbed.Models.Fails(Checker, 1);
+        testbed.Models.Fails(SecondChecker, 1);
+
+        var html = Html(await function.Add(Form(("text", "Prefer the real fix.")), CancellationToken.None), 422);
+
+        Assert.Contains("""<p class="status" role="status" id="precepts-status">Not saved: The rules couldn&#39;t be checked just now. Try again in a moment.</p>""", html);
+        Assert.Contains("""aria-invalid="true" aria-describedby="precepts-status" required>Prefer the real fix.</textarea>""", html);
+        Assert.Empty(Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts);
+    }
+
+    // Asked to distil, the Scribe is told when the distilled precepts couldn't be checked, and that nothing changed.
+    [Fact]
+    public async Task Distil_WhenTheCheckCantAnswer_SaysThePreceptsStayed()
+    {
+        Ok(await testbed.Scribes().Burn((await testbed.AddDraft("The Rite of Re-Run", 0.9f)).Id, "Too long.", Tester, CancellationToken.None));
+        testbed.Models.Answers(Sol, PreceptsTests.Distilled("Prefer the real fix."));
+        testbed.Models.Fails(Checker, 1);
+        testbed.Models.Fails(SecondChecker, 1);
+
+        Assert.Equal("/scriptorium/precepts?done=distil-unchecked",
+            RedirectedTo(await Function(enabled: true).Distil(Form(), CancellationToken.None)));
+        Assert.Contains("couldn&#39;t be checked against the writer&#39;s rules just now, so the Precepts stay as they were. Try again in a moment.",
+            ScriptoriumPage.RenderPrecepts(new StoredPrecepts(new PreceptBook(), None), [], Some("distil-unchecked"), None, None));
+    }
+
     // While the check ran, the precept being edited was deleted or replaced, or the Precepts filled up: the field is
     // gone, so the words come back in the message rather than being lost, or an edit becoming an addition.
     [Fact]
@@ -236,9 +266,9 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         };
 
         var edited = ScriptoriumPage.RenderPrecepts(new StoredPrecepts(new PreceptBook(), None), [], None, None,
-            Some(new RefusedPrecept(Some(Guid.NewGuid()), "Mock the managers.", refusal)));
+            Some(new RefusedPrecept(Some(Guid.NewGuid()), "Mock the managers.", refusal, "Reword it, or leave it as it was.")));
         var added = ScriptoriumPage.RenderPrecepts(new StoredPrecepts(full, None), [], None, None,
-            Some(new RefusedPrecept(None, "Mock the managers.", refusal)));
+            Some(new RefusedPrecept(None, "Mock the managers.", refusal, "Reword it, or leave it as it was.")));
 
         Assert.Contains(
             "Not saved: It mocks a group of people. The precept changed meanwhile (another Scribe, or a distillation), so it isn&#39;t on the page any more. Your words were: “Mock the managers.”",

@@ -117,7 +117,7 @@ public static partial class ScriptoriumPage
             None: () => book.Precepts.Count < PreceptBook.MaxPrecepts);
         if (fieldShown)
         {
-            return "Reword it, or leave it as it was.";
+            return refused.NextStep;
         }
         var gone = refused.PreceptId.IsSome
             ? "The precept changed meanwhile (another Scribe, or a distillation), so it isn't on the page any more."
@@ -172,6 +172,7 @@ public static partial class ScriptoriumPage
         "distil-nothing" => PreceptDistiller.NothingToLearn.Message,
         "distil-pinned" => PreceptDistiller.AllPinned.Message,
         "distil-refused" => PreceptDistiller.NothingWithinTheRules.Message,
+        "distil-unchecked" => $"{PreceptDistiller.Unchecked.Message} Try again in a moment.",
         "distil-failed" => "The Machine Spirit couldn't distil them just now. Try again in a moment.",
         "add" => "Your precept was added, pinned.",
         "edit" => "The precept was changed and pinned: distilling again keeps it.",

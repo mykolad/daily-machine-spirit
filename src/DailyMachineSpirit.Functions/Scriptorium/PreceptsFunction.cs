@@ -79,6 +79,10 @@ public sealed class PreceptsFunction
                     {
                         return Back("distil-refused", None);
                     }
+                    if (error == PreceptDistiller.Unchecked)
+                    {
+                        return Back("distil-unchecked", None);
+                    }
                     if (error == ScriptoriumRepository.ChangedMeanwhile)
                     {
                         return Back("changed", None);
@@ -127,16 +131,17 @@ public sealed class PreceptsFunction
         };
     }
 
-    // Refused for breaking the writer's rules: the page again, with the Scribe's words in their field and why (422),
-    // rather than a redirect, which couldn't carry them.
+    // Refused for breaking the writer's rules, or because they couldn't be checked: the page again, with the Scribe's
+    // words in their field and why (422), rather than a redirect, which couldn't carry them.
     private async Task<IActionResult> Saved(
         HttpRequest request, string action, Option<Guid> preceptId, string text, Either<Error, Unit> result, CancellationToken cancellationToken)
     {
-        if (result.Case is not Error { Code: PreceptKeeping.BreaksARule } refusal)
+        if (result.Case is not Error { Code: PreceptKeeping.BreaksARule or PreceptCheck.CouldNotCheck } refusal)
         {
             return Answer(request, action, preceptId, result);
         }
-        var refused = new RefusedPrecept(preceptId, text, refusal.Message);
+        var nextStep = refusal.Code == PreceptKeeping.BreaksARule ? "Reword it, or leave it as it was." : "Try again in a moment.";
+        var refused = new RefusedPrecept(preceptId, text, refusal.Message, nextStep);
         return (await PreceptsAndTrend(cancellationToken)).Match(
             Right: found => Html(request, ScriptoriumPage.RenderPrecepts(found.Stored, found.Months, None, preceptId, Some(refused)),
                 StatusCodes.Status422UnprocessableEntity),

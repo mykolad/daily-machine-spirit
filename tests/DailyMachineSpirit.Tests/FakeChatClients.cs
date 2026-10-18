@@ -11,6 +11,8 @@ public sealed class FakeChatClients : IChatClients
 {
     private readonly Dictionary<string, Queue<Func<Task<string>>>> answers = [];
 
+    private readonly Dictionary<string, string> otherwise = [];
+
     public List<(string Model, List<ChatMessage> Messages)> Requests { get; } = [];
 
     public static string Answer(string title, string text, string hereticalTruth)
@@ -22,6 +24,13 @@ public sealed class FakeChatClients : IChatClients
     public FakeChatClients Fails(string model, int times)
         => Then(model, Enumerable.Range(1, times).Select<int, Func<Task<string>>>(
             _ => () => throw new HttpRequestException("The model is overloaded.")));
+
+    /// <summary>What the model answers once the answers lined up for it are used up.</summary>
+    public FakeChatClients Otherwise(string model, string text)
+    {
+        otherwise[model] = text;
+        return this;
+    }
 
     public FakeChatClients Then(string model, IEnumerable<Func<Task<string>>> next)
     {
@@ -49,7 +58,9 @@ public sealed class FakeChatClients : IChatClients
             owner.Requests.Add((model, messages.ToList()));
             if (!owner.answers.TryGetValue(model, out var queue) || queue.Count == 0)
             {
-                throw new InvalidOperationException($"The test gave {model} no answer for request {owner.Requests.Count}.");
+                return owner.otherwise.TryGetValue(model, out var usual)
+                    ? new ChatResponse(new ChatMessage(ChatRole.Assistant, usual))
+                    : throw new InvalidOperationException($"The test gave {model} no answer for request {owner.Requests.Count}.");
             }
 
             // A model still thinking stops when the caller gives up, as the real client does.

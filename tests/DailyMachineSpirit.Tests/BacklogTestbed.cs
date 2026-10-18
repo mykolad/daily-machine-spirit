@@ -22,8 +22,13 @@ public sealed class BacklogTestbed : IAsyncLifetime
     public const string Sol = "gpt-6-sol";
     public const string Luna = "gpt-6-luna";
 
-    /// <summary>The precept check's own model, so a test that leaves it unanswered never takes another model's answer.</summary>
+    /// <summary>
+    /// The precept check's own models, so a check never takes another model's answer. Unless a test lines up another
+    /// answer, the first finds nothing breaking a rule, as a precept a test saves usually doesn't.
+    /// </summary>
     public const string Checker = "precept-checker";
+
+    public const string SecondChecker = "precept-checker-2";
 
     /// <summary>The Scribe the tests act as, as an Access id would name them.</summary>
     public const string Tester = "tester-0123456789";
@@ -34,7 +39,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public FakeTimeProvider Time { get; } = new(new DateTimeOffset(2026, 10, 7, 0, 0, 5, TimeSpan.Zero));
 
-    public FakeChatClients Models { get; } = new();
+    public FakeChatClients Models { get; } = new FakeChatClients().Otherwise(Checker, """{"breaking": []}""");
 
     public FakeJev Jev { get; set; } = FakeJev.AnsweringBuildsAndRepetition();
 
@@ -96,7 +101,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
     public PreceptDistiller Distiller()
         => new(Scriptorium, Precepts, Models, PreceptCheck(), Options.Create(new GenerationOptions()), Time, Probe.Metrics, NullLogger<PreceptDistiller>.Instance);
 
-    public PreceptCheck PreceptCheck() => new(Models, Options.Create(new GenerationOptions { PreceptCheckModel = Checker }), Time, Probe.Metrics);
+    public PreceptCheck PreceptCheck() => new(Models, Options.Create(new GenerationOptions { PreceptCheckModels = [Checker, SecondChecker] }), Time, Probe.Metrics);
 
     public Amendments Amendments()
         => new(Drafts, Scriptorium, Scribes(), Jev.NewJudge(Time, JevApiKey), Writer(Options.Create(new GenerationOptions { RetryDelaySeconds = 0 })), Time, NullLogger<Amendments>.Instance);

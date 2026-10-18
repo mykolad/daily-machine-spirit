@@ -59,13 +59,13 @@ public sealed class PreceptsTests : IAsyncLifetime
         Assert.Equal([RealFix], await Texts());
     }
 
-    // A model outage mustn't stop the Scribes: a precept the check can't judge is saved, as an unjudged draft is kept.
+    // Unchecked, a precept isn't saved: the writer would follow it in every rite, and nothing would check it later.
     [Theory]
     [InlineData("""{"breaking": [{"number": 2, "reason": "Out of range."}]}""")]
     [InlineData("""{"breaking": [{"number": 1, "reason": "  "}]}""")]
     [InlineData("not json at all")]
     [InlineData("")]
-    public async Task APrecept_TheCheckCantJudge_IsSaved(string answer)
+    public async Task APrecept_NoModelCanCheck_IsRefused(string answer)
     {
         if (answer.Length == 0)
         {
@@ -75,10 +75,58 @@ public sealed class PreceptsTests : IAsyncLifetime
         {
             testbed.Models.Answers(Checker, answer);
         }
+        testbed.Models.Fails(SecondChecker, 1);
 
-        Ok(await testbed.PreceptKeeping().AddPinned(RealFix, Tester, CancellationToken.None));
+        var refused = Failed(await testbed.PreceptKeeping().AddPinned(RealFix, Tester, CancellationToken.None));
 
-        Assert.Equal([RealFix], await Texts());
+        Assert.Equal(PreceptKeeping.Unchecked, refused);
+        Assert.Empty(await Texts());
+    }
+
+    // One model failing isn't an outage: the next checks the precepts.
+    [Fact]
+    public async Task TheCheck_AsksTheNextModel_WhenOneFails()
+    {
+        testbed.Models.Fails(Checker, 1);
+        testbed.Models.Answers(SecondChecker, Breaking((1, "It mocks a group of people.")));
+
+        var refused = Failed(await testbed.PreceptKeeping().AddPinned("Mock the managers.", Tester, CancellationToken.None));
+
+        Assert.Equal((PreceptKeeping.BreaksARule, "It mocks a group of people."), (refused.Code, refused.Message));
+    }
+
+    // The models share the check's time, so a distillation's wait stays within Cloudflare's: one that takes it all leaves
+    // none for the next.
+    [Fact]
+    public async Task TheCheck_GivesUp_WhenItsTimeIsUsed()
+    {
+        testbed.Models.Then(Checker, [() =>
+        {
+            testbed.Time.Advance(PreceptCheck.TimeAllowed);
+            return new TaskCompletionSource<string>().Task;
+        }]);
+
+        var refused = Failed(await testbed.PreceptKeeping().AddPinned(RealFix, Tester, CancellationToken.None));
+
+        Assert.Equal(PreceptKeeping.Unchecked, refused);
+        Assert.DoesNotContain(testbed.Models.Requests, request => request.Model == SecondChecker);
+    }
+
+    // Distilled precepts that can't be checked aren't kept either: the Precepts stay, and so does what was last read.
+    [Fact]
+    public async Task Distil_WhenTheCheckCantAnswer_LeavesThePreceptsAsTheyWere()
+    {
+        await AJudgment();
+        testbed.Models.Answers(Sol, Distilled(RealFix));
+        testbed.Models.Fails(Checker, 1);
+        testbed.Models.Fails(SecondChecker, 1);
+
+        var refused = Failed(await testbed.Distiller().Distil(Tester, CancellationToken.None));
+
+        Assert.Equal(PreceptDistiller.Unchecked, refused);
+        var book = Ok(await testbed.Precepts.Get(CancellationToken.None)).Book;
+        Assert.Empty(book.Precepts);
+        Assert.True(book.NewestJudgmentReadUtc.IsNone);
     }
 
     // When every distilled precept breaks a rule, nothing replaces the unpinned ones: they stay.
