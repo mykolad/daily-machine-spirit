@@ -180,6 +180,9 @@ public static class Styles
         input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none}
         .sheet-clear{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:999px;color:#5c4a33}
         .sheet-clear:hover{background:#e0d0a8;color:#2b2117}
+        .sheet-filter{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px;margin:0 0 8px;font-size:15px;color:#5c4a33}
+        .filter-chip{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:2px 8px 2px 14px;border:1px solid #8f2a20;border-radius:999px;font-weight:600;color:#8f2a20;text-decoration:none}
+        .filter-chip:hover{background:#e0d0a8;color:#8f2a20}
         .month-rubric{display:flex;align-items:center;gap:16px;margin:24px 0 4px;font-family:Cinzel,serif;font-weight:700;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:#8f2a20}
         .month-rubric::before,.month-rubric::after{content:'';flex:1;height:1px;background:rgba(143,42,32,.3)}
         .month-rubric>span::before,.month-rubric>span::after{content:'';display:inline-block;width:5px;height:5px;margin:0 12px;background:#8f2a20;transform:rotate(45deg);vertical-align:middle}
@@ -239,6 +242,7 @@ public static class Styles
         .nav-find-drop[hidden]{display:none}
         .nav-find-drop :focus-visible{outline-color:#8f2a20;outline-offset:2px}
         .nav-find-label{margin:0;padding:8px 12px 4px;font-family:'EB Garamond',serif;font-style:italic;font-size:15px;color:#5c4a33}
+        .nav-find-drop [role=group]:not([hidden])+[role=group]{margin-top:4px;padding-top:4px;border-top:1px solid rgba(143,42,32,.25)}
         .nav-find-none{margin:0;padding:4px 12px 8px;font-family:'EB Garamond',serif;font-size:17px;line-height:1.4}
         .nav-find-drop [role=option]{position:relative;display:flex;flex-direction:column;justify-content:center;gap:2px;min-height:44px;padding:10px 12px;border-radius:6px;text-decoration:none}
         .nav-find-drop [role=option]:hover{background:#dfcda2}

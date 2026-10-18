@@ -181,8 +181,8 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
         var third = await AddOrFail(MakeRite(new DateOnly(2026, 10, 7), "Third") with { Tags = new[] { "caches" } });
         await AddOrFail(MakeRite(new DateOnly(2026, 10, 8), "Untagged"));
 
-        var page = Ok(await Repository.GetTagged("caches", int.MaxValue, 10, CancellationToken.None));
-        var older = Ok(await Repository.GetTagged("caches", third.Number, 10, CancellationToken.None));
+        var page = Ok(await Repository.GetTaggedOlderThan("caches", int.MaxValue, 10, CancellationToken.None));
+        var older = Ok(await Repository.GetTaggedOlderThan("caches", third.Number, 10, CancellationToken.None));
 
         Assert.Equal([third.Number, first.Number], page.Select(rite => rite.Number));
         Assert.Equal(Some(new[] { "caches" }), page[0].Tags);
@@ -218,15 +218,32 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
             Writing = MakeRite(new DateOnly(2026, 10, 7), "The Vigil").Writing with { HereticalTruth = "Your cache was stale; re-run cleared it." },
         });
 
-        var cache = Ok(await Repository.Search(["cache"], int.MaxValue, 10, CancellationToken.None));
-        var both = Ok(await Repository.Search(["Cache", "STALE"], int.MaxValue, 10, CancellationToken.None));
-        var older = Ok(await Repository.Search(["cache"], inTruth.Number, 10, CancellationToken.None));
+        var cache = Ok(await Repository.SearchOlderThan(["cache"], None, int.MaxValue, 10, CancellationToken.None));
+        var both = Ok(await Repository.SearchOlderThan(["Cache", "STALE"], None, int.MaxValue, 10, CancellationToken.None));
+        var older = Ok(await Repository.SearchOlderThan(["cache"], None, inTruth.Number, 10, CancellationToken.None));
 
         Assert.Equal([inTruth.Number, inTitle.Number], cache.Select(rite => rite.Number));
         Assert.Equal([inTruth.Number], both.Select(rite => rite.Number));
         Assert.Equal([inTitle.Number], older.Select(rite => rite.Number));
-        Assert.Equal([new RiteDay(inTruth.Number, inTruth.PublishedOnUtc), new RiteDay(inTitle.Number, inTitle.PublishedOnUtc)], Ok(await Repository.FindDays(["cache"], CancellationToken.None)));
-        Assert.Empty(Ok(await Repository.FindDays(["cache", "nowhere"], CancellationToken.None)));
+        Assert.Equal([inTruth.Number, inTitle.Number], Ok(await Repository.FindDaysAndTags(["cache"], None, CancellationToken.None)).Select(found => found.Number));
+        Assert.Empty(Ok(await Repository.FindDaysAndTags(["cache", "nowhere"], None, CancellationToken.None)));
+    }
+
+    // Narrowed to a tag, only the rites filed under it, with their tags (none for one judged before tags existed).
+    [Fact]
+    public async Task Search_NarrowedToATag_FindsOnlyTheRitesFiledUnderIt()
+    {
+        var untagged = await AddOrFail(MakeRite(new DateOnly(2026, 10, 5), "The Untagged Cache"));
+        var caches = await AddOrFail(MakeRite(new DateOnly(2026, 10, 6), "The Warm Cache") with { Tags = Some(new[] { "caches", "builds" }) });
+        await AddOrFail(MakeRite(new DateOnly(2026, 10, 7), "The Build Cache") with { Tags = Some(new[] { "builds" }) });
+
+        var filed = Ok(await Repository.SearchOlderThan(["cache"], Some("caches"), int.MaxValue, 10, CancellationToken.None));
+        var found = Ok(await Repository.FindDaysAndTags(["cache"], None, CancellationToken.None));
+
+        Assert.Equal([caches.Number], filed.Select(rite => rite.Number));
+        Assert.Equal([caches.Number], Ok(await Repository.FindDaysAndTags(["cache"], Some("caches"), CancellationToken.None)).Select(rite => rite.Number));
+        Assert.Equal(["caches", "builds"], found.Single(rite => rite.Number == caches.Number).Tags);
+        Assert.Empty(found.Single(rite => rite.Number == untagged.Number).Tags);
     }
 
     // A reader's words are parameters: quotes and query syntax in them are only text to look for.
@@ -235,7 +252,7 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
     {
         await AddOrFail(MakeRite(new DateOnly(2026, 10, 5), "The Rite of Re-Run"));
 
-        var found = Ok(await Repository.Search(["') OR true OR CONTAINS(c.title, '"], int.MaxValue, 10, CancellationToken.None));
+        var found = Ok(await Repository.SearchOlderThan(["') OR true OR CONTAINS(c.title, '"], None, int.MaxValue, 10, CancellationToken.None));
 
         Assert.Empty(found);
     }
@@ -275,11 +292,11 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
         Assert.True((await missing.Add(MakeRite(date, "Lost"), CancellationToken.None)).IsLeft);
         Assert.True((await missing.SaveScores(date, new RiteSimilarity(), CancellationToken.None)).IsLeft);
         Assert.True((await missing.GetScoresByRiteNumber("jev/v1", CancellationToken.None)).IsLeft);
-        Assert.True((await missing.GetTagged("caches", int.MaxValue, 6, CancellationToken.None)).IsLeft);
+        Assert.True((await missing.GetTaggedOlderThan("caches", int.MaxValue, 6, CancellationToken.None)).IsLeft);
         Assert.True((await missing.GetUntagged(CancellationToken.None)).IsLeft);
         Assert.True((await missing.SaveTags(date, ["caches"], CancellationToken.None)).IsLeft);
-        Assert.True((await missing.Search(["cache"], int.MaxValue, 6, CancellationToken.None)).IsLeft);
-        Assert.True((await missing.FindDays(["cache"], CancellationToken.None)).IsLeft);
+        Assert.True((await missing.SearchOlderThan(["cache"], None, int.MaxValue, 6, CancellationToken.None)).IsLeft);
+        Assert.True((await missing.FindDaysAndTags(["cache"], None, CancellationToken.None)).IsLeft);
         Assert.True((await missing.GetDays(CancellationToken.None)).IsLeft);
         Assert.True((await missing.GetAllWords(CancellationToken.None)).IsLeft);
     }

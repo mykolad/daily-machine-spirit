@@ -102,7 +102,7 @@ public sealed class AmendmentsTests : IAsyncLifetime
         var refused = await testbed.Amendments().SaveAndJudgeAgain(draft.Id, amendable.ETag, Sharper with { Text = "Praise the Warhammer of builds." }, "", BacklogTestbed.Tester, CancellationToken.None);
 
         var error = Assert.Single(refused.LeftToSeq());
-        Assert.Equal(Amendments.Refused, error.Code);
+        Assert.IsType<AmendmentRefused>(error);
         Assert.Contains("forbidden names: Warhammer", error.Message);
         Assert.Equal("Litany of the Cold Cache", Assert.Single(await testbed.Waiting()).Writing.Title);
         Assert.Empty(Ok(await testbed.Scribes().View(CancellationToken.None)).Decisions);

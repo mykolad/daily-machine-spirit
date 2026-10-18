@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Functions.Generation.Writing;
+using DailyMachineSpirit.Functions.Scriptorium.Naming;
 using DailyMachineSpirit.Functions.Tags;
 using LanguageExt;
 using static LanguageExt.Prelude;
@@ -51,6 +52,9 @@ public static partial class ScriptoriumPage
         .pair button:focus-visible { position: relative; z-index: 1; }
         .actions form { margin: 0; }
         .calendar, .judgments { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 16px; }
+        .suggestions { list-style: none; padding: 0; margin: 12px 0 0; display: flex; flex-wrap: wrap; gap: 8px; }
+        .suggest-others { margin: 16px 0 0; }
+        .suggest-others .button-link { border-style: dashed; }
         .rite { background: #1a1612; border: 1px solid rgba(237,227,207,.1); border-radius: 20px; padding: 20px clamp(16px, 3vw, 24px); scroll-margin-top: 16px; }
         .next { display: inline-block; margin: 8px 0 0; padding: 2px 10px; border: 1px solid #2e4248; border-radius: 999px; font: 500 13px "JetBrains Mono", monospace; color: #8cc4ae; }
         .ash { opacity: .92; }
@@ -111,7 +115,8 @@ public static partial class ScriptoriumPage
 
     /// <param name="outcome">What the last action did (<see cref="ScriptoriumFunction"/>'s <c>done</c>), if anything.</param>
     /// <param name="rite">The draft it acted on, so the message can name it and say where it went.</param>
-    public static string Render(ScriptoriumView view, Option<string> outcome, Option<Guid> rite)
+    /// <param name="name">How the Record shows the Scribe looking, with a way to choose or change it (#84); none on staging.</param>
+    public static string Render(ScriptoriumView view, Option<string> outcome, Option<Guid> rite, Option<NameInTheRecord> name)
     {
         var status = outcome.Bind(done => Status(done, view, rite));
         var html = new StringBuilder();
@@ -122,6 +127,9 @@ public static partial class ScriptoriumPage
         Heading(html, "The Scriptorium",
             "Unconsecrated rites await the judgment of the Scribes. Your notes teach the Augury what to choose when no Scribe is watching.");
         html.Append("""<p class="record-link"><a href="/scriptorium/precepts">The Precepts</a>: what the Machine Spirit has learned from your judgments, and whether the Scribes agree with the Augury. <a href="/scriptorium/record">The Record</a>: every change, and who made it.</p>""");
+        name.IfSome(yours => html.Append(yours.Chosen
+            ? $"""<p class="record-link">The Record calls you “{Encode(yours.Shown)}”. <a href="/scriptorium/name">Change your name</a></p>"""
+            : $"""<p class="record-link">The Record shows you as “{Encode(yours.Shown)}”. <a href="/scriptorium/name">Choose a name</a> for it.</p>"""));
         html.Append($"""<p class="status" role="status">{status.IfNone(string.Empty)}</p>""");
 
         html.Append($"""
@@ -281,7 +289,8 @@ public static partial class ScriptoriumPage
     /// The Record (#9): every change to the drafts and rites, and who made it, newest first; or one draft's, from its
     /// first draft to its publishing.
     /// </summary>
-    public static string RenderRecord(IReadOnlyList<AuditEntry> entries, Option<Guid> draft)
+    /// <param name="names">The names the Scribes chose (#84); the others show by the end of their ids.</param>
+    public static string RenderRecord(IReadOnlyList<AuditEntry> entries, IReadOnlyList<ScribeName> names, Option<Guid> draft)
     {
         var html = new StringBuilder();
         Head(html, "The Record");
@@ -300,7 +309,7 @@ public static partial class ScriptoriumPage
             html.Append("""<ol class="record">""");
             foreach (var entry in entries)
             {
-                html.Append($"""<li><time datetime="{entry.AtUtc:yyyy-MM-ddTHH:mm:ssZ}">{When(entry.AtUtc)}</time> {Encode(ScribeNames.Of(entry.Actor))} {Did(entry)}</li>""");
+                html.Append($"""<li><time datetime="{entry.AtUtc:yyyy-MM-ddTHH:mm:ssZ}">{When(entry.AtUtc)}</time> {Encode(ScribeNames.Of(entry.Actor, names))} {Did(entry)}</li>""");
             }
             html.Append("</ol>");
         }
@@ -519,6 +528,7 @@ public static partial class ScriptoriumPage
             "changed" => "Another Scribe changed the calendar meanwhile. Look again before deciding.",
             "unmoved" => "It was already there, so nothing moved. Another Scribe may have moved it: look again.",
             "note-too-long" => "That note is too long, so nothing was changed. Shorten it and try again.",
+            "named" => "The Record shows your name now, on every change you made.",
             _ => None,
         };
     }
@@ -557,6 +567,7 @@ public static partial class ScriptoriumPage
             AuditAction.UnpinPrecept => $"unpinned the precept {rite}",
             AuditAction.DeletePrecept => $"deleted the precept {rite}",
             AuditAction.JudgeAgain => $"judged {rite} again",
+            AuditAction.ChooseName => $"chose the name {rite}",
             _ => $"published {rite}{entry.RiteNumber.Map(number => $" as NO. {number}").IfNone(string.Empty)}",
         };
         return what + entry.Detail.Map(detail => $""" <span class="when">({Encode(detail)})</span>""").IfNone(string.Empty);

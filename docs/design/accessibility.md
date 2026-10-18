@@ -33,6 +33,14 @@ Proposal.dc.html`, `scriptorium-icons.md`): icons, grouped buttons, folded notes
 - **What a rewrite changed is said in each field's label** ("Text · rewritten"), so a screen reader hears it with the
   field's name, and shown by the field's amber edge; the colour is never the only sign. The first changed field takes
   focus, where the Scribe reads on.
+- **A precept refused for breaking the writer's rules** (#86) comes back the same way: why is the `role="status"`
+  message, and the field it was typed in keeps the words, marked `aria-invalid="true"` and described by that message
+  (`aria-describedby`), so a screen reader on the field hears why. An edit's fold comes back open.
+- **The name page** (#84) has one field, with a visible label and a hint tied to it, and takes focus, since choosing a
+  name is all the page is for. The suggestions are links, each named by its name, under a heading, so a screen reader
+  can list them; picking one only fills the field, so nothing is taken without pressing Take This Name. A name that
+  can't be taken comes back in the field, marked `aria-invalid="true"` and described by the `role="status"` message
+  that says why.
 
 ## Tags
 
@@ -76,6 +84,12 @@ month, with Today's masthead, margins and altar, and search as the Archive filte
 - **It works without the script:** the field is a plain form that sends `GET /archive?q=`, its clear button and "Clear
   search" are links to `/archive`, and "Load older rites" and "More results" are links. The old `/search?q=` address
   redirects there for good.
+- **Narrowing to a subject** (#69): the chip under the field says "Filed under" visibly and is a link named "Remove
+  filter: Caches", which keeps its visible label in its name (WCAG 2.5.3) and says what it does. It's 32px tall, above
+  the 24px WCAG 2.5.8 asks, rubric red on the parchment like the field's edge, with the parchment's red focus ring.
+  The subjects to narrow to are tag links on the dark background, under the sheet below 1280px and beside it above,
+  each with its count ("Builds (2)"). The page's title names the subject ("“cache” in Caches: 1 rite"), so a screen
+  reader hears what the results are before anything else.
 - **The sheet wears Today's frame, as decoration only:** the double rule, the corners and the code in its margins
   ("NOTHING IS FORGOTTEN" in hex, "KEPT" in binary) are hidden from screen readers, and the corners and code show from
   700px, where the sheet's padding leaves them room clear of the rows. The seal hanging from the sheet at the
@@ -88,7 +102,9 @@ month, with Today's masthead, margins and altar, and search as the Archive filte
   `role="combobox"`, `aria-autocomplete="list"`, `aria-controls` and `aria-expanded`, with the arrow keys moving
   `aria-activedescendant` through the suggestions, so focus stays in the field. Enter opens the chosen rite (or
   searches the Archive when none is chosen), Escape closes the field, clears it and returns focus to the icon, and a
-  click or a tab elsewhere closes it. A polite live region says how many rites were found ("3 rites mention “cache”").
+  click or a tab elsewhere closes it. A polite live region says how many rites were found ("3 rites mention “cache”"),
+  after the subjects when there are some ("1 subject. 3 rites mention “cache”"). The suggestions are one listbox in two
+  groups, Subjects and the rites, each named by its heading, so the arrow keys go through both.
   Each suggestion is at least 44px tall. The chosen one has a red outline as well as its shade (the shade alone is
   1.18:1), and it scrolls into view when the drop-down is cut short (zoomed in, a keyboard on screen); keys an input
   method uses while composing a word are left to it. Without the script the icon is a link to the Archive's field.
