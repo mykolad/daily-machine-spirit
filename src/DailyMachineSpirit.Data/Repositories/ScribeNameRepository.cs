@@ -17,14 +17,14 @@ public sealed class ScribeNameRepository : IScribeNameRepository
         this.container = container;
     }
 
-    public Task<Either<Error, StoredScribeNames>> Get(CancellationToken cancellationToken)
+    public Task<Either<Error, StoredScribeNames>> GetAll(CancellationToken cancellationToken)
         => Attempt(async () => (await container.ReadOrNone<ScribeNamesDocument>(ScribeNamesDocument.ScribeNamesId, cancellationToken))
             .Match(
                 Some: found => new StoredScribeNames(found.Document.Names, found.ETag),
                 None: () => new StoredScribeNames([], None)));
 
     // No ETag: no Scribe had a name yet, and creating the document fails if another just did.
-    public Task<Either<Error, Unit>> Save(StoredScribeNames read, List<ScribeName> changed, AuditEntry audit, CancellationToken cancellationToken)
+    public Task<Either<Error, Unit>> SaveUnlessChangedSince(StoredScribeNames read, List<ScribeName> changed, AuditEntry audit, CancellationToken cancellationToken)
         => AttemptEither(async () =>
         {
             var document = new ScribeNamesDocument { Names = changed };

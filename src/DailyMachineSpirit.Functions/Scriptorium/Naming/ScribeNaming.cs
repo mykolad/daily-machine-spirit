@@ -39,7 +39,7 @@ public sealed partial class ScribeNaming
     }
 
     public Task<Either<Error, List<ScribeName>>> All(CancellationToken cancellationToken)
-        => names.Get(cancellationToken).MapAsync(stored => Task.FromResult(stored.Names));
+        => names.GetAll(cancellationToken).MapAsync(stored => Task.FromResult(stored.Names));
 
     /// <summary>The name the Scribe chose, if any. None on staging, where there's no name to choose.</summary>
     public Task<Either<Error, Option<string>>> NameOf(string scribe, CancellationToken cancellationToken)
@@ -50,7 +50,7 @@ public sealed partial class ScribeNaming
     /// Saves the name for the Scribe and returns it as saved (spaces tidied). Their own name again changes nothing.
     /// </summary>
     public Task<Either<Error, string>> Choose(string scribe, string typed, CancellationToken cancellationToken)
-        => NameFor(scribe, typed).BindAsync(name => names.Get(cancellationToken).BindAsync(read =>
+        => NameFor(scribe, typed).BindAsync(name => names.GetAll(cancellationToken).BindAsync(read =>
         {
             var current = read.Names.Where(found => found.AccessId == scribe).HeadOrNone();
             if (current.Exists(found => found.Name == name))
@@ -71,7 +71,7 @@ public sealed partial class ScribeNaming
                 Title = name,
                 Detail = current.Map(found => $"was “{found.Name}”"),
             };
-            return names.Save(read, changed, audit, cancellationToken).MapAsync(_ => Task.FromResult(name));
+            return names.SaveUnlessChangedSince(read, changed, audit, cancellationToken).MapAsync(_ => Task.FromResult(name));
         }));
 
     /// <summary>

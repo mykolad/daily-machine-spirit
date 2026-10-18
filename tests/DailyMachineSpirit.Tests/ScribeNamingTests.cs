@@ -88,10 +88,10 @@ public sealed class ScribeNamingTests : IAsyncLifetime
     [Fact]
     public async Task ASave_FromAStaleRead_IsRefused()
     {
-        var read = Ok(await testbed.ScribeNames.Get(CancellationToken.None));
+        var read = Ok(await testbed.ScribeNames.GetAll(CancellationToken.None));
         Ok(await testbed.ScribeNaming().Choose(Cache, "Sister Cache", CancellationToken.None));
 
-        var late = await testbed.ScribeNames.Save(read, [new ScribeName(Ferrum, "Sister Cache")], Entry(Ferrum), CancellationToken.None);
+        var late = await testbed.ScribeNames.SaveUnlessChangedSince(read, [new ScribeName(Ferrum, "Sister Cache")], Entry(Ferrum), CancellationToken.None);
 
         Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Failed(late));
     }
