@@ -78,10 +78,15 @@ public sealed class ScribeNamingTests : IAsyncLifetime
         Assert.Equal(Option<string>.None, Ok(await naming.NameOf(Ferrum, CancellationToken.None)));
     }
 
+    // Staging's one shared Scribe takes a name like any other, so the feature can be tried there.
     [Fact]
-    public async Task OnStaging_ThereIsNoNameToChoose()
+    public async Task OnStaging_TheSharedScribe_TakesAName()
     {
-        Assert.Equal(ScribeNaming.NoNamesOnStaging, Failed(await testbed.ScribeNaming().Choose(AuditEntry.StagingScribe, "Brother Ferrum", CancellationToken.None)));
+        var naming = testbed.ScribeNaming();
+
+        Ok(await naming.Choose(AuditEntry.StagingScribe, "Brother Ferrum", CancellationToken.None));
+
+        Assert.Equal(Some("Brother Ferrum"), Ok(await naming.NameOf(AuditEntry.StagingScribe, CancellationToken.None)));
     }
 
     // Two Scribes choosing at once: the second, saving over a read made before the first's save, is told to try again.
@@ -194,16 +199,13 @@ public sealed class ScribeNamingTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task AnUnnamedScribe_IsAskedToChoose_ButNotOnStaging()
+    public async Task AnUnnamedScribe_IsAskedToChoose_OnStagingToo()
     {
         var unnamed = Html(await Scriptorium(Ferrum).Page(Get(""), CancellationToken.None), 200);
         var staging = Html(await Scriptorium(AuditEntry.StagingScribe).Page(Get(""), CancellationToken.None), 200);
-        var stagingName = Html(await Function(AuditEntry.StagingScribe).Page(Get(""), CancellationToken.None), 200);
 
         Assert.Contains("""The Record shows you as “A Scribe (…6f0d3b)”. <a href="/scriptorium/name">Choose a name</a> for it.""", unnamed);
-        Assert.DoesNotContain("/scriptorium/name", staging);
-        Assert.Contains("every Scribe on staging is one", stagingName);
-        Assert.DoesNotContain("<form", stagingName);
+        Assert.Contains("""The Record shows you as “A Scribe on staging”. <a href="/scriptorium/name">Choose a name</a> for it.""", staging);
     }
 
     [Fact]

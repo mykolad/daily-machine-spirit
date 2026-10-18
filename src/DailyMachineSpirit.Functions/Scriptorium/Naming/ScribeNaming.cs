@@ -27,8 +27,6 @@ public sealed partial class ScribeNaming
 
     public static readonly Error Email = Error.New(Refused, "A name or an alias, never an email address: the Record isn't a place for one.");
 
-    public static readonly Error NoNamesOnStaging = Error.New(Refused, "Without a sign-in, every Scribe on staging is one: \"A Scribe on staging\".");
-
     private readonly IScribeNameRepository names;
     private readonly TimeProvider time;
 
@@ -50,7 +48,7 @@ public sealed partial class ScribeNaming
     /// Saves the name for the Scribe and returns it as saved (spaces tidied). Their own name again changes nothing.
     /// </summary>
     public Task<Either<Error, string>> Choose(string scribe, string typed, CancellationToken cancellationToken)
-        => NameFor(scribe, typed).BindAsync(name => names.GetAll(cancellationToken).BindAsync(read =>
+        => Acceptable(typed).BindAsync(name => names.GetAll(cancellationToken).BindAsync(read =>
         {
             var current = read.Names.Where(found => found.AccessId == scribe).HeadOrNone();
             if (current.Exists(found => found.Name == name))
@@ -87,9 +85,6 @@ public sealed partial class ScribeNaming
             : Right<Error, string>(name));
 
     public static bool SameName(string one, string other) => string.Equals(one, other, StringComparison.OrdinalIgnoreCase);
-
-    private static Either<Error, string> NameFor(string scribe, string typed)
-        => scribe == AuditEntry.StagingScribe ? NoNamesOnStaging : Acceptable(typed);
 
     // Runs of spaces, tabs and line breaks become one space, and control characters go: a name is one plain line.
     private static Option<string> Tidy(string typed)

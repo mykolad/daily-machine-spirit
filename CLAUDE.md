@@ -318,7 +318,7 @@ observability/                    — the Grafana dashboard and alerts, and what
       list numbered, so it never runs out); the first is in the field, to take or change,
       and each suggestion's link puts it there instead, carrying the others so the model isn't asked again; Suggest
       Others asks anew. The Scriptorium invites an unnamed Scribe to choose, and a named one to change. On staging,
-      with every Scribe one actor, there's no name to choose.
+      the one shared Scribe takes a name like any other, so the feature can be tried there.
     - **Kept** as long as the drafts and rites, with ids, titles and where a draft went; never a visitor.
   - **Concurrency:** each change uses an ETag, so two Scribes can't overwrite each other: the later one is told to look
     again.

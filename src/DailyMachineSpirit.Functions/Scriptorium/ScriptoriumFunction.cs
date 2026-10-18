@@ -290,14 +290,9 @@ public sealed class ScriptoriumFunction
         return new ScriptoriumResponse { Result = Failed(request, error) };
     }
 
-    // The names are a nicety on these pages: unreadable, the Scriptorium still works, showing Scribes by their ids. On
-    // staging every Scribe is one, with no name to choose.
+    // The names are a nicety on these pages: unreadable, the Scriptorium still works, showing Scribes by their ids.
     private async Task<Option<NameInTheRecord>> NameOf(string scribe, CancellationToken cancellationToken)
     {
-        if (scribe == AuditEntry.StagingScribe)
-        {
-            return None;
-        }
         return (await naming.NameOf(scribe, cancellationToken)).Match(
             Right: chosen => Some(new NameInTheRecord(chosen.IfNone(() => ScribeNames.Unnamed(scribe)), chosen.IsSome)),
             Left: error =>

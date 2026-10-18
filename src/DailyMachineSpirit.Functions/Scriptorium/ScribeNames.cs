@@ -13,13 +13,13 @@ public static class ScribeNames
 
     public const string OnStaging = "A Scribe on staging";
 
-    public static string Of(string actor, IReadOnlyList<ScribeName> names) => actor switch
-    {
-        AuditEntry.MachineSpirit => MachineSpirit,
-        AuditEntry.StagingScribe => OnStaging,
-        _ => names.Where(name => name.AccessId == actor).Select(name => name.Name).HeadOrNone().IfNone(() => Unnamed(actor)),
-    };
+    public static string Of(string actor, IReadOnlyList<ScribeName> names)
+        => actor == AuditEntry.MachineSpirit
+            ? MachineSpirit
+            : names.Where(name => name.AccessId == actor).Select(name => name.Name).HeadOrNone().IfNone(() => Unnamed(actor));
 
-    // Enough of the id to tell two Scribes apart, too little to be worth keeping anywhere else.
-    public static string Unnamed(string actor) => $"A Scribe (…{actor[Math.Max(0, actor.Length - 6)..]})";
+    // Enough of the id to tell two Scribes apart, too little to be worth keeping anywhere else. Staging's one shared
+    // Scribe has no id to show.
+    public static string Unnamed(string actor)
+        => actor == AuditEntry.StagingScribe ? OnStaging : $"A Scribe (…{actor[Math.Max(0, actor.Length - 6)..]})";
 }

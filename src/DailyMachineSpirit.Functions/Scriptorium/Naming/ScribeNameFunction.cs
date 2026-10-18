@@ -84,10 +84,6 @@ public sealed class ScribeNameFunction
     private async Task<IActionResult> Render(
         HttpRequest request, string scribe, List<string> carried, Option<string> typed, Option<string> message, int status, CancellationToken cancellationToken)
     {
-        if (scribe == AuditEntry.StagingScribe)
-        {
-            return Html(request, ScriptoriumPage.RenderName(None, [], string.Empty, Some(ScribeNaming.NoNamesOnStaging.Message)), status);
-        }
         var all = await naming.All(cancellationToken);
         if (all.Case is Error error)
         {
