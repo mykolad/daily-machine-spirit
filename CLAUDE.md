@@ -272,7 +272,7 @@ observability/                    — the Grafana dashboard and alerts, and what
     Augury: it says nothing of the Scribes' taste. "Scores" are always the similarity scores, never the quality.
   - **Settings:** `AzureOpenAI:Endpoint` (the models are reached as the managed identity), `Jev:ApiKey` (a Key Vault
     reference in Azure; empty turns Jev off).
-  - **Tuning: `machine-spirit.json`** (in the Functions project, copied with the app): every value worth tuning, in one
+  - **Tuning: `machine-spirit.jsonc`** (in the Functions project, copied with the app): every value worth tuning, in one
     file with a section per thing it tunes (`RiteWriting`, `Backlog`, `DuplicateRiteCheck`, `PreceptDistilling`,
     `PreceptCheck`, `ScribeNameSuggestions`, `Augury`, `Jev`, `PagePurging`, `PublicPages`, `ScriptoriumPages`), each
     bound to an options class next to its code. Both environments use it as it is; an app setting of the same name
@@ -320,7 +320,7 @@ observability/                    — the Grafana dashboard and alerts, and what
       on the page and in the writer's prompt; Pin and Unpin say what they do in their `title`. Deleted ones are
       remembered (the newest 30): the model is told not to propose them, and any it does are dropped.
     - **Within the writer's rules** (#86, `PreceptCheck`): `gpt-6-luna`, then `gpt-6-sol` if it fails
-      (`PreceptCheck` in `machine-spirit.json`, 15 seconds for both together, all the precepts in one request) says which
+      (`PreceptCheck` in `machine-spirit.jsonc`, 15 seconds for both together, all the precepts in one request) says which
       precepts would have the writer break one of its rules (`RiteRules`), or are abusive or discriminating, and why. A
       Scribe's is refused with that reason: the page comes back (422) with their words in the field, or in the message
       when that field went meanwhile. A distilled one is dropped, and distilling is told the rules, so it rarely

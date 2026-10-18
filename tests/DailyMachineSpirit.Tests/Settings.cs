@@ -11,13 +11,13 @@ using Microsoft.Extensions.Configuration;
 namespace DailyMachineSpirit.Tests;
 
 /// <summary>
-/// The app's own <c>machine-spirit.json</c>, read as the app reads it: the tests run with its values, changing only what
+/// The app's own <c>machine-spirit.jsonc</c>, read as the app reads it: the tests run with its values, changing only what
 /// they must (with <c>with</c>), so they check the settings the app ships with.
 /// </summary>
 public static class Settings
 {
     private static readonly IConfiguration File = new ConfigurationBuilder()
-        .AddJsonFile(Path.Combine(AppContext.BaseDirectory, "machine-spirit.json"), optional: false)
+        .AddJsonFile(Path.Combine(AppContext.BaseDirectory, "machine-spirit.jsonc"), optional: false)
         .Build();
 
     public static RiteWritingOptions RiteWriting => Section<RiteWritingOptions>(RiteWritingOptions.SectionName);
@@ -41,6 +41,9 @@ public static class Settings
     public static PublicPagesOptions PublicPages => Section<PublicPagesOptions>(PublicPagesOptions.SectionName);
 
     public static ScriptoriumPagesOptions ScriptoriumPages => Section<ScriptoriumPagesOptions>(ScriptoriumPagesOptions.SectionName);
+
+    /// <summary>The keys a part of the file sets, such as a section's <c>Patience</c>.</summary>
+    public static IReadOnlyList<string> KeysIn(string path) => File.GetSection(path).GetChildren().Select(key => key.Key).ToList();
 
     private static T Section<T>(string name) where T : new()
         => File.GetSection(name).Get<T>(binder => binder.ErrorOnUnknownConfiguration = true) ?? new T();

@@ -3,7 +3,8 @@
 // needs to. The settings that differ between environments (endpoints, secrets, sign-in) stay in infra/.
 //
 // A Patience says how long the Machine Spirit keeps asking a model: TriesPerModel, PauseBetweenTries, and how long a
-// try (TimePerTry) or all of them (TimeInAll) may take. Unset times mean no limit of the app's own.
+// try (TimePerTry) or all of them (TimeInAll) may take. Each sets only the limits its code honours (SettingsTests
+// check), so a refill has no time limit of its own and the precept check one budget for all its models.
 //
 // Cloudflare waits 100 seconds for an answer, so what a Scribe waits for must fit in it (a test checks the sums):
 // a rewrite (each model's tries while the Scribe waits), and a distillation (each model's try, then the precept check).

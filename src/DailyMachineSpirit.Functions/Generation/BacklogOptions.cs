@@ -1,6 +1,6 @@
 namespace DailyMachineSpirit.Functions.Generation;
 
-/// <summary>The drafts waiting for the Scribes (<c>machine-spirit.json</c>, <c>Backlog</c>).</summary>
+/// <summary>The drafts waiting for the Scribes (<c>machine-spirit.jsonc</c>, <c>Backlog</c>).</summary>
 public sealed record BacklogOptions
 {
     public const string SectionName = "Backlog";

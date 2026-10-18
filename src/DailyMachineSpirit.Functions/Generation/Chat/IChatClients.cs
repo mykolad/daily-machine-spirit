@@ -4,6 +4,6 @@ namespace DailyMachineSpirit.Functions.Generation.Chat;
 
 public interface IChatClients
 {
-    /// <summary>A client for one model deployment, by its name (as <c>machine-spirit.json</c> names it).</summary>
+    /// <summary>A client for one model deployment, by its name (as <c>machine-spirit.jsonc</c> names it).</summary>
     IChatClient For(string model);
 }

@@ -2,7 +2,7 @@ using DailyMachineSpirit.Functions.Generation;
 
 namespace DailyMachineSpirit.Functions.Scriptorium.Naming;
 
-/// <summary>The names suggested to a Scribe (<c>machine-spirit.json</c>, <c>ScribeNameSuggestions</c>).</summary>
+/// <summary>The names suggested to a Scribe (<c>machine-spirit.jsonc</c>, <c>ScribeNameSuggestions</c>).</summary>
 public sealed record ScribeNameSuggestionsOptions
 {
     public const string SectionName = "ScribeNameSuggestions";

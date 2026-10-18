@@ -1,6 +1,6 @@
 namespace DailyMachineSpirit.Functions.Generation.Precepts;
 
-/// <summary>Checking precepts against the writer's rules (<c>machine-spirit.json</c>, <c>PreceptCheck</c>).</summary>
+/// <summary>Checking precepts against the writer's rules (<c>machine-spirit.jsonc</c>, <c>PreceptCheck</c>).</summary>
 public sealed record PreceptCheckOptions
 {
     public const string SectionName = "PreceptCheck";

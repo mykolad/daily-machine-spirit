@@ -1,6 +1,6 @@
 namespace DailyMachineSpirit.Functions.Generation;
 
-/// <summary>How the Augury orders the waiting drafts (<c>machine-spirit.json</c>, <c>Augury</c>).</summary>
+/// <summary>How the Augury orders the waiting drafts (<c>machine-spirit.jsonc</c>, <c>Augury</c>).</summary>
 public sealed record AuguryOptions
 {
     public const string SectionName = "Augury";

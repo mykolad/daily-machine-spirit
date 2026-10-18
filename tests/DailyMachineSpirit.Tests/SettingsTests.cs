@@ -2,7 +2,7 @@ using DailyMachineSpirit.Functions.Generation;
 
 namespace DailyMachineSpirit.Tests;
 
-/// <summary>The settings the app ships with (<c>machine-spirit.json</c>): all there, and within what Cloudflare allows.</summary>
+/// <summary>The settings the app ships with (<c>machine-spirit.jsonc</c>): all there, and within what Cloudflare allows.</summary>
 public class SettingsTests
 {
     // Cloudflare gives up on a request after this long, so a page the Scribe waits for must come back sooner.
@@ -49,6 +49,20 @@ public class SettingsTests
 
         Assert.Empty(unset);
     }
+
+    // Each model call honours only some of a Patience's limits (a single try has no pause, the precept check has one
+    // budget for all its models). Its part of the file sets exactly those: a limit the code ignores would quietly do
+    // nothing, and one it needs, left out, would quietly be none.
+    [Theory]
+    [InlineData("RiteWriting:Patience", "TriesPerModel PauseBetweenTries")]
+    [InlineData("RiteWriting:PatienceWhileTheScribeWaits", "TriesPerModel TimePerTry")]
+    [InlineData("DuplicateRiteCheck:Patience", "TimePerTry")]
+    [InlineData("PreceptDistilling:Patience", "TriesPerModel TimePerTry")]
+    [InlineData("PreceptCheck:Patience", "TimeInAll")]
+    [InlineData("ScribeNameSuggestions:Patience", "TimePerTry")]
+    [InlineData("Jev:Patience", "TimePerTry")]
+    public void EachPatience_SetsTheLimitsItsCodeHonours(string path, string honoured)
+        => Assert.Equal(honoured.Split(' ').Order(), Settings.KeysIn(path).Order());
 
     private static TimeSpan Longest(Patience patience, int models)
         => (patience.TryLimit.IfNone(() => throw new Xunit.Sdk.XunitException("A Scribe's wait has no time limit.")) + patience.PauseBetweenTries)

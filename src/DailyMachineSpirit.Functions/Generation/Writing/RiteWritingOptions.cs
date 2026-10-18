@@ -1,6 +1,6 @@
 namespace DailyMachineSpirit.Functions.Generation.Writing;
 
-/// <summary>The writer of the rites (<c>machine-spirit.json</c>, <c>RiteWriting</c>).</summary>
+/// <summary>The writer of the rites (<c>machine-spirit.jsonc</c>, <c>RiteWriting</c>).</summary>
 public sealed record RiteWritingOptions
 {
     public const string SectionName = "RiteWriting";

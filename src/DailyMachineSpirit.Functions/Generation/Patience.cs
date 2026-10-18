@@ -4,8 +4,9 @@ using static LanguageExt.Prelude;
 namespace DailyMachineSpirit.Functions.Generation;
 
 /// <summary>
-/// How long the Machine Spirit keeps asking a model (<c>machine-spirit.json</c>): how many tries each model gets, the
+/// How long the Machine Spirit keeps asking a model (<c>machine-spirit.jsonc</c>): how many tries each model gets, the
 /// pause between them, and how long a try, or all of them together, may take. A time left out is no limit of our own.
+/// Each model call honours only the limits that fit it, and its part of the file sets only those (SettingsTests).
 /// </summary>
 public sealed record Patience
 {

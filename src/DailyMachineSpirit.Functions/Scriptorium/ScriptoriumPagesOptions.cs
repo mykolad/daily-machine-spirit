@@ -1,6 +1,6 @@
 namespace DailyMachineSpirit.Functions.Scriptorium;
 
-/// <summary>The Scribes' pages (<c>machine-spirit.json</c>, <c>ScriptoriumPages</c>).</summary>
+/// <summary>The Scribes' pages (<c>machine-spirit.jsonc</c>, <c>ScriptoriumPages</c>).</summary>
 public sealed record ScriptoriumPagesOptions
 {
     public const string SectionName = "ScriptoriumPages";

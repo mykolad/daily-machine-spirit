@@ -1,6 +1,6 @@
 namespace DailyMachineSpirit.Functions.Generation.Precepts;
 
-/// <summary>Distilling the Precepts (<c>machine-spirit.json</c>, <c>PreceptDistilling</c>).</summary>
+/// <summary>Distilling the Precepts (<c>machine-spirit.jsonc</c>, <c>PreceptDistilling</c>).</summary>
 public sealed record PreceptDistillingOptions
 {
     public const string SectionName = "PreceptDistilling";

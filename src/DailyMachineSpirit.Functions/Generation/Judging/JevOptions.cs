@@ -1,6 +1,6 @@
 namespace DailyMachineSpirit.Functions.Generation.Judging;
 
-/// <summary>Jev, the judge (<c>machine-spirit.json</c>, <c>Jev</c>); its key comes from the app's settings.</summary>
+/// <summary>Jev, the judge (<c>machine-spirit.jsonc</c>, <c>Jev</c>); its key comes from the app's settings.</summary>
 public sealed record JevOptions
 {
     public const string SectionName = "Jev";

@@ -25,10 +25,10 @@ using OpenTelemetry.Trace;
 
 var builder = FunctionsApplication.CreateBuilder(args);
 
-// How the Machine Spirit works: the values worth tuning, in one place (machine-spirit.json). The app's own settings come
+// How the Machine Spirit works: the values worth tuning, in one place (machine-spirit.jsonc). The app's own settings come
 // after, so one of the same name (Section__Key) would override a value, though none needs to.
 builder.Configuration
-    .AddJsonFile(Path.Combine(AppContext.BaseDirectory, "machine-spirit.json"), optional: false, reloadOnChange: false)
+    .AddJsonFile(Path.Combine(AppContext.BaseDirectory, "machine-spirit.jsonc"), optional: false, reloadOnChange: false)
     .AddEnvironmentVariables();
 // A key the section doesn't have (a misspelling) fails when the settings are first used, rather than quietly leaving a
 // value unset (and SettingsTests read the file the same way).
