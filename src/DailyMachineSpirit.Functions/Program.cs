@@ -81,6 +81,7 @@ builder.Services.AddTransient<DuplicateCheck>();
 builder.Services.AddTransient<JudgingAgain>();
 builder.Services.AddTransient<BacklogRefiller>();
 builder.Services.AddTransient<DailyRitePublisher>();
+builder.Services.AddTransient<PreceptCheck>();
 builder.Services.AddTransient<PreceptDistiller>();
 
 // The Scriptorium: the Scribes' page.
