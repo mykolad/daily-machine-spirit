@@ -173,10 +173,16 @@ observability/                    — the Grafana dashboard and alerts, and what
     ignored) in their title, text or Heretical Truth, ignoring case, newest first, Today's too. Each row marks the words
     (`Highlight`) and shows the words around the first match in the text (`RowLine`); a rite found by its truth alone
     shows its opening words, the truth staying sealed until the reader opens the rite. A plain `CONTAINS` over a few
-    hundred rites (each word a query parameter), plus their numbers and days for the count and the month index
-    (`FindDays`); Cosmos's full-text index can take over when that grows. The words are never logged, and how many
-    rites were found is in the page's title, which a screen reader reads when the results load. Cloudflare rate-limits
-    it.
+    hundred rites (each word a query parameter), plus their numbers, days and tags for the count, the month index and
+    the subjects (`FindDaysAndTags`); Cosmos's full-text index can take over when that grows. The words are never
+    logged, and how many rites were found is in the page's title, which a screen reader reads when the results load.
+    Cloudflare rate-limits it.
+    - **Narrowed to a subject** (`&tag=<key>`, #69): one condition more on the same queries (`ARRAY_CONTAINS` over the
+      stored `tags`), one tag at a time, since a rite has at most two. The form carries the tag in a hidden field, and a
+      chip under it ("Filed under Caches ×", named "Remove filter: Caches") is a link to the same words in every subject.
+      The margin offers the subjects the found rites are filed under, the most first, each narrowing the search to it:
+      the way to filter without the script. A tag without words is the tag's own page, and a key the vocabulary doesn't
+      have is no filter. Clearing the words as the field follows the typing clears the subject too.
     - **The Archive's field follows the typing:** a quarter of a second after the reader stops, the script fetches
       `/archive?q=` and swaps the sheet, its margins and the address (`history.replaceState`), so live and shared
       results come from the same renderer.
