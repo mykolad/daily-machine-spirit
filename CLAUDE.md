@@ -327,8 +327,19 @@ observability/                    — the Grafana dashboard and alerts, and what
     there's no change without its entry: the Scribes' actions, and the Machine Spirit's own (each draft it writes, each
     rite it publishes). Only Summon, which stores nothing itself, saves its entry alone, and goes ahead if that fails.
     - **Who:** a Scribe is their Access id (the token's `sub`), never their email; on staging, with no sign-in, every
-      Scribe is `staging`; the Machine Spirit is `machine-spirit`. The page shows a Scribe by the last six
-      characters of their id (`ScribeNames`), until the Scribes choose their names.
+      Scribe is `staging`; the Machine Spirit is `machine-spirit`. The page shows a Scribe by the name they chose, else
+      by the last six characters of their id (`ScribeNames`). The Record keeps ids, so a name shows on past entries too.
+    - **Names** (#84, `/scriptorium/name`, `Scriptorium/Naming/`): a Scribe chooses the name the Record shows them by,
+      a name or an alias, which only the Scribes see. One `scribe-names` document, by Access id, saved with its record
+      entry and guarded by its ETag, so two Scribes can't take one name at once. Names are tidied (one line, single
+      spaces), unique whatever their case, never an email address, and none passes for the Record's own ("The Machine
+      Spirit", "A Scribe on staging", "A Scribe (…)"): `ScribeNaming.Acceptable`, which suggestions pass too. The
+      page offers three names `gpt-6-luna` suggests (`NameSuggester`, `Generation:ScribeNameModel`, 10 seconds, the
+      taken ones left out), filled from the site's own when it can't (its list, every title with every word, then its
+      list numbered, so it never runs out); the first is in the field, to take or change,
+      and each suggestion's link puts it there instead, carrying the others so the model isn't asked again; Suggest
+      Others asks anew. The Scriptorium invites an unnamed Scribe to choose, and a named one to change. On staging,
+      the one shared Scribe takes a name like any other, so the feature can be tried there.
     - **Kept** as long as the drafts and rites, with ids, titles and where a draft went; never a visitor.
   - **Concurrency:** each change uses an ETag, so two Scribes can't overwrite each other: the later one is told to look
     again.

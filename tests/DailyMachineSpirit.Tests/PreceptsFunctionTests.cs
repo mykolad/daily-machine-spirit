@@ -341,7 +341,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         testbed.Models.Answers(Sol, Distilled("Name the command."));
         Ok(await testbed.Distiller().Distil(AuditEntry.MachineSpirit, CancellationToken.None));
 
-        var html = ScriptoriumPage.RenderRecord(Ok(await testbed.Audit.GetNewest(10, CancellationToken.None)), None);
+        var html = ScriptoriumPage.RenderRecord(Ok(await testbed.Audit.GetNewest(10, CancellationToken.None)), [], None);
 
         Assert.Contains("added the precept “Prefer the real fix.”", html);
         Assert.Contains("""The Machine Spirit distilled <a href="/scriptorium/precepts">the Precepts</a> <span class="when">(1 new, 1 pinned, from 1 judgments)</span>""", html);

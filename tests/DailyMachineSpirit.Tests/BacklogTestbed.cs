@@ -5,6 +5,7 @@ using DailyMachineSpirit.Functions.Generation.Judging;
 using DailyMachineSpirit.Functions.Generation.Precepts;
 using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Scriptorium;
+using DailyMachineSpirit.Functions.Scriptorium.Naming;
 using LanguageExt;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -29,6 +30,9 @@ public sealed class BacklogTestbed : IAsyncLifetime
     public const string Checker = "precept-checker";
 
     public const string SecondChecker = "precept-checker-2";
+
+    /// <summary>The name suggester's own model, so a test that leaves it unanswered never takes another model's answer.</summary>
+    public const string Namer = "scribe-namer";
 
     /// <summary>The Scribe the tests act as, as an Access id would name them.</summary>
     public const string Tester = "tester-0123456789";
@@ -62,6 +66,8 @@ public sealed class BacklogTestbed : IAsyncLifetime
     public AuditRepository Audit => new(cosmos.Container);
 
     public PreceptRepository Precepts => new(cosmos.Container);
+
+    public ScribeNameRepository ScribeNames => new(cosmos.Container);
 
     public static string Answer(string title)
         => FakeChatClients.Answer(title, "Press Re-run thrice, O Machine Spirit.", "The test is flaky: fix its race instead.");
@@ -97,6 +103,11 @@ public sealed class BacklogTestbed : IAsyncLifetime
     public JudgingAgain JudgingAgain() => new(Drafts, Jev.NewJudge(Time, JevApiKey), Time, NullLogger<JudgingAgain>.Instance);
 
     public PreceptKeeping PreceptKeeping() => new(Precepts, PreceptCheck(), Time, NullLogger<PreceptKeeping>.Instance);
+
+    public ScribeNaming ScribeNaming() => new(ScribeNames, Time);
+
+    public NameSuggester NameSuggester()
+        => new(Models, Options.Create(new GenerationOptions { ScribeNameModel = Namer }), Time, Probe.Metrics, NullLogger<NameSuggester>.Instance);
 
     public PreceptDistiller Distiller()
         => new(Scriptorium, Precepts, Models, PreceptCheck(), Options.Create(new GenerationOptions()), Time, Probe.Metrics, NullLogger<PreceptDistiller>.Instance);

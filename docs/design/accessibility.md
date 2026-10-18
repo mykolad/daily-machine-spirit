@@ -28,6 +28,11 @@ Proposal.dc.html`, `scriptorium-icons.md`): icons, grouped buttons, folded notes
 - **A precept refused for breaking the writer's rules** (#86) comes back the same way: why is the `role="status"`
   message, and the field it was typed in keeps the words, marked `aria-invalid="true"` and described by that message
   (`aria-describedby`), so a screen reader on the field hears why. An edit's fold comes back open.
+- **The name page** (#84) has one field, with a visible label and a hint tied to it, and takes focus, since choosing a
+  name is all the page is for. The suggestions are links, each named by its name, under a heading, so a screen reader
+  can list them; picking one only fills the field, so nothing is taken without pressing Take This Name. A name that
+  can't be taken comes back in the field, marked `aria-invalid="true"` and described by the `role="status"` message
+  that says why.
 
 ## Tags
 
