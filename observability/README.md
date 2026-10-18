@@ -23,7 +23,7 @@ what to look at.
 
 | Alert | Fires when |
 |---|---|
-| **No rite today** | Today doesn't show today's rite at 02:00 UTC, after the timer and its retries. A workflow (**Check Today's Rite**), not Grafana: it reads the page readers get, through Cloudflare's cache, and opens an issue. Until production publishes daily (`publishesDaily` in `infra/resources.bicep`), it checks nothing. |
+| **No rite today** | Today doesn't show today's rite at 02:00 UTC, after the timer and its retries. A workflow (**Check Today's Rite**), not Grafana: it reads the page readers get, through Cloudflare's cache, and opens an issue. |
 | **Refills failing** | a backlog refill failed all three tries within an hour (its error logs) |
 | **Backlog ran empty** | publishing found no waiting draft more than once in a week (its warning logs) |
 | **Jev failing** | two or more drafts in a day couldn't be judged (the refiller's warning logs) |
@@ -56,7 +56,7 @@ Grafana's own **More → Export** writes another format (file provisioning), whi
 | `dms_invocation_duration_seconds` | `function`, `outcome` | each function invocation; `outcome` is the HTTP status code, or `ok`/`failed` |
 | `dms_cosmos_request_charge`, `dms_cosmos_duration_seconds` | `operation`, `status_code` | each Cosmos DB request (`CosmosMetricsHandler`); `status_code` is `failed` or `canceled` when no response came |
 | `dms_generation_answers_total` | `model`, `outcome` | the models' answers: `accepted`, `refused` (broke a rule), `failed` |
-| `dms_generation_answer_duration_seconds` | `model`, `asked`, `outcome` | how long a model took to answer: `asked` is `write`, `rewrite`, `distil`, `check` (a duplicate), `precept-check` or `names` (a Scribe's suggested names); `outcome` is `answered`, `timed-out` (past its time limit) or `failed`. The measure for each time limit (`Patience`, `PreceptDistiller.AttemptTime`, `DuplicateCheck.AttemptTime`, `PreceptCheck.TimeAllowed`, `NameSuggester.AttemptTime`) |
+| `dms_generation_answer_duration_seconds` | `model`, `asked`, `outcome` | how long a model took to answer: `asked` is `write`, `rewrite`, `distil`, `check` (a duplicate), `precept-check` or `names` (a Scribe's suggested names); `outcome` is `answered`, `timed-out` (past its time limit) or `failed`. The measure for each time limit (the `Patience` settings in `machine-spirit.jsonc`) |
 | `dms_rites_published_total` | `kind`, `model` | rites published |
 | `dms_judging_runs_total` | `outcome` | judging each new draft (its quality for the Augury, its scores for More rites): `judged`, `failed`, `off` |
 | `dms_generation_duplicate_checks_total` | `outcome` | checking each new draft repeats no rite already written (`DuplicateCheck`): `unique`, `repeated` (it was written again, or kept marked once its rewrites ran out), `failed` (the model couldn't tell; the draft is kept unchecked) |

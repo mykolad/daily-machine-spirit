@@ -181,8 +181,6 @@ module staging 'modules/environment.bicep' = {
     aiAccountName: ai.name
     ownerPrincipalId: ownerPrincipalId
     githubSubjectPrefix: githubSubjectPrefix
-    publishesDaily: true
-    scriptoriumEnabled: true
     scriptoriumWithoutSignIn: true
     cloudflareAccessTeamDomain: ''
     cloudflareAccessAudience: ''
@@ -211,11 +209,7 @@ module production 'modules/environment.bicep' = if (deployProduction) {
     aiAccountName: ai.name
     ownerPrincipalId: ownerPrincipalId
     githubSubjectPrefix: githubSubjectPrefix
-    // On since launch (#35). Turned off, the timer publishes nothing (the Scriptorium still summons drafts), and the
-    // daily check (check-todays-rite.yml) stops looking.
-    publishesDaily: true
-    // Only behind Cloudflare Access (productionAccess): the app checks Access's token on every Scriptorium request.
-    scriptoriumEnabled: true
+    // Scribes sign in with Cloudflare Access (productionAccess): the app checks its token on every Scriptorium request.
     scriptoriumWithoutSignIn: false
     cloudflareAccessTeamDomain: productionAccess.teamDomain
     cloudflareAccessAudience: productionAccess.audience

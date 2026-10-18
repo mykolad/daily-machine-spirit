@@ -1,8 +1,6 @@
 using DailyMachineSpirit.Functions.Generation.Precepts;
-using DailyMachineSpirit.Functions.Scriptorium;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace DailyMachineSpirit.Functions;
 
@@ -16,13 +14,11 @@ public sealed class DistilPreceptsFunction
     public const string Schedule = "0 0 1 * * 1";
 
     private readonly PreceptDistiller distiller;
-    private readonly IOptions<ScriptoriumOptions> options;
     private readonly ILogger<DistilPreceptsFunction> logger;
 
-    public DistilPreceptsFunction(PreceptDistiller distiller, IOptions<ScriptoriumOptions> options, ILogger<DistilPreceptsFunction> logger)
+    public DistilPreceptsFunction(PreceptDistiller distiller, ILogger<DistilPreceptsFunction> logger)
     {
         this.distiller = distiller;
-        this.options = options;
         this.logger = logger;
     }
 
@@ -33,12 +29,6 @@ public sealed class DistilPreceptsFunction
     [FixedDelayRetry(2, "00:30:00")]
     public async Task Run([TimerTrigger(Schedule)] TimerInfo timer, CancellationToken cancellationToken)
     {
-        // Without the Scriptorium there are no Scribes to learn from.
-        if (!options.Value.Enabled)
-        {
-            return;
-        }
-
         var result = await distiller.DistilIfJudgedSinceLast(cancellationToken);
         result.Match(
             Right: book => logger.LogInformation("The Precepts were distilled: {Count} in all.", book.Precepts.Count),

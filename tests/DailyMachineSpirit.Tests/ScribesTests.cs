@@ -5,6 +5,7 @@ using LanguageExt;
 using LanguageExt.Common;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using static DailyMachineSpirit.Tests.BacklogTestbed;
 using static DailyMachineSpirit.Tests.Expect;
 using static LanguageExt.Prelude;
@@ -98,7 +99,7 @@ public sealed class ScribesTests : IAsyncLifetime
             anointedMeanwhile = arrived.Id;
             Ok(await testbed.Scribes().Anoint(arrived.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         });
-        var scribes = new Scribes(drafts, testbed.Rites, testbed.Scriptorium, testbed.Time);
+        var scribes = new Scribes(drafts, testbed.Rites, testbed.Scriptorium, Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages), testbed.Time);
 
         var result = await scribes.Exalt(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None);
 
@@ -115,7 +116,7 @@ public sealed class ScribesTests : IAsyncLifetime
         // Right after this request reads the waiting drafts, another Scribe burns the one it's about to exalt.
         var drafts = new InterruptedDrafts(testbed.Drafts,
             async () => Ok(await testbed.Scribes().Burn(fair.Id, "Burned meanwhile.", BacklogTestbed.Tester, CancellationToken.None)));
-        var scribes = new Scribes(drafts, testbed.Rites, testbed.Scriptorium, testbed.Time);
+        var scribes = new Scribes(drafts, testbed.Rites, testbed.Scriptorium, Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages), testbed.Time);
 
         var result = await scribes.Exalt(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None);
 
@@ -134,7 +135,7 @@ public sealed class ScribesTests : IAsyncLifetime
         // still goes through (both Scribes acted on what they saw), and Fair stays in the Scribes' order, burned.
         var drafts = new InterruptedDrafts(testbed.Drafts,
             async () => Ok(await testbed.Scribes().Anoint(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None)));
-        var scribes = new Scribes(drafts, testbed.Rites, testbed.Scriptorium, testbed.Time);
+        var scribes = new Scribes(drafts, testbed.Rites, testbed.Scriptorium, Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages), testbed.Time);
 
         Ok(await scribes.Burn(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
@@ -157,7 +158,7 @@ public sealed class ScribesTests : IAsyncLifetime
         // burns Good, which wasn't placed, so the order's ETag doesn't change: only Good's own state can tell.
         var drafts = new InterruptedDrafts(testbed.Drafts,
             async () => Ok(await testbed.Scribes().Burn(good.Id, "Burned meanwhile.", BacklogTestbed.Tester, CancellationToken.None)));
-        var scribes = new Scribes(drafts, testbed.Rites, testbed.Scriptorium, testbed.Time);
+        var scribes = new Scribes(drafts, testbed.Rites, testbed.Scriptorium, Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages), testbed.Time);
 
         var result = await scribes.Humble(excellent.Id, "", BacklogTestbed.Tester, CancellationToken.None);
 
@@ -179,7 +180,7 @@ public sealed class ScribesTests : IAsyncLifetime
             Ok(await testbed.Scribes().Anoint(arrived.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         });
         var publisher = new DailyMachineSpirit.Functions.Generation.DailyRitePublisher(
-            testbed.Rites, drafts, testbed.Scriptorium, testbed.Refiller(), testbed.Time, testbed.Probe.Metrics,
+            testbed.Rites, drafts, testbed.Scriptorium, testbed.Refiller(), Options.Create(Settings.Augury), testbed.Time, testbed.Probe.Metrics,
             NullLogger<DailyMachineSpirit.Functions.Generation.DailyRitePublisher>.Instance);
 
         var published = Ok(await publisher.PublishToday(CancellationToken.None));
@@ -322,7 +323,7 @@ public sealed class ScribesTests : IAsyncLifetime
     {
         var first = await testbed.AddDraft("Burned first", 0.5f);
         Ok(await testbed.Scribes().Burn(first.Id, "", BacklogTestbed.Tester, CancellationToken.None));
-        for (var i = 0; i < Scribes.Shown; i++)
+        for (var i = 0; i < Settings.ScriptoriumPages.AshesShown; i++)
         {
             testbed.Time.Advance(TimeSpan.FromMinutes(1));
             var later = await testbed.AddDraft($"Burned later {i}", 0.5f);

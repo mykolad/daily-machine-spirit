@@ -18,10 +18,6 @@ param cosmosAccountName string
 param aiAccountName string
 param ownerPrincipalId string
 param githubSubjectPrefix string
-@description('Whether the midnight timer publishes a rite (Generation:PublishDaily): off for production until launch.')
-param publishesDaily bool
-@description('Whether the app serves the Scriptorium, the moderators\' page. Only where the page is already restricted: staging\'s IP rule, or Cloudflare Access in production.')
-param scriptoriumEnabled bool
 @description('Lets whoever reaches the Scriptorium in without a sign-in: only where the app admits its owner\'s address alone (staging).')
 param scriptoriumWithoutSignIn bool
 @description('The Cloudflare Access team and application guarding the Scriptorium (CloudflareAccessOptions); empty until set up.')
@@ -245,14 +241,6 @@ resource app 'Microsoft.Web/sites@2024-04-01' = {
           // Resolved by the app's identity; until the secret is set (infra/README.md), Jev's calls fail and drafts go without its scores.
           name: 'Jev__ApiKey'
           value: '@Microsoft.KeyVault(VaultName=${vault.name};SecretName=JevApiKey)'
-        }
-        {
-          name: 'Generation__PublishDaily'
-          value: publishesDaily ? 'true' : 'false'
-        }
-        {
-          name: 'Scriptorium__Enabled'
-          value: scriptoriumEnabled ? 'true' : 'false'
         }
         {
           name: 'Scriptorium__WithoutSignIn'

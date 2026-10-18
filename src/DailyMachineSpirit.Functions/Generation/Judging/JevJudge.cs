@@ -100,7 +100,7 @@ public sealed class JevJudge : IRiteJudge
         }
     }
 
-    public Option<string[]> TagsFrom(RiteSimilarity similarity) => JevTags.From(similarity);
+    public Option<string[]> TagsFrom(RiteSimilarity similarity) => JevTags.From(similarity, options.Value);
 
     private static object Question(string instructions, IReadOnlyList<KeyValuePair<string, string>> options)
         => new { type = "choice", instructions, criteria = options.ToDictionary(o => o.Key, o => o.Value) };

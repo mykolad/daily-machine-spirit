@@ -12,8 +12,6 @@ namespace DailyMachineSpirit.Functions.Pages;
 /// </summary>
 public static class ArchivePage
 {
-    public const int PageSize = 20;
-
     private const string Description = "Earlier litanies, newest first.";
 
     /// <param name="olderThan">Where the next page starts, or None when these are the oldest.</param>

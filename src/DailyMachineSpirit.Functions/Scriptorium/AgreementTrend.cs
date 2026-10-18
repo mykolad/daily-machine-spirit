@@ -2,6 +2,7 @@ using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using LanguageExt;
 using LanguageExt.Common;
+using Microsoft.Extensions.Options;
 using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Functions.Scriptorium;
@@ -12,25 +13,29 @@ namespace DailyMachineSpirit.Functions.Scriptorium;
 /// </summary>
 public sealed class AgreementTrend
 {
-    /// <summary>How many months the trend shows, this one included.</summary>
-    public const int MonthsShown = 6;
-
     public const int TopPickPlaces = 3;
 
     private readonly IScriptoriumRepository scriptorium;
+    private readonly IOptions<ScriptoriumPagesOptions> pages;
     private readonly TimeProvider time;
 
-    public AgreementTrend(IScriptoriumRepository scriptorium, TimeProvider time)
+    public AgreementTrend(IScriptoriumRepository scriptorium, IOptions<ScriptoriumPagesOptions> pages, TimeProvider time)
     {
         this.scriptorium = scriptorium;
+        this.pages = pages;
         this.time = time;
     }
 
-    /// <summary>The last <see cref="MonthsShown"/> months, the newest first, including those without a judgment.</summary>
+    /// <summary>
+    /// The last <see cref="ScriptoriumPagesOptions.AgreementMonthsShown"/> months, the newest first, including those
+    /// without a judgment.
+    /// </summary>
     public Task<Either<Error, List<AgreementMonth>>> Months(CancellationToken cancellationToken)
     {
         var today = DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime);
-        var months = Enumerable.Range(0, MonthsShown).Select(back => new DateOnly(today.Year, today.Month, 1).AddMonths(-back)).ToList();
+        var months = Enumerable.Range(0, pages.Value.AgreementMonthsShown)
+            .Select(back => new DateOnly(today.Year, today.Month, 1).AddMonths(-back))
+            .ToList();
         return scriptorium.GetDecisionsSince(months[^1], cancellationToken)
             .MapAsync(decisions => Task.FromResult(months.Select(month => Of(month, decisions)).ToList()));
     }

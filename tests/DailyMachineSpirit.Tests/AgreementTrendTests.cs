@@ -1,6 +1,7 @@
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Functions.Scriptorium;
 using LanguageExt;
+using Microsoft.Extensions.Options;
 using static DailyMachineSpirit.Tests.BacklogTestbed;
 using static DailyMachineSpirit.Tests.Expect;
 using static LanguageExt.Prelude;
@@ -31,9 +32,9 @@ public sealed class AgreementTrendTests : IAsyncLifetime
         Ok(await scribes.Humble(worst.Id, "", Tester, CancellationToken.None));
         testbed.Time.SetUtcNow(new DateTimeOffset(2026, 11, 2, 9, 0, 0, TimeSpan.Zero));
 
-        var months = Ok(await new AgreementTrend(testbed.Scriptorium, testbed.Time).Months(CancellationToken.None));
+        var months = Ok(await new AgreementTrend(testbed.Scriptorium, Options.Create(Settings.ScriptoriumPages), testbed.Time).Months(CancellationToken.None));
 
-        Assert.Equal(AgreementTrend.MonthsShown, months.Count);
+        Assert.Equal(Settings.ScriptoriumPages.AgreementMonthsShown, months.Count);
         Assert.Equal([new DateOnly(2026, 11, 1), new DateOnly(2026, 10, 1), new DateOnly(2026, 6, 1)],
             [months[0].FirstDayUtc, months[1].FirstDayUtc, months[^1].FirstDayUtc]);
         Assert.Equal(new AgreementMonth(new DateOnly(2026, 11, 1), 0, 0, 0, 0, None), months[0]);
@@ -50,7 +51,7 @@ public sealed class AgreementTrendTests : IAsyncLifetime
         Ok(await testbed.Scribes().Anoint(second.Id, "", Tester, CancellationToken.None));
         Ok(await testbed.Scribes().Burn(first.Id, "", Tester, CancellationToken.None));
 
-        var october = Ok(await new AgreementTrend(testbed.Scriptorium, testbed.Time).Months(CancellationToken.None))[0];
+        var october = Ok(await new AgreementTrend(testbed.Scriptorium, Options.Create(Settings.ScriptoriumPages), testbed.Time).Months(CancellationToken.None))[0];
 
         Assert.Equal(new AgreementMonth(new DateOnly(2026, 10, 1), 2, 1, 0, 0, None), october);
     }
@@ -67,7 +68,7 @@ public sealed class AgreementTrendTests : IAsyncLifetime
         Ok(await testbed.Scribes().Anoint(olderStill.Id, "", Tester, CancellationToken.None));
         Ok(await testbed.Scribes().Burn(older.Id, "", Tester, CancellationToken.None));
 
-        var october = Ok(await new AgreementTrend(testbed.Scriptorium, testbed.Time).Months(CancellationToken.None))[0];
+        var october = Ok(await new AgreementTrend(testbed.Scriptorium, Options.Create(Settings.ScriptoriumPages), testbed.Time).Months(CancellationToken.None))[0];
 
         Assert.Equal(new AgreementMonth(new DateOnly(2026, 10, 1), 2, 1, 0, 0, None), october);
     }
@@ -83,7 +84,7 @@ public sealed class AgreementTrendTests : IAsyncLifetime
         Ok(await testbed.Scribes().Burn(worst.Id, "", Tester, CancellationToken.None));
         Ok(await testbed.Scribes().Restore(worst.Id, "", Tester, CancellationToken.None));
 
-        var october = Ok(await new AgreementTrend(testbed.Scriptorium, testbed.Time).Months(CancellationToken.None))[0];
+        var october = Ok(await new AgreementTrend(testbed.Scriptorium, Options.Create(Settings.ScriptoriumPages), testbed.Time).Months(CancellationToken.None))[0];
 
         Assert.Equal(new AgreementMonth(new DateOnly(2026, 10, 1), 2, 1, 0, 0, None), october);
     }

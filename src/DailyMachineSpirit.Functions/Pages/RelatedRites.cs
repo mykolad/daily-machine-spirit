@@ -6,15 +6,13 @@ namespace DailyMachineSpirit.Functions.Pages;
 /// </summary>
 public static class RelatedRites
 {
-    public const int Shown = 3;
-
     /// <param name="scoresByNumber">Every rite's scores from the same generator version as <paramref name="scores"/>.</param>
-    public static List<int> Closest(int number, float[] scores, IReadOnlyDictionary<int, float[]> scoresByNumber)
+    public static List<int> Closest(int number, float[] scores, IReadOnlyDictionary<int, float[]> scoresByNumber, int shown)
         => scoresByNumber
             .Where(other => other.Key != number && other.Value.Length == scores.Length)
             .OrderByDescending(other => Cosine(scores, other.Value))
             .ThenByDescending(other => other.Key)
-            .Take(Shown)
+            .Take(shown)
             .Select(other => other.Key)
             .ToList();
 

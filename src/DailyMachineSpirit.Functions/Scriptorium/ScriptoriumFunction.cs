@@ -37,17 +37,14 @@ public sealed class ScriptoriumFunction
     public const string AllBurned = "every draft was burned";
     public const string Uncounted = "the backlog couldn't be counted after a burn";
 
-    /// <summary>How many entries the Record shows: the newest.</summary>
-    public const int RecordShown = 100;
-
     private readonly Scribes scribes;
     private readonly Amendments amendments;
     private readonly JudgingAgain judgingAgain;
     private readonly IAuditRepository audit;
     private readonly ScribeNaming naming;
+    private readonly IOptions<ScriptoriumPagesOptions> pages;
     private readonly TimeProvider time;
     private readonly ScriptoriumGate gate;
-    private readonly IOptions<ScriptoriumOptions> options;
     private readonly ILogger<ScriptoriumFunction> logger;
 
     public ScriptoriumFunction(
@@ -56,8 +53,8 @@ public sealed class ScriptoriumFunction
         JudgingAgain judgingAgain,
         IAuditRepository audit,
         ScribeNaming naming,
+        IOptions<ScriptoriumPagesOptions> pages,
         IScribeSignIn signIn,
-        IOptions<ScriptoriumOptions> options,
         TimeProvider time,
         ILogger<ScriptoriumFunction> logger)
     {
@@ -66,9 +63,9 @@ public sealed class ScriptoriumFunction
         this.judgingAgain = judgingAgain;
         this.audit = audit;
         this.naming = naming;
+        this.pages = pages;
         this.time = time;
-        gate = new ScriptoriumGate(signIn, options);
-        this.options = options;
+        gate = new ScriptoriumGate(signIn);
         this.logger = logger;
     }
 
@@ -124,7 +121,7 @@ public sealed class ScriptoriumFunction
         var draft = Optional(request.Query["draft"].ToString()).Bind(text => Guid.TryParse(text, out var id) ? Some(id) : None);
         var entries = await draft.Match(
             Some: id => audit.GetHistory(id, cancellationToken),
-            None: () => audit.GetNewest(RecordShown, cancellationToken));
+            None: () => audit.GetNewest(pages.Value.RecordEntriesShown, cancellationToken));
         var names = await Names(cancellationToken);
         return entries.Match(
             Right: entries => Html(request, ScriptoriumPage.RenderRecord(entries, names, draft), StatusCodes.Status200OK),

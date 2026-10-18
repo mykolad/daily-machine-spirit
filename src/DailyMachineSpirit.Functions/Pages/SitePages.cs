@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Functions.Pages;
@@ -21,12 +22,14 @@ public sealed class SitePages
     public const string CatchAllName = "ZzToday";
 
     private readonly IRiteRepository rites;
+    private readonly IOptions<PublicPagesOptions> options;
     private readonly TimeProvider time;
     private readonly ILogger<SitePages> logger;
 
-    public SitePages(IRiteRepository rites, TimeProvider time, ILogger<SitePages> logger)
+    public SitePages(IRiteRepository rites, IOptions<PublicPagesOptions> options, TimeProvider time, ILogger<SitePages> logger)
     {
         this.rites = rites;
+        this.options = options;
         this.time = time;
         this.logger = logger;
     }
@@ -47,7 +50,7 @@ public sealed class SitePages
 
         // Today's rite and the ones before it, in one read. A new rite purges Today, which is the only time they change.
         var now = time.GetUtcNow();
-        return (await rites.GetNewest(1 + TodayPage.RecentShown, cancellationToken)).Match(
+        return (await rites.GetNewest(1 + options.Value.RecentRitesOnToday, cancellationToken)).Match(
             Right: newest => newest.HeadOrNone().Match(
                 Some: rite => Page(request, StatusCodes.Status200OK, TodayPage.Render(rite, newest.Skip(1).ToList(), now), EdgeLifetime.UntilPurged),
                 None: () => Page(request, StatusCodes.Status200OK, TodayPage.Slumbering(now), EdgeLifetime.UntilPurged)),
@@ -103,7 +106,7 @@ public sealed class SitePages
         {
             var tagKey = tag.Map(filter => filter.Key);
             var found = await rites.FindDaysAndTags(words, tagKey, cancellationToken)
-                .BindAsync(days => rites.SearchOlderThan(words, tagKey, isFirstPage ? int.MaxValue : before, ArchivePage.PageSize + 1, cancellationToken)
+                .BindAsync(days => rites.SearchOlderThan(words, tagKey, isFirstPage ? int.MaxValue : before, options.Value.ArchivePageSize + 1, cancellationToken)
                     .MapAsync(page => Results(days, page)));
             return found.Match(
                 Right: results => Page(request, StatusCodes.Status200OK, ArchivePage.Results(typed, words, tag, results, now)),
@@ -112,8 +115,8 @@ public sealed class SitePages
 
         var archive = await rites.GetDays(cancellationToken)
             .BindAsync(async days => (await (isFirstPage
-                    ? rites.GetOlderThan(int.MaxValue, ArchivePage.PageSize + 2, cancellationToken).MapAsync(found => found.Skip(1).ToList())
-                    : rites.GetOlderThan(before, ArchivePage.PageSize + 1, cancellationToken)))
+                    ? rites.GetOlderThan(int.MaxValue, options.Value.ArchivePageSize + 2, cancellationToken).MapAsync(found => found.Skip(1).ToList())
+                    : rites.GetOlderThan(before, options.Value.ArchivePageSize + 1, cancellationToken)))
                 .Map(page => (Days: days, Page: OnePage(page))));
         return archive.Match(
             Right: found => Page(request, StatusCodes.Status200OK, ArchivePage.Render(found.Page.Shown, found.Page.OlderThan, found.Days, now)),
@@ -151,7 +154,7 @@ public sealed class SitePages
     {
         var now = time.GetUtcNow();
         var before = int.TryParse(request.Query["before"], out var number) && number > 0 ? number : int.MaxValue;
-        var page = await rites.GetTaggedOlderThan(tag.Key, before, ArchivePage.PageSize + 1, cancellationToken);
+        var page = await rites.GetTaggedOlderThan(tag.Key, before, options.Value.ArchivePageSize + 1, cancellationToken);
         return page.Match(
             Right: found =>
             {
@@ -161,7 +164,7 @@ public sealed class SitePages
             Left: error => Failed(request, error));
     }
 
-    private static SearchResults Results(List<FoundRite> found, List<Rite> page)
+    private SearchResults Results(List<FoundRite> found, List<Rite> page)
     {
         var (shown, olderThan) = OnePage(page);
         return new SearchResults(found, shown, olderThan);
@@ -173,13 +176,13 @@ public sealed class SitePages
     {
         var related = await rite.Similarity.Match(
                 Some: similarity => rites.GetScoresByRiteNumber(similarity.ScoresGeneratorVersion, cancellationToken)
-                    .MapAsync(scores => RelatedRites.Closest(rite.Number, similarity.Scores, scores)),
+                    .MapAsync(scores => RelatedRites.Closest(rite.Number, similarity.Scores, scores, options.Value.MoreRitesOnARite)),
                 None: () => Task.FromResult(Right<Error, List<int>>([])))
-            .BindAsync(async closest => closest.Count >= RelatedRites.Shown
+            .BindAsync(async closest => closest.Count >= options.Value.MoreRitesOnARite
                 ? Right<Error, List<int>>(closest)
-                : (await rites.GetNewest(RelatedRites.Shown + 1, cancellationToken)).Map(newest => closest
+                : (await rites.GetNewest(options.Value.MoreRitesOnARite + 1, cancellationToken)).Map(newest => closest
                     .Concat(newest.Select(other => other.Number).Where(other => other != rite.Number && !closest.Contains(other)))
-                    .Take(RelatedRites.Shown)
+                    .Take(options.Value.MoreRitesOnARite)
                     .ToList()))
             .BindAsync(numbers => rites.GetByNumbers(numbers, cancellationToken)
                 .MapAsync(found => numbers.SelectMany(n => found.Where(other => other.Number == n)).ToList()));
@@ -194,10 +197,10 @@ public sealed class SitePages
 
     // Newest first, read one beyond a page: the extra one says there are older ones, and the next page starts below the
     // last one shown.
-    private static (List<Rite> Shown, Option<int> OlderThan) OnePage(IReadOnlyList<Rite> newestFirst)
+    private (List<Rite> Shown, Option<int> OlderThan) OnePage(IReadOnlyList<Rite> newestFirst)
     {
-        var shown = newestFirst.Take(ArchivePage.PageSize).ToList();
-        return (shown, newestFirst.Count > ArchivePage.PageSize ? Some(shown[^1].Number) : Option<int>.None);
+        var shown = newestFirst.Take(options.Value.ArchivePageSize).ToList();
+        return (shown, newestFirst.Count > options.Value.ArchivePageSize ? Some(shown[^1].Number) : Option<int>.None);
     }
 
     private IActionResult Failed(HttpRequest request, Error error)

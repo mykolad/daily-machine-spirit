@@ -236,8 +236,7 @@ public sealed class ScribeNamingTests : IAsyncLifetime
     [Fact]
     public async Task OnlyAScribe_MayChooseAName()
     {
-        var function = new ScribeNameFunction(testbed.ScribeNaming(), testbed.NameSuggester(), new NobodyIsScribeSignIn(),
-            Options.Create(new ScriptoriumOptions { Enabled = true }), NullLogger<ScribeNameFunction>.Instance);
+        var function = new ScribeNameFunction(testbed.ScribeNaming(), testbed.NameSuggester(), new NobodyIsScribeSignIn(), NullLogger<ScribeNameFunction>.Instance);
 
         Assert.Equal(StatusCodes.Status403Forbidden, ((Microsoft.AspNetCore.Mvc.StatusCodeResult)await function.Page(Get(""), CancellationToken.None)).StatusCode);
         Assert.Equal(StatusCodes.Status403Forbidden, ((Microsoft.AspNetCore.Mvc.StatusCodeResult)await function.Choose(Form(("name", "Brother Ferrum")), CancellationToken.None)).StatusCode);
@@ -246,12 +245,11 @@ public sealed class ScribeNamingTests : IAsyncLifetime
     private static string Names(params string[] names) => JsonSerializer.Serialize(new { names });
 
     private ScribeNameFunction Function(string scribe)
-        => new(testbed.ScribeNaming(), testbed.NameSuggester(), new SignedInScribe(scribe),
-            Options.Create(new ScriptoriumOptions { Enabled = true }), NullLogger<ScribeNameFunction>.Instance);
+        => new(testbed.ScribeNaming(), testbed.NameSuggester(), new SignedInScribe(scribe), NullLogger<ScribeNameFunction>.Instance);
 
     private ScriptoriumFunction Scriptorium(string scribe)
-        => new(testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), new SignedInScribe(scribe),
-            Options.Create(new ScriptoriumOptions { Enabled = true }), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+        => new(testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), Options.Create(Settings.ScriptoriumPages),
+            new SignedInScribe(scribe), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
     private AuditEntry Entry(string scribe)
         => new() { Id = Guid.NewGuid(), AtUtc = testbed.Time.GetUtcNow().UtcDateTime, Actor = scribe, Action = AuditAction.ChooseName, Title = "Sister Cache" };

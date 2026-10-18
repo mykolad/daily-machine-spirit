@@ -30,13 +30,12 @@ public sealed class PreceptsFunction
         PreceptDistiller distiller,
         AgreementTrend trend,
         IScribeSignIn signIn,
-        IOptions<ScriptoriumOptions> options,
         ILogger<PreceptsFunction> logger)
     {
         this.keeping = keeping;
         this.distiller = distiller;
         this.trend = trend;
-        gate = new ScriptoriumGate(signIn, options);
+        gate = new ScriptoriumGate(signIn);
         this.logger = logger;
     }
 

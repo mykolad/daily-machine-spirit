@@ -1,29 +1,29 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 
 namespace DailyMachineSpirit.Functions.Caching;
 
 /// <summary>
-/// Gathers the pages votes change and purges them together once a minute, so a vote never waits for Cloudflare, and a
-/// rite's pages are purged at most once a minute per instance however many votes come in. Other readers see a vote
-/// within that minute; the voter sees theirs at once (the page's script). Whatever is still waiting when the app stops
-/// is purged then. Each instance batches its own votes: a purge is harmless to repeat, and even at the app's most
-/// instances (10) a page is purged a few times a minute at most, so sharing one batch isn't worth a coordinator.
+/// Gathers the pages votes change and purges them together once per <see cref="PagePurgingOptions.BatchEvery"/> (a
+/// minute), so a vote never waits for Cloudflare, and a rite's pages are purged at most that often per instance however
+/// many votes come in. Other readers see a vote within that time; the voter sees theirs at once (the page's script).
+/// Whatever is still waiting when the app stops is purged then. Each instance batches its own votes: a purge is harmless
+/// to repeat, and even at the app's most instances (10) a page is purged a few times a minute at most, so sharing one
+/// batch isn't worth a coordinator.
 /// </summary>
 public sealed class PurgeBatcher : BackgroundService
 {
-    public static readonly TimeSpan Interval = TimeSpan.FromMinutes(1);
-
     private readonly ConcurrentDictionary<string, byte> waiting = new();
     private readonly IPageCache cache;
-    // Started here, not in ExecuteAsync, which runs on its own thread whenever it gets there: the first minute starts with
-    // the app, so a test that moves the clock knows where it stands.
+    // Started here, not in ExecuteAsync, which runs on its own thread whenever it gets there: the first batch's time
+    // starts with the app, so a test that moves the clock knows where it stands.
     private readonly PeriodicTimer timer;
 
-    public PurgeBatcher(IPageCache cache, TimeProvider time)
+    public PurgeBatcher(IPageCache cache, IOptions<PagePurgingOptions> options, TimeProvider time)
     {
         this.cache = cache;
-        timer = new PeriodicTimer(Interval, time);
+        timer = new PeriodicTimer(options.Value.BatchEvery, time);
     }
 
     public void Add(IEnumerable<string> paths)

@@ -16,7 +16,7 @@ public class RelatedRitesTests
             [5] = [0f, 0f, 1f],
         };
 
-        Assert.Equal([2, 4, 5], RelatedRites.Closest(1, [1f, 0f, 0f], scores));
+        Assert.Equal([2, 4, 5], RelatedRites.Closest(1, [1f, 0f, 0f], scores, Settings.PublicPages.MoreRitesOnARite));
     }
 
     [Fact]
@@ -29,10 +29,10 @@ public class RelatedRitesTests
             [4] = [0f, 1f, 0f],
         };
 
-        Assert.Equal([4, 3], RelatedRites.Closest(1, [1f, 1f, 0f], scores));
+        Assert.Equal([4, 3], RelatedRites.Closest(1, [1f, 1f, 0f], scores, Settings.PublicPages.MoreRitesOnARite));
     }
 
     [Fact]
     public void Closest_OfEquallyLikeRites_PrefersTheNewer()
-        => Assert.Equal([9, 7, 3], RelatedRites.Closest(1, [1f], new Dictionary<int, float[]> { [3] = [1f], [9] = [1f], [7] = [1f], [2] = [1f] }));
+        => Assert.Equal([9, 7, 3], RelatedRites.Closest(1, [1f], new Dictionary<int, float[]> { [3] = [1f], [9] = [1f], [7] = [1f], [2] = [1f] }, Settings.PublicPages.MoreRitesOnARite));
 }

@@ -29,7 +29,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Ok(await testbed.Scribes().Burn(burned.Id, "Spinners <again>.", BacklogTestbed.Tester, CancellationToken.None));
         var request = Get("");
 
-        var html = Html(await Function(enabled: true).Page(request, CancellationToken.None), 200);
+        var html = Html(await Function().Page(request, CancellationToken.None), 200);
 
         Assert.Contains("The Liturgical Calendar", html);
         Assert.Contains("The Rite of <code>git push --force</code>", html);
@@ -56,7 +56,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         await testbed.AddDraft("The Litany of Forgotten Names", 0.8f, RiteKind.Prayer, new[] { "infrastructure", "caches" });
         await testbed.AddDraft("The Unjudged Rite", 0.7f);
 
-        var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+        var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
         Assert.Contains("Subjects waiting: Caches (2), Infrastructure (1), untagged (1).", html);
         Assert.Contains("""Forgotten Names</h3><p class="tags"><span class="visually-hidden">Filed under </span><span class="tag">Infrastructure</span><span class="tag">Caches</span></p>""", html);
@@ -66,7 +66,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     [Fact]
     public async Task Page_WithAnEmptyBacklog_SaysSo_AndOffersToSummon()
     {
-        var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+        var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
         Assert.Contains("No rite waits", html);
         Assert.Contains("Summon New Rites", html);
@@ -77,7 +77,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     [Fact]
     public async Task Page_CarriesTheSitesIcon_Inline()
     {
-        var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+        var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
         Assert.Contains("""<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg""", html);
     }
@@ -85,7 +85,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     [Fact]
     public async Task Page_UsesTheSitesOwnFonts_AndContactsNoOtherSite()
     {
-        var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+        var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
         Assert.Contains("url(/fonts/cinzel.woff2)", html);
         Assert.DoesNotContain("https://", html);
@@ -94,7 +94,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     [Fact]
     public async Task Page_SaysWhatTheLastActionDid()
     {
-        var html = Html(await Function(enabled: true).Page(Get("?done=burn"), CancellationToken.None), 200);
+        var html = Html(await Function().Page(Get("?done=burn"), CancellationToken.None), 200);
 
         Assert.Contains("Consigned to the flames.", html);
     }
@@ -112,7 +112,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     [InlineData("note-too-long", "That note is too long, so nothing was changed.")]
     public async Task Page_SaysWhatTheLastActionDid_EvenWhenTheRiteIsGoneSince(string done, string message)
     {
-        var html = Html(await Function(enabled: true).Page(Get($"?done={done}&rite={Guid.NewGuid():D}"), CancellationToken.None), 200);
+        var html = Html(await Function().Page(Get($"?done={done}&rite={Guid.NewGuid():D}"), CancellationToken.None), 200);
 
         Assert.Contains($"""<p class="status" role="status">{message}""", html);
     }
@@ -120,7 +120,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     [Fact]
     public async Task Page_SaysNothing_ForAnUnknownOutcome()
     {
-        var html = Html(await Function(enabled: true).Page(Get("?done=smite"), CancellationToken.None), 200);
+        var html = Html(await Function().Page(Get("?done=smite"), CancellationToken.None), 200);
 
         Assert.Contains("""<p class="status" role="status"></p>""", html);
     }
@@ -132,7 +132,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         await testbed.AddDraft("Excellent", 0.95f);
         var good = await testbed.AddDraft("Good", 0.7f);
-        var function = Function(enabled: true);
+        var function = Function();
 
         var response = await function.Decide(Post(""), good.Id, action, CancellationToken.None);
         var html = Html(await function.Page(Following(response.Result), CancellationToken.None), 200);
@@ -149,7 +149,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var excellent = await testbed.AddDraft("Excellent", 0.95f);
         await testbed.AddDraft("Good", 0.7f);
-        var function = Function(enabled: true);
+        var function = Function();
 
         var response = await function.Decide(Post(""), excellent.Id, "humble", CancellationToken.None);
         var html = Html(await function.Page(Following(response.Result), CancellationToken.None), 200);
@@ -164,7 +164,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var burned = await testbed.AddDraft("Burned", 0.5f);
         await testbed.AddDraft("Still waiting", 0.5f);
-        var function = Function(enabled: true);
+        var function = Function();
 
         var response = await function.Decide(Post(""), burned.Id, "burn", CancellationToken.None);
         var html = Html(await function.Page(Following(response.Result), CancellationToken.None), 200);
@@ -179,7 +179,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         await testbed.AddDraft("First", 0.9f);
         var exalted = await testbed.AddDraft("Second", 0.5f);
-        var function = Function(enabled: true);
+        var function = Function();
 
         var response = await function.Decide(Post(""), exalted.Id, "exalt", CancellationToken.None);
         var html = Html(await function.Page(Following(response.Result), CancellationToken.None), 200);
@@ -196,7 +196,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         await testbed.AddDraft("First", 0.9f);
 
-        var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+        var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
         Assert.Contains($"<script>{ScriptoriumScript.Js}</script>", html);
     }
@@ -206,7 +206,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var draft = await testbed.AddDraft("Second chance", 0.5f);
         Ok(await testbed.Scribes().Burn(draft.Id, "", BacklogTestbed.Tester, CancellationToken.None));
-        var function = Function(enabled: true);
+        var function = Function();
 
         var response = await function.Decide(Post(""), draft.Id, "restore", CancellationToken.None);
         var html = Html(await function.Page(Following(response.Result), CancellationToken.None), 200);
@@ -222,9 +222,9 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         await testbed.AddDraft("Fair", 0.4f);
 
         // Today's rite isn't out yet, so the first is already due: the midnight run's retry publishes it.
-        var due = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+        var due = Html(await Function().Page(Get(""), CancellationToken.None), 200);
         Ok(await testbed.Publisher().PublishToday(CancellationToken.None));
-        var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+        var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
         Assert.Contains("Publishes next", due);
         Assert.DoesNotContain("00:00 UTC", due);
@@ -237,11 +237,11 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         await testbed.AddDraft("Excellent", 0.95f);
         var good = await testbed.AddDraft("Good", 0.7f);
         await testbed.AddDraft("Fair", 0.4f);
-        var before = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+        var before = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
         // Good goes up and Excellent down, both placed by the Scribes; Fair stays where the Augury put it.
         Ok(await testbed.Scribes().Exalt(good.Id, "", BacklogTestbed.Tester, CancellationToken.None));
-        var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+        var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
         Assert.DoesNotContain("it would place it", before);
         Assert.Contains("it would place it #2", html);
@@ -260,7 +260,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         // A Scribe placed a draft, so Let the Augury Decide shows too.
         Ok(await testbed.Scribes().Anoint(top.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
-        var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+        var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
         Assert.Contains($""" class="primary" formaction="/scriptorium/drafts/{top.Id:D}/anoint">""", html);
         Assert.Contains("""<span class="pair" role="group" aria-label="Reorder">""", html);
@@ -284,7 +284,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Ok(await testbed.Scribes().Burn(burned.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         Ok(await testbed.Scribes().Anoint(top.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
-        var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+        var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
         var buttons = Regex.Matches(html, "<button[^>]*>").Select(match => match.Value).ToList();
         Assert.Equal(9, buttons.Count);
@@ -294,16 +294,10 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Page_WhenTurnedOff_DoesNotExist()
-    {
-        Assert.IsType<NotFoundResult>(await Function(enabled: false).Page(Get(""), CancellationToken.None));
-    }
-
-    [Fact]
     public async Task Page_WhenCosmosFails_SaysTheScriptoriumIsSilent()
     {
         var function = new ScriptoriumFunction(
-            testbed.ScribesWithoutCosmos(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), new EveryoneIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+            testbed.ScribesWithoutCosmos(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), Options.Create(Settings.ScriptoriumPages), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
         var html = Html(await function.Page(Get(""), CancellationToken.None), 500);
 
@@ -321,7 +315,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var middle = await testbed.AddDraft("Good", 0.7f);
         await testbed.AddDraft("Fair", 0.4f);
 
-        var response = await Function(enabled: true).Decide(Post("A fine note."), middle.Id, action, CancellationToken.None);
+        var response = await Function().Decide(Post("A fine note."), middle.Id, action, CancellationToken.None);
 
         Assert.Equal($"/scriptorium?done={action}&rite={middle.Id:D}#rite-{middle.Id:D}", Assert.IsType<RedirectResult>(response.Result).Url);
         Assert.Null(response.RefillReason);
@@ -335,7 +329,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var burned = await testbed.AddDraft("Burned", 0.5f);
         await testbed.AddDraft("Still waiting", 0.5f);
 
-        var response = await Function(enabled: true).Decide(Post(""), burned.Id, "burn", CancellationToken.None);
+        var response = await Function().Decide(Post(""), burned.Id, "burn", CancellationToken.None);
 
         Assert.Equal($"/scriptorium?done=burn&rite={burned.Id:D}", Assert.IsType<RedirectResult>(response.Result).Url);
         Assert.Null(response.RefillReason);
@@ -346,7 +340,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var last = await testbed.AddDraft("The last one", 0.5f);
 
-        var response = await Function(enabled: true).Decide(Post(""), last.Id, "burn", CancellationToken.None);
+        var response = await Function().Decide(Post(""), last.Id, "burn", CancellationToken.None);
 
         Assert.Equal($"/scriptorium?done=burn-last&rite={last.Id:D}", Assert.IsType<RedirectResult>(response.Result).Url);
         Assert.Equal(ScriptoriumFunction.AllBurned, response.RefillReason);
@@ -358,8 +352,8 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var burned = await testbed.AddDraft("Burned", 0.5f);
         await testbed.AddDraft("Still waiting", 0.5f);
-        var scribes = new Scribes(new DraftsFailingAfterFirstRead(testbed.Drafts), testbed.Rites, testbed.Scriptorium, testbed.Time);
-        var function = new ScriptoriumFunction(scribes, testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), new EveryoneIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+        var scribes = new Scribes(new DraftsFailingAfterFirstRead(testbed.Drafts), testbed.Rites, testbed.Scriptorium, Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages), testbed.Time);
+        var function = new ScriptoriumFunction(scribes, testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), Options.Create(Settings.ScriptoriumPages), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
         var response = await function.Decide(Post(""), burned.Id, "burn", CancellationToken.None);
 
@@ -375,7 +369,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var draft = await testbed.AddDraft("Kept", 0.5f);
 
-        var response = await Function(enabled: true).Decide(Post(contentType, body), draft.Id, "burn", CancellationToken.None);
+        var response = await Function().Decide(Post(contentType, body), draft.Id, "burn", CancellationToken.None);
 
         Assert.IsType<BadRequestResult>(response.Result);
         Assert.Single(await testbed.Waiting());
@@ -387,7 +381,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var draft = await testbed.AddDraft("Second chance", 0.5f);
         Ok(await testbed.Scribes().Burn(draft.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
-        var response = await Function(enabled: true).Decide(Post(""), draft.Id, "restore", CancellationToken.None);
+        var response = await Function().Decide(Post(""), draft.Id, "restore", CancellationToken.None);
 
         Assert.Equal($"/scriptorium?done=restore&rite={draft.Id:D}#rite-{draft.Id:D}", Assert.IsType<RedirectResult>(response.Result).Url);
         Assert.Single(await testbed.Waiting());
@@ -398,7 +392,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var gone = Guid.NewGuid();
 
-        var response = await Function(enabled: true).Decide(Post(""), gone, "burn", CancellationToken.None);
+        var response = await Function().Decide(Post(""), gone, "burn", CancellationToken.None);
 
         Assert.Equal($"/scriptorium?done=changed&rite={gone:D}#rite-{gone:D}", Assert.IsType<RedirectResult>(response.Result).Url);
     }
@@ -409,7 +403,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var first = await testbed.AddDraft("Excellent", 0.95f);
         await testbed.AddDraft("Fair", 0.4f);
 
-        var response = await Function(enabled: true).Decide(Post(""), first.Id, "exalt", CancellationToken.None);
+        var response = await Function().Decide(Post(""), first.Id, "exalt", CancellationToken.None);
 
         Assert.Equal($"/scriptorium?done=unmoved&rite={first.Id:D}#rite-{first.Id:D}", Assert.IsType<RedirectResult>(response.Result).Url);
         Assert.Empty(Ok(await testbed.Scribes().View(CancellationToken.None)).Decisions);
@@ -420,7 +414,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var draft = await testbed.AddDraft("Kept", 0.5f);
 
-        var response = await Function(enabled: true).Decide(
+        var response = await Function().Decide(
             Post(new string('a', ScribeDecision.MaxNoteLength + 1)), draft.Id, "humble", CancellationToken.None);
 
         Assert.Equal($"/scriptorium?done=note-too-long&rite={draft.Id:D}#rite-{draft.Id:D}", Assert.IsType<RedirectResult>(response.Result).Url);
@@ -431,7 +425,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var draft = await testbed.AddDraft("Kept", 0.5f);
 
-        var response = await Function(enabled: true).Decide(Post(""), draft.Id, "smite", CancellationToken.None);
+        var response = await Function().Decide(Post(""), draft.Id, "smite", CancellationToken.None);
 
         Assert.IsType<NotFoundResult>(response.Result);
         Assert.Single(await testbed.Waiting());
@@ -444,7 +438,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var forged = Post("");
         forged.Headers["Sec-Fetch-Site"] = "cross-site";
 
-        var response = await Function(enabled: true).Decide(forged, draft.Id, "burn", CancellationToken.None);
+        var response = await Function().Decide(forged, draft.Id, "burn", CancellationToken.None);
 
         Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<StatusCodeResult>(response.Result).StatusCode);
         Assert.Single(await testbed.Waiting());
@@ -462,7 +456,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         post.Headers.Remove("Sec-Fetch-Site");
         post.Headers.Origin = origin;
 
-        var response = await Function(enabled: true).Decide(post, draft.Id, "burn", CancellationToken.None);
+        var response = await Function().Decide(post, draft.Id, "burn", CancellationToken.None);
 
         Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<StatusCodeResult>(response.Result).StatusCode);
         Assert.Single(await testbed.Waiting());
@@ -476,22 +470,10 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         post.Headers.Remove("Sec-Fetch-Site");
         post.Headers.Origin = "https://dailymachinespirit.fyi";
 
-        var response = await Function(enabled: true).Decide(post, draft.Id, "burn", CancellationToken.None);
+        var response = await Function().Decide(post, draft.Id, "burn", CancellationToken.None);
 
         Assert.IsType<RedirectResult>(response.Result);
         Assert.Empty(await testbed.Waiting());
-    }
-
-    [Fact]
-    public async Task Actions_WhenTurnedOff_DoNotExist()
-    {
-        var draft = await testbed.AddDraft("Kept", 0.5f);
-        var function = Function(enabled: false);
-
-        Assert.IsType<NotFoundResult>((await function.Decide(Post(""), draft.Id, "burn", CancellationToken.None)).Result);
-        Assert.IsType<NotFoundResult>((await function.Summon(Post(""), CancellationToken.None)).Result);
-        Assert.IsType<NotFoundResult>(await function.LetTheAuguryDecide(Post(""), CancellationToken.None));
-        Assert.Single(await testbed.Waiting());
     }
 
     [Fact]
@@ -499,7 +481,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var draft = await testbed.AddDraft("Kept", 0.5f);
         var function = new ScriptoriumFunction(
-            testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), new NobodyIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = true }), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+            testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), Options.Create(Settings.ScriptoriumPages), new NobodyIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
         var page = await function.Page(Get(""), CancellationToken.None);
         var decision = await function.Decide(Post(""), draft.Id, "burn", CancellationToken.None);
@@ -516,7 +498,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     [Fact]
     public async Task Summon_AsksForARefill_AndGoesBackToThePage()
     {
-        var response = await Function(enabled: true).Summon(Post(""), CancellationToken.None);
+        var response = await Function().Summon(Post(""), CancellationToken.None);
 
         Assert.Equal("/scriptorium?done=summon", Assert.IsType<RedirectResult>(response.Result).Url);
         Assert.Equal(ScriptoriumFunction.Summoned, response.RefillReason);
@@ -529,7 +511,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var fair = await testbed.AddDraft("Fair", 0.4f);
         Ok(await testbed.Scribes().Anoint(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
-        var result = await Function(enabled: true).LetTheAuguryDecide(Post(""), CancellationToken.None);
+        var result = await Function().LetTheAuguryDecide(Post(""), CancellationToken.None);
 
         Assert.Equal("/scriptorium?done=augury", Assert.IsType<RedirectResult>(result).Url);
         Assert.Equal("Excellent", Ok(await testbed.Scribes().View(CancellationToken.None)).Calendar[0].Draft.Writing.Title);
@@ -540,7 +522,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
 
-        var html = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+        var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
         Assert.Contains($"""href="/scriptorium/drafts/{draft.Id:D}/amend">""", html);
     }
@@ -552,7 +534,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
 
-        var html = Html(await Function(enabled: true).AmendPage(Get(""), draft.Id, CancellationToken.None), 200);
+        var html = Html(await Function().AmendPage(Get(""), draft.Id, CancellationToken.None), 200);
 
         Assert.Contains("""<input type="text" id="amend-title" name="title" value="Litany of the Cold Cache" """, html);
         Assert.Contains("""<input type="hidden" name="etag" value=""", html);
@@ -570,7 +552,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
         Ok(await testbed.Scribes().Burn(draft.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
-        var result = await Function(enabled: true).AmendPage(Get(""), draft.Id, CancellationToken.None);
+        var result = await Function().AmendPage(Get(""), draft.Id, CancellationToken.None);
 
         Assert.Equal($"/scriptorium?done=changed&rite={draft.Id:D}#rite-{draft.Id:D}", Assert.IsType<RedirectResult>(result).Url);
     }
@@ -581,14 +563,14 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var unjudged = await testbed.AddUnjudgedDraft("Litany of the Cold Cache");
         var judged = await testbed.AddDraft("Already judged", 0.9f);
-        var page = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+        var page = Html(await Function().Page(Get(""), CancellationToken.None), 200);
         Assert.Contains($"""formaction="/scriptorium/drafts/{unjudged.Id:D}/judge">""", page);
         Assert.DoesNotContain($"/scriptorium/drafts/{judged.Id:D}/judge", page);
 
-        var response = await Function(enabled: true).Decide(Post(""), unjudged.Id, "judge", CancellationToken.None);
+        var response = await Function().Decide(Post(""), unjudged.Id, "judge", CancellationToken.None);
 
         Assert.Equal($"/scriptorium?done=judged&rite={unjudged.Id:D}#rite-{unjudged.Id:D}", Assert.IsType<RedirectResult>(response.Result).Url);
-        var html = Html(await Function(enabled: true).Page(Following(response.Result), CancellationToken.None), 200);
+        var html = Html(await Function().Page(Following(response.Result), CancellationToken.None), 200);
         Assert.Matches("Judged “Litany of the Cold Cache” again, \\d+ %: the Augury places it for ", html);
         Assert.Contains($"""A Scribe on staging judged <a href="/scriptorium/record?draft={unjudged.Id:D}">“Litany of the Cold Cache”</a> again""", ScriptoriumPage.RenderRecord(
             Ok(await testbed.Audit.GetHistory(unjudged.Id, CancellationToken.None)), [], LanguageExt.Prelude.None));
@@ -601,12 +583,12 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var judged = await testbed.AddDraft("Already judged", 0.9f);
         testbed.JevApiKey = "";
 
-        var still = await Function(enabled: true).Decide(Post(""), unjudged.Id, "judge", CancellationToken.None);
-        var nothing = await Function(enabled: true).Decide(Post(""), judged.Id, "judge", CancellationToken.None);
+        var still = await Function().Decide(Post(""), unjudged.Id, "judge", CancellationToken.None);
+        var nothing = await Function().Decide(Post(""), judged.Id, "judge", CancellationToken.None);
 
         Assert.StartsWith("/scriptorium?done=still-unjudged", Assert.IsType<RedirectResult>(still.Result).Url);
         Assert.Contains("Still “Litany of the Cold Cache” can't be judged",
-            Html(await Function(enabled: true).Page(Following(still.Result), CancellationToken.None), 200));
+            Html(await Function().Page(Following(still.Result), CancellationToken.None), 200));
         Assert.StartsWith("/scriptorium?done=changed", Assert.IsType<RedirectResult>(nothing.Result).Url);
     }
 
@@ -621,7 +603,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var form = string.Join("&", new[] { ("etag", await ETag(draft)), ("title", "The Long Litany"), ("text", text), ("truth", truth), ("note", "") }
             .Select(field => $"{field.Item1}={Uri.EscapeDataString(field.Item2)}"));
 
-        var response = await Function(enabled: true).Decide(Post("application/x-www-form-urlencoded", form), draft.Id, "amend", CancellationToken.None);
+        var response = await Function().Decide(Post("application/x-www-form-urlencoded", form), draft.Id, "amend", CancellationToken.None);
 
         Assert.StartsWith("/scriptorium?done=amend", Assert.IsType<RedirectResult>(response.Result).Url);
         var saved = Assert.Single(await testbed.Waiting());
@@ -642,11 +624,11 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
 
-        var response = await Function(enabled: true).Decide(
+        var response = await Function().Decide(
             Amending(await ETag(draft), "The Litany of the Warm Cache", "Sharper."), draft.Id, "amend", CancellationToken.None);
 
         Assert.Equal($"/scriptorium?done=amend&rite={draft.Id:D}#rite-{draft.Id:D}", Assert.IsType<RedirectResult>(response.Result).Url);
-        var html = Html(await Function(enabled: true).Page(Following(response.Result), CancellationToken.None), 200);
+        var html = Html(await Function().Page(Following(response.Result), CancellationToken.None), 200);
         Assert.Contains("Amended “The Litany of the Warm Cache”: judged again, it waits for Wed 7 Oct.", html);
         Assert.Contains("""written by <span class="nowrap">gpt-6-sol</span>, amended by a Scribe""", html);
         Assert.Contains("Amended: <cite>Litany of the Cold Cache</cite>", html);
@@ -661,10 +643,10 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Ok(await testbed.Scribes().Anoint(draft.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         testbed.JevApiKey = "";
 
-        var response = await Function(enabled: true).Decide(
+        var response = await Function().Decide(
             Amending(await ETag(draft), "The Litany of the Warm Cache", "Sharper."), draft.Id, "amend", CancellationToken.None);
 
-        var html = Html(await Function(enabled: true).Page(Following(response.Result), CancellationToken.None), 200);
+        var html = Html(await Function().Page(Following(response.Result), CancellationToken.None), 200);
         Assert.Contains("Amended “The Litany of the Warm Cache”, but it couldn't be judged again, so it waits unjudged for Wed 7 Oct.", html);
     }
 
@@ -674,7 +656,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
 
-        var response = await Function(enabled: true).Decide(
+        var response = await Function().Decide(
             Amending(await ETag(draft), "The Warhammer Litany", "Sharper."), draft.Id, "amend", CancellationToken.None);
 
         var html = Html(response.Result, 422);
@@ -691,7 +673,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
         testbed.Models.Answers(BacklogTestbed.Sol, BacklogTestbed.Answer("The Litany of the Warm Cache"));
 
-        var response = await Function(enabled: true).Decide(
+        var response = await Function().Decide(
             Amending(await ETag(draft), "Litany of the Cold Cache", "Warm it up."), draft.Id, "rewrite", CancellationToken.None);
 
         var html = Html(response.Result, 200);
@@ -708,7 +690,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         testbed.Models.Answers(BacklogTestbed.Sol,
             FakeChatClients.Answer("Litany of the Cold Cache", "O Machine Spirit, let thy cache be warm.", "A warm cache is one that was read before."));
 
-        var response = await Function(enabled: true).Decide(
+        var response = await Function().Decide(
             Amending(await ETag(draft), "Litany of the Cold Cache", "Warm it up."), draft.Id, "rewrite", CancellationToken.None);
 
         var html = Html(response.Result, 200);
@@ -725,7 +707,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
         testbed.Models.Fails(BacklogTestbed.Sol, 3).Fails(BacklogTestbed.Luna, 3);
 
-        var response = await Function(enabled: true).Decide(
+        var response = await Function().Decide(
             Amending(await ETag(draft), "Litany of the Cold Cache, Amended", "Warm it up."), draft.Id, "rewrite", CancellationToken.None);
 
         var html = Html(response.Result, 503);
@@ -737,7 +719,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     [Fact]
     public async Task Summon_IsRecorded()
     {
-        await Function(enabled: true).Summon(Post(""), CancellationToken.None);
+        await Function().Summon(Post(""), CancellationToken.None);
 
         var entry = Assert.Single(Ok(await testbed.Audit.GetNewest(10, CancellationToken.None)));
         Assert.Equal((AuditEntry.StagingScribe, AuditAction.Summon), (entry.Actor, entry.Action));
@@ -748,10 +730,10 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
         await testbed.AddDraft("The Rite of Re-Run", 0.5f);
-        await Function(enabled: true).Decide(Post(""), draft.Id, "burn", CancellationToken.None);
+        await Function().Decide(Post(""), draft.Id, "burn", CancellationToken.None);
 
-        var all = Html(await Function(enabled: true).Record(Get(""), CancellationToken.None), 200);
-        var one = Html(await Function(enabled: true).Record(Get($"?draft={draft.Id:D}"), CancellationToken.None), 200);
+        var all = Html(await Function().Record(Get(""), CancellationToken.None), 200);
+        var one = Html(await Function().Record(Get($"?draft={draft.Id:D}"), CancellationToken.None), 200);
 
         var rite = $"""<a href="/scriptorium/record?draft={draft.Id:D}">“Litany of the Cold Cache”</a>""";
         Assert.Contains($"""A Scribe on staging consigned {rite} to the flames <span class="when">(from #2)</span>""", all);
@@ -759,22 +741,20 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Contains("“The Rite of Re-Run”", all);
         Assert.Contains("One rite's record.", one);
         Assert.DoesNotContain("“The Rite of Re-Run”", one);
-        var calendar = Html(await Function(enabled: true).Page(Get(""), CancellationToken.None), 200);
+        var calendar = Html(await Function().Page(Get(""), CancellationToken.None), 200);
         Assert.Contains("""<a href="/scriptorium/record">The Record</a>""", calendar);
     }
 
     [Fact]
     public async Task TheRecord_IsTheScribesAlone()
     {
-        var notAScribe = new ScriptoriumFunction(testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), new NobodyIsScribeSignIn(),
-            Options.Create(new ScriptoriumOptions { Enabled = true }), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+        var notAScribe = new ScriptoriumFunction(testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), Options.Create(Settings.ScriptoriumPages), new NobodyIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
         Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<StatusCodeResult>(await notAScribe.Record(Get(""), CancellationToken.None)).StatusCode);
-        Assert.IsType<NotFoundResult>(await Function(enabled: false).Record(Get(""), CancellationToken.None));
     }
 
-    private ScriptoriumFunction Function(bool enabled)
-        => new(testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), new EveryoneIsScribeSignIn(), Options.Create(new ScriptoriumOptions { Enabled = enabled }), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+    private ScriptoriumFunction Function()
+        => new(testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), Options.Create(Settings.ScriptoriumPages), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
     private static HttpRequest Get(string query)
     {

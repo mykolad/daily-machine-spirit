@@ -49,9 +49,6 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public int BacklogSize { get; set; } = 3;
 
-    /// <summary>How many recent rites the writer's prompt lists; the duplicate check reads every one.</summary>
-    public int RecentRitesInPrompt { get; set; } = 30;
-
     /// <summary>Empty turns judging off, as an empty <c>Jev:ApiKey</c> does.</summary>
     public string JevApiKey { get; set; } = FakeJev.ApiKey;
 
@@ -82,23 +79,22 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public BacklogRefiller Refiller()
     {
-        var options = Options.Create(new GenerationOptions { RetryDelaySeconds = 0, BacklogSize = BacklogSize, RecentRitesInPrompt = RecentRitesInPrompt });
         return new BacklogRefiller(
             Drafts,
             Rites,
             Scriptorium,
-            Writer(options),
-            new DuplicateCheck(Models, options, Time, Probe.Metrics),
+            Writer(),
+            new DuplicateCheck(Models, Options.Create(Settings.DuplicateRiteCheck), Time, Probe.Metrics),
             JudgingAgain(),
             Jev.NewJudge(Time, JevApiKey),
-            options,
+            Options.Create(Settings.Backlog with { DraftsWaiting = BacklogSize }),
             Probe.Metrics,
             NullLogger<BacklogRefiller>.Instance);
     }
 
-    public DailyRitePublisher Publisher() => new(Rites, Drafts, Scriptorium, Refiller(), Time, Probe.Metrics, NullLogger<DailyRitePublisher>.Instance);
+    public DailyRitePublisher Publisher() => new(Rites, Drafts, Scriptorium, Refiller(), Options.Create(Settings.Augury), Time, Probe.Metrics, NullLogger<DailyRitePublisher>.Instance);
 
-    public Scribes Scribes() => new(Drafts, Rites, Scriptorium, Time);
+    public Scribes Scribes() => new(Drafts, Rites, Scriptorium, Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages), Time);
 
     public JudgingAgain JudgingAgain() => new(Drafts, Jev.NewJudge(Time, JevApiKey), Time, NullLogger<JudgingAgain>.Instance);
 
@@ -107,21 +103,22 @@ public sealed class BacklogTestbed : IAsyncLifetime
     public ScribeNaming ScribeNaming() => new(ScribeNames, Time);
 
     public NameSuggester NameSuggester()
-        => new(Models, Options.Create(new GenerationOptions { ScribeNameModel = Namer }), Time, Probe.Metrics, NullLogger<NameSuggester>.Instance);
+        => new(Models, Options.Create(Settings.ScribeNameSuggestions with { Model = Namer }), Time, Probe.Metrics, NullLogger<NameSuggester>.Instance);
 
     public PreceptDistiller Distiller()
-        => new(Scriptorium, Precepts, Models, PreceptCheck(), Options.Create(new GenerationOptions()), Time, Probe.Metrics, NullLogger<PreceptDistiller>.Instance);
+        => new(Scriptorium, Precepts, Models, PreceptCheck(), Options.Create(Settings.PreceptDistilling), Time, Probe.Metrics, NullLogger<PreceptDistiller>.Instance);
 
-    public PreceptCheck PreceptCheck() => new(Models, Options.Create(new GenerationOptions { PreceptCheckModels = [Checker, SecondChecker] }), Time, Probe.Metrics);
+    public PreceptCheck PreceptCheck() => new(Models, Options.Create(Settings.PreceptCheck with { Models = [Checker, SecondChecker] }), Time, Probe.Metrics);
 
     public Amendments Amendments()
-        => new(Drafts, Scriptorium, Scribes(), Jev.NewJudge(Time, JevApiKey), Writer(Options.Create(new GenerationOptions { RetryDelaySeconds = 0 })), Time, NullLogger<Amendments>.Instance);
+        => new(Drafts, Scriptorium, Scribes(), Jev.NewJudge(Time, JevApiKey), Writer(), Time, NullLogger<Amendments>.Instance);
 
     /// <summary>Scribes whose every read fails, as when Cosmos is down: the container doesn't exist.</summary>
     public Scribes ScribesWithoutCosmos()
     {
         var missing = cosmos.Container.Database.GetContainer("missing");
-        return new Scribes(new DraftRepository(missing), new RiteRepository(missing, NullLogger<RiteRepository>.Instance), new ScriptoriumRepository(missing), Time);
+        return new Scribes(new DraftRepository(missing), new RiteRepository(missing, NullLogger<RiteRepository>.Instance), new ScriptoriumRepository(missing),
+            Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages), Time);
     }
 
     /// <summary>A waiting draft, already judged, as if written by an earlier refill.</summary>
@@ -184,7 +181,10 @@ public sealed class BacklogTestbed : IAsyncLifetime
             },
         }, CancellationToken.None));
 
-    private RiteWriter Writer(IOptions<GenerationOptions> options) => new(Models, Precepts, options, Time, Probe.Metrics, NullLogger<RiteWriter>.Instance);
+    // The app's patience, without the pause between tries: the fake models answer at once.
+    private RiteWriter Writer()
+        => new(Models, Precepts, Options.Create(Settings.RiteWriting with { Patience = Settings.RiteWriting.Patience with { PauseBetweenTries = TimeSpan.Zero } }),
+            Time, Probe.Metrics, NullLogger<RiteWriter>.Instance);
 
     public async Task<List<Draft>> Waiting() => Expect.Ok(await Drafts.GetWaiting(CancellationToken.None));
 

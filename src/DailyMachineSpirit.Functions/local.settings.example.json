@@ -7,7 +7,6 @@
     "Cosmos__Database": "",
     "AzureOpenAI__Endpoint": "",
     "Jev__ApiKey": "",
-    "Scriptorium__Enabled": "true",
     "Scriptorium__WithoutSignIn": "true",
     "GitHub__ClientId": "",
     "GitHub__ClientSecret": "",

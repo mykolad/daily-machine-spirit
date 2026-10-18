@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
+using Microsoft.Extensions.Options;
 using static DailyMachineSpirit.Tests.Expect;
 using static LanguageExt.Prelude;
 
@@ -190,7 +191,7 @@ public sealed class SitePagesTests : IAsyncLifetime
             new RiteSimilarity { ScoresGeneratorVersion = "jev/q1", Scores = [1f, 0f], CreatedAtUtc = DateTime.UtcNow },
             CancellationToken.None));
         var failing = new RitesWithoutScores(Repository);
-        var pages = new SitePages(failing, time, NullLogger<SitePages>.Instance);
+        var pages = new SitePages(failing, Options.Create(Settings.PublicPages), time, NullLogger<SitePages>.Instance);
 
         var page = await Read(context => pages.Rite(context.Request, "2", CancellationToken.None));
 
@@ -575,7 +576,7 @@ public sealed class SitePagesTests : IAsyncLifetime
     public async Task EveryPage_WhenTheDataCantBeRead_FailsWith503_AndOffersToTryAgain()
     {
         var missing = new RiteRepository(cosmos.Container.Database.GetContainer("no-such-container"), NullLogger<RiteRepository>.Instance);
-        var pages = new SitePages(missing, time, NullLogger<SitePages>.Instance);
+        var pages = new SitePages(missing, Options.Create(Settings.PublicPages), time, NullLogger<SitePages>.Instance);
 
         var today = await Read(context => pages.Today(context.Request, "", CancellationToken.None));
         var rite = await Read(context => pages.Rite(context.Request, "1", CancellationToken.None));
@@ -633,7 +634,7 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.All(new[] { today, rite }, html => Assert.Contains($"""data-counted-at="{time.GetUtcNow().ToUnixTimeMilliseconds()}">""", html));
     }
 
-    private SitePages Pages() => new(Repository, time, NullLogger<SitePages>.Instance);
+    private SitePages Pages() => new(Repository, Options.Create(Settings.PublicPages), time, NullLogger<SitePages>.Instance);
 
     private RiteRepository Repository => new(cosmos.Container, NullLogger<RiteRepository>.Instance);
 

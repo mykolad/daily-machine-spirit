@@ -102,7 +102,7 @@ public sealed class PreceptsTests : IAsyncLifetime
     {
         testbed.Models.Then(Checker, [() =>
         {
-            testbed.Time.Advance(PreceptCheck.TimeAllowed);
+            testbed.Time.Advance(Settings.PreceptCheck.Patience.OverallLimit.IfNone(TimeSpan.Zero));
             return new TaskCompletionSource<string>().Task;
         }]);
 
@@ -291,7 +291,7 @@ public sealed class PreceptsTests : IAsyncLifetime
         await AJudgment();
         testbed.Models.Then(Sol, [() =>
         {
-            testbed.Time.Advance(PreceptDistiller.AttemptTime);
+            testbed.Time.Advance(Settings.PreceptDistilling.Patience.TryLimit.IfNone(TimeSpan.Zero));
             return new TaskCompletionSource<string>().Task;
         }]);
         testbed.Models.Answers(Luna, Distilled(RealFix));

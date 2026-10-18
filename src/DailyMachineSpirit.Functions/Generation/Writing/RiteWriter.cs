@@ -13,18 +13,12 @@ using static LanguageExt.Prelude;
 namespace DailyMachineSpirit.Functions.Generation.Writing;
 
 /// <summary>
-/// Asks the models for a rite, each up to <see cref="GenerationOptions.AttemptsPerModel"/> times, in
-/// <see cref="GenerationOptions.Models"/> order. An unusable answer (<see cref="RiteChecks"/>) is asked for again, never
-/// cut or patched up: a cut rite would read as broken, and a patched one isn't what the model wrote.
+/// Asks the models for a rite (<see cref="RiteWritingOptions.Models"/>, in order), with the patience of a refill or of a
+/// Scribe waiting. An unusable answer (<see cref="RiteChecks"/>) is asked for again, never cut or patched up: a cut rite
+/// would read as broken, and a patched one isn't what the model wrote.
 /// </summary>
 public sealed class RiteWriter
 {
-    /// <summary>
-    /// A rewrite's patience: each model once, 40 seconds each, so the Scribe gets their page back (with the rewrite or
-    /// their own words) within the 100 seconds Cloudflare waits for an answer.
-    /// </summary>
-    public static readonly Patience WhileTheScribeWaits = new(1, TimeSpan.Zero, Some(TimeSpan.FromSeconds(40)));
-
     private static readonly JsonSerializerOptions AnswerSerializerOptions = new(JsonSerializerOptions.Web)
     {
         // A missing or null field makes the answer unusable, rather than a rite with a hole in it.
@@ -34,7 +28,7 @@ public sealed class RiteWriter
 
     private readonly IChatClients chatClients;
     private readonly IPreceptRepository precepts;
-    private readonly IOptions<GenerationOptions> options;
+    private readonly IOptions<RiteWritingOptions> options;
     private readonly TimeProvider time;
     private readonly SiteMetrics metrics;
     private readonly ILogger<RiteWriter> logger;
@@ -42,7 +36,7 @@ public sealed class RiteWriter
     public RiteWriter(
         IChatClients chatClients,
         IPreceptRepository precepts,
-        IOptions<GenerationOptions> options,
+        IOptions<RiteWritingOptions> options,
         TimeProvider time,
         SiteMetrics metrics,
         ILogger<RiteWriter> logger)
@@ -60,7 +54,7 @@ public sealed class RiteWriter
         => (await Answer(
                 [new(ChatRole.System, RitePrompt.Instructions(kind, taken, await Precepts(cancellationToken))), new(ChatRole.User, RitePrompt.Request(kind))],
                 kind,
-                Unhurried(),
+                options.Value.Patience,
                 "write",
                 $"No model wrote a usable {kind.ToString().ToLowerInvariant()}.",
                 cancellationToken))
@@ -87,7 +81,7 @@ public sealed class RiteWriter
         => (await Answer(
                 [new(ChatRole.System, RitePrompt.Instructions(kind, [], await Precepts(cancellationToken))), new(ChatRole.User, RitePrompt.Rewrite(kind, words, note))],
                 kind,
-                WhileTheScribeWaits,
+                options.Value.PatienceWhileTheScribeWaits,
                 "rewrite",
                 "No model rewrote it usably.",
                 cancellationToken))
@@ -115,15 +109,15 @@ public sealed class RiteWriter
         var failures = new List<string>();
         foreach (var model in options.Value.Models)
         {
-            for (var attempt = 1; attempt <= patience.AttemptsPerModel; attempt++)
+            for (var attempt = 1; attempt <= patience.TriesPerModel; attempt++)
             {
                 // A pause before asking again: an overloaded or throttled model often answers a little later.
                 if (failures.Count > 0)
                 {
-                    await Task.Delay(patience.RetryDelay, time, cancellationToken);
+                    await Task.Delay(patience.PauseBetweenTries, time, cancellationToken);
                 }
 
-                var answer = await Ask(model, messages, patience.AttemptTime, asked, cancellationToken);
+                var answer = await Ask(model, messages, patience.TryLimit, asked, cancellationToken);
                 var written = answer.Bind(content => RiteChecks.Check(content, kind));
                 metrics.Answer(model, answer.IsLeft ? "failed" : written.IsLeft ? "refused" : "accepted");
                 if (written.IsRight)
@@ -177,10 +171,6 @@ public sealed class RiteWriter
             return Error.New(ex);
         }
     }
-
-    // A refill's patience: nobody waits on it, so every model gets its tries, with pauses between them.
-    private Patience Unhurried()
-        => new(options.Value.AttemptsPerModel, TimeSpan.FromSeconds(options.Value.RetryDelaySeconds), None);
 
     private static string Shorten(string text) => text.Length <= 500 ? text : $"{text[..500]}…";
 }

@@ -38,9 +38,9 @@ public sealed class JevTagsTests
         var anotherJudge = TopicScores.About(("builds", 1f)) with { ScoresGeneratorVersion = "other/q1" };
         var tooFewScores = new RiteSimilarity { ScoresGeneratorVersion = JevQuestions.Version("jev-1.13.0"), Scores = [1f, 0f] };
 
-        Assert.True(JevTags.From(anotherQuestionSet).IsNone);
-        Assert.True(JevTags.From(anotherJudge).IsNone);
-        Assert.True(JevTags.From(tooFewScores).IsNone);
+        Assert.True(JevTags.From(anotherQuestionSet, Settings.Jev).IsNone);
+        Assert.True(JevTags.From(anotherJudge, Settings.Jev).IsNone);
+        Assert.True(JevTags.From(tooFewScores, Settings.Jev).IsNone);
     }
 
     // Every Jev topic is one of the site's tags, so no rite loses a subject on the way.
@@ -54,5 +54,5 @@ public sealed class JevTagsTests
     }
 
     private static string[] Tags(RiteSimilarity similarity)
-        => JevTags.From(similarity).IfNone(() => throw new Xunit.Sdk.XunitException("Expected Jev's scores to be read."));
+        => JevTags.From(similarity, Settings.Jev).IfNone(() => throw new Xunit.Sdk.XunitException("Expected Jev's scores to be read."));
 }

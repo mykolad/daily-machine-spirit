@@ -37,7 +37,7 @@ public sealed class VotesTests : IAsyncLifetime
 
     public VotesTests()
     {
-        purges = new PurgeBatcher(pages, time);
+        purges = new PurgeBatcher(pages, Options.Create(Settings.PagePurging), time);
     }
 
     public Task InitializeAsync() => cosmos.InitializeAsync();
