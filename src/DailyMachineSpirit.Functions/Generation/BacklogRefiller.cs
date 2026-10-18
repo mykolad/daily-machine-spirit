@@ -11,15 +11,9 @@ using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Functions.Generation;
 
-/// <summary>Keeps <see cref="GenerationOptions.BacklogSize"/> drafts waiting, so moderators always have a choice.</summary>
+/// <summary>Keeps <see cref="BacklogOptions.DraftsWaiting"/> drafts waiting, so moderators always have a choice.</summary>
 public sealed class BacklogRefiller
 {
-    /// <summary>How many recent rites (and burned drafts) the writer's prompt lists; the duplicate check reads every rite.</summary>
-    public const int RecentRitesInPrompt = 30;
-
-    /// <summary>How many times a draft that repeats a rite is written again before it's kept, marked for the Scribes.</summary>
-    public const int DuplicateRewrites = 2;
-
     private readonly IDraftRepository drafts;
     private readonly IRiteRepository rites;
     private readonly IScriptoriumRepository scriptorium;
@@ -27,7 +21,7 @@ public sealed class BacklogRefiller
     private readonly DuplicateCheck duplicates;
     private readonly JudgingAgain judgingAgain;
     private readonly IRiteJudge judge;
-    private readonly IOptions<GenerationOptions> options;
+    private readonly IOptions<BacklogOptions> options;
     private readonly SiteMetrics metrics;
     private readonly ILogger<BacklogRefiller> logger;
 
@@ -39,7 +33,7 @@ public sealed class BacklogRefiller
         DuplicateCheck duplicates,
         JudgingAgain judgingAgain,
         IRiteJudge judge,
-        IOptions<GenerationOptions> options,
+        IOptions<BacklogOptions> options,
         SiteMetrics metrics,
         ILogger<BacklogRefiller> logger)
     {
@@ -68,7 +62,7 @@ public sealed class BacklogRefiller
         for (var written = 0; ; written++)
         {
             var wroteOne = await drafts.GetWaiting(cancellationToken)
-                .BindAsync(async waiting => waiting.Count >= options.Value.BacklogSize
+                .BindAsync(async waiting => waiting.Count >= options.Value.DraftsWaiting
                     ? Right<Error, bool>(false)
                     : (await AddDraft(waiting, cancellationToken)).Map(_ => true));
             if (wroteOne.IsLeft)
@@ -87,21 +81,21 @@ public sealed class BacklogRefiller
     /// Writes, judges and saves one draft, of the kind the backlog has fewer of, repeating no rite already written. The
     /// prompt lists the recent rites, the <paramref name="waiting"/> drafts and the recently burned ones (they teach the
     /// model what the Scribes didn't want), each with its truth; then a model checks the draft against those and every
-    /// rite ever published. One that repeats a rite is written again, up to <see cref="DuplicateRewrites"/>
-    /// times, then kept, marked with what it repeats, for the Scribes to judge.
+    /// rite ever published. One that repeats a rite is written again, up to
+    /// <see cref="BacklogOptions.RewritesOfARepeatedRite"/> times, then kept, marked with what it repeats, for the Scribes to judge.
     /// </summary>
     public Task<Either<Error, Draft>> AddDraft(IReadOnlyList<Draft> waiting, CancellationToken cancellationToken)
         => rites.GetAllWords(cancellationToken)
-            .BindAsync(published => scriptorium.GetBurned(RecentRitesInPrompt, cancellationToken)
+            .BindAsync(published => scriptorium.GetBurned(options.Value.RecentRitesInPrompt, cancellationToken)
                 .BindAsync(burned =>
                 {
                     List<TakenRite> drafted = [.. waiting.Select(Taken), .. burned.Select(Taken)];
-                    var recent = published.Take(RecentRitesInPrompt).Select(Taken);
+                    var recent = published.Take(options.Value.RecentRitesInPrompt).Select(Taken);
                     return Unrepeated(
                         KindToWrite(waiting),
                         [.. recent, .. drafted],
                         [.. published.Select(Taken), .. drafted],
-                        DuplicateRewrites,
+                        options.Value.RewritesOfARepeatedRite,
                         cancellationToken);
                 }))
             .BindAsync(async draft => Right<Error, Draft>(await Judged(draft, cancellationToken)))

@@ -18,12 +18,6 @@ namespace DailyMachineSpirit.Functions.Generation.Precepts;
 /// </summary>
 public sealed class PreceptDistiller
 {
-    /// <summary>How many of the newest judgments a distillation reads: a few months of a weekly visit's.</summary>
-    public const int JudgmentsRead = 100;
-
-    /// <summary>How long a model may take: two of them stay within the 100 seconds Cloudflare waits for an answer.</summary>
-    public static readonly TimeSpan AttemptTime = TimeSpan.FromSeconds(40);
-
     /// <summary>The Scribes haven't judged anything yet: there's nothing to learn from.</summary>
     public static readonly Error NothingToLearn = Error.New("The Scribes haven't judged any rite yet, so there's nothing to learn from.");
 
@@ -48,7 +42,7 @@ public sealed class PreceptDistiller
     private readonly IPreceptRepository precepts;
     private readonly IChatClients chatClients;
     private readonly PreceptCheck check;
-    private readonly IOptions<GenerationOptions> options;
+    private readonly IOptions<PreceptDistillingOptions> options;
     private readonly TimeProvider time;
     private readonly SiteMetrics metrics;
     private readonly ILogger<PreceptDistiller> logger;
@@ -58,7 +52,7 @@ public sealed class PreceptDistiller
         IPreceptRepository precepts,
         IChatClients chatClients,
         PreceptCheck check,
-        IOptions<GenerationOptions> options,
+        IOptions<PreceptDistillingOptions> options,
         TimeProvider time,
         SiteMetrics metrics,
         ILogger<PreceptDistiller> logger)
@@ -85,7 +79,7 @@ public sealed class PreceptDistiller
         => Distil(AuditEntry.MachineSpirit, onlyWhenJudgedSince: true, cancellationToken);
 
     private Task<Either<Error, PreceptBook>> Distil(string actor, bool onlyWhenJudgedSince, CancellationToken cancellationToken)
-        => scriptorium.GetDecisions(JudgmentsRead, cancellationToken)
+        => scriptorium.GetDecisions(options.Value.JudgmentsRead, cancellationToken)
             .BindAsync(decisions => precepts.Get(cancellationToken)
                 .BindAsync(read => (onlyWhenJudgedSince && !JudgedSince(read.Book, decisions)
                         ? Task.FromResult(Left<Error, PreceptBook>(NothingNewToLearn))
@@ -152,13 +146,14 @@ public sealed class PreceptDistiller
                 return Left<Error, List<string>>(Unchecked);
             });
 
-    // Each model once, in order, for AttemptTime at most: a Scribe waits for the answer, and the weekly run can wait for
-    // next week.
+    // Each model in order, its tries each within the patience's time: a Scribe waits for the answer, and the weekly run can
+    // wait for next week.
     private async Task<Either<Error, List<string>>> Answer(
         List<ChatMessage> messages, int room, IReadOnlySet<string> excluded, CancellationToken cancellationToken)
     {
         var failures = new List<string>();
-        foreach (var model in options.Value.Models)
+        var patience = options.Value.Patience;
+        foreach (var model in options.Value.Models.SelectMany(model => Enumerable.Repeat(model, patience.TriesPerModel)))
         {
             var answer = (await Ask(model, messages, cancellationToken)).Bind(distilled => Checked(distilled, room, excluded));
             if (answer.IsRight)
@@ -177,7 +172,7 @@ public sealed class PreceptDistiller
 
     private async Task<Either<Error, DistilledPrecepts>> Ask(string model, List<ChatMessage> messages, CancellationToken cancellationToken)
     {
-        using var timeout = new CancellationTokenSource(AttemptTime, time);
+        using var timeout = options.Value.Patience.TimerForATry(time);
         using var attempt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
         var started = time.GetTimestamp();
         try

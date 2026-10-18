@@ -6,16 +6,11 @@ namespace DailyMachineSpirit.Functions.Generation.Judging;
 
 /// <summary>
 /// A rite's tags from Jev's answer to which software habit it's about: the topics Jev gives at least
-/// <see cref="MinProbability"/>, the likeliest first, at most <see cref="MaxPerRite"/>. "None of the above" is never a
+/// <see cref="JevOptions.TagMinProbability"/>, the likeliest first, at most <see cref="JevOptions.TagsPerRite"/>. "None of the above" is never a
 /// tag. Its topics map one to one onto the site's tags (<see cref="Tags.RiteTags"/>).
 /// </summary>
 public static class JevTags
 {
-    // On staging's rites, a second topic Jev gives .3 to .45 fits the rite; at .2 and below it mostly doesn't.
-    public const float MinProbability = 0.25f;
-
-    public const int MaxPerRite = 2;
-
     // Jev's topic, and the site's tag for it.
     public static readonly IReadOnlyDictionary<string, string> TopicTags = new Dictionary<string, string>
     {
@@ -37,15 +32,15 @@ public static class JevTags
     };
 
     /// <summary>The tags for Jev's scores; None for scores Jev didn't give with these questions.</summary>
-    public static Option<string[]> From(RiteSimilarity similarity)
+    public static Option<string[]> From(RiteSimilarity similarity, JevOptions jev)
         => Some(similarity)
             .Filter(scores => JevQuestions.IsVersion(scores.ScoresGeneratorVersion) && scores.Scores.Length >= JevQuestions.Topics.Count)
             .Map(scores => JevQuestions.Topics
                 // The scores start with the topics' probabilities, in JevQuestions' order.
                 .Select((topic, index) => (topic.Key, Probability: scores.Scores[index]))
-                .Where(topic => TopicTags.ContainsKey(topic.Key) && topic.Probability >= MinProbability)
+                .Where(topic => TopicTags.ContainsKey(topic.Key) && topic.Probability >= jev.TagMinProbability)
                 .OrderByDescending(topic => topic.Probability)
-                .Take(MaxPerRite)
+                .Take(jev.TagsPerRite)
                 .Select(topic => TopicTags[topic.Key])
                 .ToArray());
 }

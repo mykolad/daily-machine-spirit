@@ -1,0 +1,102 @@
+// How the Machine Spirit works: the values worth tuning, in one place. Each section is an options class next to the code
+// it tunes. Both environments use these; an app setting of the same name (Section__Key) would override one, but none
+// needs to. The settings that differ between environments (endpoints, secrets, sign-in) stay in infra/.
+//
+// A Patience says how long the Machine Spirit keeps asking a model: TriesPerModel, PauseBetweenTries, and how long a
+// try (TimePerTry) or all of them (TimeInAll) may take. Unset times mean no limit of the app's own.
+//
+// Cloudflare waits 100 seconds for an answer, so what a Scribe waits for must fit in it (a test checks the sums):
+// a rewrite (each model's tries while the Scribe waits), and a distillation (each model's try, then the precept check).
+{
+  // The writer of the rites, and the models it asks, in order: the next writes only when the one before keeps failing.
+  "RiteWriting": {
+    "Models": [ "gpt-6-sol", "gpt-6-luna" ],
+    // Refilling the backlog: nobody waits, so every model gets its tries, with a pause for an overloaded one.
+    "Patience": { "TriesPerModel": 3, "PauseBetweenTries": "00:00:30" },
+    // A rewrite the Scribe asked for: each model once, so the page comes back in time.
+    "PatienceWhileTheScribeWaits": { "TriesPerModel": 1, "TimePerTry": "00:00:40" }
+  },
+
+  // The drafts waiting for the Scribes, and how a new one is kept from repeating a rite.
+  "Backlog": {
+    // A few weeks' worth, so a Scribe visiting weekly always has a choice.
+    "DraftsWaiting": 20,
+    // The newest rites (and burned drafts) the writer is shown, so it doesn't write them again.
+    "RecentRitesInPrompt": 30,
+    // How many times a draft that repeats a rite is written again before it's kept, marked for the Scribes.
+    "RewritesOfARepeatedRite": 2
+  },
+
+  // The model that tells whether a new draft repeats a rite already written.
+  "DuplicateRiteCheck": {
+    "Model": "gpt-6-luna",
+    "Patience": { "TimePerTry": "00:01:00" }
+  },
+
+  // Distilling the Precepts from the Scribes' judgments, weekly or when a Scribe asks (and waits).
+  "PreceptDistilling": {
+    "Models": [ "gpt-6-sol", "gpt-6-luna" ],
+    // The newest judgments read: a few months of a weekly visit's.
+    "JudgmentsRead": 100,
+    "Patience": { "TriesPerModel": 1, "TimePerTry": "00:00:40" }
+  },
+
+  // Checking precepts against the writer's rules, all of them in one request; the next model answers when one fails.
+  "PreceptCheck": {
+    "Models": [ "gpt-6-luna", "gpt-6-sol" ],
+    // For all the models together: it follows a distillation, within Cloudflare's 100 seconds.
+    "Patience": { "TimeInAll": "00:00:15" }
+  },
+
+  // The names suggested to a Scribe choosing what the Record calls them.
+  "ScribeNameSuggestions": {
+    "Model": "gpt-6-luna",
+    "Count": 3,
+    // Short: the Scribe waits for the page.
+    "Patience": { "TimePerTry": "00:00:10" }
+  },
+
+  // How the Augury orders the waiting drafts: by quality, less these for repeating what was just published.
+  "Augury": {
+    // How many of the newest rites a draft is compared with.
+    "RecentRitesCompared": 7,
+    // Taken off a draft's quality for each bit of resemblance (0 to 1) to those rites.
+    "ResemblancePenalty": 0.5,
+    // Taken off when it's of the same kind as the rite before it, so prayers and rituals take turns.
+    "SameKindPenalty": 0.1
+  },
+
+  // Jev, the judge: its quality for the Augury, its scores for "More rites", and its topics for the tags.
+  "Jev": {
+    "Endpoint": "https://jevtypesafeai.com/api/v1/decide",
+    // Pinned, so scores made months apart stay comparable. A new version means judging every rite again.
+    "Model": "jev-1.13.0",
+    "Patience": { "TimePerTry": "00:00:30" },
+    // A topic becomes a tag at this probability or more, the likeliest first, at most this many. On staging's rites, a
+    // second topic Jev gives .3 to .45 fits the rite; at .2 and below it mostly doesn't.
+    "TagMinProbability": 0.25,
+    "TagsPerRite": 2
+  },
+
+  // Purging Cloudflare's copies of the pages a vote changed: at most once per this, per instance.
+  "PagePurging": {
+    "BatchEvery": "00:01:00"
+  },
+
+  // The readers' pages.
+  "PublicPages": {
+    "ArchivePageSize": 20,
+    "RecentRitesOnToday": 4,
+    "MoreRitesOnARite": 3
+  },
+
+  // The Scribes' pages.
+  "ScriptoriumPages": {
+    "AshesShown": 20,
+    "JudgmentsShown": 20,
+    "RecordEntriesShown": 100,
+    // Do the Scribes agree with the Augury? How many months, and how many of its top picks count.
+    "AgreementMonthsShown": 6,
+    "AuguryTopPicks": 3
+  }
+}

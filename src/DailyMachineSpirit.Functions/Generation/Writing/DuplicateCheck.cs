@@ -28,8 +28,6 @@ public sealed class DuplicateCheck
         Answer the number of the existing rite the new one repeats, or 0 if it repeats none.
         """;
 
-    public static readonly TimeSpan AttemptTime = TimeSpan.FromSeconds(60);
-
     private static readonly JsonSerializerOptions AnswerSerializerOptions = new(JsonSerializerOptions.Web)
     {
         RespectNullableAnnotations = true,
@@ -37,11 +35,11 @@ public sealed class DuplicateCheck
     };
 
     private readonly IChatClients chatClients;
-    private readonly IOptions<GenerationOptions> options;
+    private readonly IOptions<DuplicateRiteCheckOptions> options;
     private readonly TimeProvider time;
     private readonly SiteMetrics metrics;
 
-    public DuplicateCheck(IChatClients chatClients, IOptions<GenerationOptions> options, TimeProvider time, SiteMetrics metrics)
+    public DuplicateCheck(IChatClients chatClients, IOptions<DuplicateRiteCheckOptions> options, TimeProvider time, SiteMetrics metrics)
     {
         this.chatClients = chatClients;
         this.options = options;
@@ -56,15 +54,15 @@ public sealed class DuplicateCheck
             return Option<TakenRite>.None;
         }
 
-        using var timeout = new CancellationTokenSource(AttemptTime, time);
+        using var timeout = options.Value.Patience.TimerForATry(time);
         using var attempt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
         var started = time.GetTimestamp();
         try
         {
-            var response = await chatClients.For(options.Value.DuplicateCheckModel).GetResponseAsync<DuplicateAnswer>(
+            var response = await chatClients.For(options.Value.Model).GetResponseAsync<DuplicateAnswer>(
                 [new(ChatRole.System, Instructions), new(ChatRole.User, RitesToCompareAsJson(draft, taken))],
                 AnswerSerializerOptions, options: null, useJsonSchemaResponseFormat: true, attempt.Token);
-            metrics.AnswerTime(options.Value.DuplicateCheckModel, "check", "answered", time.GetElapsedTime(started));
+            metrics.AnswerTime(options.Value.Model, "check", "answered", time.GetElapsedTime(started));
             if (!response.TryGetResult(out var answer))
             {
                 return Error.New("The answer isn't a number.");
@@ -78,7 +76,7 @@ public sealed class DuplicateCheck
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
-            metrics.AnswerTime(options.Value.DuplicateCheckModel, "check", timeout.IsCancellationRequested ? "timed-out" : "failed", time.GetElapsedTime(started));
+            metrics.AnswerTime(options.Value.Model, "check", timeout.IsCancellationRequested ? "timed-out" : "failed", time.GetElapsedTime(started));
             return Error.New(ex);
         }
     }

@@ -32,13 +32,6 @@ public sealed class PreceptCheck
         The writer's rules:
         """;
 
-    /// <summary>
-    /// How long the check may take, all its models together. A Scribe who asks for a distillation waits for the distilling
-    /// models (up to 40 seconds each, two of them: <see cref="PreceptDistiller.AttemptTime"/>) and then for this check,
-    /// and Cloudflare gives up after 100 seconds: 80 + 15 leaves a margin.
-    /// </summary>
-    public static readonly TimeSpan TimeAllowed = TimeSpan.FromSeconds(15);
-
     private static readonly JsonSerializerOptions AnswerSerializerOptions = new(JsonSerializerOptions.Web)
     {
         RespectNullableAnnotations = true,
@@ -46,11 +39,11 @@ public sealed class PreceptCheck
     };
 
     private readonly IChatClients chatClients;
-    private readonly IOptions<GenerationOptions> options;
+    private readonly IOptions<PreceptCheckOptions> options;
     private readonly TimeProvider time;
     private readonly SiteMetrics metrics;
 
-    public PreceptCheck(IChatClients chatClients, IOptions<GenerationOptions> options, TimeProvider time, SiteMetrics metrics)
+    public PreceptCheck(IChatClients chatClients, IOptions<PreceptCheckOptions> options, TimeProvider time, SiteMetrics metrics)
     {
         this.chatClients = chatClients;
         this.options = options;
@@ -60,7 +53,7 @@ public sealed class PreceptCheck
 
     /// <summary>
     /// The precepts that break a rule, with why; an error when no model could tell in time. The models
-    /// are asked in order, within <see cref="TimeAllowed"/> together: one failing at once leaves the next time to answer.
+    /// are asked in order, within their patience's time in all: one failing at once leaves the next time to answer.
     /// </summary>
     public async Task<Either<Error, List<PreceptBreach>>> Breaches(IReadOnlyList<string> precepts, CancellationToken cancellationToken)
     {
@@ -69,10 +62,10 @@ public sealed class PreceptCheck
             return new List<PreceptBreach>();
         }
 
-        using var timeout = new CancellationTokenSource(TimeAllowed, time);
+        using var timeout = options.Value.Patience.TimerForAllTries(time);
         using var attempt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
         var failures = new List<string>();
-        foreach (var model in options.Value.PreceptCheckModels)
+        foreach (var model in options.Value.Models)
         {
             if (timeout.IsCancellationRequested)
             {
