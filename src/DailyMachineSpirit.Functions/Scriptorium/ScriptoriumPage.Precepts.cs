@@ -4,6 +4,7 @@ using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Generation.Precepts;
 using LanguageExt;
+using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Functions.Scriptorium;
 
@@ -36,7 +37,7 @@ public static partial class ScriptoriumPage
         html.Append($"""
             <p>{Encode(Distilled(book))} Pinned precepts stay as they are; the others make way for the new ones.</p>
             <form method="post" action="/scriptorium/precepts/distil" class="actions">
-            <button class="primary" aria-describedby="distil-hint">{ScriptoriumIcons.Summon}Distil the Precepts Now</button>
+            <button class="primary" aria-describedby="distil-hint" data-slow="{Encode(Distilling)}" data-busy-label="Distilling…">{ScriptoriumIcons.Summon}Distil the Precepts Now</button>
             <span class="hint" id="distil-hint">Usually seconds, at most a minute and a half.</span>
             </form>
             """);
@@ -48,9 +49,12 @@ public static partial class ScriptoriumPage
         else
         {
             html.Append("""<ol class="calendar">""");
+            // Just distilled, the new ones are the unpinned: marked, as an acted-on precept is, so the eye finds them.
+            var distilled = outcome.Exists(done => done == "distil");
             foreach (var precept in book.Precepts)
             {
-                PreceptEntry(html, precept, version, acted, refused.Filter(found => found.PreceptId.Exists(id => id == precept.Id)));
+                PreceptEntry(html, precept, version, distilled && !precept.Pinned ? Some(precept.Id) : acted,
+                    refused.Filter(found => found.PreceptId.Exists(id => id == precept.Id)));
             }
             html.Append("</ol>");
         }
@@ -68,7 +72,7 @@ public static partial class ScriptoriumPage
         }
         Agreement(html, trend);
         html.Append("</main>");
-        Footer(html, withScript: false);
+        Footer(html, Some(SlowActionScript.Js));
         return html.ToString();
     }
 

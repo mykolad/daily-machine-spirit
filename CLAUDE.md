@@ -293,8 +293,15 @@ observability/                    — the Grafana dashboard and alerts, and what
     (`RiteChecks`) and are judged again (scores, quality and tags describe what will be published; if the judge fails
     or is off, the draft waits unjudged). The draft keeps `GeneratedByModel` and gets `Edited`, carried into the rite;
     the rite never says which Scribe (the record does). The save is guarded by the draft's ETag, read with the page,
-    and records an `Amend` decision with the words and places as they were. The amending page posts plain forms,
-    without the calendar's script.
+    and records an `Amend` decision with the words and places as they were. The amending page posts plain forms.
+  - **Slow actions say they're under way** (#85, `SlowActionScript`, on the amending page and the Precepts): a rewrite
+    or a distillation takes seconds, so its button disables the form's buttons and the status message says what's
+    happening. A rewrite is posted in the background and its form replaces the old one, so the address stays the
+    amending page's and a reload never resends it (a reload shows the saved words again); Rewrite waits for a note,
+    which it needs. The fields a rewrite changed say "rewritten" in their labels, with an amber edge, and the first is
+    focused (`autofocus`, so it works without the script too). After a distillation, the new precepts are marked. A
+    rewrite request that fails outright (the network, or Cloudflare Access wanting a new sign-in, which a background
+    request can't give) keeps the words and offers the page in a new tab, to sign in there and try again here.
   - **The Scribes' order** (the `placements` document) comes first; the Augury orders the rest. Moving a draft places
     everything above it too, so the order stays what the Scribes saw.
   - **Every action is a lesson:** it saves a `ScribeDecision` with the draft as it was, the Augury's place and quality

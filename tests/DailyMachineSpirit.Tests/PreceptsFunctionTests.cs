@@ -50,6 +50,25 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         Assert.Contains("""<a href="/scriptorium">Back to the Scriptorium</a>""", html);
     }
 
+    // Just distilled, the new precepts are marked, so the eye finds them; the Scribe's pinned one stayed, so it isn't.
+    // Distilling takes seconds, which its button says when pressed.
+    [Fact]
+    public async Task Page_AfterDistilling_MarksTheNewPrecepts()
+    {
+        await AJudgment();
+        Ok(await testbed.PreceptKeeping().AddPinned("Name the command.", Tester, CancellationToken.None));
+        testbed.Models.Answers(Sol, Distilled("Prefer the real fix."));
+        Ok(await testbed.Distiller().Distil(Tester, CancellationToken.None));
+        var book = Ok(await testbed.Precepts.Get(CancellationToken.None)).Book;
+
+        var html = Html(await Function(enabled: true).Page(Get("?done=distil"), CancellationToken.None), 200);
+
+        Assert.Contains($"""<li class="rite acted" id="precept-{book.Precepts.Single(precept => !precept.Pinned).Id:D}">""", html);
+        Assert.Contains($"""<li class="rite" id="precept-{book.Precepts.Single(precept => precept.Pinned).Id:D}">""", html);
+        Assert.Contains("""data-slow="The Machine Spirit is distilling the Precepts…" data-busy-label="Distilling…">""", html);
+        Assert.Contains(SlowActionScript.Js, html);
+    }
+
     // A table, so each figure is read with its month and what it counts.
     [Fact]
     public async Task Page_ShowsWhetherTheScribesAgreeWithTheAugury()
