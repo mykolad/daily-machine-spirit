@@ -246,7 +246,7 @@ public sealed class ScriptoriumFunction
             Left: error => Failure(request, error, draftId));
 
     // The Scribe's to fix on the page: words breaking a rule, a note too long, or no note to rewrite by.
-    private static bool IsTheScribes(Error error) => error.Code == Amendments.Refused || error == Scribes.NoteTooLong;
+    private static bool IsTheScribes(Error error) => error is AmendmentRefused || error == Scribes.NoteTooLong;
 
     // A browser posts a textarea's line breaks as CRLF, while its maxlength counted each as one character: as LF, words
     // the field allowed fit the same limits here.

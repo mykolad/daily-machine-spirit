@@ -68,9 +68,9 @@ public sealed class ScribeNameFunction
             Right: _ => Task.FromResult<IActionResult>(Redirect("/scriptorium?done=named")),
             Left: error =>
             {
-                if (error.Code == ScribeNaming.Refused || error == Data.Repositories.ScriptoriumRepository.ChangedMeanwhile)
+                if (error is NameRefused || error == Data.Repositories.ScriptoriumRepository.ChangedMeanwhile)
                 {
-                    var why = error.Code == ScribeNaming.Refused ? error.Message : "Another Scribe chose a name just then. Try again.";
+                    var why = error is NameRefused ? error.Message : "Another Scribe chose a name just then. Try again.";
                     return Render(request, scribe, Carried(fields["s"]), Some(typed), Some(why), StatusCodes.Status422UnprocessableEntity, cancellationToken);
                 }
                 return Task.FromResult(Failed(request, error));
@@ -92,9 +92,10 @@ public sealed class ScribeNameFunction
 
         var names = (List<ScribeName>)all.Case;
         var chosen = names.Where(name => name.AccessId == scribe).Select(name => name.Name).HeadOrNone();
+        var takenByOthers = names.Where(name => name.AccessId != scribe).Select(name => name.Name).ToList();
         var suggestions = carried.Count > 0
-            ? carried
-            : await suggester.Suggest(names.Where(name => name.AccessId != scribe).Select(name => name.Name).ToList(), cancellationToken);
+            ? NameSuggester.StillFree(carried, takenByOthers)
+            : await suggester.Suggest(takenByOthers, cancellationToken);
         var yours = new NameInTheRecord(chosen.IfNone(() => ScribeNames.Unnamed(scribe)), chosen.IsSome);
         var inTheField = typed.IfNone(() => chosen.IfNone(() => suggestions.HeadOrNone().IfNone(string.Empty)));
         return Html(request, ScriptoriumPage.RenderName(yours, suggestions, inTheField, message), status);

@@ -9,23 +9,19 @@ namespace DailyMachineSpirit.Functions.Scriptorium.Naming;
 
 /// <summary>
 /// The names the Scribes choose for the Record (#84): one each, by their Access id, unique among them, and never one of
-/// the names the Record gives to others. Choosing is recorded, with the name before it. On staging every Scribe is one
-/// actor, "A Scribe on staging", so there's no name to choose.
+/// the names the Record gives to others. Choosing is recorded, with the name before it.
 /// </summary>
 public sealed partial class ScribeNaming
 {
-    /// <summary>The code of a name the Scribe should change: its message says why.</summary>
-    public const int Refused = 8401;
+    public static readonly Error NameNeeded = new NameRefused("Write a name first.");
 
-    public static readonly Error NameNeeded = Error.New(Refused, "Write a name first.");
+    public static readonly Error TooLong = new NameRefused($"A name can be at most {ScribeName.MaxLength} characters.");
 
-    public static readonly Error TooLong = Error.New(Refused, $"A name can be at most {ScribeName.MaxLength} characters.");
+    public static readonly Error Taken = new NameRefused("Another Scribe goes by that name. Choose another.");
 
-    public static readonly Error Taken = Error.New(Refused, "Another Scribe goes by that name. Choose another.");
+    public static readonly Error Reserved = new NameRefused("The Record gives that name to others. Choose another.");
 
-    public static readonly Error Reserved = Error.New(Refused, "The Record gives that name to others. Choose another.");
-
-    public static readonly Error Email = Error.New(Refused, "A name or an alias, never an email address: the Record isn't a place for one.");
+    public static readonly Error Email = new NameRefused("A name or an alias, never an email address: the Record isn't a place for one.");
 
     private readonly IScribeNameRepository names;
     private readonly TimeProvider time;
