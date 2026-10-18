@@ -25,6 +25,11 @@ public sealed class ScriptoriumGate
             ? None
             : Some<IActionResult>(new StatusCodeResult(StatusCodes.Status403Forbidden));
 
+    /// <summary>Which Scribe is looking, for what the page says of them (their name, #84); else why they may not.</summary>
+    public async Task<Either<IActionResult, string>> LookingScribe(HttpRequest request, CancellationToken cancellationToken)
+        => (await signIn.Scribe(request, cancellationToken))
+            .ToEither<IActionResult>(() => new StatusCodeResult(StatusCodes.Status403Forbidden));
+
     /// <summary>Which Scribe acts, for the record (#9); else why they may not.</summary>
     public async Task<Either<IActionResult, string>> ActingScribe(HttpRequest request, CancellationToken cancellationToken)
     {

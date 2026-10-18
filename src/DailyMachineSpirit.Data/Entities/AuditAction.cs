@@ -28,4 +28,7 @@ public enum AuditAction
 
     // A waiting draft judging couldn't score, judged again: by a refill (the Machine Spirit) or a Scribe.
     JudgeAgain,
+
+    // A Scribe chose the name the Record shows them by (#84).
+    ChooseName,
 }

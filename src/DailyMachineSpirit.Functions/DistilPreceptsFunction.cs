@@ -22,8 +22,9 @@ public sealed class DistilPreceptsFunction
         this.logger = logger;
     }
 
-    // Nothing (new) to learn from, or every precept pinned, is a quiet week. A failure is logged here, since only the app's
-    // telemetry is exported, then thrown, so the host counts the run as failed and tries again.
+    // Nothing (new) to learn from, every precept pinned, or nothing within the writer's rules, is a quiet week. A
+    // failure is logged here, since only the app's telemetry is exported, then thrown, so the host counts the run as
+    // failed and tries again.
     [Function("DistilPrecepts")]
     [FixedDelayRetry(2, "00:30:00")]
     public async Task Run([TimerTrigger(Schedule)] TimerInfo timer, CancellationToken cancellationToken)
@@ -33,7 +34,8 @@ public sealed class DistilPreceptsFunction
             Right: book => logger.LogInformation("The Precepts were distilled: {Count} in all.", book.Precepts.Count),
             Left: error =>
             {
-                if (error == PreceptDistiller.NothingToLearn || error == PreceptDistiller.NothingNewToLearn || error == PreceptDistiller.AllPinned)
+                if (error == PreceptDistiller.NothingToLearn || error == PreceptDistiller.NothingNewToLearn || error == PreceptDistiller.AllPinned
+                    || error == PreceptDistiller.NothingWithinTheRules)
                 {
                     logger.LogInformation("The Precepts weren't distilled: {Reason}", error.Message);
                     return;

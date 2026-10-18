@@ -35,18 +35,10 @@ public static class RitePrompt
         sb.AppendLine("not a specific command. No mysticism there: that contrast is the point.");
         sb.AppendLine();
         sb.AppendLine("Rules:");
-        sb.AppendLine($"- Title: at most {TitleLength} characters, like the name of a rite (\"The Rite of Re-Run\", \"Litany of the Clean Cache\").");
-        sb.AppendLine($"- Text: one to three sentences, at most {TextLength} characters, in solemn liturgical language (thee, thy, O Machine Spirit).");
-        sb.AppendLine($"- Heretical Truth: one or two sentences, at most {HereticalTruthLength} characters, in plain modern English.");
-        sb.AppendLine("- Plain words over code. If a command or file name is truly needed, use at most one, widely known, without flags");
-        sb.AppendLine("  or parameters (`node_modules`, `git push`), and put it in `backticks`. The title has no code and no backticks.");
-        sb.AppendLine("- Never mention AI, artificial intelligence, models, LLMs, chatbots, prompts or vibe coding: this future forgot them.");
-        sb.AppendLine("- Everything must be original. Never quote or paraphrase Games Workshop or Warhammer 40,000 text, and don't use");
-        sb.AppendLine("  their names (no Adeptus Mechanicus, no Imperium, no Space Marines).");
-        sb.AppendLine(kind == RiteKind.Prayer
-            ? "- \"The Omnissiah\" may appear at most once, in the text only (never in the title or the Heretical Truth)."
-            : "- Don't name \"the Omnissiah\".");
-        sb.AppendLine("- Family-friendly. No real people or companies mocked by name.");
+        foreach (var rule in RiteRules.For(kind))
+        {
+            sb.AppendLine(rule);
+        }
 
         if (precepts.Count > 0)
         {

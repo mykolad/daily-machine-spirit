@@ -11,6 +11,11 @@ public class GenerationOptions
 
     public string DuplicateCheckModel { get; init; } = "gpt-6-luna";
 
+    /// <summary>Tried in order within <see cref="Precepts.PreceptCheck.TimeAllowed"/>, so another answers when one fails.</summary>
+    public string[] PreceptCheckModels { get; init; } = ["gpt-6-luna", "gpt-6-sol"];
+
+    public string ScribeNameModel { get; init; } = "gpt-6-luna";
+
     /// <summary>How many drafts wait in the backlog: a few weeks' worth, so a moderator visiting weekly always has a choice.</summary>
     public int BacklogSize { get; init; } = 20;
 

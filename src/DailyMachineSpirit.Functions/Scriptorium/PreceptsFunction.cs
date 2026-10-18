@@ -50,10 +50,8 @@ public sealed class PreceptsFunction
 
         var outcome = Optional(request.Query["done"].ToString()).Filter(done => done.Length > 0);
         var acted = Optional(request.Query["precept"].ToString()).Bind(text => Guid.TryParse(text, out var id) ? Some(id) : None);
-        var page = await keeping.View(cancellationToken)
-            .BindAsync(stored => trend.Months(cancellationToken).MapAsync(months => Task.FromResult((stored, months))));
-        return page.Match(
-            Right: found => Html(request, ScriptoriumPage.RenderPrecepts(found.stored, found.months, outcome, acted), StatusCodes.Status200OK),
+        return (await PreceptsAndTrend(cancellationToken)).Match(
+            Right: found => Html(request, ScriptoriumPage.RenderPrecepts(found.Stored, found.Months, outcome, acted, None), StatusCodes.Status200OK),
             Left: error => Failed(request, error));
     }
 
@@ -76,6 +74,14 @@ public sealed class PreceptsFunction
                     {
                         return Back("distil-pinned", None);
                     }
+                    if (error == PreceptDistiller.NothingWithinTheRules)
+                    {
+                        return Back("distil-refused", None);
+                    }
+                    if (error == PreceptDistiller.Unchecked)
+                    {
+                        return Back("distil-unchecked", None);
+                    }
                     if (error == ScriptoriumRepository.ChangedMeanwhile)
                     {
                         return Back("changed", None);
@@ -91,7 +97,8 @@ public sealed class PreceptsFunction
         => await (await gate.ActingScribe(request, cancellationToken)).Match(
             Left: refused => Task.FromResult(refused),
             Right: async scribe => await (await ReadForm(request, cancellationToken)).Match(
-                Some: async fields => Answer(request, "add", None, await keeping.AddPinned(fields["text"].ToString(), scribe, cancellationToken)),
+                Some: async fields => await Saved(
+                    request, "add", None, fields["text"].ToString(), await keeping.AddPinned(fields["text"].ToString(), scribe, cancellationToken), cancellationToken),
                 None: () => Task.FromResult<IActionResult>(new BadRequestResult())));
 
     [Function("ScriptoriumPrecept")]
@@ -113,8 +120,8 @@ public sealed class PreceptsFunction
         var etag = fields["etag"].ToString();
         return action switch
         {
-            "edit" => Answer(request, action, preceptId,
-                await keeping.EditAndPin(preceptId, etag, fields["text"].ToString(), scribe, cancellationToken)),
+            "edit" => await Saved(request, action, preceptId, fields["text"].ToString(),
+                await keeping.EditAndPin(preceptId, etag, fields["text"].ToString(), scribe, cancellationToken), cancellationToken),
             "pin" => Answer(request, action, preceptId, await keeping.Pin(preceptId, etag, scribe, cancellationToken)),
             "unpin" => Answer(request, action, preceptId, await keeping.Unpin(preceptId, etag, scribe, cancellationToken)),
             // Gone from the page, so the message is where the eye goes.
@@ -122,6 +129,32 @@ public sealed class PreceptsFunction
             _ => new NotFoundResult(),
         };
     }
+
+    // Refused for breaking the writer's rules, or because they couldn't be checked: the page again, with the Scribe's
+    // words in their field and why (422), rather than a redirect, which couldn't carry them.
+    private async Task<IActionResult> Saved(
+        HttpRequest request, string action, Option<Guid> preceptId, string text, Either<Error, Unit> result, CancellationToken cancellationToken)
+    {
+        var nextStep = result.Case switch
+        {
+            BreaksARule => "Reword it, or leave it as it was.",
+            Error error when error == PreceptKeeping.Unchecked => "Try again in a moment.",
+            _ => string.Empty,
+        };
+        if (nextStep.Length == 0 || result.Case is not Error refusal)
+        {
+            return Answer(request, action, preceptId, result);
+        }
+        var refused = new RefusedPrecept(preceptId, text, refusal.Message, nextStep);
+        return (await PreceptsAndTrend(cancellationToken)).Match(
+            Right: found => Html(request, ScriptoriumPage.RenderPrecepts(found.Stored, found.Months, None, preceptId, Some(refused)),
+                StatusCodes.Status422UnprocessableEntity),
+            Left: error => Failed(request, error));
+    }
+
+    private Task<Either<Error, (StoredPrecepts Stored, List<AgreementMonth> Months)>> PreceptsAndTrend(CancellationToken cancellationToken)
+        => keeping.View(cancellationToken)
+            .BindAsync(stored => trend.Months(cancellationToken).MapAsync(months => Task.FromResult((stored, months))));
 
     private IActionResult Answer(HttpRequest request, string action, Option<Guid> preceptId, Either<Error, Unit> result)
         => result.Match(

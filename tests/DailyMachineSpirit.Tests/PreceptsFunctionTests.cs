@@ -1,4 +1,5 @@
 using DailyMachineSpirit.Data.Entities;
+using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions;
 using DailyMachineSpirit.Functions.Generation;
 using DailyMachineSpirit.Functions.Generation.Precepts;
@@ -206,6 +207,89 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         Assert.Equal("/scriptorium/precepts?done=full", RedirectedTo(await function.Add(Form(("text", "One too many.")), CancellationToken.None)));
     }
 
+    // A precept breaking the writer's rules comes back on the page, not saved, with the Scribe's words in their field and
+    // why: a redirect couldn't carry them.
+    [Fact]
+    public async Task APrecept_BreakingARule_ComesBack_WithTheScribesWordsAndWhy()
+    {
+        var function = Function();
+        testbed.Models.Answers(Checker, PreceptsTests.Breaking((1, "It mocks a group of people.")));
+
+        var html = Html(await function.Add(Form(("text", "Mock <managers>.")), CancellationToken.None), 422);
+
+        Assert.Contains("""<p class="status" role="status" id="precepts-status">Not saved: It mocks a group of people. Reword it, or leave it as it was.</p>""", html);
+        Assert.Contains("""aria-invalid="true" aria-describedby="precepts-status" required>Mock &lt;managers&gt;.</textarea>""", html);
+        Assert.Empty(Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts);
+    }
+
+    // Unchecked, it comes back the same way, with what to do: try again, the words still in their field.
+    [Fact]
+    public async Task APrecept_NoModelCanCheck_ComesBack_ToTryAgain()
+    {
+        var function = Function();
+        testbed.Models.Fails(Checker, 1);
+        testbed.Models.Fails(SecondChecker, 1);
+
+        var html = Html(await function.Add(Form(("text", "Prefer the real fix.")), CancellationToken.None), 422);
+
+        Assert.Contains("""<p class="status" role="status" id="precepts-status">Not saved: The rules couldn&#39;t be checked just now. Try again in a moment.</p>""", html);
+        Assert.Contains("""aria-invalid="true" aria-describedby="precepts-status" required>Prefer the real fix.</textarea>""", html);
+        Assert.Empty(Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts);
+    }
+
+    // Asked to distil, the Scribe is told when the distilled precepts couldn't be checked, and that nothing changed.
+    [Fact]
+    public async Task Distil_WhenTheCheckCantAnswer_SaysThePreceptsStayed()
+    {
+        Ok(await testbed.Scribes().Burn((await testbed.AddDraft("The Rite of Re-Run", 0.9f)).Id, "Too long.", Tester, CancellationToken.None));
+        testbed.Models.Answers(Sol, PreceptsTests.Distilled("Prefer the real fix."));
+        testbed.Models.Fails(Checker, 1);
+        testbed.Models.Fails(SecondChecker, 1);
+
+        Assert.Equal("/scriptorium/precepts?done=distil-unchecked",
+            RedirectedTo(await Function().Distil(Form(), CancellationToken.None)));
+        Assert.Contains("couldn&#39;t be checked against the writer&#39;s rules just now, so the Precepts stay as they were. Try again in a moment.",
+            ScriptoriumPage.RenderPrecepts(new StoredPrecepts(new PreceptBook(), None), [], Some("distil-unchecked"), None, None));
+    }
+
+    // While the check ran, the precept being edited was deleted or replaced, or the Precepts filled up: the field is
+    // gone, so the words come back in the message rather than being lost, or an edit becoming an addition.
+    [Fact]
+    public void ARefusedPrecept_WhoseFieldIsGone_ComesBackInTheMessage()
+    {
+        var refusal = "It mocks a group of people.";
+        var full = new PreceptBook
+        {
+            Precepts = Enumerable.Range(1, PreceptBook.MaxPrecepts).Select(n => new Precept { Id = Guid.NewGuid(), Text = $"Precept {n}.", Pinned = true }).ToList(),
+        };
+
+        var edited = ScriptoriumPage.RenderPrecepts(new StoredPrecepts(new PreceptBook(), None), [], None, None,
+            Some(new RefusedPrecept(Some(Guid.NewGuid()), "Mock the managers.", refusal, "Reword it, or leave it as it was.")));
+        var added = ScriptoriumPage.RenderPrecepts(new StoredPrecepts(full, None), [], None, None,
+            Some(new RefusedPrecept(None, "Mock the managers.", refusal, "Reword it, or leave it as it was.")));
+
+        Assert.Contains(
+            "Not saved: It mocks a group of people. The precept changed meanwhile (another Scribe, or a distillation), so it isn&#39;t on the page any more. Your words were: “Mock the managers.”",
+            edited);
+        Assert.Contains("The Precepts filled up meanwhile, so there&#39;s no room for it now. Your words were: “Mock the managers.”", added);
+    }
+
+    [Fact]
+    public async Task AnEdit_BreakingARule_ComesBack_OpenOnTheScribesWords()
+    {
+        testbed.Models.Answers(Checker, PreceptsTests.Breaking());
+        Ok(await testbed.PreceptKeeping().AddPinned("Prefer the real fix.", Tester, CancellationToken.None));
+        var id = Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts.Single().Id;
+        testbed.Models.Answers(Checker, PreceptsTests.Breaking((1, "It asks for the setting's names.")));
+
+        var html = Html(await Function().Change(Form(("text", "Use Imperium words."), await Seen()), id, "edit", CancellationToken.None), 422);
+
+        Assert.Contains($"""<li class="rite acted" id="precept-{id:D}">""", html);
+        Assert.Contains("""<details class="fold" open>""", html);
+        Assert.Contains($"""aria-describedby="precept-{id:D}-hint precepts-status" aria-invalid="true" required>Use Imperium words.</textarea>""", html);
+        Assert.Equal("Prefer the real fix.", Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts.Single().Text);
+    }
+
     [Fact]
     public async Task OnlyThePagesForms_AndActions_AreTaken()
     {
@@ -230,7 +314,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
     [InlineData("full", "There are 12 precepts already: delete or edit one instead.")]
     [InlineData("changed", "The Precepts changed meanwhile: another Scribe, or a distillation. Look again.")]
     public async Task Page_SaysWhatTheLastActionDid(string outcome, string message)
-        => Assert.Contains($"""<p class="status" role="status">{message}</p>""",
+        => Assert.Contains($"""<p class="status" role="status" id="precepts-status">{message}</p>""",
             Html(await Function().Page(Get($"?done={outcome}"), CancellationToken.None), 200));
 
     // Cosmos down: the page says the Scriptorium is silent, as its other pages do.
@@ -255,7 +339,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         testbed.Models.Answers(Sol, Distilled("Name the command."));
         Ok(await testbed.Distiller().Distil(AuditEntry.MachineSpirit, CancellationToken.None));
 
-        var html = ScriptoriumPage.RenderRecord(Ok(await testbed.Audit.GetNewest(10, CancellationToken.None)), None);
+        var html = ScriptoriumPage.RenderRecord(Ok(await testbed.Audit.GetNewest(10, CancellationToken.None)), [], None);
 
         Assert.Contains("added the precept “Prefer the real fix.”", html);
         Assert.Contains("""The Machine Spirit distilled <a href="/scriptorium/precepts">the Precepts</a> <span class="when">(1 new, 1 pinned, from 1 judgments)</span>""", html);
@@ -292,8 +376,8 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         => new(testbed.PreceptKeeping(), testbed.Distiller(), new AgreementTrend(testbed.Scriptorium, testbed.Time), signIn, NullLogger<PreceptsFunction>.Instance);
 
     private PreceptsFunction Function(FakePrecepts precepts)
-        => new(new PreceptKeeping(precepts, testbed.Time),
-            new PreceptDistiller(testbed.Scriptorium, precepts, testbed.Models, Options.Create(new GenerationOptions()), testbed.Time, testbed.Probe.Metrics, NullLogger<PreceptDistiller>.Instance),
+        => new(new PreceptKeeping(precepts, testbed.PreceptCheck(), testbed.Time, NullLogger<PreceptKeeping>.Instance),
+            new PreceptDistiller(testbed.Scriptorium, precepts, testbed.Models, testbed.PreceptCheck(), Options.Create(new GenerationOptions()), testbed.Time, testbed.Probe.Metrics, NullLogger<PreceptDistiller>.Instance),
             new AgreementTrend(testbed.Scriptorium, testbed.Time),
             new EveryoneIsScribeSignIn(), NullLogger<PreceptsFunction>.Instance);
 

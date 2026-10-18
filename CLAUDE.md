@@ -261,7 +261,8 @@ observability/                    — the Grafana dashboard and alerts, and what
     `gpt-6-luna` (`GenerationOptions.Models`). An answer that's empty, too long, uses a forbidden name, names what the far
     future forgot (AI, LLMs, chatbots and the like, as whole words: not "model" or "prompt" alone) or writes code
     outside backticks (`UnquotedCode`) is asked for again, never cut (`RiteChecks`, which a Scribe's amendment passes
-    too). The prompt asks for plain words over code: at most one widely known command or file name, without flags.
+    too). The prompt asks for plain words over code: at most one widely known command or file name, without flags. Its
+    rules (`RiteRules`) also forbid anything abusive, hateful or discriminating; the Precepts are checked against them.
     Every draft and rewrite follows the Precepts (below); if they can't be read, the rite is written without them.
   - **Judging:** an `IRiteJudge` judges each draft (`JevJudge` for now, swappable like the models): its similarity
     scores for "More rites" and its quality for the Augury, in one request. A draft that can't be judged still joins
@@ -303,6 +304,16 @@ observability/                    — the Grafana dashboard and alerts, and what
       stay when distilled again, the rest make way for the new ones; a Scribe's words are pinned. Pinned ones come first,
       on the page and in the writer's prompt; Pin and Unpin say what they do in their `title`. Deleted ones are
       remembered (the newest 30): the model is told not to propose them, and any it does are dropped.
+    - **Within the writer's rules** (#86, `PreceptCheck`): `gpt-6-luna`, then `gpt-6-sol` if it fails
+      (`GenerationOptions.PreceptCheckModels`, 15 seconds for both together, all the precepts in one request) says which
+      precepts would have the writer break one of its rules (`RiteRules`), or are abusive or discriminating, and why. A
+      Scribe's is refused with that reason: the page comes back (422) with their words in the field, or in the message
+      when that field went meanwhile. A distilled one is dropped, and distilling is told the rules, so it rarely
+      proposes one; if none is left, the Precepts stay as they were, what was last read too, so the next run tries
+      again. **Nothing unchecked is saved:** when no model can answer (failing, past the time, a refusal without a
+      reason), a Scribe's precept comes back the same way, to try again, and a distillation leaves the Precepts as they
+      were (the weekly run fails, and next week's tries again). The writer would follow an unchecked precept in every
+      rite, and nothing checks it later. No word list for precepts: one may name a forbidden thing to forbid it.
     - **Not yet the judge's:** the Augury still orders by Jev's quality; #10 tests a model judge with the Precepts.
     - **Do the Scribes agree with the Augury?** (`AgreementTrend`, on the Precepts' page): for each of the last six
       months, how many of the Augury's top three picks were burned, and how many places, on average, an anoint, exalt
@@ -314,8 +325,19 @@ observability/                    — the Grafana dashboard and alerts, and what
     there's no change without its entry: the Scribes' actions, and the Machine Spirit's own (each draft it writes, each
     rite it publishes). Only Summon, which stores nothing itself, saves its entry alone, and goes ahead if that fails.
     - **Who:** a Scribe is their Access id (the token's `sub`), never their email; on staging, with no sign-in, every
-      Scribe is `staging`; the Machine Spirit is `machine-spirit`. The page shows a Scribe by the last six
-      characters of their id (`ScribeNames`), until the Scribes choose their names.
+      Scribe is `staging`; the Machine Spirit is `machine-spirit`. The page shows a Scribe by the name they chose, else
+      by the last six characters of their id (`ScribeNames`). The Record keeps ids, so a name shows on past entries too.
+    - **Names** (#84, `/scriptorium/name`, `Scriptorium/Naming/`): a Scribe chooses the name the Record shows them by,
+      a name or an alias, which only the Scribes see. One `scribe-names` document, by Access id, saved with its record
+      entry and guarded by its ETag, so two Scribes can't take one name at once. Names are tidied (one line, single
+      spaces), unique whatever their case, never an email address, and none passes for the Record's own ("The Machine
+      Spirit", "A Scribe on staging", "A Scribe (…)"): `ScribeNaming.Acceptable`, which suggestions pass too. The
+      page offers three names `gpt-6-luna` suggests (`NameSuggester`, `GenerationOptions.ScribeNameModel`, 10 seconds, the
+      taken ones left out), filled from the site's own when it can't (its list, every title with every word, then its
+      list numbered, so it never runs out); the first is in the field, to take or change,
+      and each suggestion's link puts it there instead, carrying the others so the model isn't asked again; Suggest
+      Others asks anew. The Scriptorium invites an unnamed Scribe to choose, and a named one to change. On staging,
+      the one shared Scribe takes a name like any other, so the feature can be tried there.
     - **Kept** as long as the drafts and rites, with ids, titles and where a draft went; never a visitor.
   - **Concurrency:** each change uses an ETag, so two Scribes can't overwrite each other: the later one is told to look
     again.
