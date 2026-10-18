@@ -25,6 +25,9 @@ Proposal.dc.html`, `scriptorium-icons.md`): icons, grouped buttons, folded notes
   for) are tied to their fields with `aria-describedby`. "Amend" on the calendar is a link, since it only opens the
   page: the page's buttons change things. Why words were refused, or that the Machine Spirit rewrote them, is the
   page's `role="status"` message, and the fields keep what the Scribe typed.
+- **A precept refused for breaking the writer's rules** (#86) comes back the same way: why is the `role="status"`
+  message, and the field it was typed in keeps the words, marked `aria-invalid="true"` and described by that message
+  (`aria-describedby`), so a screen reader on the field hears why. An edit's fold comes back open.
 
 ## Tags
 

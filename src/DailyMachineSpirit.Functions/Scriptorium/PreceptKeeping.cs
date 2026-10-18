@@ -1,7 +1,9 @@
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
+using DailyMachineSpirit.Functions.Generation.Precepts;
 using LanguageExt;
 using LanguageExt.Common;
+using Microsoft.Extensions.Logging;
 using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Functions.Scriptorium;
@@ -19,13 +21,19 @@ public sealed class PreceptKeeping
 
     public static readonly Error Full = Error.New($"There are {PreceptBook.MaxPrecepts} precepts already: delete or edit one instead.");
 
-    private readonly IPreceptRepository precepts;
-    private readonly TimeProvider time;
+    public static readonly Error Unchecked = Error.New("The rules couldn't be checked just now.");
 
-    public PreceptKeeping(IPreceptRepository precepts, TimeProvider time)
+    private readonly IPreceptRepository precepts;
+    private readonly PreceptCheck check;
+    private readonly TimeProvider time;
+    private readonly ILogger<PreceptKeeping> logger;
+
+    public PreceptKeeping(IPreceptRepository precepts, PreceptCheck check, TimeProvider time, ILogger<PreceptKeeping> logger)
     {
         this.precepts = precepts;
+        this.check = check;
         this.time = time;
+        this.logger = logger;
     }
 
     /// <summary>The Precepts, and the version the page shows: its forms send it back, so a change from a page shown
@@ -33,7 +41,7 @@ public sealed class PreceptKeeping
     public Task<Either<Error, StoredPrecepts>> View(CancellationToken cancellationToken) => precepts.Get(cancellationToken);
 
     public Task<Either<Error, Unit>> AddPinned(string text, string scribe, CancellationToken cancellationToken)
-        => Text(text).BindAsync(words => Change(book => book.Precepts.Count >= PreceptBook.MaxPrecepts
+        => WithinTheRules(text, cancellationToken).BindAsync(words => Change(book => book.Precepts.Count >= PreceptBook.MaxPrecepts
             ? Left<Error, (PreceptBook, AuditEntry)>(Full)
             : (book with { Precepts = [.. book.Precepts, new Precept { Id = Guid.NewGuid(), Text = words, Pinned = true, ByScribe = true }] },
                 Audit(scribe, AuditAction.AddPrecept, words, None)),
@@ -41,7 +49,7 @@ public sealed class PreceptKeeping
             cancellationToken));
 
     public Task<Either<Error, Unit>> EditAndPin(Guid preceptId, string etag, string text, string scribe, CancellationToken cancellationToken)
-        => Text(text).BindAsync(words => Change(book => Find(book, preceptId).Map(found =>
+        => WithinTheRules(text, cancellationToken).BindAsync(words => Change(book => Find(book, preceptId).Map(found =>
             (Replace(book, found with { Text = words, Pinned = true, ByScribe = true }),
                 Audit(scribe, AuditAction.EditPrecept, words, Some($"was “{found.Text}”")))),
             Some(etag),
@@ -97,6 +105,19 @@ public sealed class PreceptKeeping
 
     private static PreceptBook Replace(PreceptBook book, Precept changed)
         => book with { Precepts = book.Precepts.Select(precept => precept.Id == changed.Id ? changed : precept).ToList() };
+
+    // The words, once the check says they keep the writer within its rules. Unchecked, they aren't saved: the writer would
+    // follow them in every rite, and nothing would check them later.
+    private Task<Either<Error, string>> WithinTheRules(string text, CancellationToken cancellationToken)
+        => Text(text).BindAsync(async words => (await check.Breaches([words], cancellationToken)).Match(
+            Right: breaches => breaches.HeadOrNone().Match(
+                Some: breach => Left<Error, string>(new BreaksARule(breach.Reason)),
+                None: () => Right<Error, string>(words)),
+            Left: error =>
+            {
+                logger.LogWarning(error.ToException(), "A precept couldn't be checked against the rules, so it isn't saved: {Reason}", error.Message);
+                return Left<Error, string>(Unchecked);
+            }));
 
     private static Either<Error, string> Text(string text)
     {
