@@ -61,7 +61,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         Ok(await testbed.Distiller().Distil(Tester, CancellationToken.None));
         var book = Ok(await testbed.Precepts.Get(CancellationToken.None)).Book;
 
-        var html = Html(await Function(enabled: true).Page(Get("?done=distil"), CancellationToken.None), 200);
+        var html = Html(await Function().Page(Get("?done=distil"), CancellationToken.None), 200);
 
         Assert.Contains($"""<li class="rite acted" id="precept-{book.Precepts.Single(precept => !precept.Pinned).Id:D}">""", html);
         Assert.Contains($"""<li class="rite" id="precept-{book.Precepts.Single(precept => precept.Pinned).Id:D}">""", html);

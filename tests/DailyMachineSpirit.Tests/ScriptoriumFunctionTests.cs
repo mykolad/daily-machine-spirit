@@ -690,7 +690,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         testbed.Models.Answers(BacklogTestbed.Sol,
             FakeChatClients.Answer("Litany of the Cold Cache", "O Machine Spirit, let thy cache be warm.", "A warm cache is one that was read before."));
 
-        var response = await Function(enabled: true).Decide(
+        var response = await Function().Decide(
             Amending(await ETag(draft), "Litany of the Cold Cache", "Warm it up."), draft.Id, "rewrite", CancellationToken.None);
 
         var html = Html(response.Result, 200);
