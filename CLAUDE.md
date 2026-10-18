@@ -193,6 +193,10 @@ observability/                    — the Grafana dashboard and alerts, and what
       and kept at Cloudflare until a new rite purges it (`DailyRiteFunction`; any query string is redirected to the one
       address, so it can't cause a read of its own), so what's typed there never leaves the browser until the reader
       searches. Without the script the icon is a link to the Archive's field.
+      Above the rites, up to three **subjects** (#69) whose name, or what their rites are about (`Tag.About`), has a
+      word starting with each word typed, ignoring case and accents, so "flaky" suggests Builds. The vocabulary comes
+      with the page (`data-subjects` on the search icon, every page but the Archive), so they need no request and show
+      even when the index can't be loaded. Picking one opens the subject's page.
 - **Votes** (Blessed / Heresy, `Api/VotesFunction`): one per account per rite, which the reader can switch or
   take back, signed in as below. `POST /api/rites/{number}/vote` with `{"vote": "blessed" | "heresy" | null}`, and
   `GET /api/votes?rites=12` for the page to show the reader's own vote pressed.

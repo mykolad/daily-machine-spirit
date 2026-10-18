@@ -242,6 +242,7 @@ public static class Styles
         .nav-find-drop[hidden]{display:none}
         .nav-find-drop :focus-visible{outline-color:#8f2a20;outline-offset:2px}
         .nav-find-label{margin:0;padding:8px 12px 4px;font-family:'EB Garamond',serif;font-style:italic;font-size:15px;color:#5c4a33}
+        .nav-find-drop [role=group]:not([hidden])+[role=group]{margin-top:4px;padding-top:4px;border-top:1px solid rgba(143,42,32,.25)}
         .nav-find-none{margin:0;padding:4px 12px 8px;font-family:'EB Garamond',serif;font-size:17px;line-height:1.4}
         .nav-find-drop [role=option]{position:relative;display:flex;flex-direction:column;justify-content:center;gap:2px;min-height:44px;padding:10px 12px;border-radius:6px;text-decoration:none}
         .nav-find-drop [role=option]:hover{background:#dfcda2}
