@@ -63,17 +63,23 @@ public sealed class NameSuggester
 
     /// <param name="taken">Every Scribe's name: none of them is suggested.</param>
     public async Task<List<string>> Suggest(IReadOnlyList<string> taken, CancellationToken cancellationToken)
-    {
-        var fromTheModel = await Ask(taken, cancellationToken);
-        // Tidied and checked as a name the Scribe typed would be, so a suggestion can always be taken as it is.
-        return fromTheModel.Concat(Fallbacks())
+        => Free(await Ask(taken, cancellationToken), taken);
+
+    /// <summary>
+    /// The suggestions a page carried, less any another Scribe took since, topped up from the site's own: the model isn't
+    /// asked again, and nothing taken is offered.
+    /// </summary>
+    public static List<string> StillFree(IReadOnlyList<string> carried, IReadOnlyList<string> taken) => Free(carried, taken);
+
+    // Tidied and checked as a name the Scribe typed would be, so a suggestion can always be taken as it is.
+    private static List<string> Free(IEnumerable<string> first, IReadOnlyList<string> taken)
+        => first.Concat(Fallbacks())
             .Select(ScribeNaming.Acceptable)
             .Rights()
             .Where(name => !taken.Any(other => ScribeNaming.SameName(other, name)))
             .DistinctBy(name => name.ToUpperInvariant())
             .Take(Count)
             .ToList();
-    }
 
     // The site's own, then every title with every word, then its own again, numbered: however many are taken, there are
     // always three more.

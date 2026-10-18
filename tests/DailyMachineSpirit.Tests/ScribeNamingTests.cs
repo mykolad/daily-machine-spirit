@@ -74,7 +74,7 @@ public sealed class ScribeNamingTests : IAsyncLifetime
 
         var refused = Failed(await naming.Choose(Ferrum, name, CancellationToken.None));
 
-        Assert.Equal((ScribeNaming.Refused, why), (refused.Code, refused.Message));
+        Assert.Equal(new NameRefused(why), refused);
         Assert.Equal(Option<string>.None, Ok(await naming.NameOf(Ferrum, CancellationToken.None)));
     }
 
@@ -170,6 +170,28 @@ public sealed class ScribeNamingTests : IAsyncLifetime
         Assert.Contains($"""<p class="suggest-others"><a class="button-link" href="/scriptorium/name">{ScriptoriumIcons.Refresh}Suggest Others</a></p>""", html);
         Assert.Contains("""value="Abbot Commit" """, followed);
         Assert.Single(testbed.Models.Requests);
+    }
+
+    // A suggestion another Scribe took since the page was shown isn't offered again, even on the page that refuses it: a
+    // name of the site's own takes its place, without asking the model.
+    [Fact]
+    public async Task ASuggestionTakenMeanwhile_IsReplaced_WithoutAskingTheModel()
+    {
+        Ok(await testbed.ScribeNaming().Choose(Cache, "Abbot Commit", CancellationToken.None));
+        var carried = "&s=Cantor%20Kernel&s=Abbot%20Commit&s=Sister%20Heap";
+
+        var followed = Html(await Function(Ferrum).Page(Get($"?name=Cantor%20Kernel{carried}"), CancellationToken.None), 200);
+        var refused = Html(await Function(Ferrum).Choose(
+            Form(("name", "Abbot Commit"), ("s", "Cantor Kernel"), ("s", "Abbot Commit"), ("s", "Sister Heap")), CancellationToken.None), 422);
+
+        foreach (var html in new[] { followed, refused })
+        {
+            Assert.DoesNotContain(">Abbot Commit</a>", html);
+            Assert.Contains(">Cantor Kernel</a>", html);
+            Assert.Contains(">Sister Heap</a>", html);
+            Assert.Contains(">Brother Ferrum</a>", html);
+        }
+        Assert.Empty(testbed.Models.Requests);
     }
 
     // Taken, the Scriptorium and the Record show it; refused, the page comes back with the words and why.
