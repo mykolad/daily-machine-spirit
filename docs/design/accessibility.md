@@ -25,6 +25,14 @@ Proposal.dc.html`, `scriptorium-icons.md`): icons, grouped buttons, folded notes
   for) are tied to their fields with `aria-describedby`. "Amend" on the calendar is a link, since it only opens the
   page: the page's buttons change things. Why words were refused, or that the Machine Spirit rewrote them, is the
   page's `role="status"` message, and the fields keep what the Scribe typed.
+- **Slow actions say they're under way** (#85): pressing Rewrite or Distil puts "The Machine Spirit is rewriting it…"
+  (or distilling) in the `role="status"` message, which is announced, and disables the form's buttons until the answer
+  comes. The status stays the same element when the rewrite's form replaces the old one, so its result is announced
+  too. Rewrite is disabled while the note is empty, since it follows the note; the note's hint says so in words, for
+  anyone without the script.
+- **What a rewrite changed is said in each field's label** ("Text · rewritten"), so a screen reader hears it with the
+  field's name, and shown by the field's amber edge; the colour is never the only sign. The first changed field takes
+  focus, where the Scribe reads on.
 - **A precept refused for breaking the writer's rules** (#86) comes back the same way: why is the `role="status"`
   message, and the field it was typed in keeps the words, marked `aria-invalid="true"` and described by that message
   (`aria-describedby`), so a screen reader on the field hears why. An edit's fold comes back open.

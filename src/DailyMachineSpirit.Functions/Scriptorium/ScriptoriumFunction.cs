@@ -105,7 +105,7 @@ public sealed class ScriptoriumFunction
 
         return (await amendments.FindWaiting(draftId, cancellationToken)).Match(
             Right: found => found.Match(
-                Some: amendable => Html(request, ScriptoriumPage.RenderAmend(amendable, Words(amendable.Draft), string.Empty, None), StatusCodes.Status200OK),
+                Some: amendable => Html(request, ScriptoriumPage.RenderAmend(amendable, Words(amendable.Draft), string.Empty, None, None), StatusCodes.Status200OK),
                 // Burned or published since the calendar was shown: the page says to look again.
                 None: () => Back("changed", draftId)),
             Left: error => Failed(request, error));
@@ -203,7 +203,7 @@ public sealed class ScriptoriumFunction
         return await (await amendments.SaveAndJudgeAgain(draftId, etag, words, note, scribe, cancellationToken)).Match(
             Right: saved => Task.FromResult(new ScriptoriumResponse { Result = Back(saved.JudgedAgain ? "amend" : "amend-unjudged", draftId) }),
             Left: error => IsTheScribes(error)
-                ? AmendAgain(request, draftId, etag, words, note, error.Message, StatusCodes.Status422UnprocessableEntity, cancellationToken)
+                ? AmendAgain(request, draftId, etag, words, None, note, error.Message, StatusCodes.Status422UnprocessableEntity, cancellationToken)
                 : Task.FromResult(Failure(request, error, draftId)));
     }
 
@@ -214,7 +214,7 @@ public sealed class ScriptoriumFunction
         var note = fields["note"].ToString();
         var etag = fields["etag"].ToString();
         return await (await amendments.ProposeRewrite(draftId, words, note, cancellationToken)).Match(
-            Right: rewritten => AmendAgain(request, draftId, etag, rewritten, note,
+            Right: rewritten => AmendAgain(request, draftId, etag, rewritten, Some(words), note,
                 "The Machine Spirit rewrote it as your note asks. Read it over, then save it, ask again, or leave it as it was.",
                 StatusCodes.Status200OK, cancellationToken),
             Left: error =>
@@ -225,11 +225,11 @@ public sealed class ScriptoriumFunction
                 }
                 if (IsTheScribes(error))
                 {
-                    return AmendAgain(request, draftId, etag, words, note, error.Message, StatusCodes.Status422UnprocessableEntity, cancellationToken);
+                    return AmendAgain(request, draftId, etag, words, None, note, error.Message, StatusCodes.Status422UnprocessableEntity, cancellationToken);
                 }
 
                 logger.LogError(error.ToException(), "The draft {DraftId} couldn't be rewritten: {Reason}", draftId, error.Message);
-                return AmendAgain(request, draftId, etag, words, note,
+                return AmendAgain(request, draftId, etag, words, None, note,
                     "The Machine Spirit couldn't rewrite it just now. Try again in a moment, or amend it by hand.",
                     StatusCodes.Status503ServiceUnavailable, cancellationToken);
             });
@@ -238,12 +238,13 @@ public sealed class ScriptoriumFunction
     // The amending page again, keeping the version the Scribe started from, so a change made meanwhile still stops the
     // save; gone from the calendar since, back to it to look again.
     private async Task<ScriptoriumResponse> AmendAgain(
-        HttpRequest request, Guid draftId, string etag, RiteContent words, string note, string message, int status, CancellationToken cancellationToken)
+        HttpRequest request, Guid draftId, string etag, RiteContent words, Option<RiteContent> rewrittenFrom, string note, string message, int status,
+        CancellationToken cancellationToken)
         => (await amendments.FindWaiting(draftId, cancellationToken)).Match(
             Right: found => found.Match(
                 Some: amendable => new ScriptoriumResponse
                 {
-                    Result = Html(request, ScriptoriumPage.RenderAmend(amendable with { ETag = etag }, words, note, Some(message)), status),
+                    Result = Html(request, ScriptoriumPage.RenderAmend(amendable with { ETag = etag }, words, note, Some(message), rewrittenFrom), status),
                 },
                 None: () => new ScriptoriumResponse { Result = Back("changed", draftId) }),
             Left: error => Failure(request, error, draftId));

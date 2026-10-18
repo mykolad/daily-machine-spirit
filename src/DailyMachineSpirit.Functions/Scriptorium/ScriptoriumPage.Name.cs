@@ -2,6 +2,7 @@ using System.Text;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Functions.Scriptorium.Naming;
 using LanguageExt;
+using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Functions.Scriptorium;
 
@@ -26,7 +27,7 @@ public static partial class ScriptoriumPage
         html.Append($"""<p class="status" role="status" id="name-status">{message.Map(Encode).IfNone(string.Empty)}</p>""");
         NameForm(html, yours, suggestions, inTheField, message.IsSome);
         html.Append("</main>");
-        Footer(html, withScript: false);
+        Footer(html, None);
         return html.ToString();
     }
 
