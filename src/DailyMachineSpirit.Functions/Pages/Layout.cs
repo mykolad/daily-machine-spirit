@@ -1,3 +1,6 @@
+using System.Text.Json;
+using DailyMachineSpirit.Functions.Tags;
+
 namespace DailyMachineSpirit.Functions.Pages;
 
 /// <summary>The frame around every page: head, skip link, header and navigation, footer, and the toast region.</summary>
@@ -14,6 +17,11 @@ public static class Layout
 
     // Every page but Today and the Archive, which have the masthead instead.
     private const string Brand = $"<a class=\"brand\" href=\"/\">{Svg.BrandCog}{SiteName}</a>";
+
+    // For the nav's search to suggest subjects as the reader types, without asking the server: the vocabulary is small
+    // and fixed. Not on the Archive, whose icon leads to the page's own field.
+    private static readonly string Subjects =
+        $" data-subjects=\"{Html.Encode(JsonSerializer.Serialize(RiteTags.All, JsonSerializerOptions.Web))}\"";
 
     /// <param name="title">The page's own title, or empty for Today, whose title is the site's name.</param>
     /// <param name="description">Plain text for search results and link previews.</param>
@@ -48,7 +56,7 @@ public static class Layout
             <nav aria-label="Main">
             <a href="/"{Current(section == Section.Today)}>Today</a>
             <a href="/archive"{Current(section == Section.Archive)}>Archive</a>
-            <a class="nav-search" href="{Paths.Archive}#archive-search" aria-label="Search">{Svg.SearchIcon}</a>
+            <a class="nav-search" href="{Paths.Archive}#archive-search" aria-label="Search"{(section == Section.Archive ? string.Empty : Subjects)}>{Svg.SearchIcon}</a>
             </nav>
             </header>
             <main id="main" tabindex="-1">
