@@ -1,7 +1,10 @@
+using System.Net;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Pages;
+using DailyMachineSpirit.Functions.Tags;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -310,6 +313,21 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.DoesNotContain("""aria-label="Clear search">""", html);
         Assert.Contains("""<a class="nav-search" href="/archive#archive-search" aria-label="Search">""", html);
         Assert.DoesNotContain(">Search</a>", html);
+    }
+
+    // The nav's search suggests subjects from the page itself, so typing asks the server nothing; the Archive, whose icon
+    // leads to its own field, goes without.
+    [Fact]
+    public async Task NavSearch_CarriesEverySubject_ExceptOnTheArchive()
+    {
+        await Add(Day, "The Rite of Re-Run");
+
+        var (_, today) = await Today("");
+        var (_, archive) = await Archive("");
+
+        var subjects = Regex.Match(today, "data-subjects=\"([^\"]*)\"").Groups[1].Value;
+        Assert.Equal(RiteTags.All, JsonSerializer.Deserialize<List<Tag>>(WebUtility.HtmlDecode(subjects), JsonSerializerOptions.Web));
+        Assert.DoesNotContain("data-subjects", archive);
     }
 
     // Each count only when there is one: no line at all for a rite nobody has voted on.

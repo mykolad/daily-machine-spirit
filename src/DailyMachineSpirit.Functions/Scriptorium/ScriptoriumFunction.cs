@@ -2,6 +2,7 @@ using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Generation.Judging;
 using DailyMachineSpirit.Functions.Generation.Writing;
+using DailyMachineSpirit.Functions.Scriptorium.Naming;
 using DailyMachineSpirit.Functions.Scriptorium.SignIn;
 using LanguageExt;
 using LanguageExt.Common;
@@ -43,6 +44,7 @@ public sealed class ScriptoriumFunction
     private readonly Amendments amendments;
     private readonly JudgingAgain judgingAgain;
     private readonly IAuditRepository audit;
+    private readonly ScribeNaming naming;
     private readonly TimeProvider time;
     private readonly ScriptoriumGate gate;
     private readonly IOptions<ScriptoriumOptions> options;
@@ -53,6 +55,7 @@ public sealed class ScriptoriumFunction
         Amendments amendments,
         JudgingAgain judgingAgain,
         IAuditRepository audit,
+        ScribeNaming naming,
         IScribeSignIn signIn,
         IOptions<ScriptoriumOptions> options,
         TimeProvider time,
@@ -62,6 +65,7 @@ public sealed class ScriptoriumFunction
         this.amendments = amendments;
         this.judgingAgain = judgingAgain;
         this.audit = audit;
+        this.naming = naming;
         this.time = time;
         gate = new ScriptoriumGate(signIn, options);
         this.options = options;
@@ -72,15 +76,18 @@ public sealed class ScriptoriumFunction
     public async Task<IActionResult> Page(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "scriptorium")] HttpRequest request, CancellationToken cancellationToken)
     {
-        if ((await gate.Refusal(request, cancellationToken)).Case is IActionResult refused)
+        var looking = await gate.LookingScribe(request, cancellationToken);
+        if (looking.Case is IActionResult refused)
         {
             return refused;
         }
+        var scribe = (string)looking.Case;
 
         var outcome = Optional(request.Query["done"].ToString()).Filter(done => done.Length > 0);
         var rite = Optional(request.Query["rite"].ToString()).Bind(text => Guid.TryParse(text, out var id) ? Some(id) : None);
+        var name = await NameOf(scribe, cancellationToken);
         return (await scribes.View(cancellationToken)).Match(
-            Right: view => Html(request, ScriptoriumPage.Render(view, outcome, rite), StatusCodes.Status200OK),
+            Right: view => Html(request, ScriptoriumPage.Render(view, outcome, rite, name), StatusCodes.Status200OK),
             Left: error => Failed(request, error));
     }
 
@@ -118,8 +125,9 @@ public sealed class ScriptoriumFunction
         var entries = await draft.Match(
             Some: id => audit.GetHistory(id, cancellationToken),
             None: () => audit.GetNewest(RecordShown, cancellationToken));
+        var names = await Names(cancellationToken);
         return entries.Match(
-            Right: entries => Html(request, ScriptoriumPage.RenderRecord(entries, draft), StatusCodes.Status200OK),
+            Right: entries => Html(request, ScriptoriumPage.RenderRecord(entries, names, draft), StatusCodes.Status200OK),
             Left: error => Failed(request, error));
     }
 
@@ -281,6 +289,27 @@ public sealed class ScriptoriumFunction
         }
         return new ScriptoriumResponse { Result = Failed(request, error) };
     }
+
+    // The names are a nicety on these pages: unreadable, the Scriptorium still works, showing Scribes by their ids.
+    private async Task<Option<NameInTheRecord>> NameOf(string scribe, CancellationToken cancellationToken)
+    {
+        return (await naming.NameOf(scribe, cancellationToken)).Match(
+            Right: chosen => Some(new NameInTheRecord(chosen.IfNone(() => ScribeNames.Unnamed(scribe)), chosen.IsSome)),
+            Left: error =>
+            {
+                logger.LogWarning(error.ToException(), "The Scribes' names couldn't be read: {Reason}", error.Message);
+                return Option<NameInTheRecord>.None;
+            });
+    }
+
+    private async Task<List<ScribeName>> Names(CancellationToken cancellationToken)
+        => (await naming.All(cancellationToken)).Match(
+            Right: all => all,
+            Left: error =>
+            {
+                logger.LogWarning(error.ToException(), "The Scribes' names couldn't be read: {Reason}", error.Message);
+                return [];
+            });
 
     private IActionResult Failed(HttpRequest request, Error error)
     {
