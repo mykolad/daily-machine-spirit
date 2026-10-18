@@ -39,12 +39,6 @@ public sealed class PreceptCheck
     /// </summary>
     public static readonly TimeSpan TimeAllowed = TimeSpan.FromSeconds(15);
 
-    /// <summary>
-    /// No model could tell in time whether the precepts break a rule. Nothing unchecked is saved: the writer would follow
-    /// it in every rite.
-    /// </summary>
-    public const int CouldNotCheck = 8602;
-
     private static readonly JsonSerializerOptions AnswerSerializerOptions = new(JsonSerializerOptions.Web)
     {
         RespectNullableAnnotations = true,
@@ -65,7 +59,7 @@ public sealed class PreceptCheck
     }
 
     /// <summary>
-    /// The precepts that break a rule, with why; <see cref="CouldNotCheck"/> when no model could tell in time. The models
+    /// The precepts that break a rule, with why; an error when no model could tell in time. The models
     /// are asked in order, within <see cref="TimeAllowed"/> together: one failing at once leaves the next time to answer.
     /// </summary>
     public async Task<Either<Error, List<PreceptBreach>>> Breaches(IReadOnlyList<string> precepts, CancellationToken cancellationToken)
@@ -91,7 +85,7 @@ public sealed class PreceptCheck
             }
             answer.IfLeft(error => failures.Add($"{model}: {error.Message}"));
         }
-        return Error.New(CouldNotCheck, $"No model could check the precepts. {string.Join(" ", failures)}");
+        return Error.New($"No model could check the precepts. {string.Join(" ", failures)}");
     }
 
     private async Task<Either<Error, List<PreceptBreach>>> Ask(

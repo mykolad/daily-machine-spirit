@@ -37,7 +37,7 @@ public sealed class PreceptsTests : IAsyncLifetime
 
         var refused = Failed(await keeping.AddPinned("Use Adeptus Mechanicus terms.", Tester, CancellationToken.None));
 
-        Assert.Equal((PreceptKeeping.BreaksARule, "It asks for the setting's names, which the writer never uses."), (refused.Code, refused.Message));
+        Assert.Equal(new BreaksARule("It asks for the setting's names, which the writer never uses."), refused);
         Assert.Empty(Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts);
         var request = testbed.Models.Requests.Single(found => found.Model == Checker).Messages;
         Assert.Contains("1. \"Use Adeptus Mechanicus terms.\"", request.Single(message => message.Role == ChatRole.User).Text);
@@ -55,7 +55,7 @@ public sealed class PreceptsTests : IAsyncLifetime
 
         var refused = Failed(await keeping.EditAndPin(id, await Version(), "Mock the managers.", Tester, CancellationToken.None));
 
-        Assert.Equal(PreceptKeeping.BreaksARule, refused.Code);
+        Assert.IsType<BreaksARule>(refused);
         Assert.Equal([RealFix], await Texts());
     }
 
@@ -92,7 +92,7 @@ public sealed class PreceptsTests : IAsyncLifetime
 
         var refused = Failed(await testbed.PreceptKeeping().AddPinned("Mock the managers.", Tester, CancellationToken.None));
 
-        Assert.Equal((PreceptKeeping.BreaksARule, "It mocks a group of people."), (refused.Code, refused.Message));
+        Assert.Equal(new BreaksARule("It mocks a group of people."), refused);
     }
 
     // The models share the check's time, so a distillation's wait stays within Cloudflare's: one that takes it all leaves

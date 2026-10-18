@@ -21,10 +21,7 @@ public sealed class PreceptKeeping
 
     public static readonly Error Full = Error.New($"There are {PreceptBook.MaxPrecepts} precepts already: delete or edit one instead.");
 
-    /// <summary>The code of a precept refused for breaking the writer's rules (#86): its message says which.</summary>
-    public const int BreaksARule = 8601;
-
-    public static readonly Error Unchecked = Error.New(PreceptCheck.CouldNotCheck, "The rules couldn't be checked just now.");
+    public static readonly Error Unchecked = Error.New("The rules couldn't be checked just now.");
 
     private readonly IPreceptRepository precepts;
     private readonly PreceptCheck check;
@@ -114,7 +111,7 @@ public sealed class PreceptKeeping
     private Task<Either<Error, string>> WithinTheRules(string text, CancellationToken cancellationToken)
         => Text(text).BindAsync(async words => (await check.Breaches([words], cancellationToken)).Match(
             Right: breaches => breaches.HeadOrNone().Match(
-                Some: breach => Left<Error, string>(Error.New(BreaksARule, breach.Reason)),
+                Some: breach => Left<Error, string>(new BreaksARule(breach.Reason)),
                 None: () => Right<Error, string>(words)),
             Left: error =>
             {

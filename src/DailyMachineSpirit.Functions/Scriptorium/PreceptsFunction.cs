@@ -136,11 +136,16 @@ public sealed class PreceptsFunction
     private async Task<IActionResult> Saved(
         HttpRequest request, string action, Option<Guid> preceptId, string text, Either<Error, Unit> result, CancellationToken cancellationToken)
     {
-        if (result.Case is not Error { Code: PreceptKeeping.BreaksARule or PreceptCheck.CouldNotCheck } refusal)
+        var nextStep = result.Case switch
+        {
+            BreaksARule => "Reword it, or leave it as it was.",
+            Error error when error == PreceptKeeping.Unchecked => "Try again in a moment.",
+            _ => string.Empty,
+        };
+        if (nextStep.Length == 0 || result.Case is not Error refusal)
         {
             return Answer(request, action, preceptId, result);
         }
-        var nextStep = refusal.Code == PreceptKeeping.BreaksARule ? "Reword it, or leave it as it was." : "Try again in a moment.";
         var refused = new RefusedPrecept(preceptId, text, refusal.Message, nextStep);
         return (await PreceptsAndTrend(cancellationToken)).Match(
             Right: found => Html(request, ScriptoriumPage.RenderPrecepts(found.Stored, found.Months, None, preceptId, Some(refused)),
