@@ -33,7 +33,9 @@ public sealed class PreceptCheck
         """;
 
     /// <summary>
-    /// Short: a Scribe waits for it after the distilling models, within the 100 seconds Cloudflare waits for an answer.
+    /// How long the model may take. A Scribe who asks for a distillation waits for the distilling models (up to 40 seconds
+    /// each, two of them: <see cref="PreceptDistiller.AttemptTime"/>) and then for this check, and Cloudflare gives up
+    /// after 100 seconds: 80 + 15 leaves a margin.
     /// </summary>
     public static readonly TimeSpan AttemptTime = TimeSpan.FromSeconds(15);
 
