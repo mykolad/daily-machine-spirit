@@ -56,17 +56,17 @@ public class RiteRepository : IRiteRepository
                 .WithParameter("@number", number),
             cancellationToken)).Select(document => document.ToRite()).ToList());
 
-    public Task<Either<Error, List<Rite>>> Search(IReadOnlyList<string> words, int number, int count, CancellationToken cancellationToken)
+    public Task<Either<Error, List<Rite>>> SearchOlderThan(IReadOnlyList<string> words, Option<string> tag, int number, int count, CancellationToken cancellationToken)
         => Attempt(async () => (await container.Query<RiteDocument>(
-            Holding(words, "SELECT TOP @count * FROM c", "AND c.number < @number ORDER BY c.number DESC")
+            Holding(words, tag, "SELECT TOP @count * FROM c", "AND c.number < @number ORDER BY c.number DESC")
                 .WithParameter("@count", count)
                 .WithParameter("@number", number),
             cancellationToken)).Select(document => document.ToRite()).ToList());
 
-    public Task<Either<Error, List<RiteDay>>> FindDays(IReadOnlyList<string> words, CancellationToken cancellationToken)
-        => Attempt(async () => await container.Query<RiteDay>(
-            Holding(words, "SELECT c.number, c.publishedOnUtc FROM c", "ORDER BY c.number DESC"),
-            cancellationToken));
+    public Task<Either<Error, List<FoundRite>>> FindDaysAndTags(IReadOnlyList<string> words, Option<string> tag, CancellationToken cancellationToken)
+        => Attempt(async () => (await container.Query<FoundRiteDocument>(
+            Holding(words, tag, "SELECT c.number, c.publishedOnUtc, c.tags FROM c", "ORDER BY c.number DESC"),
+            cancellationToken)).Select(document => document.ToFoundRite()).ToList());
 
     // Only the words and where each rite stands: the scores alone would be most of every document.
     public Task<Either<Error, List<RiteWords>>> GetAllWords(CancellationToken cancellationToken)
@@ -114,7 +114,7 @@ public class RiteRepository : IRiteRepository
                 .WithParameter("@version", scoresGeneratorVersion),
             cancellationToken)).ToDictionary(r => r.Number, r => r.Scores));
 
-    public Task<Either<Error, List<Rite>>> GetTagged(string tag, int number, int count, CancellationToken cancellationToken)
+    public Task<Either<Error, List<Rite>>> GetTaggedOlderThan(string tag, int number, int count, CancellationToken cancellationToken)
         => Attempt(async () => (await container.Query<RiteDocument>(
             new QueryDefinition("SELECT TOP @count * FROM c WHERE c.type = @type AND ARRAY_CONTAINS(c.tags, @tag) AND c.number < @number ORDER BY c.number DESC")
                 .WithParameter("@count", count)
@@ -142,14 +142,16 @@ public class RiteRepository : IRiteRepository
     // The rites holding every word somewhere in their title, text or Heretical Truth, ignoring case. Each word is a
     // parameter, so what a reader typed never becomes part of the query's text. A plain CONTAINS reads every rite, which
     // costs little at a few hundred; Cosmos's full-text index can take over if that grows.
-    private static QueryDefinition Holding(IReadOnlyList<string> words, string select, string rest)
+    private static QueryDefinition Holding(IReadOnlyList<string> words, Option<string> tag, string select, string rest)
     {
         var conditions = words.Select((_, index) =>
             $" AND (CONTAINS(c.title, @word{index}, true) OR CONTAINS(c.text, @word{index}, true) OR CONTAINS(c.hereticalTruth, @word{index}, true))");
-        var query = new QueryDefinition($"{select} WHERE c.type = @type{string.Concat(conditions)} {rest}")
+        var filed = tag.IsSome ? " AND ARRAY_CONTAINS(c.tags, @tag)" : string.Empty;
+        var query = new QueryDefinition($"{select} WHERE c.type = @type{string.Concat(conditions)}{filed} {rest}")
             .WithParameter("@type", RiteDocument.RiteType);
+        var filedUnder = tag.Match(Some: key => query.WithParameter("@tag", key), None: () => query);
         return words.Select((word, index) => (word, index))
-            .Aggregate(query, (holding, word) => holding.WithParameter($"@word{word.index}", word.word));
+            .Aggregate(filedUnder, (holding, word) => holding.WithParameter($"@word{word.index}", word.word));
     }
 
     // Saves the rite and takes its number in one batch; when it comes from a draft, the draft is marked published in the

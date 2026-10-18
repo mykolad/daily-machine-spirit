@@ -1,3 +1,6 @@
+using LanguageExt;
+using static LanguageExt.Prelude;
+
 namespace DailyMachineSpirit.Functions.Pages;
 
 /// <summary>The site's URLs, in one place so links and routes can't drift apart.</summary>
@@ -22,9 +25,15 @@ public static class Paths
     public static string TagBefore(string key, int number) => $"{Tag(key)}?before={number}";
 
     /// <summary>The Archive's search results for what the reader typed.</summary>
-    public static string ArchiveSearch(string typed) => $"{Archive}?q={Uri.EscapeDataString(typed)}";
+    public static string ArchiveSearch(string typed) => ArchiveSearch(typed, None);
 
-    public static string ArchiveSearchBefore(string typed, int number) => $"{ArchiveSearch(typed)}&before={number}";
+    /// <summary>The Archive's search results for what the reader typed, among the rites filed under the tag if one is given.</summary>
+    public static string ArchiveSearch(string typed, Option<string> tagKey)
+        => $"{Archive}?q={Uri.EscapeDataString(typed)}{tagKey.Map(key => $"&tag={Uri.EscapeDataString(key)}").IfNone(string.Empty)}";
+
+    public static string ArchiveSearchBefore(string typed, int number) => ArchiveSearchBefore(typed, None, number);
+
+    public static string ArchiveSearchBefore(string typed, Option<string> tagKey, int number) => $"{ArchiveSearch(typed, tagKey)}&before={number}";
 
     /// <summary>
     /// The cached pages that show a rite's counts and change with its votes: its own, and Today, which shows the newest

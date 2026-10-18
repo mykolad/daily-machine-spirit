@@ -14,7 +14,7 @@ public sealed record Draft
 
     public RiteWriting Writing { get; init; } = new();
 
-    /// <summary>Copied to the rite when it's published, for "More rites".</summary>
+    /// <summary>Copied to the rite when it's published.</summary>
     public Option<RiteSimilarity> Similarity { get; init; }
 
     public Option<string[]> Tags { get; init; }

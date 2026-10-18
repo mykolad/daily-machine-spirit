@@ -1,4 +1,6 @@
 using System.Globalization;
+using DailyMachineSpirit.Functions.Tags;
+using LanguageExt;
 
 namespace DailyMachineSpirit.Functions.Pages;
 
@@ -64,15 +66,18 @@ public static class ArchiveSheet
 
     /// <summary>
     /// The sheet's search field: a plain form, so it works without the script. Its clear button is a link back to the
-    /// whole Archive.
+    /// whole Archive. Searching within a subject, the form carries the tag along, and the chip under it, a link to the
+    /// same words in every subject, takes the filter off.
     /// </summary>
-    public static string Search(string typed)
+    public static string Search(string typed, Option<Tag> tag)
         => $"""
             <form class="sheet-search" role="search" action="{Paths.Archive}" method="get">
             {Svg.SearchIcon}
             <input type="search" id="archive-search" name="q" value="{Html.Encode(typed)}" aria-label="Search the Archive" placeholder="Search the Archive" maxlength="{SearchWords.MaxLength}" autocomplete="off" spellcheck="false">
+            {tag.Map(filter => $"""<input type="hidden" name="tag" value="{Html.Encode(filter.Key)}">""").IfNone(string.Empty)}
             {(typed.Length == 0 ? string.Empty : $"""<a class="sheet-clear" href="{Paths.Archive}" aria-label="Clear search">{Svg.ClearIcon}</a>""")}
             </form>
+            {tag.Map(filter => $"""<p class="sheet-filter">Filed under <a class="filter-chip" href="{Html.Encode(Paths.ArchiveSearch(typed))}" aria-label="Remove filter: {Html.Encode(filter.Label)}">{Html.Encode(filter.Label)}{Svg.ClearIcon}</a></p>""").IfNone(string.Empty)}
             """;
 
     /// <summary>A margin's label and what it says.</summary>
