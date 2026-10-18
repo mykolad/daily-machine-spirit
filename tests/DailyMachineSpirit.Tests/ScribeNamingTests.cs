@@ -165,6 +165,9 @@ public sealed class ScribeNamingTests : IAsyncLifetime
         Assert.Contains("""<input type="text" id="scribe-name" name="name" value="Cantor Kernel" """, html);
         Assert.Contains("""<a class="button-link" href="/scriptorium/name?name=Abbot%20Commit&amp;s=Cantor%20Kernel&amp;s=Abbot%20Commit&amp;s=Sister%20Heap#scribe-name">Abbot Commit</a>""", html);
         Assert.Contains("""<input type="hidden" name="s" value="Sister Heap">""", html);
+        // Asking for others is no name: it stands apart from the list, with its own icon.
+        Assert.Contains("""Sister Heap</a></li></ul>""", html);
+        Assert.Contains($"""<p class="suggest-others"><a class="button-link" href="/scriptorium/name">{ScriptoriumIcons.Refresh}Suggest Others</a></p>""", html);
         Assert.Contains("""value="Abbot Commit" """, followed);
         Assert.Single(testbed.Models.Requests);
     }

@@ -97,7 +97,7 @@ public sealed class ScribeNameFunction
             : await suggester.Suggest(names.Where(name => name.AccessId != scribe).Select(name => name.Name).ToList(), cancellationToken);
         var yours = new NameInTheRecord(chosen.IfNone(() => ScribeNames.Unnamed(scribe)), chosen.IsSome);
         var inTheField = typed.IfNone(() => chosen.IfNone(() => suggestions.HeadOrNone().IfNone(string.Empty)));
-        return Html(request, ScriptoriumPage.RenderName(Some(yours), suggestions, inTheField, message), status);
+        return Html(request, ScriptoriumPage.RenderName(yours, suggestions, inTheField, message), status);
     }
 
     private IActionResult Failed(HttpRequest request, Error error)

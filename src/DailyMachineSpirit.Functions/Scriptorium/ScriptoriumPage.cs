@@ -48,6 +48,8 @@ public static partial class ScriptoriumPage
         .actions form { margin: 0; }
         .calendar, .judgments { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 16px; }
         .suggestions { list-style: none; padding: 0; margin: 12px 0 0; display: flex; flex-wrap: wrap; gap: 8px; }
+        .suggest-others { margin: 16px 0 0; }
+        .suggest-others .button-link { border-style: dashed; }
         .rite { background: #1a1612; border: 1px solid rgba(237,227,207,.1); border-radius: 20px; padding: 20px clamp(16px, 3vw, 24px); scroll-margin-top: 16px; }
         .next { display: inline-block; margin: 8px 0 0; padding: 2px 10px; border: 1px solid #2e4248; border-radius: 999px; font: 500 13px "JetBrains Mono", monospace; color: #8cc4ae; }
         .ash { opacity: .92; }

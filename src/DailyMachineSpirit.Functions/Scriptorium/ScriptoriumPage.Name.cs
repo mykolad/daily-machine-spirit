@@ -12,10 +12,10 @@ public static partial class ScriptoriumPage
     /// have, else the first suggestion, which they can change. Each suggestion is a link that puts it in the field
     /// instead; Suggest Others asks for new ones. Plain links and a form, without a script.
     /// </summary>
-    /// <param name="yours">How the Record shows them now; none on staging, where there's no name to choose.</param>
+    /// <param name="yours">How the Record shows them now.</param>
     /// <param name="inTheField">What the field holds.</param>
-    /// <param name="message">Why a name wasn't taken, or why there's none to choose.</param>
-    public static string RenderName(Option<NameInTheRecord> yours, IReadOnlyList<string> suggestions, string inTheField, Option<string> message)
+    /// <param name="message">Why a name wasn't taken.</param>
+    public static string RenderName(NameInTheRecord yours, IReadOnlyList<string> suggestions, string inTheField, Option<string> message)
     {
         var html = new StringBuilder();
         Head(html, "Your Name in the Record");
@@ -24,7 +24,7 @@ public static partial class ScriptoriumPage
             "The Record shows who made each change. Choose the name it shows for you: a name or an alias, which only the Scribes see.");
         html.Append("""<p class="record-link"><a href="/scriptorium">Back to the Scriptorium</a> · <a href="/scriptorium/record">The Record</a></p>""");
         html.Append($"""<p class="status" role="status" id="name-status">{message.Map(Encode).IfNone(string.Empty)}</p>""");
-        yours.IfSome(shown => NameForm(html, shown, suggestions, inTheField, message.IsSome));
+        NameForm(html, yours, suggestions, inTheField, message.IsSome);
         html.Append("</main>");
         Footer(html, withScript: false);
         return html.ToString();
@@ -41,7 +41,8 @@ public static partial class ScriptoriumPage
             <p>The Record {(yours.Chosen ? "calls you" : "shows you as")} “{Encode(yours.Shown)}”.</p>
             <section aria-labelledby="suggestions-heading">
             <h2 id="suggestions-heading">Names the Machine Spirit Suggests</h2>
-            <ul class="suggestions">{links}<li><a class="button-link" href="/scriptorium/name">Suggest Others</a></li></ul>
+            <ul class="suggestions">{links}</ul>
+            <p class="suggest-others"><a class="button-link" href="/scriptorium/name">{ScriptoriumIcons.Refresh}Suggest Others</a></p>
             </section>
             <form method="post" action="/scriptorium/name" class="amend">
             {string.Concat(suggestions.Select(name => $"""<input type="hidden" name="s" value="{Encode(name)}">"""))}
