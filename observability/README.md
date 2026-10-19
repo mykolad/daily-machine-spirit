@@ -22,8 +22,15 @@ over this file, so the repository stays the truth.
 and exported the same way.
 
 - **The Scribes' actions, readers' votes, sign-ins and Archive searches** are counted from the app's logs (`SiteActivity`,
-  one line each, below), not metrics: they're rare, and a counter's first value in a process, often its only one, is
-  never seen as an increase. Each line says what was done, never who or what was searched for.
+  one line each, below), not metrics. Each line says what was done, never who or what was searched for.
+
+  A counter would miss most of them. Each process counts from zero and sends its totals every minute, and
+  `increase()` measures how a total grew between samples, so a series' first sample, with nothing before it, adds
+  nothing. Processes come and go with traffic: one that serves a single vote sends a single 1, and `increase()` reports
+  0. Grafana Cloud doesn't add the missing zero: on staging, one refused sign-in left `dms_signins_total` at 1 and
+  `increase()` at 0 (October 2026). Starting a counter at zero only helps if the zero is sent before the first event,
+  which usually comes with the very request that started the process. A log line is one event, however short its
+  process's life.
 - **Page views, visitors and how much Cloudflare's cache served** come from Cloudflare's own analytics, for production
   (staging isn't behind Cloudflare). Nothing new is collected about visitors: Grafana reads the zone's daily totals
   through Cloudflare's GraphQL API. It needs, once:
@@ -58,9 +65,8 @@ what to look at.
 | **Server errors** | more than 5% of requests answered 5xx for ten minutes, over at least ten requests |
 | **No telemetry from production** | nothing for 26 hours: the midnight timer wakes the app every day, so silence means a broken export or a dead app |
 
-Rare events are counted from logs, not metrics: each process keeps its own counters, and the app's processes come and
-go with traffic, so a counter's first value in a process (often its only one, for something that happens once a day)
-is never seen as an increase. Each log line is an event of its own.
+Rare events are counted from logs, not metrics, for the reason the activity dashboard's are (above): a counter's first
+value in a process, often its only one for something that happens once a day, is never seen as an increase.
 
 The Grafana rules are `grafana/alerts.json`, one rule group, evaluated every five minutes, and they notify through the
 stack's default notification policy (the default contact point emails the stack's owner). To put them into Grafana:

@@ -4,9 +4,16 @@ namespace DailyMachineSpirit.Functions.Telemetry;
 
 /// <summary>
 /// What the site's people do, one log line each, for the activity dashboard (observability/README.md): a Scribe's
-/// action, a reader's vote, sign-in or search. Counted from logs, not metrics: these are rare, and a counter's first
-/// value in a process, often its only one, is never seen as an increase. Each attribute names what was done, never who
-/// did it or what they searched for.
+/// action, a reader's vote, sign-in or search. Each attribute names what was done, never who did it or what they
+/// searched for.
+/// <para>
+/// Counted from logs, because a counter would miss most of them. Each process counts from zero and sends its totals
+/// every minute; Prometheus's <c>increase()</c> measures how a total grew between samples, so a series' first sample,
+/// with nothing before it, adds nothing. Processes come and go with traffic, and one that serves a single vote sends a
+/// single 1: <c>increase()</c> reports 0. Grafana Cloud doesn't add the missing zero (tried on staging, October 2026),
+/// and starting a counter at zero only helps if that zero is sent before the first event, which usually comes with
+/// the very request that started the process. A log line is one event, however short its process's life.
+/// </para>
 /// </summary>
 public static class SiteActivity
 {
