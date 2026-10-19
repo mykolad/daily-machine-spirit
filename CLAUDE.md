@@ -148,7 +148,8 @@ observability/                    — the Grafana dashboards (technical, activit
     sheet (`ArchiveSheet.Closing`). A tag's page is the same sheet, with the other subjects in the right margin.
   - **Cached until they change** (#37): browsers keep a page a minute, and Cloudflare keeps Today and a rite's page an
     hour (`s-maxage`, `EdgeLifetime.UntilPurged`), so their requests rarely reach the app. Whatever changes them purges
-    them (`IPageCache`, `CloudflarePageCache`): a saved vote adds its rite's page and Today
+    them (`IPageCache`, `CloudflarePageCache`): a vote that changed something (`SavedVote.Changed`: not the same
+    vote sent again) adds its rite's page and Today
     (`Paths.ShowingVotesOf`) to the minute's batch (`PurgeBatcher`), so a vote never waits for Cloudflare and a page is
     purged at most once a minute per instance; a new rite purges Today and the search index at once. The archive and a
     tag's page, which no purge can find, stay a minute, as does any address with a query string (Cloudflare caches each
