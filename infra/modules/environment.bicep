@@ -23,6 +23,8 @@ param scriptoriumWithoutSignIn bool
 @description('The Cloudflare Access team and application guarding the Scriptorium (CloudflareAccessOptions); empty until set up.')
 param cloudflareAccessTeamDomain string
 param cloudflareAccessAudience string
+@description('The Access application on /scriptorium/expurgate*, whose policy admits the Expurgators; empty, nobody may expurgate.')
+param cloudflareAccessExpurgatorAudience string
 @description('The domain readers reach the app at, through Cloudflare (production); empty for none.')
 param customDomain string
 @description('The name of the vault secret holding the Cloudflare Origin CA certificate for the domain, a PFX (infra/README.md).')
@@ -253,6 +255,10 @@ resource app 'Microsoft.Web/sites@2024-04-01' = {
         {
           name: 'CloudflareAccess__Audience'
           value: cloudflareAccessAudience
+        }
+        {
+          name: 'CloudflareAccess__ExpurgatorAudience'
+          value: cloudflareAccessExpurgatorAudience
         }
         // Readers' sign-in with GitHub, to vote. Until the app and the three secrets exist (infra/README.md), the sign-in
         // pages don't either.

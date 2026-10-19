@@ -10,5 +10,11 @@ public class CloudflareAccessOptions
 
     public string Audience { get; set; } = string.Empty;
 
+    /// <summary>
+    /// The Access application on <c>/scriptorium/expurgate*</c>, whose policy admits the Expurgators: its tokens name it,
+    /// not the Scribes' application. Empty, nobody may expurgate.
+    /// </summary>
+    public string ExpurgatorAudience { get; set; } = string.Empty;
+
     public bool IsConfigured => !string.IsNullOrWhiteSpace(TeamDomain) && !string.IsNullOrWhiteSpace(Audience);
 }

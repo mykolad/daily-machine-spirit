@@ -1,10 +1,12 @@
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
+using DailyMachineSpirit.Functions.Caching;
 using DailyMachineSpirit.Functions.Generation;
 using DailyMachineSpirit.Functions.Generation.Judging;
 using DailyMachineSpirit.Functions.Generation.Precepts;
 using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Scriptorium;
+using DailyMachineSpirit.Functions.Scriptorium.Expurgation;
 using DailyMachineSpirit.Functions.Scriptorium.Naming;
 using LanguageExt;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -66,6 +68,10 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public ScribeNameRepository ScribeNames => new(cosmos.Container);
 
+    public ExpurgationRepository Expurgation => new(cosmos.Container);
+
+    public VoteRepository Votes => new(cosmos.Container);
+
     public static string Answer(string title)
         => FakeChatClients.Answer(title, "Press Re-run thrice, O Machine Spirit.", "The test is flaky: fix its race instead.");
 
@@ -103,6 +109,20 @@ public sealed class BacklogTestbed : IAsyncLifetime
     public PreceptKeeping PreceptKeeping() => new(Precepts, PreceptCheck(), Time, NullLogger<PreceptKeeping>.Instance);
 
     public ScribeNaming ScribeNaming() => new(ScribeNames, Time);
+
+    public Expurgations Expurgations(IExpurgationRepository copies, IPageCache pages) => new(Rites, copies, pages, Time);
+
+    /// <summary>Every stored document as JSON, to check what's kept anywhere.</summary>
+    public async Task<List<string>> AllDocuments()
+    {
+        var documents = new List<string>();
+        using var iterator = cosmos.Container.GetItemQueryIterator<System.Text.Json.JsonElement>("SELECT * FROM c");
+        while (iterator.HasMoreResults)
+        {
+            documents.AddRange((await iterator.ReadNextAsync()).Select(document => document.GetRawText()));
+        }
+        return documents;
+    }
 
     public NameSuggester NameSuggester()
         => new(Models, Options.Create(Settings.ScribeNameSuggestions with { Model = Namer }), Time, Probe.Metrics, NullLogger<NameSuggester>.Instance);
