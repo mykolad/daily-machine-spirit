@@ -31,4 +31,8 @@ public enum AuditAction
 
     // A Scribe chose the name the Record shows them by (#84).
     ChooseName,
+
+    // An Expurgator erased words from a published rite, everywhere they were kept. The entry names the parts, never the
+    // words.
+    Expurgate,
 }

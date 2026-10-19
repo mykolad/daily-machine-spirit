@@ -110,6 +110,16 @@ public static partial class ScriptoriumPage
         .skip:focus { left: 16px; top: 16px; background: #c9a25a; color: #100e0b; padding: 8px 16px; border-radius: 999px; }
         .nowrap { white-space: nowrap; }
         .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+        .number-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 16px 0 0; }
+        .number-form input { width: 7em; background: #100e0b; color: #ede3cf; border: 1px solid #b6a98f; border-radius: 12px; padding: 10px 12px; font: 16px Figtree, sans-serif; }
+        .part { border: 1px solid rgba(237,227,207,.16); border-radius: 16px; padding: 8px 16px 16px; margin: 16px 0 0; }
+        .part legend { padding: 0 6px; font: 500 14px "JetBrains Mono", monospace; letter-spacing: .14em; text-transform: uppercase; color: #8cc4ae; }
+        .words { margin: 0; font: 400 19px/2 "EB Garamond", serif; }
+        .word { position: relative; padding: 1px 2px; border-radius: 4px; cursor: pointer; }
+        .word input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+        .word:hover { background: rgba(237,227,207,.08); }
+        .word:has(input:checked) { background: #3b1814; color: #f6cfc6; text-decoration: line-through 2px #d0604d; }
+        .word:has(input:focus-visible) { outline: 2px solid #f0b45a; outline-offset: 2px; }
         @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
         """;
 
@@ -126,7 +136,7 @@ public static partial class ScriptoriumPage
             """);
         Heading(html, "The Scriptorium",
             "Unconsecrated rites await the judgment of the Scribes. Your notes teach the Augury what to choose when no Scribe is watching.");
-        html.Append("""<p class="record-link"><a href="/scriptorium/precepts">The Precepts</a>: what the Machine Spirit has learned from your judgments, and whether the Scribes agree with the Augury. <a href="/scriptorium/record">The Record</a>: every change, and who made it.</p>""");
+        html.Append("""<p class="record-link"><a href="/scriptorium/precepts">The Precepts</a>: what the Machine Spirit has learned from your judgments, and whether the Scribes agree with the Augury. <a href="/scriptorium/record">The Record</a>: every change, and who made it. <a href="/scriptorium/expurgate">The Expurgator's Desk</a>: erasing words from published rites, for the Expurgators.</p>""");
         name.IfSome(yours => html.Append(yours.Chosen
             ? $"""<p class="record-link">The Record calls you “{Encode(yours.Shown)}”. <a href="/scriptorium/name">Change your name</a></p>"""
             : $"""<p class="record-link">The Record shows you as “{Encode(yours.Shown)}”. <a href="/scriptorium/name">Choose a name</a> for it.</p>"""));
@@ -568,6 +578,7 @@ public static partial class ScriptoriumPage
             AuditAction.DeletePrecept => $"deleted the precept {rite}",
             AuditAction.JudgeAgain => $"judged {rite} again",
             AuditAction.ChooseName => $"chose the name {rite}",
+            AuditAction.Expurgate => $"erased words from {rite}{entry.RiteNumber.Map(number => $" (NO. {number})").IfNone(string.Empty)}",
             _ => $"published {rite}{entry.RiteNumber.Map(number => $" as NO. {number}").IfNone(string.Empty)}",
         };
         return what + entry.Detail.Map(detail => $""" <span class="when">({Encode(detail)})</span>""").IfNone(string.Empty);
