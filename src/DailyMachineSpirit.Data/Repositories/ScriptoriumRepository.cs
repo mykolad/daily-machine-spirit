@@ -83,6 +83,13 @@ public class ScriptoriumRepository : IScriptoriumRepository
             return await Execute(batch, cancellationToken);
         });
 
+    public Task<Either<Error, int>> CountBurned(CancellationToken cancellationToken)
+        => Attempt(async () => (await container.Query<int>(
+            new QueryDefinition("SELECT VALUE COUNT(1) FROM c WHERE c.type = @type AND c.state = @state")
+                .WithParameter("@type", DraftDocument.DraftType)
+                .WithParameter("@state", JsonNamingPolicy.CamelCase.ConvertName(nameof(DraftState.Burned))),
+            cancellationToken)).Single());
+
     public Task<Either<Error, List<Draft>>> GetBurned(int count, CancellationToken cancellationToken)
         => Attempt(async () => (await container.Query<DraftDocument>(
             new QueryDefinition("SELECT TOP @count * FROM c WHERE c.type = @type AND c.state = @state ORDER BY c.burnedAtUtc DESC")

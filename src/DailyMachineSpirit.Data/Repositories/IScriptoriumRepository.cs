@@ -43,6 +43,9 @@ public interface IScriptoriumRepository
     /// </summary>
     Task<Either<Error, Unit>> Amend(Draft amended, string etag, ScribeDecision decision, AuditEntry audit, CancellationToken cancellationToken);
 
+    /// <summary>How many drafts are burned, however long ago.</summary>
+    Task<Either<Error, int>> CountBurned(CancellationToken cancellationToken);
+
     /// <summary>Burned drafts, the most recently burned first.</summary>
     Task<Either<Error, List<Draft>>> GetBurned(int count, CancellationToken cancellationToken);
 

@@ -367,10 +367,16 @@ observability/                    — the Grafana dashboard and alerts, and what
     does in its `title`, the browser's own tooltip on hover: a reminder for the Scribes, chosen over a custom tooltip
     for being simple (the labels themselves stay the rite's names). Each draft's tags show as chips under its title,
     to match against the calendar's subjects.
+  - **Tabs** (`TabCounting`): the Calendar (`/scriptorium`), the Ashes (`/scriptorium/ashes`), the Precepts and the
+    Record each start with the tab bar, every tab saying what its page holds: the waiting rites the Scribes placed and
+    those the Augury places, the burned ones, the precepts, the Record's entries. They're counted on every load, a few
+    small queries; when a count fails, the tabs show without counts. The Ashes shows the newest burned
+    (`ScriptoriumPages:AshesShown`) and says how many there are in all. Amending a rite and choosing a name are pages
+    under a tab, without the bar: they lead back where they came from.
   - **Shown in place** (`ScriptoriumScript`): where scripts run, an action is posted in the background, the new page's
     calendar replaces the old, and each rite that moved slides from its old place to its new one, so a Scribe sees
     what changed (an Exalt can reorder the rites the Augury places, too). The status message stays the same element,
-    so it's announced; focus returns to the same button (after a burn, to the rite now in its place in the calendar,
+    so it's announced, and the tab bar is swapped for the new page's, with its new counts; focus returns to the same button (after a burn, to the rite now in its place in the calendar,
     which the Augury may have reordered, without scrolling away). Anything unexpected (an error, Cloudflare Access wanting a new sign-in) loads `/scriptorium`
     afresh. Reduced motion: no slide, only the mark.
   - **Access:** who counts as a Scribe is an `IScribeSignIn`

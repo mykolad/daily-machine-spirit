@@ -47,7 +47,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         Assert.Contains("<button title=\"Keeps this precept, word for word, when the Precepts are distilled again. Pinned precepts come first.\"", html);
         Assert.Contains("<button title=\"Lets the next distillation replace this precept with a new one.\"", html);
         Assert.Contains("""<label for="precept-new">A precept of your own</label>""", html);
-        Assert.Contains("""<a href="/scriptorium">Back to the Scriptorium</a>""", html);
+        Assert.Contains("""<a href="/scriptorium">The Calendar""", html);
     }
 
     // Just distilled, the new precepts are marked, so the eye finds them; the Scribe's pinned one stayed, so it isn't.
@@ -268,7 +268,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         Assert.Equal("/scriptorium/precepts?done=distil-unchecked",
             RedirectedTo(await Function().Distil(Form(), CancellationToken.None)));
         Assert.Contains("couldn&#39;t be checked against the writer&#39;s rules just now, so the Precepts stay as they were. Try again in a moment.",
-            ScriptoriumPage.RenderPrecepts(new StoredPrecepts(new PreceptBook(), None), [], Some("distil-unchecked"), None, None));
+            ScriptoriumPage.RenderPrecepts(new StoredPrecepts(new PreceptBook(), None), None, [], Some("distil-unchecked"), None, None));
     }
 
     // While the check ran, the precept being edited was deleted or replaced, or the Precepts filled up: the field is
@@ -282,9 +282,9 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
             Precepts = Enumerable.Range(1, PreceptBook.MaxPrecepts).Select(n => new Precept { Id = Guid.NewGuid(), Text = $"Precept {n}.", Pinned = true }).ToList(),
         };
 
-        var edited = ScriptoriumPage.RenderPrecepts(new StoredPrecepts(new PreceptBook(), None), [], None, None,
+        var edited = ScriptoriumPage.RenderPrecepts(new StoredPrecepts(new PreceptBook(), None), None, [], None, None,
             Some(new RefusedPrecept(Some(Guid.NewGuid()), "Mock the managers.", refusal, "Reword it, or leave it as it was.")));
-        var added = ScriptoriumPage.RenderPrecepts(new StoredPrecepts(full, None), [], None, None,
+        var added = ScriptoriumPage.RenderPrecepts(new StoredPrecepts(full, None), None, [], None, None,
             Some(new RefusedPrecept(None, "Mock the managers.", refusal, "Reword it, or leave it as it was.")));
 
         Assert.Contains(
@@ -358,7 +358,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         testbed.Models.Answers(Sol, Distilled("Name the command."));
         Ok(await testbed.Distiller().Distil(AuditEntry.MachineSpirit, CancellationToken.None));
 
-        var html = ScriptoriumPage.RenderRecord(Ok(await testbed.Audit.GetNewest(10, CancellationToken.None)), [], None);
+        var html = ScriptoriumPage.RenderRecord(Ok(await testbed.Audit.GetNewest(10, CancellationToken.None)), [], None, None);
 
         Assert.Contains("added the precept “Prefer the real fix.”", html);
         Assert.Contains("""The Machine Spirit distilled <a href="/scriptorium/precepts">the Precepts</a> <span class="when">(1 new, 1 pinned, from 1 judgments)</span>""", html);
@@ -392,12 +392,13 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
     private PreceptsFunction Function() => Function(new EveryoneIsScribeSignIn());
 
     private PreceptsFunction Function(IScribeSignIn signIn)
-        => new(testbed.PreceptKeeping(), testbed.Distiller(), new AgreementTrend(testbed.Scriptorium, Options.Create(Settings.ScriptoriumPages), testbed.Time), signIn, NullLogger<PreceptsFunction>.Instance);
+        => new(testbed.PreceptKeeping(), testbed.Distiller(), new AgreementTrend(testbed.Scriptorium, Options.Create(Settings.ScriptoriumPages), testbed.Time), testbed.Tabs(), signIn, NullLogger<PreceptsFunction>.Instance);
 
     private PreceptsFunction Function(FakePrecepts precepts)
         => new(new PreceptKeeping(precepts, testbed.PreceptCheck(), testbed.Time, NullLogger<PreceptKeeping>.Instance),
             new PreceptDistiller(testbed.Scriptorium, precepts, testbed.Models, testbed.PreceptCheck(), Options.Create(Settings.PreceptDistilling), testbed.Time, testbed.Probe.Metrics, NullLogger<PreceptDistiller>.Instance),
             new AgreementTrend(testbed.Scriptorium, Options.Create(Settings.ScriptoriumPages), testbed.Time),
+            new TabCounting(testbed.Drafts, testbed.Scriptorium, precepts, testbed.Audit, NullLogger<TabCounting>.Instance),
             new EveryoneIsScribeSignIn(), NullLogger<PreceptsFunction>.Instance);
 
     private DistilPreceptsFunction Timer()
