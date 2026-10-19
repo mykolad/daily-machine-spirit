@@ -42,6 +42,7 @@ public sealed class ScriptoriumFunction
     private readonly JudgingAgain judgingAgain;
     private readonly IAuditRepository audit;
     private readonly ScribeNaming naming;
+    private readonly TabCounting tabs;
     private readonly IOptions<ScriptoriumPagesOptions> pages;
     private readonly TimeProvider time;
     private readonly ScriptoriumGate gate;
@@ -53,6 +54,7 @@ public sealed class ScriptoriumFunction
         JudgingAgain judgingAgain,
         IAuditRepository audit,
         ScribeNaming naming,
+        TabCounting tabs,
         IOptions<ScriptoriumPagesOptions> pages,
         IScribeSignIn signIn,
         TimeProvider time,
@@ -63,6 +65,7 @@ public sealed class ScriptoriumFunction
         this.judgingAgain = judgingAgain;
         this.audit = audit;
         this.naming = naming;
+        this.tabs = tabs;
         this.pages = pages;
         this.time = time;
         gate = new ScriptoriumGate(signIn);
@@ -83,8 +86,28 @@ public sealed class ScriptoriumFunction
         var outcome = Optional(request.Query["done"].ToString()).Filter(done => done.Length > 0);
         var rite = Optional(request.Query["rite"].ToString()).Bind(text => Guid.TryParse(text, out var id) ? Some(id) : None);
         var name = await NameOf(scribe, cancellationToken);
-        return (await scribes.View(cancellationToken)).Match(
-            Right: view => Html(request, ScriptoriumPage.Render(view, outcome, rite, name), StatusCodes.Status200OK),
+        var counts = await tabs.Count(cancellationToken);
+        return await (await scribes.View(cancellationToken)).Match(
+            Right: async view => Html(request,
+                ScriptoriumPage.Render(view, counts, outcome, rite, await BurnedFromTheCalendar(view, rite, cancellationToken), name),
+                StatusCodes.Status200OK),
+            Left: error => Task.FromResult(Failed(request, error)));
+    }
+
+    /// <summary>The Ashes: the burned rites, to restore; <c>?rite=</c> marks the one a burn just sent there.</summary>
+    [Function("ScriptoriumAshes")]
+    public async Task<IActionResult> Ashes(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "scriptorium/ashes")] HttpRequest request, CancellationToken cancellationToken)
+    {
+        if ((await gate.Refusal(request, cancellationToken)).Case is IActionResult refused)
+        {
+            return refused;
+        }
+
+        var rite = Optional(request.Query["rite"].ToString()).Bind(text => Guid.TryParse(text, out var id) ? Some(id) : None);
+        var counts = await tabs.Count(cancellationToken);
+        return (await scribes.Ashes(cancellationToken)).Match(
+            Right: ashes => Html(request, ScriptoriumPage.RenderAshes(ashes, counts, rite), StatusCodes.Status200OK),
             Left: error => Failed(request, error));
     }
 
@@ -123,8 +146,9 @@ public sealed class ScriptoriumFunction
             Some: id => audit.GetHistory(id, cancellationToken),
             None: () => audit.GetNewest(pages.Value.RecordEntriesShown, cancellationToken));
         var names = await Names(cancellationToken);
+        var counts = await tabs.Count(cancellationToken);
         return entries.Match(
-            Right: entries => Html(request, ScriptoriumPage.RenderRecord(entries, names, draft), StatusCodes.Status200OK),
+            Right: entries => Html(request, ScriptoriumPage.RenderRecord(entries, names, counts, draft), StatusCodes.Status200OK),
             Left: error => Failed(request, error));
     }
 
@@ -286,6 +310,16 @@ public sealed class ScriptoriumFunction
             return new ScriptoriumResponse { Result = Back("note-too-long", draftId) };
         }
         return new ScriptoriumResponse { Result = Failed(request, error) };
+    }
+
+    // The rite the last action was on, when it burned it: the message names it and links to it in the Ashes. Unreadable,
+    // the message goes without its name.
+    private async Task<Option<Draft>> BurnedFromTheCalendar(ScriptoriumView view, Option<Guid> rite, CancellationToken cancellationToken)
+    {
+        var gone = rite.Filter(id => !view.Calendar.Exists(entry => entry.Draft.Id == id));
+        return await gone.MatchAsync(
+            Some: async id => (await scribes.FindBurned(id, cancellationToken)).IfLeft(Option<Draft>.None),
+            None: () => Option<Draft>.None);
     }
 
     // The names are a nicety on these pages: unreadable, the Scriptorium still works, showing Scribes by their ids.

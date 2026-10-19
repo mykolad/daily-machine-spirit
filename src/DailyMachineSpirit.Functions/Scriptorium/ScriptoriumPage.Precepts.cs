@@ -16,20 +16,20 @@ public static partial class ScriptoriumPage
     /// </summary>
     /// <param name="outcome">What the last action did, if anything.</param>
     /// <param name="acted">The precept it acted on, marked so the eye finds it.</param>
+    /// <param name="counts">What each tab holds; none when it couldn't be counted.</param>
     /// <param name="trend">How far the Scribes agreed with the Augury, month by month, the newest first.</param>
     /// <param name="refused">A precept the check refused, kept in its field with why.</param>
     public static string RenderPrecepts(
-        StoredPrecepts stored, IReadOnlyList<AgreementMonth> trend, Option<string> outcome, Option<Guid> acted, Option<RefusedPrecept> refused)
+        StoredPrecepts stored, Option<TabCounts> counts, IReadOnlyList<AgreementMonth> trend, Option<string> outcome, Option<Guid> acted, Option<RefusedPrecept> refused)
     {
         var book = stored.Book;
         // Sent back with each change to a precept: a page shown before another change is told to look again.
         var version = $"""<input type="hidden" name="etag" value="{Encode(stored.ETag.IfNone(string.Empty))}">""";
         var html = new StringBuilder();
-        Head(html, "The Precepts");
+        Head(html, "The Precepts", TabBar(ScriptoriumTab.Precepts, counts));
         html.Append("""<main id="main">""");
         Heading(html, "The Precepts",
             "What the Machine Spirit has learned from the Scribes' judgments. It follows them in every rite it writes.");
-        html.Append("""<p class="record-link"><a href="/scriptorium">Back to the Scriptorium</a> · <a href="/scriptorium/record">The Record</a></p>""");
         var status = refused.Map(precept => Encode($"Not saved: {precept.Reason} {WhereTheWordsAre(precept, book)}"))
             | outcome.Map(PreceptStatus);
         html.Append($"""<p class="status" role="status" id="precepts-status">{status.IfNone(string.Empty)}</p>""");

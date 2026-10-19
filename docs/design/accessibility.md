@@ -25,6 +25,10 @@ Proposal.dc.html`, `scriptorium-icons.md`): icons, grouped buttons, folded notes
   for) are tied to their fields with `aria-describedby`. "Amend" on the calendar is a link, since it only opens the
   page: the page's buttons change things. Why words were refused, or that the Machine Spirit rewrote them, is the
   page's `role="status"` message, and the fields keep what the Scribe typed.
+- **The tab bar is a `<nav>` named "The Scriptorium",** its links in a list. The current page's tab carries
+  `aria-current="page"` and a brass underline, not a colour change alone. Each count is text inside its tab's link, so
+  it's read with the tab's name; the calendar's says who placed the rites in words ("2 by the Scribes · 18 by the
+  Augury"). The links are 44px tall, and the tabs wrap on a narrow screen rather than scroll.
 - **Slow actions say they're under way** (#85): pressing Rewrite or Distil puts "The Machine Spirit is rewriting it…"
   (or distilling) in the `role="status"` message, which is announced, and disables the form's buttons until the answer
   comes. The status stays the same element when the rewrite's form replaces the old one, so its result is announced

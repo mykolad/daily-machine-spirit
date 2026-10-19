@@ -12,7 +12,7 @@ namespace DailyMachineSpirit.Functions.Scriptorium;
 public sealed record CalendarEntry(Draft Draft, DateOnly PublishesOnUtc, bool PlacedByScribes, int AuguryPlace);
 
 /// <summary><see cref="Today"/> (UTC) tells whether the first entry goes out at the coming midnight, or is already due.</summary>
-public sealed record ScriptoriumView(List<CalendarEntry> Calendar, List<Draft> Ashes, List<ScribeDecision> Decisions, DateOnly Today);
+public sealed record ScriptoriumView(List<CalendarEntry> Calendar, List<ScribeDecision> Decisions, DateOnly Today);
 
 /// <summary>
 /// What the Scribes of the Scriptorium do: anoint, exalt and humble drafts (placing them in their order, ahead of the
@@ -54,20 +54,28 @@ public sealed class Scribes
         var today = Today;
         return Calendar(cancellationToken)
             .BindAsync(calendar => rites.GetPublishedOn(today, cancellationToken)
-                .BindAsync(todays => scriptorium.GetBurned(pages.Value.AshesShown, cancellationToken)
-                    .BindAsync(ashes => scriptorium.GetDecisions(pages.Value.JudgmentsShown, cancellationToken)
-                        .MapAsync(decisions =>
-                        {
-                            // The next one goes out at the coming midnight: tonight's, unless today's is still to come.
-                            var first = todays.IsSome ? today.AddDays(1) : today;
-                            var placed = calendar.Placements.Order.ToHashSet();
-                            var entries = calendar.Ordered
-                                .Select((draft, place) => new CalendarEntry(
-                                    draft, first.AddDays(place), placed.Contains(draft.Id), calendar.AuguryPlace(draft)))
-                                .ToList();
-                            return Task.FromResult(new ScriptoriumView(entries, ashes, decisions, today));
-                        }))));
+                .BindAsync(todays => scriptorium.GetDecisions(pages.Value.JudgmentsShown, cancellationToken)
+                    .MapAsync(decisions =>
+                    {
+                        // The next one goes out at the coming midnight: tonight's, unless today's is still to come.
+                        var first = todays.IsSome ? today.AddDays(1) : today;
+                        var placed = calendar.Placements.Order.ToHashSet();
+                        var entries = calendar.Ordered
+                            .Select((draft, place) => new CalendarEntry(
+                                draft, first.AddDays(place), placed.Contains(draft.Id), calendar.AuguryPlace(draft)))
+                            .ToList();
+                        return Task.FromResult(new ScriptoriumView(entries, decisions, today));
+                    })));
     }
+
+    /// <summary>The Ashes: the drafts burned most recently, the newest first.</summary>
+    public Task<Either<Error, List<Draft>>> Ashes(CancellationToken cancellationToken)
+        => scriptorium.GetBurned(pages.Value.AshesShown, cancellationToken);
+
+    /// <summary>The draft, if it's burned: what the calendar's message names after a burn, the draft having left it.</summary>
+    public Task<Either<Error, Option<Draft>>> FindBurned(Guid draftId, CancellationToken cancellationToken)
+        => drafts.Get(draftId, cancellationToken)
+            .MapAsync(found => Task.FromResult(found.Filter(draft => draft.State == DraftState.Burned)));
 
     /// <summary>Makes the draft the next to be published; for the first, it keeps it there, ahead of the Augury's later picks.</summary>
     public Task<Either<Error, Unit>> Anoint(Guid draftId, string note, string scribe, CancellationToken cancellationToken)

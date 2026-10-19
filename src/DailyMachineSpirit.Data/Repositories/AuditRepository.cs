@@ -28,6 +28,11 @@ public sealed class AuditRepository : IAuditRepository
             new QueryDefinition("SELECT TOP @count * FROM c WHERE c.type = @type ORDER BY c.atUtc DESC").WithParameter("@count", count),
             cancellationToken);
 
+    public Task<Either<Error, int>> Count(CancellationToken cancellationToken)
+        => Attempt(async () => (await container.Query<int>(
+            new QueryDefinition("SELECT VALUE COUNT(1) FROM c WHERE c.type = @type").WithParameter("@type", AuditEntryDocument.AuditType),
+            cancellationToken)).Single());
+
     public Task<Either<Error, List<AuditEntry>>> GetHistory(Guid draftId, CancellationToken cancellationToken)
         => Entries(
             new QueryDefinition("SELECT * FROM c WHERE c.type = @type AND c.draftId = @draftId ORDER BY c.atUtc DESC")

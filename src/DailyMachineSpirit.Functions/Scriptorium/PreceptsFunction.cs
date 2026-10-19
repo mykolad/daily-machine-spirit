@@ -22,6 +22,7 @@ public sealed class PreceptsFunction
     private readonly PreceptKeeping keeping;
     private readonly PreceptDistiller distiller;
     private readonly AgreementTrend trend;
+    private readonly TabCounting tabs;
     private readonly ScriptoriumGate gate;
     private readonly ILogger<PreceptsFunction> logger;
 
@@ -29,12 +30,14 @@ public sealed class PreceptsFunction
         PreceptKeeping keeping,
         PreceptDistiller distiller,
         AgreementTrend trend,
+        TabCounting tabs,
         IScribeSignIn signIn,
         ILogger<PreceptsFunction> logger)
     {
         this.keeping = keeping;
         this.distiller = distiller;
         this.trend = trend;
+        this.tabs = tabs;
         gate = new ScriptoriumGate(signIn);
         this.logger = logger;
     }
@@ -50,8 +53,9 @@ public sealed class PreceptsFunction
 
         var outcome = Optional(request.Query["done"].ToString()).Filter(done => done.Length > 0);
         var acted = Optional(request.Query["precept"].ToString()).Bind(text => Guid.TryParse(text, out var id) ? Some(id) : None);
+        var counts = await tabs.Count(cancellationToken);
         return (await PreceptsAndTrend(cancellationToken)).Match(
-            Right: found => Html(request, ScriptoriumPage.RenderPrecepts(found.Stored, found.Months, outcome, acted, None), StatusCodes.Status200OK),
+            Right: found => Html(request, ScriptoriumPage.RenderPrecepts(found.Stored, counts, found.Months, outcome, acted, None), StatusCodes.Status200OK),
             Left: error => Failed(request, error));
     }
 
@@ -146,8 +150,9 @@ public sealed class PreceptsFunction
             return Answer(request, action, preceptId, result);
         }
         var refused = new RefusedPrecept(preceptId, text, refusal.Message, nextStep);
+        var counts = await tabs.Count(cancellationToken);
         return (await PreceptsAndTrend(cancellationToken)).Match(
-            Right: found => Html(request, ScriptoriumPage.RenderPrecepts(found.Stored, found.Months, None, preceptId, Some(refused)),
+            Right: found => Html(request, ScriptoriumPage.RenderPrecepts(found.Stored, counts, found.Months, None, preceptId, Some(refused)),
                 StatusCodes.Status422UnprocessableEntity),
             Left: error => Failed(request, error));
     }

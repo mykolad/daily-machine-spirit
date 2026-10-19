@@ -34,7 +34,7 @@ public sealed class ScribesTests : IAsyncLifetime
         Assert.Equal([Today, Today.AddDays(1)], view.Calendar.Select(entry => entry.PublishesOnUtc));
         Assert.Equal([1, 2], view.Calendar.Select(entry => entry.AuguryPlace));
         Assert.All(view.Calendar, entry => Assert.False(entry.PlacedByScribes));
-        Assert.Empty(view.Ashes);
+        Assert.Empty(Ok(await testbed.Scribes().Ashes(CancellationToken.None)));
         Assert.Empty(view.Decisions);
     }
 
@@ -141,7 +141,7 @@ public sealed class ScribesTests : IAsyncLifetime
 
         var burned = Ok(await testbed.Scribes().View(CancellationToken.None));
         Assert.Equal(["Excellent"], burned.Calendar.Select(entry => entry.Draft.Writing.Title));
-        Assert.Equal(["Fair"], burned.Ashes.Select(draft => draft.Writing.Title));
+        Assert.Equal(["Fair"], Ok(await testbed.Scribes().Ashes(CancellationToken.None)).Select(draft => draft.Writing.Title));
         Ok(await testbed.Scribes().Restore(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         var restored = Ok(await testbed.Scribes().View(CancellationToken.None));
         Assert.Equal(["Excellent", "Fair"], restored.Calendar.Select(entry => entry.Draft.Writing.Title));
@@ -274,7 +274,7 @@ public sealed class ScribesTests : IAsyncLifetime
         Assert.Equal(1, waiting);
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
         Assert.Equal(["Fair"], view.Calendar.Select(entry => entry.Draft.Writing.Title));
-        var ash = Assert.Single(view.Ashes);
+        var ash = Assert.Single(Ok(await testbed.Scribes().Ashes(CancellationToken.None)));
         Assert.Equal(DraftState.Burned, ash.State);
         Assert.Equal(Some(testbed.Time.GetUtcNow().UtcDateTime), ash.BurnedAtUtc);
         var decision = Assert.Single(view.Decisions);
@@ -295,7 +295,7 @@ public sealed class ScribesTests : IAsyncLifetime
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
         Assert.Equal("Second chance", Assert.Single(view.Calendar).Draft.Writing.Title);
         Assert.True(view.Calendar[0].Draft.BurnedAtUtc.IsNone);
-        Assert.Empty(view.Ashes);
+        Assert.Empty(Ok(await testbed.Scribes().Ashes(CancellationToken.None)));
         var restored = view.Decisions[0];
         Assert.Equal(ScribeAction.Restore, restored.Action);
         Assert.Equal(None, restored.CalendarPlace);
@@ -329,7 +329,7 @@ public sealed class ScribesTests : IAsyncLifetime
             var later = await testbed.AddDraft($"Burned later {i}", 0.5f);
             Ok(await testbed.Scribes().Burn(later.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         }
-        Assert.DoesNotContain(Ok(await testbed.Scribes().View(CancellationToken.None)).Ashes, ash => ash.Id == first.Id);
+        Assert.DoesNotContain(Ok(await testbed.Scribes().Ashes(CancellationToken.None)), ash => ash.Id == first.Id);
 
         Ok(await testbed.Scribes().Restore(first.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
