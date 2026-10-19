@@ -4,9 +4,10 @@ namespace DailyMachineSpirit.Functions.Telemetry;
 
 /// <summary>
 /// Counters kept as log lines: each count is one Information line, and the activity dashboard (observability/README.md)
-/// counts the lines by their attribute with Loki's <c>count_over_time</c>. For what the site's people do, which is rare:
-/// a Scribe's action, a reader's vote, sign-in or Archive search. Each attribute names what was done, never who did it
-/// or what they searched for.
+/// counts the lines by their attribute with Loki's <c>count_over_time</c>. Removing a line, or renaming its attribute
+/// (<c>{ScribeAction}</c>), empties that dashboard's panel: they're its data, not chatter. For what the site's people
+/// do, which is rare: a Scribe's action, a reader's vote, sign-in or Archive search. Each attribute names what was
+/// done, never who did it or what they searched for.
 /// <para>
 /// Not a <see cref="SiteMetrics"/> counter, because one would miss most of them. Each process counts from zero and
 /// sends its totals every minute; Prometheus's <c>increase()</c> measures how a total grew between samples, so a
