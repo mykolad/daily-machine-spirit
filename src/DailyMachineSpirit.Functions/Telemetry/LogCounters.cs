@@ -20,7 +20,7 @@ namespace DailyMachineSpirit.Functions.Telemetry;
 /// </summary>
 public static class LogCounters
 {
-    /// <param name="action">What the Scribe did, as the Scriptorium's routes name it: anoint, burn, precept-add...</param>
+    /// <param name="action">What the Scribe did, as its route names it: anoint, burn, precept-add...</param>
     public static void CountScribeAction(this ILogger logger, string action)
         => logger.LogInformation("Counted: a Scribe's action, {ScribeAction}.", action);
 
