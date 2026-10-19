@@ -110,7 +110,8 @@ observability/                    — the Grafana dashboards (technical, activit
   wherever `OTEL_EXPORTER_OTLP_ENDPOINT` is set; `infra/` sets it, with the token's header from the vault. The Functions
   host doesn't export (no `telemetryMode` in `host.json`): its request spans carry visitors' user agents. So a failure
   the host alone would see must be logged by the code. Each environment is its own service (the app's name), tagged with
-  `deployment.environment.name`. There's no Application Insights, so the portal's log stream stays empty: look in Grafana.
+  `deployment.environment.name` from `OTEL_RESOURCE_ATTRIBUTES` (`ConfiguredResource`: the Functions worker's defaults
+  would name the slot, "Production", for staging too). There's no Application Insights, so the portal's log stream stays empty: look in Grafana.
   The site's own metrics (`SiteMetrics`, `CosmosMetricsHandler`) are listed in `observability/README.md`, next to the
   dashboard; their tags never describe a visitor. What the site's people do (a Scribe's action, a reader's vote, sign-in
   or search) is a log line each (`LogCounters`), which the activity dashboard counts: never who, nor what was searched.
