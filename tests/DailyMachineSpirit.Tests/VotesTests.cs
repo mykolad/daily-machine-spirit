@@ -262,16 +262,18 @@ public sealed class VotesTests : IAsyncLifetime
 
     // The same vote sent twice (a double click, another tab) is answered with the counts, but changed nothing to refresh.
     [Fact]
-    public async Task Post_TheSameVoteAgain_IsAnswered_ButPurgesNothingMore()
+    public async Task Post_TheSameVoteAgain_IsAnswered_ButPurgesNothing()
     {
         await AddRite();
 
-        await Post(Function(), 1, """{"vote":"blessed"}""", "application/json", SignedIn());
+        // The first vote saved as the reader's, outside the batch, so only the second one's purge could be queued.
+        await Saved(session.VoterKeyFor("github", "583231"), Some(Reaction.Blessed));
+
         var (status, body) = await Post(Function(), 1, """{"vote":"blessed"}""", "application/json", SignedIn());
 
         Assert.Equal(StatusCodes.Status200OK, status);
         Assert.Contains("\"blessed\":1", body);
-        Assert.Single(await Purged());
+        Assert.Empty(await Purged());
     }
 
     [Fact]
