@@ -29,6 +29,9 @@ Proposal.dc.html`, `scriptorium-icons.md`): icons, grouped buttons, folded notes
   `aria-current="page"` and a brass underline, not a colour change alone. Each count is text inside its tab's link, so
   it's read with the tab's name; the calendar's says who placed the rites in words ("Scribes 2 · Augury 18").
   The links are 44px tall, and the tabs wrap on a narrow screen rather than scroll.
+- **A rite the Scribes placed says so in words,** "Placed by Magos Ferrum", under its date: its brass frame (2px,
+  `#c9a25a`, well above 3:1 on the background) isn't the only sign, so the difference doesn't rest on colour (WCAG
+  1.4.1). The line's icon is decorative.
 - **Slow actions say they're under way** (#85): pressing Rewrite or Distil puts "The Machine Spirit is rewriting it…"
   (or distilling) in the `role="status"` message, which is announced, and disables the form's buttons until the answer
   comes. The status stays the same element when the rewrite's form replaces the old one, so its result is announced

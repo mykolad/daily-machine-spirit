@@ -1,4 +1,5 @@
 using DailyMachineSpirit.Data.Entities;
+using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Scriptorium;
 using DailyMachineSpirit.Functions.Scriptorium.SignIn;
 using Microsoft.AspNetCore.Http;
@@ -239,7 +240,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Equal(good.Id, first.Draft.Id);
         Assert.Contains($"{done} “Good”", html);
         Assert.Contains(first.PublishesOnUtc.ToString("ddd d MMM", CultureInfo.InvariantCulture) + ".", html);
-        Assert.Contains($"""<article class="rite acted" id="rite-{good.Id:D}" """, html);
+        Assert.Contains($"""<article class="rite placed-by-scribes acted" id="rite-{good.Id:D}" """, html);
     }
 
     [Fact]
@@ -286,9 +287,9 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var html = Html(await function.Page(Following(response.Result), CancellationToken.None), 200);
         var before = Html(await function.Page(Get(""), CancellationToken.None), 200);
 
-        Assert.Contains($"""<article class="rite acted" id="rite-{exalted.Id:D}" """, html);
-        Assert.Single(html.Split("class=\"rite acted\"").Skip(1));
-        Assert.DoesNotContain("class=\"rite acted\"", before);
+        Assert.Contains($"""<article class="rite placed-by-scribes acted" id="rite-{exalted.Id:D}" """, html);
+        Assert.Single(html.Split(" acted\" id=").Skip(1));
+        Assert.DoesNotContain(" acted\" id=", before);
     }
 
     // The forms work without it; with it, an action is shown in place.
@@ -348,7 +349,40 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Contains("it would place it #2", html);
         Assert.Contains("it would place it #1", html);
         Assert.Equal(2, html.Split("it would place it").Length - 1);
-        Assert.Equal(2, html.Split("Placed by the Scribes").Length - 1);
+        Assert.Equal(2, html.Split("Placed by A Scribe (…456789)").Length - 1);
+        Assert.Equal(2, html.Split("class=\"rite placed-by-scribes\"").Length - 1);
+    }
+
+    // The brass frame isn't the only sign: the rite says who placed it, by the name they chose.
+    [Fact]
+    public async Task Page_FramesTheRitesTheScribesPlaced_AndNamesWhoPlacedThem()
+    {
+        await testbed.AddDraft("Excellent", 0.95f);
+        var good = await testbed.AddDraft("Good", 0.7f);
+        Ok(await testbed.ScribeNaming().Choose(BacklogTestbed.Tester, "Magos Ferrum", CancellationToken.None));
+
+        Ok(await testbed.Scribes().Anoint(good.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
+
+        Assert.Contains($"""<article class="rite placed-by-scribes" id="rite-{good.Id:D}" """, html);
+        Assert.Contains("Placed by Magos Ferrum</p>", html);
+        Assert.DoesNotContain("Placed by the Scribes", html);
+    }
+
+    // Orders saved before they kept who placed each draft still frame their drafts, as the Scribes'.
+    [Fact]
+    public async Task Page_SaysTheScribesPlacedARite_WhenTheOrderDoesntKnowWho()
+    {
+        await testbed.AddDraft("Excellent", 0.95f);
+        var good = await testbed.AddDraft("Good", 0.7f);
+        Ok(await testbed.Scriptorium.SavePlacements(new Placements([good.Id], new Dictionary<Guid, string>(), LanguageExt.Prelude.None), LanguageExt.Prelude.None, [],
+            AuditEntries.Of(testbed.Time, BacklogTestbed.Tester, AuditAction.Anoint, LanguageExt.Prelude.None, LanguageExt.Prelude.None), CancellationToken.None));
+
+        var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
+
+        Assert.Contains($"""<article class="rite placed-by-scribes" id="rite-{good.Id:D}" """, html);
+        Assert.Contains("Placed by the Scribes</p>", html);
+        Assert.Single(html.Split("placed-by-scribes\" id=").Skip(1));
     }
 
     [Fact]

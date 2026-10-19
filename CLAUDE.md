@@ -303,7 +303,10 @@ observability/                    — the Grafana dashboard and alerts, and what
     rewrite request that fails outright (the network, or Cloudflare Access wanting a new sign-in, which a background
     request can't give) keeps the words and offers the page in a new tab, to sign in there and try again here.
   - **The Scribes' order** (the `placements` document) comes first; the Augury orders the rest. Moving a draft places
-    everything above it too, so the order stays what the Scribes saw.
+    everything above it too, so the order stays what the Scribes saw. The order keeps who placed each draft (`placedBy`, by Access
+    id): the Scribe who moved it, or who placed it by moving another; one already placed keeps its Scribe unless it's
+    the one moved. On the calendar, a rite the Scribes placed wears a brass frame and says "Placed by <name>"
+    (`ScribeNames`), or "Placed by the Scribes" when its order was saved before it kept who.
   - **Every action is a lesson:** it saves a `ScribeDecision` with the draft as it was, the Augury's place and quality
     for it, and the Scribe's optional note, in the same batch as the change. The Precepts are learned from them.
   - **The Precepts** (`/scriptorium/precepts`, #12): rules for writing and choosing rites, learned from the Scribes'

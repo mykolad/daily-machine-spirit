@@ -62,6 +62,9 @@ public static partial class ScriptoriumPage
         .suggest-others .button-link { border-style: dashed; }
         .rite { background: #1a1612; border: 1px solid rgba(237,227,207,.1); border-radius: 20px; padding: 20px clamp(16px, 3vw, 24px); scroll-margin-top: 16px; }
         .next { display: inline-block; margin: 8px 0 0; padding: 2px 10px; border: 1px solid #2e4248; border-radius: 999px; font: 500 13px "JetBrains Mono", monospace; color: #8cc4ae; }
+        .placed-by-scribes { border: 2px solid #c9a25a; }
+        .placer { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; font-weight: 600; color: #d9b874; }
+        .placer .icon { width: 16px; height: 16px; }
         .ash { opacity: .92; }
         .acted { border-color: #f0b45a; animation: acted 1.6s ease-out; }
         @keyframes acted { from { box-shadow: 0 0 0 4px rgba(240, 180, 90, .55); } to { box-shadow: 0 0 0 4px rgba(240, 180, 90, 0); } }
@@ -123,8 +126,10 @@ public static partial class ScriptoriumPage
     /// <param name="rite">The draft it acted on, so the message can name it and say where it went.</param>
     /// <param name="burned">That draft, when the action burned it: it's in the Ashes now, not on this page.</param>
     /// <param name="name">How the Record shows the Scribe looking, with a way to choose or change it (#84); none on staging.</param>
+    /// <param name="names">The names the Scribes chose, to say who placed a rite.</param>
     public static string Render(
-        ScriptoriumView view, Option<TabCounts> counts, Option<string> outcome, Option<Guid> rite, Option<Draft> burned, Option<NameInTheRecord> name)
+        ScriptoriumView view, Option<TabCounts> counts, Option<string> outcome, Option<Guid> rite, Option<Draft> burned, Option<NameInTheRecord> name,
+        IReadOnlyList<ScribeName> names)
     {
         var status = outcome.Bind(done => Status(done, view, rite, burned));
         var html = new StringBuilder();
@@ -163,7 +168,7 @@ public static partial class ScriptoriumPage
             html.Append("""<ol class="calendar">""");
             for (var index = 0; index < view.Calendar.Count; index++)
             {
-                CalendarEntry(html, view.Calendar[index], place: index + 1, isLast: index == view.Calendar.Count - 1, view.Today, rite);
+                CalendarEntry(html, view.Calendar[index], place: index + 1, isLast: index == view.Calendar.Count - 1, view.Today, rite, names);
             }
             html.Append("</ol>");
         }
@@ -349,12 +354,21 @@ public static partial class ScriptoriumPage
     }
 
     /// <param name="acted">The rite the last action was on, marked so the Scribe's eye finds where it went.</param>
-    private static void CalendarEntry(StringBuilder html, CalendarEntry entry, int place, bool isLast, DateOnly today, Option<Guid> acted)
+    private static void CalendarEntry(
+        StringBuilder html, CalendarEntry entry, int place, bool isLast, DateOnly today, Option<Guid> acted, IReadOnlyList<ScribeName> names)
     {
         var draft = entry.Draft;
         var id = draft.Id.ToString("D");
-        html.Append($"""<li><article class="rite{Acted(draft, acted)}" id="rite-{id}" aria-labelledby="title-{id}">""");
+        // A rite the Scribes placed wears a brass frame and says who placed it, so the frame's colour isn't the only sign.
+        var placedByScribes = entry.PlacedByScribes ? " placed-by-scribes" : string.Empty;
+        html.Append($"""<li><article class="rite{placedByScribes}{Acted(draft, acted)}" id="rite-{id}" aria-labelledby="title-{id}">""");
         html.Append($"""<p class="kicker"><time datetime="{entry.PublishesOnUtc:yyyy-MM-dd}">{Date(entry.PublishesOnUtc)}</time> · {Kind(draft.Writing.Kind)}</p>""");
+        if (entry.PlacedByScribes)
+        {
+            // Placed before the order kept who placed it, it's the Scribes'.
+            var placer = entry.PlacedBy.Map(scribe => ScribeNames.Of(scribe, names)).IfNone("the Scribes");
+            html.Append($"""<p class="placer">{ScriptoriumIcons.Anoint}Placed by {Encode(placer)}</p>""");
+        }
         // Today's own rite is only still due when the midnight run failed; its retry publishes it.
         if (place == 1)
         {
@@ -367,8 +381,7 @@ public static partial class ScriptoriumPage
                 ? $"The Augury: {judged.Quality:P0}, it would place it #{entry.AuguryPlace}"
                 : $"The Augury: {judged.Quality:P0}")
             .IfNone("Not yet judged by the Augury");
-        var placedBy = entry.PlacedByScribes ? """<span class="placed">Placed by the Scribes</span> · """ : string.Empty;
-        html.Append($"""<p class="meta">{placedBy}{Encode(augury)} · written by <span class="nowrap">{Encode(draft.Writing.GeneratedByModel)}</span>{(draft.Writing.Edited ? ", amended by a Scribe" : string.Empty)} · <a href="/scriptorium/record?draft={id}">its record</a></p>""");
+        html.Append($"""<p class="meta">{Encode(augury)} · written by <span class="nowrap">{Encode(draft.Writing.GeneratedByModel)}</span>{(draft.Writing.Edited ? ", amended by a Scribe" : string.Empty)} · <a href="/scriptorium/record?draft={id}">its record</a></p>""");
         // Written again and again, it still repeated a rite: the Scribes decide whether it's new enough.
         draft.Resembles.IfSome(title => html.Append($"""<p class="resembles">Much like “{WithCode(title)}”, already written.</p>"""));
 

@@ -86,11 +86,12 @@ public sealed class ScriptoriumFunction
         var outcome = Optional(request.Query["done"].ToString()).Filter(done => done.Length > 0);
         var rite = Optional(request.Query["rite"].ToString()).Bind(text => Guid.TryParse(text, out var id) ? Some(id) : None);
         var name = await NameOf(scribe, cancellationToken);
+        var names = await Names(cancellationToken);
         var counts = await tabs.Count(cancellationToken);
         return await (await scribes.View(cancellationToken)).Match(
             Right: async view => Html(request,
                 ScriptoriumPage.Render(view, counts, outcome, rite,
-                    await BurnedUnlessShown(rite, id => view.Calendar.Exists(entry => entry.Draft.Id == id), cancellationToken), name),
+                    await BurnedUnlessShown(rite, id => view.Calendar.Exists(entry => entry.Draft.Id == id), cancellationToken), name, names),
                 StatusCodes.Status200OK),
             Left: error => Task.FromResult(Failed(request, error)));
     }

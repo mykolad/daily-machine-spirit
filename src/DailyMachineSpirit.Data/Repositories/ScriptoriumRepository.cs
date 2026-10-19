@@ -25,8 +25,8 @@ public class ScriptoriumRepository : IScriptoriumRepository
     public Task<Either<Error, Placements>> GetPlacements(CancellationToken cancellationToken)
         => Attempt(async () => (await container.ReadOrNone<PlacementsDocument>(PlacementsDocument.PlacementsId, cancellationToken))
             .Match(
-                Some: found => new Placements(found.Document.Order, found.ETag),
-                None: () => new Placements([], None)));
+                Some: found => new Placements(found.Document.Order, found.Document.PlacedBy, found.ETag),
+                None: () => new Placements([], new Dictionary<Guid, string>(), None)));
 
     public Task<Either<Error, Unit>> SavePlacements(
         Placements placements, Option<ScribeDecision> decision, IReadOnlyCollection<Guid> mustStillWait, AuditEntry audit, CancellationToken cancellationToken)
@@ -121,10 +121,15 @@ public class ScriptoriumRepository : IScriptoriumRepository
             [PatchOperation.Set("/state", WaitingState)],
             new TransactionalBatchPatchItemRequestOptions { FilterPredicate = "FROM c WHERE c.state = '" + WaitingState + "'" });
 
-    // No ETag: nobody has placed a draft yet, and creating the order fails if another Scribe just did.
+    // No ETag: nobody has placed a draft yet, and creating the order fails if another Scribe just did. Who placed a
+    // draft is kept only while it's in the order.
     private static TransactionalBatch WithPlacements(TransactionalBatch batch, Placements placements)
     {
-        var document = new PlacementsDocument { Order = placements.Order };
+        var document = new PlacementsDocument
+        {
+            Order = placements.Order,
+            PlacedBy = placements.PlacedBy.Where(placed => placements.Order.Contains(placed.Key)).ToDictionary(),
+        };
         return placements.ETag.Match(
             Some: etag => batch.ReplaceItem(PlacementsDocument.PlacementsId, document,
                 new TransactionalBatchItemRequestOptions { IfMatchEtag = etag }),

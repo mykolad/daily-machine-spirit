@@ -15,6 +15,9 @@ internal sealed record PlacementsDocument
     public string Type { get; init; } = "placements";
 
     public List<Guid> Order { get; init; } = [];
+
+    /// <summary>Who placed each draft in the order, by draft. Missing from orders saved before it was kept.</summary>
+    public Dictionary<Guid, string> PlacedBy { get; init; } = [];
 }
 
 /// <summary>A <see cref="ScribeDecision"/> as stored.</summary>

@@ -8,8 +8,11 @@ using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Functions.Scriptorium;
 
-/// <summary>A draft in the Liturgical Calendar, as the Scriptorium shows it.</summary>
-public sealed record CalendarEntry(Draft Draft, DateOnly PublishesOnUtc, bool PlacedByScribes, int AuguryPlace);
+/// <summary>
+/// A draft in the Liturgical Calendar, as the Scriptorium shows it. <see cref="PlacedBy"/> is the Scribe who placed it
+/// (their Access id), when the order knows.
+/// </summary>
+public sealed record CalendarEntry(Draft Draft, DateOnly PublishesOnUtc, bool PlacedByScribes, Option<string> PlacedBy, int AuguryPlace);
 
 /// <summary><see cref="Today"/> (UTC) tells whether the first entry goes out at the coming midnight, or is already due.</summary>
 public sealed record ScriptoriumView(List<CalendarEntry> Calendar, List<ScribeDecision> Decisions, DateOnly Today);
@@ -62,7 +65,8 @@ public sealed class Scribes
                         var placed = calendar.Placements.Order.ToHashSet();
                         var entries = calendar.Ordered
                             .Select((draft, place) => new CalendarEntry(
-                                draft, first.AddDays(place), placed.Contains(draft.Id), calendar.AuguryPlace(draft)))
+                                draft, first.AddDays(place), placed.Contains(draft.Id), Placer(calendar.Placements, draft.Id),
+                                calendar.AuguryPlace(draft)))
                             .ToList();
                         return Task.FromResult(new ScriptoriumView(entries, decisions, today));
                     })));
@@ -150,7 +154,7 @@ public sealed class Scribes
                 Some: found => reorder(calendar.Ordered.Select(draft => draft.Id).ToList(), found.Place - 1).Match(
                     // Every draft in the moved stretch must still wait: it was read waiting, and the new order places it.
                     Some: moved => scriptorium.SavePlacements(
-                        calendar.Placements with { Order = KeepingTheRest(moved, calendar) },
+                        Placed(calendar.Placements, KeepingTheRest(moved, calendar), draftId, scribe),
                         Decision(found.Draft, action, checkedNote, Some(calendar.PlacesOf(found))),
                         moved,
                         AuditEntries.Of(time, scribe, Audited(action), found.Draft, $"from #{found.Place} to #{moved.IndexOf(draftId) + 1}"),
@@ -167,6 +171,21 @@ public sealed class Scribes
             .Where(id => calendar.Placements.Order.Contains(id) && !moved.Contains(id));
         return [.. moved, .. placedBelow];
     }
+
+    // The new order, and who placed each draft in it: the Scribe who moved it, or who placed it by moving another. One
+    // already placed keeps the Scribe who placed it, unless it's the one moved.
+    private static Placements Placed(Placements before, List<Guid> order, Guid moved, string scribe)
+        => before with
+        {
+            Order = order,
+            PlacedBy = order
+                .Select(id => (Id: id, Placer: id == moved || !before.Order.Contains(id) ? Some(scribe) : Placer(before, id)))
+                .SelectMany(placed => placed.Placer.Map(placer => KeyValuePair.Create(placed.Id, placer)))
+                .ToDictionary(),
+        };
+
+    private static Option<string> Placer(Placements placements, Guid draftId)
+        => placements.PlacedBy.TryGetValue(draftId, out var placer) ? Some(placer) : None;
 
     // A burned or restored draft leaves the Scribes' order: a restored one starts again in the Augury's.
     private static Option<Placements> WithoutDraft(Placements placements, Guid draftId)
