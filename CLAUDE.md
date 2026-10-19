@@ -368,8 +368,12 @@ observability/                    — the Grafana dashboard and alerts, and what
       wherever it appears. The rite's own copy must still read as the words chosen from, and each copy is patched only
       if it's the version read: a vote changes the rite's, so a refusal is read and erased again,
       up to three times. Then Today, the rite's page and the search index are purged; another rite's page that names it
-      in More rites refreshes within its hour. Cosmos's own backups keep the old words until they expire.
-    - **The Record** says who erased how many words of which part ("2 words of its title"), never the words.
+      in More rites refreshes within its hour. Cosmos's own backups keep the old words until they expire. A
+      refill already running may still mark a new draft as much like the rite by its old title: it read the titles
+      before the erasure, and only knows the rite by its title (`TakenRite`), so no batch can guard it.
+    - **The Record** says who erased how many words of which part ("2 words of its title"), never the words. The
+      entry names the draft, so the draft's own history shows it. An entry's detail is the Record's own words ("from #1
+      to #2"), so only what it quotes (an amendment's old title) is erased.
     - **Access:** their own Cloudflare Access application on `/scriptorium/expurgate*`, whose policy admits an Access
       group; its token names that application, so the app checks it against `CloudflareAccess:ExpurgatorAudience`
       (`ExpurgatorSignIn`), and the Scribes' pages never take it. Without that setting, nobody may expurgate. On staging,

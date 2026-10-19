@@ -22,7 +22,7 @@ public sealed class ExpurgationRepository : IExpurgationRepository
         this.container = container;
     }
 
-    public Task<Either<Error, Option<List<WordsKept>>>> FindWordsOf(int number, CancellationToken cancellationToken)
+    public Task<Either<Error, Option<KeptWords>>> FindWordsOf(int number, CancellationToken cancellationToken)
         => Attempt(async () =>
         {
             var rites = await Words(
@@ -32,7 +32,7 @@ public sealed class ExpurgationRepository : IExpurgationRepository
                 cancellationToken);
             return await rites.HeadOrNone().MatchAsync(
                 Some: async rite => Some(await CopiesOf(rite, number, cancellationToken)),
-                None: () => Option<List<WordsKept>>.None);
+                None: () => Option<KeptWords>.None);
         });
 
     public Task<Either<Error, Unit>> Erase(IReadOnlyList<WordsKept> changed, AuditEntry audit, CancellationToken cancellationToken)
@@ -60,7 +60,7 @@ public sealed class ExpurgationRepository : IExpurgationRepository
 
     // The rite's id is its day, which the draft it was published from keeps; the draft's id leads to the decisions and
     // the Record's entries about it. A rite written on the spot, with no draft, has only its own entries.
-    private async Task<List<WordsKept>> CopiesOf(WordsDocument rite, int number, CancellationToken cancellationToken)
+    private async Task<KeptWords> CopiesOf(WordsDocument rite, int number, CancellationToken cancellationToken)
     {
         var drafts = await Words(
             new QueryDefinition("SELECT c.id, c._etag, c.title, c.text, c.hereticalTruth FROM c WHERE c.type = @type AND c.publishedOnUtc = @day")
@@ -87,7 +87,12 @@ public sealed class ExpurgationRepository : IExpurgationRepository
                 .WithParameter("@type", DraftDocument.DraftType)
                 .WithParameter("@titles", titles),
             cancellationToken);
-        return [rite.ToWordsKept(), .. drafts.Concat(decisions).Concat(entries).Concat(resembling.Where(draft => !draftIds.Contains(draft.Id))).Select(found => found.ToWordsKept())];
+        List<WordsKept> copies =
+        [
+            rite.ToWordsKept(),
+            .. drafts.Concat(decisions).Concat(entries).Concat(resembling.Where(draft => !draftIds.Contains(draft.Id))).Select(found => found.ToWordsKept()),
+        ];
+        return new KeptWords(draftIds.HeadOrNone().Map(Guid.Parse), copies);
     }
 
     private Task<List<WordsDocument>> Words(QueryDefinition query, CancellationToken cancellationToken)

@@ -186,6 +186,35 @@ public sealed class ExpurgationTests : IAsyncLifetime
         Assert.Equal("The Litany of the Warm 📜", Found(await Expurgations().Find(number, CancellationToken.None)).Rite.Writing.Title);
     }
 
+    // The Record's own words aren't the rite's: erasing "1" or "word" leaves "from #1 to #1" and "1 word of its text" as
+    // they were. The erasure shows in the draft's own history, which is by draft.
+    [Fact]
+    public async Task Erase_LeavesTheRecordsOwnWords_AndShowsInTheDraftsHistory()
+    {
+        var draft = Ok(await testbed.Drafts.Add(new Draft
+        {
+            Id = Guid.NewGuid(),
+            State = DraftState.Waiting,
+            Writing = new RiteWriting { Kind = RiteKind.Prayer, Title = "The Word", Text = "Say the word 1 more time.", HereticalTruth = "Once is enough." },
+            Augury = new Augury { Quality = 0.9f, JudgedBy = "jev-1.13.0/quality-q1" },
+        }, CancellationToken.None));
+        Ok(await testbed.Scribes().Anoint(draft.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        var number = Ok(await testbed.Publisher().PublishToday(CancellationToken.None)).Rite.Number;
+
+        // "Say the word 1 more time.": word is its third word; erased, it's no word, and 1 is the third.
+        Ok(await Expurgations().Erase(number, Found(await Expurgations().Find(number, CancellationToken.None)).Version,
+            [new(RitePart.Text, 2, "🪦")], Expurgator, CancellationToken.None));
+        Ok(await Expurgations().Erase(number, Found(await Expurgations().Find(number, CancellationToken.None)).Version,
+            [new(RitePart.Text, 2, "🌑")], Expurgator, CancellationToken.None));
+
+        Assert.Equal("Say the 🪦 🌑 more time.", Found(await Expurgations().Find(number, CancellationToken.None)).Rite.Writing.Text);
+        var history = Ok(await testbed.Audit.GetHistory(draft.Id, CancellationToken.None));
+        Assert.Equal(
+            [Some("1 word of its text"), Some("1 word of its text")],
+            history.Where(entry => entry.Action == AuditAction.Expurgate).Select(entry => entry.Detail));
+        Assert.Equal(Some("from #1 to #1"), history.Single(entry => entry.Action == AuditAction.Anoint).Detail);
+    }
+
     // A batch takes at most 100 operations: rather than erase some copies and not others, none.
     [Fact]
     public async Task Erase_MoreCopiesThanABatchTakes_IsRefused()
@@ -228,7 +257,7 @@ public sealed class ExpurgationTests : IAsyncLifetime
             this.erase = erase;
         }
 
-        public async Task<Either<Error, Option<List<WordsKept>>>> FindWordsOf(int number, CancellationToken cancellationToken)
+        public async Task<Either<Error, Option<KeptWords>>> FindWordsOf(int number, CancellationToken cancellationToken)
         {
             if (!erased)
             {
@@ -256,7 +285,7 @@ public sealed class ExpurgationTests : IAsyncLifetime
 
         public int Reads { get; private set; }
 
-        public async Task<Either<Error, Option<List<WordsKept>>>> FindWordsOf(int number, CancellationToken cancellationToken)
+        public async Task<Either<Error, Option<KeptWords>>> FindWordsOf(int number, CancellationToken cancellationToken)
         {
             var found = await inner.FindWordsOf(number, cancellationToken);
             if (++Reads == 1)

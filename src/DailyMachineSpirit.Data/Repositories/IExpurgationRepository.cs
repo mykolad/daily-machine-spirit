@@ -12,7 +12,7 @@ namespace DailyMachineSpirit.Data.Repositories;
 public interface IExpurgationRepository
 {
     /// <summary>The copies of the rite's words, its own first; None when no rite has that number.</summary>
-    Task<Either<Error, Option<List<WordsKept>>>> FindWordsOf(int number, CancellationToken cancellationToken);
+    Task<Either<Error, Option<KeptWords>>> FindWordsOf(int number, CancellationToken cancellationToken);
 
     /// <summary>
     /// Saves the changed copies with the erasure's entry, in one batch: all or nothing.

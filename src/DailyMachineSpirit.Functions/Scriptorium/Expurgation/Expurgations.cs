@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Caching;
@@ -17,7 +18,7 @@ namespace DailyMachineSpirit.Functions.Scriptorium.Expurgation;
 /// erased how many words of which part, never the words. Then Today, the rite's page and the search index are purged
 /// from Cloudflare's cache.
 /// </summary>
-public sealed class Expurgations
+public sealed partial class Expurgations
 {
     /// <summary>A rite's words changed since the Expurgator chose (another erasure): they choose again.</summary>
     public static readonly Error WordsChanged = Error.New("The rite's words changed since they were chosen.");
@@ -114,17 +115,17 @@ public sealed class Expurgations
                 None: () => Task.FromResult(Right<Error, Option<Rite>>(None)),
                 // Another erasure saved between reading the rite and its copies: its words aren't the ones chosen from. The
                 // copies' versions, read after it, would let this one put its words back.
-                Some: stored => !TheRiteReads(stored[0], rite.Writing)
+                Some: stored => !TheRiteReads(stored.Copies[0], rite.Writing)
                     ? Task.FromResult(Left<Error, Option<Rite>>(WordsChanged))
                     : EraseCopies(stored, rite, redacted, chosen, expurgator, cancellationToken)));
     }
 
     private async Task<Either<Error, Option<Rite>>> EraseCopies(
-        IReadOnlyList<WordsKept> stored, Rite rite, RiteWriting redacted, IReadOnlyList<RedactedWord> chosen, string expurgator,
+        KeptWords stored, Rite rite, RiteWriting redacted, IReadOnlyList<RedactedWord> chosen, string expurgator,
         CancellationToken cancellationToken)
         => (await copies.Erase(
-                Changed(stored, rite.Writing, redacted, WordsReplaced(rite.Writing, chosen)),
-                Entry(rite, redacted, chosen, expurgator),
+                Changed(stored.Copies, rite.Writing, redacted, WordsReplaced(rite.Writing, chosen)),
+                Entry(rite, stored.DraftId, redacted, chosen, expurgator),
                 cancellationToken))
             .Map(_ => Some(rite with { Writing = redacted }));
 
@@ -133,13 +134,19 @@ public sealed class Expurgations
 
     // Each copy of a part as it is now gets the redacted part, field by field (two parts may read the same, and another
     // draft's resemblance names the title); a copy from before an amendment, whose words differ, and a Scribe's note have
-    // every erased word replaced wherever it appears: the Expurgator chose them in the rite, which is all they saw.
+    // every erased word replaced wherever it appears: the Expurgator chose them in the rite, which is all they saw. A
+    // Record entry's detail is the Record's own words ("from #1 to #2"), quoting the rite only between quotation marks
+    // (an amendment's old title): only the quote changes.
     private static List<WordsKept> Changed(
         IReadOnlyList<WordsKept> stored, RiteWriting original, RiteWriting redacted, IReadOnlyDictionary<string, string> words)
     {
         string Now(string field, string was)
         {
             var part = field == "/resembles" ? Some(RitePart.Title) : RiteParts.All.Where(part => part.Field() == field).HeadOrNone();
+            if (field == "/detail")
+            {
+                return Quoted().Replace(was, quote => Wording.ReplaceEverywhere(quote.Value, words));
+            }
             return part.Filter(found => was == found.Of(original)).Match(
                 Some: found => found.Of(redacted),
                 None: () => Wording.ReplaceEverywhere(was, words));
@@ -164,12 +171,13 @@ public sealed class Expurgations
             .ToDictionary(word => word.Text, word => word.Emoji, StringComparer.Ordinal);
 
     // Who, and how many words of which parts: never the words.
-    private AuditEntry Entry(Rite rite, RiteWriting redacted, IReadOnlyList<RedactedWord> chosen, string expurgator) => new()
+    private AuditEntry Entry(Rite rite, Option<Guid> draftId, RiteWriting redacted, IReadOnlyList<RedactedWord> chosen, string expurgator) => new()
     {
         Id = Guid.NewGuid(),
         AtUtc = time.GetUtcNow().UtcDateTime,
         Actor = expurgator,
         Action = AuditAction.Expurgate,
+        DraftId = draftId,
         RiteNumber = rite.Number,
         Title = redacted.Title,
         Detail = string.Join(", ", RiteParts.All
@@ -177,4 +185,7 @@ public sealed class Expurgations
             .Where(counted => counted.Words > 0)
             .Select(counted => $"{counted.Words} {(counted.Words == 1 ? "word" : "words")} of its {counted.Part.Name()}")),
     };
+
+    [GeneratedRegex("“[^”]*”")]
+    private static partial Regex Quoted();
 }
