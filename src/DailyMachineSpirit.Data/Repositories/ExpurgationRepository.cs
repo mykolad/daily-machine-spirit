@@ -69,7 +69,7 @@ public sealed class ExpurgationRepository : IExpurgationRepository
             cancellationToken);
         var draftIds = drafts.Select(draft => draft.Id).ToList();
         var decisions = await Words(
-            new QueryDefinition("SELECT c.id, c._etag, c.title, c.text, c.hereticalTruth FROM c WHERE c.type = @type AND ARRAY_CONTAINS(@drafts, c.draftId)")
+            new QueryDefinition("SELECT c.id, c._etag, c.title, c.text, c.hereticalTruth, c.note FROM c WHERE c.type = @type AND ARRAY_CONTAINS(@drafts, c.draftId)")
                 .WithParameter("@type", ScribeDecisionDocument.DecisionType)
                 .WithParameter("@drafts", draftIds),
             cancellationToken);
@@ -79,11 +79,13 @@ public sealed class ExpurgationRepository : IExpurgationRepository
                 .WithParameter("@number", number)
                 .WithParameter("@drafts", draftIds),
             cancellationToken);
-        // Another draft marked as much like this rite names it by its title.
+        // Another draft marked as much like this rite names it by its title then: before an amendment, any it had.
+        var titles = new[] { rite }.Concat(drafts).Concat(decisions).Concat(entries)
+            .Select(copy => copy.Title).OfType<string>().Distinct().ToList();
         var resembling = await Words(
-            new QueryDefinition("SELECT c.id, c._etag, c.resembles FROM c WHERE c.type = @type AND c.resembles = @title")
+            new QueryDefinition("SELECT c.id, c._etag, c.resembles FROM c WHERE c.type = @type AND ARRAY_CONTAINS(@titles, c.resembles)")
                 .WithParameter("@type", DraftDocument.DraftType)
-                .WithParameter("@title", rite.Title),
+                .WithParameter("@titles", titles),
             cancellationToken);
         return [rite.ToWordsKept(), .. drafts.Concat(decisions).Concat(entries).Concat(resembling.Where(draft => !draftIds.Contains(draft.Id))).Select(found => found.ToWordsKept())];
     }

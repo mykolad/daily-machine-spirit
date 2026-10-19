@@ -51,7 +51,10 @@ public sealed class ExpurgationFunction
             Left: error => Failed(request, error));
     }
 
-    /// <summary>A rite with each word to choose; <c>?w=</c> checks the words chosen before.</summary>
+    /// <summary>
+    /// A rite with each word to choose; <c>?w=</c> checks the words chosen before, if <c>?version=</c> says they were
+    /// chosen in the words it has now.
+    /// </summary>
     [Function("ScriptoriumExpurgate")]
     public async Task<IActionResult> Choose(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "scriptorium/expurgate/{number:int}")] HttpRequest request,
@@ -64,9 +67,17 @@ public sealed class ExpurgationFunction
         }
 
         var chosen = request.Query["w"].Select(word => word ?? string.Empty).ToHashSet();
+        var chosenIn = request.Query["version"].ToString();
         return (await expurgations.Find(number, cancellationToken)).Match(
             Right: found => found.Match(
-                Some: rite => Html(request, ScriptoriumPage.RenderExpurgate(rite, chosen, Outcome(request).Bind(Said)), StatusCodes.Status200OK),
+                Some: rite =>
+                {
+                    // Places chosen in words another erasure changed since may now be other words: chosen again, afresh.
+                    var stale = chosen.Count > 0 && chosenIn != rite.Version;
+                    return Html(request,
+                        ScriptoriumPage.RenderExpurgate(rite, stale ? [] : chosen, stale ? Said("changed") : Outcome(request).Bind(Said)),
+                        StatusCodes.Status200OK);
+                },
                 None: () => Redirect("/scriptorium/expurgate?done=no-rite")),
             Left: error => Failed(request, error));
     }
@@ -95,7 +106,10 @@ public sealed class ExpurgationFunction
         }
         return (await expurgations.Find(number, cancellationToken)).Match(
             Right: found => found.Match(
-                Some: rite => Expurgations.Redacted(rite.Rite.Writing, chosen).Match(
+                // Places chosen in words that changed since (another erasure) may now be other words.
+                Some: rite => request.Query["version"].ToString() != rite.Version
+                    ? Redirect($"/scriptorium/expurgate/{number}?done=changed")
+                    : Expurgations.Redacted(rite.Rite.Writing, chosen).Match(
                     Right: redacted => Html(request, ScriptoriumPage.RenderExpurgateConfirm(rite, chosen, redacted), StatusCodes.Status200OK),
                     // A place the rite's words don't have: chosen on a page shown before another erasure.
                     Left: _ => Redirect($"/scriptorium/expurgate/{number}?done=changed")),

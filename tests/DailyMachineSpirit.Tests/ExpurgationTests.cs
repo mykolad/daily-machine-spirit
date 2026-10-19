@@ -133,6 +133,59 @@ public sealed class ExpurgationTests : IAsyncLifetime
         Assert.Empty(pages.Purges);
     }
 
+    // A draft marked as much like this rite before it was amended names it by its old title, which holds erased words too.
+    [Fact]
+    public async Task Erase_FindsTheDraftsMuchLikeAnyTitleTheRiteHad()
+    {
+        var number = await PublishedAfterAnAmendment();
+        var resembling = Ok(await testbed.Drafts.Add(new Draft
+        {
+            Id = Guid.NewGuid(),
+            State = DraftState.Waiting,
+            Writing = new RiteWriting { Kind = RiteKind.Prayer, Title = "The Second Litany", Text = "Again.", HereticalTruth = "Twice." },
+            Resembles = Some("Litany of the Cold Cache"),
+        }, CancellationToken.None));
+        var version = Found(await Expurgations().Find(number, CancellationToken.None)).Version;
+
+        Ok(await Expurgations().Erase(number, version, [new(RitePart.Title, 5, "📜")], Expurgator, CancellationToken.None));
+
+        Assert.Equal(Some("Litany of the Cold 📜"), Ok(await testbed.Drafts.Get(resembling.Id, CancellationToken.None)).Bind(draft => draft.Resembles));
+        Assert.All(await testbed.AllDocuments(), document => Assert.DoesNotContain("Cache\"", document));
+    }
+
+    // Two parts may read the same: each is its own, and a word erased in one stays in the other.
+    [Fact]
+    public async Task Erase_APartThatReadsLikeAnother_ErasesItAlone()
+    {
+        var rite = Ok(await testbed.Rites.Add(new Rite
+        {
+            PublishedOnUtc = BacklogTestbed.Today,
+            Writing = new RiteWriting { Kind = RiteKind.Ritual, Title = "Echo", Text = "Say it twice.", HereticalTruth = "Say it twice." },
+        }, CancellationToken.None));
+        var version = Found(await Expurgations().Find(rite.Number, CancellationToken.None)).Version;
+
+        Ok(await Expurgations().Erase(rite.Number, version, [new(RitePart.HereticalTruth, 2, "⏳")], Expurgator, CancellationToken.None));
+
+        var reads = Found(await Expurgations().Find(rite.Number, CancellationToken.None)).Rite.Writing;
+        Assert.Equal(("Say it twice.", "Say it ⏳."), (reads.Text, reads.HereticalTruth));
+    }
+
+    // Another erasure saved between reading the rite and reading its copies: the words chosen from are gone, and erasing
+    // now would put the other's words back in the copies.
+    [Fact]
+    public async Task Erase_WhenAnotherErasureSavesMeanwhile_LeavesItAndChoosesAgain()
+    {
+        var number = await PublishedAfterAnAmendment();
+        var version = Found(await Expurgations().Find(number, CancellationToken.None)).Version;
+        var meanwhile = new ErasingMeanwhile(testbed.Expurgation,
+            () => Expurgations().Erase(number, version, [new(RitePart.Title, 5, "📜")], "another-expurgator", CancellationToken.None));
+
+        var refused = Failed(await testbed.Expurgations(meanwhile, pages).Erase(number, version, WarmInTitleAndText, Expurgator, CancellationToken.None));
+
+        Assert.Equal(Functions.Scriptorium.Expurgation.Expurgations.WordsChanged, refused);
+        Assert.Equal("The Litany of the Warm 📜", Found(await Expurgations().Find(number, CancellationToken.None)).Rite.Writing.Title);
+    }
+
     // A batch takes at most 100 operations: rather than erase some copies and not others, none.
     [Fact]
     public async Task Erase_MoreCopiesThanABatchTakes_IsRefused()
@@ -146,14 +199,14 @@ public sealed class ExpurgationTests : IAsyncLifetime
         Assert.Equal(ExpurgationRepository.TooManyCopies, refused);
     }
 
-    // Written, amended (the decision keeps the old words, the Record's detail the old title), anointed and published:
-    // every kind of copy there is.
+    // Written, amended (the decision keeps the old words, the Record's detail the old title), anointed with a note that
+    // quotes it, and published: every kind of copy there is.
     private async Task<int> PublishedAfterAnAmendment()
     {
         var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.9f);
         var amendable = Ok(await testbed.Amendments().FindWaiting(draft.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Not amendable."));
         Ok(await testbed.Amendments().SaveAndJudgeAgain(draft.Id, amendable.ETag, Amended, "Kinder.", BacklogTestbed.Tester, CancellationToken.None));
-        Ok(await testbed.Scribes().Anoint(draft.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        Ok(await testbed.Scribes().Anoint(draft.Id, "Keep it Warm.", BacklogTestbed.Tester, CancellationToken.None));
         return Ok(await testbed.Publisher().PublishToday(CancellationToken.None)).Rite.Number;
     }
 
@@ -161,6 +214,33 @@ public sealed class ExpurgationTests : IAsyncLifetime
 
     private static ExpurgatableRite Found(Either<Error, Option<ExpurgatableRite>> found)
         => Ok(found).IfNone(() => throw new Xunit.Sdk.XunitException("No such rite."));
+
+    /// <summary>Another erasure, saved just before the first read of the copies.</summary>
+    private sealed class ErasingMeanwhile : IExpurgationRepository
+    {
+        private readonly IExpurgationRepository inner;
+        private readonly Func<Task<Either<Error, Option<Rite>>>> erase;
+        private bool erased;
+
+        public ErasingMeanwhile(IExpurgationRepository inner, Func<Task<Either<Error, Option<Rite>>>> erase)
+        {
+            this.inner = inner;
+            this.erase = erase;
+        }
+
+        public async Task<Either<Error, Option<List<WordsKept>>>> FindWordsOf(int number, CancellationToken cancellationToken)
+        {
+            if (!erased)
+            {
+                erased = true;
+                Ok(await erase());
+            }
+            return await inner.FindWordsOf(number, cancellationToken);
+        }
+
+        public Task<Either<Error, Unit>> Erase(IReadOnlyList<WordsKept> changed, AuditEntry audit, CancellationToken cancellationToken)
+            => inner.Erase(changed, audit, cancellationToken);
+    }
 
     /// <summary>Votes on the rite after the first read of its copies, so their version is out of date when erased.</summary>
     private sealed class VotingMeanwhile : IExpurgationRepository

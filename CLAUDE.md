@@ -362,10 +362,11 @@ observability/                    — the Grafana dashboard and alerts, and what
     words chosen from (a hash, `Expurgations.Version`) and each word's emoji (only `LostToTime`'s are taken), so the rite
     reads as previewed, and words chosen before another erasure are chosen again.
     - **Erased everywhere the site keeps them** (`ExpurgationRepository`), in one batch with the Record's entry: the
-      rite, the draft it was published from, the Scribes' decisions on that draft, the Record's entries about it (their
-      titles, and an amendment's old title) and the drafts marked as much like it. A copy of a part as it is now gets the
-      redacted part; an older copy (from before an amendment) has each erased word replaced wherever it appears. Each
-      copy is patched only if it's the version read: a vote changes the rite's, so a refusal is read and erased again,
+      rite, the draft it was published from, the Scribes' decisions on that draft (with their notes), the Record's entries about it
+      (their titles, and an amendment's old title) and the drafts marked as much like it, by any title it had. A copy of a part as it is now gets the
+      redacted part, field by field; an older copy (from before an amendment) and a note have each erased word replaced
+      wherever it appears. The rite's own copy must still read as the words chosen from, and each copy is patched only
+      if it's the version read: a vote changes the rite's, so a refusal is read and erased again,
       up to three times. Then Today, the rite's page and the search index are purged; another rite's page that names it
       in More rites refreshes within its hour. Cosmos's own backups keep the old words until they expire.
     - **The Record** says who erased how many words of which part ("2 words of its title"), never the words.

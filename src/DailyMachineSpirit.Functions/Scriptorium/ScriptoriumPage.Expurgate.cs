@@ -48,8 +48,9 @@ public static partial class ScriptoriumPage
     /// A published rite with each of its words a checkbox, to choose the ones to erase: plain HTML, the chosen ones struck
     /// through. The choice goes to the confirming page, which changes nothing.
     /// </summary>
-    /// <param name="chosen">Words chosen before (<c>text:12</c>), checked again when the Expurgator chooses again.</param>
-    public static string RenderExpurgate(ExpurgatableRite expurgatable, IReadOnlySet<string> chosen, Option<string> message)
+    /// <param name="chosen">Words chosen before (<c>text:12</c>), checked again when the Expurgator chooses again. The form
+    /// carries the words' version, so places chosen in words another erasure changed meanwhile are chosen again.</param>
+    public static string RenderExpurgate(ExpurgatableRite expurgatable, IReadOnlyCollection<string> chosen, Option<string> message)
     {
         var rite = expurgatable.Rite;
         var html = new StringBuilder();
@@ -62,6 +63,7 @@ public static partial class ScriptoriumPage
             <p class="status" role="status">{message.Map(Encode).IfNone(string.Empty)}</p>
             <p class="kicker">NO. {rite.Number} · {Date(rite.PublishedOnUtc)} · {Kind(rite.Writing.Kind)}</p>
             <form method="get" action="/scriptorium/expurgate/{rite.Number}/confirm">
+            <input type="hidden" name="version" value="{Encode(expurgatable.Version)}">
             """);
         foreach (var part in RiteParts.All)
         {
@@ -119,7 +121,7 @@ public static partial class ScriptoriumPage
             {string.Concat(chosen.Select(word => $"""<input type="hidden" name="r" value="{Encode(word.ToString())}">"""))}
             <div class="buttons">
             <button class="danger">{ScriptoriumIcons.Burn}Erase Them for Good</button>
-            <a class="button-link" href="{Encode($"/scriptorium/expurgate/{rite.Number}?{again.TrimStart('&')}")}">Choose Again</a>
+            <a class="button-link" href="{Encode($"/scriptorium/expurgate/{rite.Number}?version={expurgatable.Version}{again}")}">Choose Again</a>
             </div>
             </form>
             </main>

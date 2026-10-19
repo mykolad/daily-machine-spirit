@@ -42,7 +42,7 @@ public sealed partial class ExpurgationFunctionTests : IAsyncLifetime
     {
         var number = await Published("The Rite of the Cold Cache");
 
-        var html = Html(await Function().Choose(Get("?w=title:4"), number, CancellationToken.None), 200);
+        var html = Html(await Function().Choose(Get($"?version={await Version(number)}&w=title:4"), number, CancellationToken.None), 200);
 
         Assert.Contains("""<label class="word"><input type="checkbox" name="w" value="title:4" checked>Cold</label>""", html);
         Assert.Contains("""<label class="word"><input type="checkbox" name="w" value="title:5">Cache</label>""", html);
@@ -57,7 +57,7 @@ public sealed partial class ExpurgationFunctionTests : IAsyncLifetime
     {
         var number = await Published("The Rite of the Cold Cache");
 
-        var html = Html(await Function().Confirm(Get("?w=title:4&w=text:3"), number, CancellationToken.None), 200);
+        var html = Html(await Function().Confirm(Get($"?version={await Version(number)}&w=title:4&w=text:3"), number, CancellationToken.None), 200);
 
         var title = Regex.Match(html, """<h3 id="title-preview">(.*?)</h3>""").Groups[1].Value;
         Assert.Matches("^The Rite of the .+ Cache$", title);
@@ -74,7 +74,7 @@ public sealed partial class ExpurgationFunctionTests : IAsyncLifetime
         var number = await Published("The Rite of the Cold Cache");
 
         var none = await Function().Confirm(Get(""), number, CancellationToken.None);
-        var outside = await Function().Confirm(Get("?w=title:40"), number, CancellationToken.None);
+        var outside = await Function().Confirm(Get($"?version={await Version(number)}&w=title:40"), number, CancellationToken.None);
 
         Assert.Equal($"/scriptorium/expurgate/{number}?done=none", Assert.IsType<RedirectResult>(none).Url);
         Assert.Equal($"/scriptorium/expurgate/{number}?done=changed", Assert.IsType<RedirectResult>(outside).Url);
@@ -85,7 +85,7 @@ public sealed partial class ExpurgationFunctionTests : IAsyncLifetime
     public async Task Erasing_ChangesTheRite_AndGoesBackToIt()
     {
         var number = await Published("The Rite of the Cold Cache");
-        var confirm = Html(await Function().Confirm(Get("?w=title:4"), number, CancellationToken.None), 200);
+        var confirm = Html(await Function().Confirm(Get($"?version={await Version(number)}&w=title:4"), number, CancellationToken.None), 200);
 
         var response = await Function().Erase(Post(FormOf(confirm)), number, CancellationToken.None);
 
@@ -100,8 +100,8 @@ public sealed partial class ExpurgationFunctionTests : IAsyncLifetime
     public async Task Erasing_WordsThatChangedSince_GoesBackToChooseAgain()
     {
         var number = await Published("The Rite of the Cold Cache");
-        var first = Html(await Function().Confirm(Get("?w=title:4"), number, CancellationToken.None), 200);
-        var second = Html(await Function().Confirm(Get("?w=title:5"), number, CancellationToken.None), 200);
+        var first = Html(await Function().Confirm(Get($"?version={await Version(number)}&w=title:4"), number, CancellationToken.None), 200);
+        var second = Html(await Function().Confirm(Get($"?version={await Version(number)}&w=title:5"), number, CancellationToken.None), 200);
         await Function().Erase(Post(FormOf(first)), number, CancellationToken.None);
 
         var response = await Function().Erase(Post(FormOf(second)), number, CancellationToken.None);
@@ -109,6 +109,24 @@ public sealed partial class ExpurgationFunctionTests : IAsyncLifetime
         Assert.Equal($"/scriptorium/expurgate/{number}?done=changed", Assert.IsType<RedirectResult>(response).Url);
         Assert.EndsWith("Cache", (await Rite(number)).Writing.Title);
         Assert.Contains("Choose again.", Html(await Function().Choose(Get("?done=changed"), number, CancellationToken.None), 200));
+    }
+
+    // Places chosen before another erasure changed the words may now be other words: chosen again, from scratch.
+    [Fact]
+    public async Task ChoosingInWordsThatChangedSince_StartsAgain()
+    {
+        var number = await Published("The Rite of the Cold Cache");
+        var chosenIn = await Version(number);
+        var erasing = Html(await Function().Confirm(Get($"?version={chosenIn}&w=title:1"), number, CancellationToken.None), 200);
+        await Function().Erase(Post(FormOf(erasing)), number, CancellationToken.None);
+
+        var confirm = await Function().Confirm(Get($"?version={chosenIn}&w=title:4"), number, CancellationToken.None);
+        var again = Html(await Function().Choose(Get($"?version={chosenIn}&w=title:4"), number, CancellationToken.None), 200);
+
+        Assert.Equal($"/scriptorium/expurgate/{number}?done=changed", Assert.IsType<RedirectResult>(confirm).Url);
+        Assert.DoesNotContain(" checked>", again);
+        Assert.Contains("Choose again.", again);
+        Assert.Contains("Cold", (await Rite(number)).Writing.Title);
     }
 
     // Only the site's own emojis may replace a word: anything else in the form is no choice to guess at.
@@ -150,6 +168,9 @@ public sealed partial class ExpurgationFunctionTests : IAsyncLifetime
 
     private async Task<Data.Entities.Rite> Rite(int number)
         => Ok(await Expurgations().Find(number, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("No such rite.")).Rite;
+
+    private async Task<string> Version(int number)
+        => Ok(await Expurgations().Find(number, CancellationToken.None)).Map(rite => rite.Version).IfNone(string.Empty);
 
     private Expurgations Expurgations() => testbed.Expurgations(testbed.Expurgation, pages);
 

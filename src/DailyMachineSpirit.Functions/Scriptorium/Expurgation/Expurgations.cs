@@ -112,24 +112,43 @@ public sealed class Expurgations
             Right: kept => kept.Match(
                 // Gone between the two reads: there's nothing to erase.
                 None: () => Task.FromResult(Right<Error, Option<Rite>>(None)),
-                Some: async stored => (await copies.Erase(
-                        Changed(stored, rite.Writing, redacted, WordsReplaced(rite.Writing, chosen)),
-                        Entry(rite, redacted, chosen, expurgator),
-                        cancellationToken))
-                    .Map(_ => Some(rite with { Writing = redacted }))));
+                // Another erasure saved between reading the rite and its copies: its words aren't the ones chosen from. The
+                // copies' versions, read after it, would let this one put its words back.
+                Some: stored => !TheRiteReads(stored[0], rite.Writing)
+                    ? Task.FromResult(Left<Error, Option<Rite>>(WordsChanged))
+                    : EraseCopies(stored, rite, redacted, chosen, expurgator, cancellationToken)));
     }
 
-    // Each copy of a part as it is now gets the redacted part; a copy from before an amendment, whose words differ, has
+    private async Task<Either<Error, Option<Rite>>> EraseCopies(
+        IReadOnlyList<WordsKept> stored, Rite rite, RiteWriting redacted, IReadOnlyList<RedactedWord> chosen, string expurgator,
+        CancellationToken cancellationToken)
+        => (await copies.Erase(
+                Changed(stored, rite.Writing, redacted, WordsReplaced(rite.Writing, chosen)),
+                Entry(rite, redacted, chosen, expurgator),
+                cancellationToken))
+            .Map(_ => Some(rite with { Writing = redacted }));
+
+    private static bool TheRiteReads(WordsKept rite, RiteWriting writing)
+        => RiteParts.All.All(part => rite.Fields.TryGetValue(part.Field(), out var words) && words == part.Of(writing));
+
+    // Each copy of a part as it is now gets the redacted part, field by field (two parts may read the same, and another
+    // draft's resemblance names the title); a copy from before an amendment, whose words differ, and a Scribe's note have
     // every erased word replaced wherever it appears: the Expurgator chose them in the rite, which is all they saw.
     private static List<WordsKept> Changed(
         IReadOnlyList<WordsKept> stored, RiteWriting original, RiteWriting redacted, IReadOnlyDictionary<string, string> words)
     {
-        var parts = RiteParts.All.ToDictionary(part => part.Of(original), part => part.Of(redacted), StringComparer.Ordinal);
+        string Now(string field, string was)
+        {
+            var part = field == "/resembles" ? Some(RitePart.Title) : RiteParts.All.Where(part => part.Field() == field).HeadOrNone();
+            return part.Filter(found => was == found.Of(original)).Match(
+                Some: found => found.Of(redacted),
+                None: () => Wording.ReplaceEverywhere(was, words));
+        }
         return stored
             .Select(copy => copy with
             {
                 Fields = copy.Fields
-                    .Select(field => (field.Key, Was: field.Value, Now: parts.TryGetValue(field.Value, out var part) ? part : Wording.ReplaceEverywhere(field.Value, words)))
+                    .Select(field => (field.Key, Was: field.Value, Now: Now(field.Key, field.Value)))
                     .Where(field => field.Now != field.Was)
                     .ToDictionary(field => field.Key, field => field.Now),
             })

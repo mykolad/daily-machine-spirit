@@ -23,6 +23,9 @@ internal sealed record WordsDocument
 
     public string? Resembles { get; init; }
 
+    /// <summary>A Scribe's note on a decision, which may quote the rite.</summary>
+    public string? Note { get; init; }
+
     public WordsKept ToWordsKept()
     {
         var fields = new Dictionary<string, string>();
@@ -38,6 +41,7 @@ internal sealed record WordsDocument
         Keep("/hereticalTruth", HereticalTruth);
         Keep("/detail", Detail);
         Keep("/resembles", Resembles);
+        Keep("/note", Note);
         return new WordsKept(Id, ETag, fields);
     }
 }
