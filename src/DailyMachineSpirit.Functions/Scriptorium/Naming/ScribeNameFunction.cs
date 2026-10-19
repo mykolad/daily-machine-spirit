@@ -1,5 +1,6 @@
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Functions.Scriptorium.SignIn;
+using DailyMachineSpirit.Functions.Telemetry;
 using LanguageExt;
 using LanguageExt.Common;
 using Microsoft.AspNetCore.Http;
@@ -65,7 +66,11 @@ public sealed class ScribeNameFunction
         var scribe = (string)acting.Case;
         var typed = fields["name"].ToString();
         return await (await naming.Choose(scribe, typed, cancellationToken)).Match(
-            Right: _ => Task.FromResult<IActionResult>(Redirect("/scriptorium?done=named")),
+            Right: _ =>
+            {
+                logger.CountScribeAction("name");
+                return Task.FromResult<IActionResult>(Redirect("/scriptorium?done=named"));
+            },
             Left: error =>
             {
                 if (error is NameRefused || error == Data.Repositories.ScriptoriumRepository.ChangedMeanwhile)

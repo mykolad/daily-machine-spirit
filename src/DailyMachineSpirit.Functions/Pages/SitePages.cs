@@ -1,6 +1,7 @@
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Tags;
+using DailyMachineSpirit.Functions.Telemetry;
 using LanguageExt;
 using LanguageExt.Common;
 using Microsoft.AspNetCore.Http;
@@ -109,7 +110,15 @@ public sealed class SitePages
                 .BindAsync(days => rites.SearchOlderThan(words, tagKey, isFirstPage ? int.MaxValue : before, options.Value.ArchivePageSize + 1, cancellationToken)
                     .MapAsync(page => Results(days, page)));
             return found.Match(
-                Right: results => Page(request, StatusCodes.Status200OK, ArchivePage.Results(typed, words, tag, results, now)),
+                Right: results =>
+                {
+                    // Once per search: the pages the script loads after the first are the same search.
+                    if (isFirstPage)
+                    {
+                        logger.CountArchiveSearch(tag.IsSome ? "words-in-a-subject" : "words");
+                    }
+                    return Page(request, StatusCodes.Status200OK, ArchivePage.Results(typed, words, tag, results, now));
+                },
                 Left: error => Failed(request, error));
         }
 

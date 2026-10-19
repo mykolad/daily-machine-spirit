@@ -34,7 +34,7 @@ tests/load                        — k6 load tests of the public pages, run by 
 tools/coverage.ps1                — tests + coverage report + the coverage gate (Build and Test runs it)
 tools/grafana-alerts.ps1          — puts the alert rules into Grafana Cloud (observability/README.md)
 infra/                            — Bicep for all of Azure (main.bicep); infra/README.md covers what Bicep can't do
-observability/                    — the Grafana dashboard and alerts, and what the app's metrics measure
+observability/                    — the Grafana dashboards (technical, activity) and alerts, and what the app's metrics measure
 ```
 
 ## Code style rules
@@ -112,7 +112,8 @@ observability/                    — the Grafana dashboard and alerts, and what
   the host alone would see must be logged by the code. Each environment is its own service (the app's name), tagged with
   `deployment.environment.name`. There's no Application Insights, so the portal's log stream stays empty: look in Grafana.
   The site's own metrics (`SiteMetrics`, `CosmosMetricsHandler`) are listed in `observability/README.md`, next to the
-  dashboard; their tags never describe a visitor.
+  dashboard; their tags never describe a visitor. What the site's people do (a Scribe's action, a reader's vote, sign-in
+  or search) is a log line each (`LogCounters`), which the activity dashboard counts: never who, nor what was searched.
 - **The pages** (`Pages/`) follow the design handoff (`design_handoff_daily_machine_spirit`, outside the repo; its
   README is the spec). They're rendered on the server as plain HTML with the CSS and a small script inlined, so a page
   is one request (plus the fonts, cached for a year) and works without the script (the truth then simply shows).
