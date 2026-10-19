@@ -120,7 +120,7 @@
     {
       "type": "timeseries",
       "title": "Archive searches per day",
-      "description": "Searches the Archive answered (their first page): by words, or by words in a subject. As the Archive's field follows the typing, a pause while typing is a search too. The nav's search matches in the browser and isn't counted; what's searched for is never logged.",
+      "description": "Searches the app answered (their first page): by words, or by words in a subject. A search answered from a cache is not counted: the same one again within a minute, which browsers and Cloudflare keep. As the Archive's field follows the typing, a pause while typing is a search too. The nav's search matches in the browser and isn't counted; what's searched for is never logged.",
       "id": 7,
       "gridPos": { "x": 16, "y": 11, "w": 8, "h": 9 },
       "datasource": { "type": "loki", "uid": "${loki}" },
@@ -165,8 +165,8 @@
             "method": "POST",
             "body_type": "graphql",
             "body_content_type": "application/json",
-            "body_graphql_query": "query ($zone: String!, $from: Date!, $to: Date!) { viewer { zones(filter: {zoneTag: $zone}) { httpRequests1dGroups(limit: 400, orderBy: [date_ASC], filter: {date_geq: $from, date_leq: $to}) { dimensions { date } sum { pageViews } uniq { uniques } } } } }",
-            "body_graphql_variables": "{\"zone\": \"${zone}\", \"from\": \"${__from:date:YYYY-MM-DD}\", \"to\": \"${__to:date:YYYY-MM-DD}\"}"
+            "body_graphql_query": "query ($zoneTag: String!, $since: Date!, $until: Date!) { viewer { zones(filter: {zoneTag: $zoneTag}) { httpRequests1dGroups(limit: 400, orderBy: [date_ASC], filter: {date_geq: $since, date_leq: $until}) { dimensions { date } sum { pageViews } uniq { uniques } } } } }",
+            "body_graphql_variables": "{\"zoneTag\": \"${zone}\", \"since\": \"${__from:date:YYYY-MM-DD}\", \"until\": \"${__to:date:YYYY-MM-DD}\"}"
           },
           "root_selector": "data.viewer.zones[0].httpRequests1dGroups",
           "columns": [
@@ -202,8 +202,8 @@
             "method": "POST",
             "body_type": "graphql",
             "body_content_type": "application/json",
-            "body_graphql_query": "query ($zone: String!, $from: Date!, $to: Date!) { viewer { zones(filter: {zoneTag: $zone}) { httpRequests1dGroups(limit: 400, orderBy: [date_ASC], filter: {date_geq: $from, date_leq: $to}) { dimensions { date } sum { requests cachedRequests } } } } }",
-            "body_graphql_variables": "{\"zone\": \"${zone}\", \"from\": \"${__from:date:YYYY-MM-DD}\", \"to\": \"${__to:date:YYYY-MM-DD}\"}"
+            "body_graphql_query": "query ($zoneTag: String!, $since: Date!, $until: Date!) { viewer { zones(filter: {zoneTag: $zoneTag}) { httpRequests1dGroups(limit: 400, orderBy: [date_ASC], filter: {date_geq: $since, date_leq: $until}) { dimensions { date } sum { requests cachedRequests } } } } }",
+            "body_graphql_variables": "{\"zoneTag\": \"${zone}\", \"since\": \"${__from:date:YYYY-MM-DD}\", \"until\": \"${__to:date:YYYY-MM-DD}\"}"
           },
           "root_selector": "data.viewer.zones[0].httpRequests1dGroups",
           "columns": [
