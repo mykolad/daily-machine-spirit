@@ -717,7 +717,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var unjudged = await testbed.AddUnjudgedDraft("Litany of the Cold Cache");
         var judged = await testbed.AddDraft("Already judged", 0.9f);
-        testbed.JevApiKey = "";
+        testbed.Models.Fails(BacklogTestbed.QualityJudge, Settings.QualityJudging.ScoresPerDraft);
 
         var still = await Function().Decide(Post(""), unjudged.Id, "judge", CancellationToken.None);
         var nothing = await Function().Decide(Post(""), judged.Id, "judge", CancellationToken.None);
@@ -777,7 +777,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         await testbed.AddDraft("Best", 0.9f);
         var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
         Ok(await testbed.Scribes().Anoint(draft.Id, "", BacklogTestbed.Tester, CancellationToken.None));
-        testbed.JevApiKey = "";
+        testbed.Models.Fails(BacklogTestbed.QualityJudge, Settings.QualityJudging.ScoresPerDraft);
 
         var response = await Function().Decide(
             Amending(await ETag(draft), "The Litany of the Warm Cache", "Sharper."), draft.Id, "amend", CancellationToken.None);

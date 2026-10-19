@@ -160,7 +160,7 @@ public sealed class BacklogRefiller
             ? RiteKind.Prayer
             : RiteKind.Ritual;
 
-    // Judging only orders the backlog and powers "More rites": a draft Jev couldn't judge still joins it, after the
+    // Judging only orders the backlog and powers "More rites": a draft that couldn't be judged still joins it, after the
     // judged ones, rather than being lost.
     private async Task<Draft> Judged(Draft draft, CancellationToken cancellationToken)
         => (await judge.Judge(draft, cancellationToken)).Match(
@@ -175,7 +175,7 @@ public sealed class BacklogRefiller
                     },
                     None: () =>
                     {
-                        logger.LogInformation("Draft {Title} joins the backlog without scores: judging is turned off.", draft.Writing.Title);
+                        logger.LogInformation("Draft {Title} joins the backlog without similarity scores: Jev is turned off.", draft.Writing.Title);
                         metrics.Judging("off");
                     });
                 return judged;

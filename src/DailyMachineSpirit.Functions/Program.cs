@@ -90,10 +90,13 @@ Tuned<PreceptDistillingOptions>(PreceptDistillingOptions.SectionName);
 Tuned<PreceptCheckOptions>(PreceptCheckOptions.SectionName);
 Tuned<AuguryOptions>(AuguryOptions.SectionName);
 Tuned<JevOptions>(JevOptions.SectionName);
+Tuned<QualityJudgingOptions>(QualityJudgingOptions.SectionName);
 var jev = builder.Configuration.GetSection(JevOptions.SectionName).Get<JevOptions>() ?? new JevOptions();
 var openAI = builder.Configuration.GetSection(AzureOpenAIOptions.SectionName).Get<AzureOpenAIOptions>() ?? new AzureOpenAIOptions();
 builder.Services.AddSingleton<IChatClients>(_ => new AzureOpenAIChatClients(openAI.Endpoint));
-builder.Services.AddHttpClient<IRiteJudge, JevJudge>(http => http.Timeout = jev.Patience.TryLimit.IfNone(Timeout.InfiniteTimeSpan));
+builder.Services.AddHttpClient<JevJudge>(http => http.Timeout = jev.Patience.TryLimit.IfNone(Timeout.InfiniteTimeSpan));
+builder.Services.AddTransient<RubricJudge>();
+builder.Services.AddTransient<IRiteJudge, RiteJudge>();
 // Tags the rites judged before tags existed, once per start (nothing left after the first).
 builder.Services.AddHostedService<TagBackfill>();
 builder.Services.AddTransient<RiteWriter>();

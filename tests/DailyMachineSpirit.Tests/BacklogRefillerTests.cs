@@ -2,6 +2,7 @@ using System.Net;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Functions;
 using DailyMachineSpirit.Functions.Generation;
+using DailyMachineSpirit.Functions.Generation.Judging;
 using DailyMachineSpirit.Functions.Scriptorium;
 using DailyMachineSpirit.Functions.Scriptorium.SignIn;
 using LanguageExt;
@@ -216,8 +217,9 @@ public sealed class BacklogRefillerTests : IAsyncLifetime
         Assert.Equal(["outcome=failed"], MetricsProbe.Tags(judging, "outcome"));
     }
 
+    // Jev off, a draft has no similarity scores or tags, but still its quality: the models judge that.
     [Fact]
-    public async Task Refill_WithJudgingOff_AddsTheDrafts_WithoutScores()
+    public async Task Refill_WithJevOff_AddsTheDrafts_WithAQuality_ButWithoutScores()
     {
         testbed.BacklogSize = 1;
         testbed.JevApiKey = string.Empty;
@@ -226,7 +228,9 @@ public sealed class BacklogRefillerTests : IAsyncLifetime
 
         Ok(await testbed.Refiller().Refill(CancellationToken.None));
 
-        Assert.True(Assert.Single(await testbed.Waiting()).Augury.IsNone);
+        var waiting = Assert.Single(await testbed.Waiting());
+        Assert.True(waiting.Similarity.IsNone);
+        Assert.Equal(Some(RubricJudge.Version), waiting.Augury.Map(augury => augury.JudgedBy));
         Assert.Equal(["outcome=off"], MetricsProbe.Tags(judging, "outcome"));
     }
 

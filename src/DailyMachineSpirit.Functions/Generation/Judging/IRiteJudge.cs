@@ -6,13 +6,23 @@ namespace DailyMachineSpirit.Functions.Generation.Judging;
 
 /// <summary>
 /// Judges drafts: their similarity, so "More rites" can find rites like each other; their tags, from the site's
-/// vocabulary (<see cref="Tags.RiteTags"/>); and their quality, for the Augury. <see cref="JevJudge"/> is the first;
-/// another judge sets its own <see cref="RiteSimilarity.ScoresGeneratorVersion"/> and <see cref="Augury.JudgedBy"/>, so
-/// its scores are never compared with Jev's, and gives tags from the same vocabulary.
+/// vocabulary (<see cref="Tags.RiteTags"/>); and their quality, for the Augury. <see cref="RiteJudge"/> asks Jev for the
+/// first two and a model, against a rubric, for the quality. Another judge sets its own
+/// <see cref="RiteSimilarity.ScoresGeneratorVersion"/> and <see cref="Augury.JudgedBy"/>, so its scores and qualities
+/// are never compared with these, and gives tags from the same vocabulary.
 /// </summary>
 public interface IRiteJudge
 {
-    /// <summary>The draft with its scores and tags, or as it was while judging is turned off.</summary>
+    /// <summary>
+    /// What its qualities' <see cref="Augury.JudgedBy"/> says: a draft whose quality another judge gave is judged again
+    /// (<see cref="JudgingAgain"/>), since the Augury only compares qualities from the same judge.
+    /// </summary>
+    string QualityJudge { get; }
+
+    /// <summary>
+    /// The draft with its scores, tags and quality; an error when any part couldn't be judged, so the draft waits to be
+    /// judged again whole.
+    /// </summary>
     Task<Either<Error, Draft>> Judge(Draft draft, CancellationToken cancellationToken);
 
     /// <summary>

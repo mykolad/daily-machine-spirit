@@ -34,20 +34,21 @@ public sealed class JudgingAgainTests : IAsyncLifetime
         Assert.StartsWith("the Augury: ", entry.Detail.IfNone(string.Empty));
     }
 
-    // Jev still failing, or turned off: nothing is saved, and nothing recorded.
+    // Jev still failing, or the quality's models: nothing is saved, and nothing recorded.
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task WithoutAJudge_NothingChanges(bool judgeFailing)
+    public async Task WhileJudgingFails_NothingChanges(bool jevFailing)
     {
         var unjudged = await testbed.AddUnjudgedDraft("Litany of the Cold Cache");
-        if (judgeFailing)
+        if (jevFailing)
         {
             testbed.Jev = new FakeJev(HttpStatusCode.InternalServerError, "");
         }
         else
         {
-            testbed.JevApiKey = "";
+            // Each judging asks for its scores at once: two judgings.
+            testbed.Models.Fails(BacklogTestbed.QualityJudge, 2 * Settings.QualityJudging.ScoresPerDraft);
         }
 
         Assert.Equal(0, Ok(await testbed.JudgingAgain().JudgeTheUnjudged(CancellationToken.None)));
@@ -88,7 +89,7 @@ public sealed class JudgingAgainTests : IAsyncLifetime
     {
         var unjudged = await testbed.AddUnjudgedDraft("Litany of the Cold Cache");
         var read = await ETag(unjudged);
-        testbed.JevApiKey = "";
+        testbed.Models.Fails(BacklogTestbed.QualityJudge, Settings.QualityJudging.ScoresPerDraft);
         var amendable = Ok(await testbed.Amendments().FindWaiting(unjudged.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Not amendable."));
         Ok(await testbed.Amendments().SaveAndJudgeAgain(unjudged.Id, amendable.ETag,
             new("Litany of the Warm Cache", "O Machine Spirit, warm thy cache.", "A warm cache was read before."), "", Tester, CancellationToken.None));
@@ -111,6 +112,22 @@ public sealed class JudgingAgainTests : IAsyncLifetime
         Ok(await testbed.Refiller().Refill(CancellationToken.None));
 
         Assert.True(Ok(await testbed.Drafts.Get(unjudged.Id, CancellationToken.None)).Bind(draft => draft.Augury).IsSome);
+    }
+
+    // A quality from an older judge (Jev's question, before #10) can't be compared with the current judge's: the draft
+    // would wait behind every new one. The next refill judges it again.
+    [Fact]
+    public async Task ADraftAnOlderJudgeJudged_IsJudgedAgain()
+    {
+        var older = await testbed.AddUnjudgedDraft("Litany of the Cold Cache");
+        Ok(await testbed.Drafts.SaveJudgmentIfUnchanged(
+            older with { Augury = new Augury { Quality = 0.9f, JudgedBy = "jev-1.13.0/quality-q1" } }, await ETag(older), Entry(older), CancellationToken.None));
+
+        Assert.Equal(1, Ok(await testbed.JudgingAgain().JudgeTheUnjudged(CancellationToken.None)));
+
+        var judged = Ok(await testbed.Drafts.Get(older.Id, CancellationToken.None)).Bind(draft => draft.Augury);
+        Assert.Equal(Some(RubricJudge.Version), judged.Map(augury => augury.JudgedBy));
+        Assert.Equal(Some(7f / 9), judged.Map(augury => augury.Quality));
     }
 
     private async Task<string> ETag(Draft draft)

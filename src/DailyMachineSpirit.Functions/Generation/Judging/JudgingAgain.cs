@@ -8,13 +8,14 @@ using static LanguageExt.Prelude;
 namespace DailyMachineSpirit.Functions.Generation.Judging;
 
 /// <summary>
-/// Judges again the waiting drafts judging couldn't score (Jev failed, or was off): each refill does, before it writes,
-/// so an outage heals on its own, and a Scribe can ask for one in the Scriptorium. A judgment says nothing about the
+/// Judges again the waiting drafts judging couldn't score (a judge failed, or was off), and those an older judge scored,
+/// whose qualities the Augury can't compare with the current judge's: each refill does, before it writes, so an outage
+/// or a new judge heals on its own, and a Scribe can ask for one in the Scriptorium. A judgment says nothing about the
 /// Scribes' taste, so it's recorded (#9) but no lesson for the Augury.
 /// </summary>
 public sealed class JudgingAgain
 {
-    /// <summary>Not waiting, or judged already: there's nothing to judge again.</summary>
+    /// <summary>Not waiting, or judged already by the current judge: there's nothing to judge again.</summary>
     public static readonly Error NothingToJudge = Error.New("That rite is judged already, or no longer waits.");
 
     private readonly IDraftRepository drafts;
@@ -34,7 +35,7 @@ public sealed class JudgingAgain
     public Task<Either<Error, Option<Augury>>> JudgeAgain(Guid draftId, string actor, CancellationToken cancellationToken)
         => drafts.GetWithETag(draftId, cancellationToken)
             .BindAsync(found => found
-                .Filter(stored => stored.Draft.State == DraftState.Waiting && stored.Draft.Augury.IsNone)
+                .Filter(stored => stored.Draft.State == DraftState.Waiting && NotJudgedByTheCurrentJudge(stored.Draft))
                 .Match(
                     Some: stored => Judged(stored.Draft, stored.ETag, actor, cancellationToken),
                     None: () => Task.FromResult(Left<Error, Option<Augury>>(NothingToJudge))));
@@ -45,7 +46,7 @@ public sealed class JudgingAgain
             .BindAsync(async waiting =>
             {
                 var judged = 0;
-                foreach (var draft in waiting.Where(draft => draft.Augury.IsNone))
+                foreach (var draft in waiting.Where(NotJudgedByTheCurrentJudge))
                 {
                     var result = await JudgeAgain(draft.Id, AuditEntry.MachineSpirit, cancellationToken);
                     if (result.Exists(augury => augury.IsSome))
@@ -71,6 +72,8 @@ public sealed class JudgingAgain
                     draft.Writing.Title, error.Message);
                 return Task.FromResult(Right<Error, Option<Augury>>(None));
             });
+
+    private bool NotJudgedByTheCurrentJudge(Draft draft) => draft.Augury.ForAll(augury => augury.JudgedBy != judge.QualityJudge);
 
     // Amended, burned, published or judged since the refill listed it: no failure, just nothing left to judge.
     private void LogUnlessChangedMeanwhile(Draft draft, Error error)
