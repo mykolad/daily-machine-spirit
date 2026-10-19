@@ -105,6 +105,7 @@ builder.Services.AddTransient<PreceptDistiller>();
 Tuned<ScriptoriumPagesOptions>(ScriptoriumPagesOptions.SectionName);
 Tuned<ScribeNameSuggestionsOptions>(ScribeNameSuggestionsOptions.SectionName);
 builder.Services.AddTransient<Scribes>();
+builder.Services.AddTransient<TabCounting>();
 builder.Services.AddTransient<Amendments>();
 builder.Services.AddTransient<PreceptKeeping>();
 builder.Services.AddTransient<ScribeNaming>();

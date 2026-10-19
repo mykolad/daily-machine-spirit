@@ -40,7 +40,7 @@ public sealed class ScribeNamingTests : IAsyncLifetime
 
         Assert.Equal(Some("Magos Ferrum"), Ok(await naming.NameOf(Ferrum, CancellationToken.None)));
         var html = ScriptoriumPage.RenderRecord(
-            Ok(await testbed.Audit.GetNewest(10, CancellationToken.None)), Ok(await naming.All(CancellationToken.None)), None);
+            Ok(await testbed.Audit.GetNewest(10, CancellationToken.None)), Ok(await naming.All(CancellationToken.None)), None, None);
         Assert.Contains("Magos Ferrum summoned new rites", html);
         Assert.Contains("Magos Ferrum chose the name “Magos Ferrum” <span class=\"when\">(was “Brother Ferrum”)</span>", html);
         Assert.Contains("Magos Ferrum chose the name “Brother Ferrum”</li>", html);
@@ -248,7 +248,7 @@ public sealed class ScribeNamingTests : IAsyncLifetime
         => new(testbed.ScribeNaming(), testbed.NameSuggester(), new SignedInScribe(scribe), NullLogger<ScribeNameFunction>.Instance);
 
     private ScriptoriumFunction Scriptorium(string scribe)
-        => new(testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), Options.Create(Settings.ScriptoriumPages),
+        => new(testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), testbed.Tabs(), Options.Create(Settings.ScriptoriumPages),
             new SignedInScribe(scribe), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
     private AuditEntry Entry(string scribe)
