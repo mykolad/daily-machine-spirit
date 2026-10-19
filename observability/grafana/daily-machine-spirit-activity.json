@@ -166,7 +166,7 @@
             "body_type": "graphql",
             "body_content_type": "application/json",
             "body_graphql_query": "query ($zoneTag: String!, $since: Date!, $until: Date!) { viewer { zones(filter: {zoneTag: $zoneTag}) { httpRequests1dGroups(limit: 400, orderBy: [date_ASC], filter: {date_geq: $since, date_leq: $until}) { dimensions { date } sum { pageViews } uniq { uniques } } } } }",
-            "body_graphql_variables": "{\"zoneTag\": \"${zone}\", \"since\": \"${__from:date:YYYY-MM-DD}\", \"until\": \"${__to:date:YYYY-MM-DD}\"}"
+            "body_graphql_variables": "{\"zoneTag\": \"${zone}\", \"since\": \"${__timeFrom:YYYY-MM-DD}\", \"until\": \"${__timeTo:YYYY-MM-DD}\"}"
           },
           "root_selector": "data.viewer.zones[0].httpRequests1dGroups",
           "columns": [
@@ -203,7 +203,7 @@
             "body_type": "graphql",
             "body_content_type": "application/json",
             "body_graphql_query": "query ($zoneTag: String!, $since: Date!, $until: Date!) { viewer { zones(filter: {zoneTag: $zoneTag}) { httpRequests1dGroups(limit: 400, orderBy: [date_ASC], filter: {date_geq: $since, date_leq: $until}) { dimensions { date } sum { requests cachedRequests } } } } }",
-            "body_graphql_variables": "{\"zoneTag\": \"${zone}\", \"since\": \"${__from:date:YYYY-MM-DD}\", \"until\": \"${__to:date:YYYY-MM-DD}\"}"
+            "body_graphql_variables": "{\"zoneTag\": \"${zone}\", \"since\": \"${__timeFrom:YYYY-MM-DD}\", \"until\": \"${__timeTo:YYYY-MM-DD}\"}"
           },
           "root_selector": "data.viewer.zones[0].httpRequests1dGroups",
           "columns": [
