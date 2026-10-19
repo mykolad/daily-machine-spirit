@@ -255,6 +255,17 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
   - **Its Application Audience (AUD) tag** and the team domain (Settings → Team domain) are in `productionAccess` in
     `resources.bicep`: neither is secret, and there every deployment keeps them. Without both, production's
     Scriptorium lets nobody in.
+  - **The Expurgators** erase words from published rites (`/scriptorium/expurgate`), so they have an application of
+    their own, which takes those paths from the Scribes' (Access applies the most specific path):
+    1. **An Access group** (Access controls → Access groups), *Expurgators*, including the emails of the Scribes who
+       may expurgate.
+    2. **A self-hosted application**, *Expurgators*, with two destinations, `dailymachinespirit.fyi/scriptorium/expurgate`
+       and `dailymachinespirit.fyi/scriptorium/expurgate/*`, GitHub as its only login method, and an Allow policy that
+       includes the *Expurgators* group.
+    3. **Its AUD tag** in `productionAccess.expurgatorAudience` in `resources.bicep`, then deploy the infrastructure
+       (Later changes). Until then the setting is empty, and nobody may expurgate.
+
+    A new Expurgator is a new email in the group.
 - **GitHub**: one environment per deploy identity, holding its ids as variables (`AZURE_CLIENT_ID` from
   `githubClientIds` in the deployment's outputs, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`). `staging` exists;
   `production` and `infrastructure` come with their workflows.

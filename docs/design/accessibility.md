@@ -32,6 +32,12 @@ Proposal.dc.html`, `scriptorium-icons.md`): icons, grouped buttons, folded notes
 - **A rite the Scribes placed says so in words,** "Placed by Magos Ferrum", under its date: its brass frame (2px,
   `#c9a25a`, well above 3:1 on the background) isn't the only sign, so the difference doesn't rest on colour (WCAG
   1.4.1). The line's icon is decorative.
+- **An Expurgator chooses words with checkboxes,** one per word, each labelled by its word, in a fieldset per part
+  (Title, Text, Heretical Truth): a keyboard and a screen reader choose them as any checkbox, without a script. The box
+  itself is invisible over its word; a chosen word is struck through on a dark red ground, so the choice isn't shown by
+  colour alone, and the focused word gets the amber ring. Words are inline text, which WCAG 2.5.8 exempts from the
+  target size. The rite then reads with emojis for the erased words, which a screen reader names ("skull"): the joke
+  is that the words are lost.
 - **Slow actions say they're under way** (#85): pressing Rewrite or Distil puts "The Machine Spirit is rewriting it…"
   (or distilling) in the `role="status"` message, which is announced, and disables the form's buttons until the answer
   comes. The status stays the same element when the rewrite's form replaces the old one, so its result is announced

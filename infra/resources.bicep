@@ -24,6 +24,8 @@ var roles = {
 var productionAccess = {
   teamDomain: 'restless-river-ab5e.cloudflareaccess.com'
   audience: '3fac1c3c199e53f8242ae90f5c539f443843eaeff7a9d7ece38afe992f18d1ef'
+  // The Expurgators' own application (infra/README.md): empty until it's set up, and until then nobody may expurgate.
+  expurgatorAudience: ''
 }
 
 // The GitHub OAuth apps readers sign in with to vote, one per environment, since each has its own callback URL
@@ -184,6 +186,7 @@ module staging 'modules/environment.bicep' = {
     scriptoriumWithoutSignIn: true
     cloudflareAccessTeamDomain: ''
     cloudflareAccessAudience: ''
+    cloudflareAccessExpurgatorAudience: ''
     signInGitHubClientId: signInGitHubClientIds.staging
     signInCallbackUrl: 'https://${prefix}-app-staging.azurewebsites.net/auth/github/callback'
     customDomain: ''
@@ -213,6 +216,7 @@ module production 'modules/environment.bicep' = if (deployProduction) {
     scriptoriumWithoutSignIn: false
     cloudflareAccessTeamDomain: productionAccess.teamDomain
     cloudflareAccessAudience: productionAccess.audience
+    cloudflareAccessExpurgatorAudience: productionAccess.expurgatorAudience
     signInGitHubClientId: signInGitHubClientIds.production
     signInCallbackUrl: 'https://${productionDomain.name}/auth/github/callback'
     customDomain: productionDomain.name

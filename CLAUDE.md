@@ -360,6 +360,29 @@ observability/                    — the Grafana dashboards (technical, activit
       Scribe to choose, and a named one to change. On staging, the one shared Scribe takes a name like any other, so the
       feature can be tried there.
     - **Kept** as long as the drafts and rites, with ids, titles and where a draft went; never a visitor.
+  - **The Expurgators** (`/scriptorium/expurgate`, `Scriptorium/Expurgation/`): Scribes who may erase words from a
+    published rite, as if lost to time: each chosen word becomes an emoji (`LostToTime`). The rite's every word is a
+    checkbox (`Wording`: letters and digits, an apostrophe inside), plain HTML, struck through when chosen; a GET shows
+    the rite without them and what erasing means, and only its form's POST erases. The form carries the version of the
+    words chosen from (a hash, `Expurgations.Version`) and each word's emoji (only `LostToTime`'s are taken), so the rite
+    reads as previewed, and words chosen before another erasure are chosen again.
+    - **Erased everywhere the site keeps them** (`ExpurgationRepository`), in one batch with the Record's entry: the
+      rite, the draft it was published from, the Scribes' decisions on that draft (with their notes), the Record's entries about it
+      (their titles, and an amendment's old title) and the drafts marked as much like it, by any title it had. A copy of a part as it is now gets the
+      redacted part, field by field; an older copy (from before an amendment) and a note have each erased word replaced
+      wherever it appears. The rite's own copy must still read as the words chosen from, and each copy is patched only
+      if it's the version read: a vote changes the rite's, so a refusal is read and erased again,
+      up to three times. Then Today, the rite's page and the search index are purged; another rite's page that names it
+      in More rites refreshes within its hour. Cosmos's own backups keep the old words until they expire. A
+      refill already running may still mark a new draft as much like the rite by its old title: it read the titles
+      before the erasure, and only knows the rite by its title (`TakenRite`), so no batch can guard it.
+    - **The Record** says who erased how many words of which part ("2 words of its title"), never the words. The
+      entry names the draft, so the draft's own history shows it. An entry's detail is the Record's own words ("from #1
+      to #2"), so only what it quotes (an amendment's old title) is erased.
+    - **Access:** their own Cloudflare Access application on `/scriptorium/expurgate*`, whose policy admits an Access
+      group; its token names that application, so the app checks it against `CloudflareAccess:ExpurgatorAudience`
+      (`ExpurgatorSignIn`), and the Scribes' pages never take it. Without that setting, nobody may expurgate. On staging,
+      without sign-in, the one shared Scribe is an Expurgator too.
   - **Concurrency:** each change uses an ETag, so two Scribes can't overwrite each other: the later one is told to look
     again.
   - **Refills:** burning the last waiting draft asks for a refill at once (the `backlog-refills` queue), as does

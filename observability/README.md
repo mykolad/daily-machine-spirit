@@ -46,7 +46,7 @@ and exported the same way.
 
 | Counted (`LogCounters`, by its attribute) | Values |
 |---|---|
-| A Scribe's action (`ScribeAction`) | `anoint`, `exalt`, `humble`, `burn`, `restore`, `amend`, `rewrite` (asked the Machine Spirit), `judge` (again), `summon`, `augury` (let it decide), `distil`, `precept-add`, `precept-edit`, `precept-pin`, `precept-unpin`, `precept-delete`, `name` |
+| A Scribe's action (`ScribeAction`) | `anoint`, `exalt`, `humble`, `burn`, `restore`, `amend`, `rewrite` (asked the Machine Spirit), `judge` (again), `summon`, `augury` (let it decide), `distil`, `precept-add`, `precept-edit`, `precept-pin`, `precept-unpin`, `precept-delete`, `name`, `expurgate` (erased words, #97) |
 | A reader's vote (`Vote`) | `blessed`, `heresy`, `withdrawn`; only a vote that changed something, not the same one sent again |
 | A reader's sign-in (`SignIn`, with `Provider`) | as `dms_signins_total`: `signed-in`, `declined`, `refused`, `failed` |
 | A search of the Archive (`Search`) | `words`, `words-in-a-subject`; the first page of each search the app answers (the same search again within a minute is answered from a cache, and not counted), and a pause while typing in the Archive's field is a search too |
