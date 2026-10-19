@@ -25,6 +25,9 @@ Proposal.dc.html`, `scriptorium-icons.md`): icons, grouped buttons, folded notes
   for) are tied to their fields with `aria-describedby`. "Amend" on the calendar is a link, since it only opens the
   page: the page's buttons change things. Why words were refused, or that the Machine Spirit rewrote them, is the
   page's `role="status"` message, and the fields keep what the Scribe typed.
+- **A rite the Scribes placed says so in words,** "Placed by Magos Ferrum", under its date: its brass frame (2px,
+  `#c9a25a`, well above 3:1 on the background) isn't the only sign, so the difference doesn't rest on colour (WCAG
+  1.4.1). The line's icon is decorative.
 - **Slow actions say they're under way** (#85): pressing Rewrite or Distil puts "The Machine Spirit is rewriting it…"
   (or distilling) in the `role="status"` message, which is announced, and disables the form's buttons until the answer
   comes. The status stays the same element when the rewrite's form replaces the old one, so its result is announced

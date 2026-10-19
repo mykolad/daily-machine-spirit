@@ -83,8 +83,9 @@ public sealed class ScriptoriumFunction
         var outcome = Optional(request.Query["done"].ToString()).Filter(done => done.Length > 0);
         var rite = Optional(request.Query["rite"].ToString()).Bind(text => Guid.TryParse(text, out var id) ? Some(id) : None);
         var name = await NameOf(scribe, cancellationToken);
+        var names = await Names(cancellationToken);
         return (await scribes.View(cancellationToken)).Match(
-            Right: view => Html(request, ScriptoriumPage.Render(view, outcome, rite, name), StatusCodes.Status200OK),
+            Right: view => Html(request, ScriptoriumPage.Render(view, outcome, rite, name, names), StatusCodes.Status200OK),
             Left: error => Failed(request, error));
     }
 
