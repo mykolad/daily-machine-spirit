@@ -25,6 +25,13 @@ Proposal.dc.html`, `scriptorium-icons.md`): icons, grouped buttons, folded notes
   for) are tied to their fields with `aria-describedby`. "Amend" on the calendar is a link, since it only opens the
   page: the page's buttons change things. Why words were refused, or that the Machine Spirit rewrote them, is the
   page's `role="status"` message, and the fields keep what the Scribe typed.
+- **The tab bar is a `<nav>` named "The Scriptorium",** its links in a list. The current page's tab carries
+  `aria-current="page"` and a brass underline, not a colour change alone. Each count is text inside its tab's link, so
+  it's read with the tab's name; the calendar's says who placed the rites in words ("Scribes 2 · Augury 18").
+  The links are 44px tall, and the tabs wrap on a narrow screen rather than scroll.
+- **A rite the Scribes placed says so in words,** "Placed by Magos Ferrum", under its date: its brass frame (2px,
+  `#c9a25a`, well above 3:1 on the background) isn't the only sign, so the difference doesn't rest on colour (WCAG
+  1.4.1). The line's icon is decorative.
 - **An Expurgator chooses words with checkboxes,** one per word, each labelled by its word, in a fieldset per part
   (Title, Text, Heretical Truth): a keyboard and a screen reader choose them as any checkbox, without a script. The box
   itself is invisible over its word; a chosen word is struck through on a dark red ground, so the choice isn't shown by

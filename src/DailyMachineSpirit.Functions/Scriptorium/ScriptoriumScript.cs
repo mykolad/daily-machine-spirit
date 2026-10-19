@@ -61,11 +61,14 @@ public static class ScriptoriumScript
               status.after(...parts.slice(at + 1));
               status.innerHTML = freshStatus.innerHTML;
               document.title = page.title;
+              // The tabs count what the action changed (a burn adds to the Ashes), and sit outside the main part.
+              const tabs = page.querySelector('nav.tabs');
+              if (tabs) document.querySelector('nav.tabs')?.replaceWith(document.importNode(tabs, true));
 
               const acted = main.querySelector('.acted');
-              // A burn can be refused (a note too long, a calendar changed meanwhile), so it counts only when the rite
-              // is in the Ashes now.
-              const burned = (pressed?.endsWith('/burn') ?? false) && (acted?.classList.contains('ash') ?? false);
+              // A burn can be refused (a note too long, a calendar changed meanwhile), which leaves the rite marked in the
+              // calendar, so it counts only when the rite has left it for the Ashes, another page.
+              const burned = (pressed?.endsWith('/burn') ?? false) && !acted;
               history.replaceState(null, '', response.url + (acted && !burned ? `#${acted.id}` : ''));
 
               // Each rite that moved starts where it was and slides to its new place (First, Last, Invert, Play).
