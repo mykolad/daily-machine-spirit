@@ -115,7 +115,7 @@ public sealed class SitePages
                     // Once per search: the pages the script loads after the first are the same search.
                     if (isFirstPage)
                     {
-                        logger.ReaderSearched(tag.IsSome ? "words-in-a-subject" : "words");
+                        logger.CountArchiveSearch(tag.IsSome ? "words-in-a-subject" : "words");
                     }
                     return Page(request, StatusCodes.Status200OK, ArchivePage.Results(typed, words, tag, results, now));
                 },

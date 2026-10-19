@@ -204,10 +204,11 @@ public sealed class SignInFunction
     private static bool FixedTimeEquals(string expected, string actual)
         => CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(expected), Encoding.UTF8.GetBytes(actual));
 
-    // Reported twice: the metric for the technical dashboard, the log line for the activity dashboard, which counts each.
+    // Counted twice: a metric for the technical dashboard, and a log line (LogCounters) for the activity dashboard, which
+    // misses none.
     private void ReportSignIn(ISignInProvider provider, string outcome)
     {
         metrics.SignIn(provider.Name, outcome);
-        logger.ReaderSignedIn(provider.Name, outcome);
+        logger.CountSignIn(provider.Name, outcome);
     }
 }

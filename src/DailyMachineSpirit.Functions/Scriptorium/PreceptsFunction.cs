@@ -66,7 +66,7 @@ public sealed class PreceptsFunction
             Right: async scribe => (await distiller.Distil(scribe, cancellationToken)).Match(
                 Right: _ =>
                 {
-                    logger.ScribeActed("distil");
+                    logger.CountScribeAction("distil");
                     return Back("distil", None);
                 },
                 Left: error =>
@@ -165,7 +165,7 @@ public sealed class PreceptsFunction
         => result.Match(
             Right: _ =>
             {
-                logger.ScribeActed($"precept-{action}");
+                logger.CountScribeAction($"precept-{action}");
                 return Back(action, preceptId);
             },
             Left: error =>

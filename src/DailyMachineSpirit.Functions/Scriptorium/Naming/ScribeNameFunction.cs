@@ -68,7 +68,7 @@ public sealed class ScribeNameFunction
         return await (await naming.Choose(scribe, typed, cancellationToken)).Match(
             Right: _ =>
             {
-                logger.ScribeActed("name");
+                logger.CountScribeAction("name");
                 return Task.FromResult<IActionResult>(Redirect("/scriptorium?done=named"));
             },
             Left: error =>

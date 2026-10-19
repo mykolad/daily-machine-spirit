@@ -85,7 +85,7 @@ public sealed class VotesFunction
         if (saved.Exists(counts => counts.IsSome))
         {
             purges.Add(Paths.ShowingVotesOf(number));
-            logger.ReaderVoted(Name(vote) ?? "withdrawn");
+            logger.CountVote(Name(vote) ?? "withdrawn");
         }
         return saved.Match(
             Right: counts => counts.Match<IActionResult>(

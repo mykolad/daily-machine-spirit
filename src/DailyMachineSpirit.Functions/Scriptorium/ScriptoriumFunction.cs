@@ -150,7 +150,7 @@ public sealed class ScriptoriumFunction
                 // Spirit's), so its entry is saved alone. Failing, it's logged, and the summon still goes ahead.
                 (await audit.Add(AuditEntries.Of(time, scribe, AuditAction.Summon, None, None), cancellationToken))
                     .IfLeft(error => logger.LogError(error.ToException(), "A summon wasn't recorded: {Reason}", error.Message));
-                logger.ScribeActed("summon");
+                logger.CountScribeAction("summon");
                 return new ScriptoriumResponse { Result = BackToPage("summon"), RefillReason = Summoned };
             });
 
@@ -184,7 +184,7 @@ public sealed class ScriptoriumFunction
                 // only writes what's missing, so an unneeded one costs a read.
                 Right: waiting =>
                 {
-                    logger.ScribeActed(action);
+                    logger.CountScribeAction(action);
                     return waiting.Match(
                         Some: count => count == 0
                             ? new ScriptoriumResponse { Result = AfterBurning("burn-last", draftId), RefillReason = AllBurned }
@@ -206,7 +206,7 @@ public sealed class ScriptoriumFunction
         return await (await amendments.SaveAndJudgeAgain(draftId, etag, words, note, scribe, cancellationToken)).Match(
             Right: saved =>
             {
-                logger.ScribeActed("amend");
+                logger.CountScribeAction("amend");
                 return Task.FromResult(new ScriptoriumResponse { Result = Back(saved.JudgedAgain ? "amend" : "amend-unjudged", draftId) });
             },
             Left: error => IsTheScribes(error)
@@ -223,7 +223,7 @@ public sealed class ScriptoriumFunction
         return await (await amendments.ProposeRewrite(draftId, words, note, cancellationToken)).Match(
             Right: rewritten =>
             {
-                logger.ScribeActed("rewrite");
+                logger.CountScribeAction("rewrite");
                 return AmendAgain(request, draftId, etag, rewritten, Some(words), note,
                     "The Machine Spirit rewrote it as your note asks. Read it over, then save it, ask again, or leave it as it was.",
                     StatusCodes.Status200OK, cancellationToken);
@@ -277,7 +277,7 @@ public sealed class ScriptoriumFunction
         => result.Match(
             Right: augury =>
             {
-                logger.ScribeActed("judge");
+                logger.CountScribeAction("judge");
                 return new ScriptoriumResponse { Result = Back(augury.IsSome ? "judged" : "still-unjudged", draftId) };
             },
             Left: error => error == JudgingAgain.NothingToJudge
@@ -288,7 +288,7 @@ public sealed class ScriptoriumFunction
         => result.Match(
             Right: _ =>
             {
-                logger.ScribeActed(action);
+                logger.CountScribeAction(action);
                 return new ScriptoriumResponse { Result = Back(action, draftId) };
             },
             Left: error => Failure(request, error, draftId));
