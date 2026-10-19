@@ -1,6 +1,7 @@
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Generation.Precepts;
 using DailyMachineSpirit.Functions.Scriptorium.SignIn;
+using DailyMachineSpirit.Functions.Telemetry;
 using LanguageExt;
 using LanguageExt.Common;
 using Microsoft.AspNetCore.Http;
@@ -67,7 +68,11 @@ public sealed class PreceptsFunction
         => await (await gate.ActingScribe(request, cancellationToken)).Match(
             Left: refused => Task.FromResult(refused),
             Right: async scribe => (await distiller.Distil(scribe, cancellationToken)).Match(
-                Right: _ => Back("distil", None),
+                Right: _ =>
+                {
+                    logger.CountScribeAction("distil");
+                    return Back("distil", None);
+                },
                 Left: error =>
                 {
                     if (error == PreceptDistiller.NothingToLearn)
@@ -163,7 +168,11 @@ public sealed class PreceptsFunction
 
     private IActionResult Answer(HttpRequest request, string action, Option<Guid> preceptId, Either<Error, Unit> result)
         => result.Match(
-            Right: _ => Back(action, preceptId),
+            Right: _ =>
+            {
+                logger.CountScribeAction($"precept-{action}");
+                return Back(action, preceptId);
+            },
             Left: error =>
             {
                 if (error == ScriptoriumRepository.ChangedMeanwhile)

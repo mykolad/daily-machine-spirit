@@ -54,14 +54,14 @@ public sealed class SignInFunction
     {
         NeverCached(request);
         return Available(provider).Match<IActionResult>(
-            Some: signIn =>
+            Some: provider =>
             {
                 // The state ties the provider's answer to this browser and this provider: a callback whose state isn't
                 // the one in its cookie was started somewhere else, perhaps to sign the reader in as someone else.
                 var state = Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(32));
                 var returnPath = Base64Url.EncodeToString(Encoding.UTF8.GetBytes(SafeReturnPath(request.Query["return"].ToString())));
-                request.HttpContext.Response.Cookies.Append(StateCookieName, $"{state}.{signIn.Name}.{returnPath}", Cookie(StateLasts));
-                return Redirect(signIn.AuthorizeUrl(state));
+                request.HttpContext.Response.Cookies.Append(StateCookieName, $"{state}.{provider.Name}.{returnPath}", Cookie(StateLasts));
+                return Redirect(provider.AuthorizeUrl(state));
             },
             None: () => new NotFoundResult());
     }
@@ -74,7 +74,7 @@ public sealed class SignInFunction
     {
         NeverCached(request);
         return await Available(provider).MatchAsync(
-            Some: signIn => Callback(request, signIn, cancellationToken),
+            Some: provider => Callback(request, provider, cancellationToken),
             None: () => new NotFoundResult());
     }
 
@@ -101,20 +101,20 @@ public sealed class SignInFunction
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/me")] HttpRequest request)
     {
         NeverCached(request);
-        var signInAvailable = voters.Value.IsConfigured && providers.Any(signIn => signIn.IsConfigured);
+        var signInAvailable = voters.Value.IsConfigured && providers.Any(provider => provider.IsConfigured);
         return new OkObjectResult(new { signInAvailable, signedIn = session.SignedIn(request).IsSome });
     }
 
-    private async Task<IActionResult> Callback(HttpRequest request, ISignInProvider signIn, CancellationToken cancellationToken)
+    private async Task<IActionResult> Callback(HttpRequest request, ISignInProvider provider, CancellationToken cancellationToken)
     {
         var started = StartedHere(request);
         request.HttpContext.Response.Cookies.Delete(StateCookieName, Cookie(TimeSpan.Zero));
         var returnPath = started.Map(state => state.ReturnPath).IfNone("/");
         var stateMatches = started.Exists(state =>
-            state.Provider == signIn.Name && FixedTimeEquals(state.State, request.Query["state"].ToString()));
+            state.Provider == provider.Name && FixedTimeEquals(state.State, request.Query["state"].ToString()));
         if (!stateMatches)
         {
-            metrics.SignIn(signIn.Name, "refused");
+            ReportSignIn(provider, "refused");
             return new BadRequestResult();
         }
 
@@ -123,29 +123,29 @@ public sealed class SignInFunction
         var error = request.Query["error"].ToString();
         if (error == "access_denied")
         {
-            metrics.SignIn(signIn.Name, "declined");
+            ReportSignIn(provider, "declined");
             return Redirect(returnPath);
         }
         var code = request.Query["code"].ToString();
         if (error.Length > 0 || code.Length == 0)
         {
-            logger.LogWarning("{Provider} sent a reader back without a sign-in: {Error}", signIn.Name, error.Length > 0 ? error : "no code");
-            metrics.SignIn(signIn.Name, "failed");
+            logger.LogWarning("{Provider} sent a reader back without a sign-in: {Error}", provider.Name, error.Length > 0 ? error : "no code");
+            ReportSignIn(provider, "failed");
             return Redirect(returnPath);
         }
 
-        return (await signIn.AccountFor(code, cancellationToken)).Match(
+        return (await provider.AccountFor(code, cancellationToken)).Match(
             Right: accountId =>
             {
                 request.HttpContext.Response.Cookies.Append(VoterSession.CookieName,
-                    session.Issue(session.VoterKeyFor(signIn.Name, accountId)), Cookie(VoterSession.Lasts));
-                metrics.SignIn(signIn.Name, "signed-in");
+                    session.Issue(session.VoterKeyFor(provider.Name, accountId)), Cookie(VoterSession.Lasts));
+                ReportSignIn(provider, "signed-in");
                 return Redirect(returnPath);
             },
             Left: failure =>
             {
-                logger.LogWarning(failure.ToException(), "A reader couldn't sign in with {Provider}: {Reason}", signIn.Name, failure.Message);
-                metrics.SignIn(signIn.Name, "failed");
+                logger.LogWarning(failure.ToException(), "A reader couldn't sign in with {Provider}: {Reason}", provider.Name, failure.Message);
+                ReportSignIn(provider, "failed");
                 return Redirect(returnPath);
             });
     }
@@ -153,7 +153,7 @@ public sealed class SignInFunction
     // The provider of that name, if it and the voters' secrets are set up; an unknown name is no sign-in page at all.
     private Option<ISignInProvider> Available(string name)
         => voters.Value.IsConfigured
-            ? providers.Find(signIn => signIn.Name == name && signIn.IsConfigured)
+            ? providers.Find(provider => provider.Name == name && provider.IsConfigured)
             : None;
 
     private static Option<(string State, string Provider, string ReturnPath)> StartedHere(HttpRequest request)
@@ -203,4 +203,12 @@ public sealed class SignInFunction
 
     private static bool FixedTimeEquals(string expected, string actual)
         => CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(expected), Encoding.UTF8.GetBytes(actual));
+
+    // Counted twice: a metric for the technical dashboard, and a log line (LogCounters) for the activity dashboard, which
+    // misses none.
+    private void ReportSignIn(ISignInProvider provider, string outcome)
+    {
+        metrics.SignIn(provider.Name, outcome);
+        logger.CountSignIn(provider.Name, outcome);
+    }
 }

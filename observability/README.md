@@ -16,6 +16,41 @@ over this file, so the repository stays the truth.
 - **A regular expression in a LogQL query goes in backticks** (`` scope_name=~`Generation\..*` ``): in double quotes,
   `\.` is an escape LogQL doesn't know, and the query fails to parse.
 
+## The activity dashboard
+
+`grafana/daily-machine-spirit-activity.json`: what the site's people do, beside the technical dashboard above. Imported
+and exported the same way.
+
+- **The Scribes' actions, readers' votes, sign-ins and Archive searches** are counted from the app's logs (`LogCounters`,
+  one line each, below), not metrics. Each line says what was done, never who or what was searched for.
+
+  A counter would miss most of them. Each process counts from zero and sends its totals every minute, and
+  `increase()` measures how a total grew between samples, so a series' first sample, with nothing before it, adds
+  nothing. Processes come and go with traffic: one that serves a single vote sends a single 1, and `increase()` reports
+  0. Grafana Cloud doesn't add the missing zero: on staging, one refused sign-in left `dms_signins_total` at 1 and
+  `increase()` at 0 (October 2026). Starting a counter at zero only helps if the zero is sent before the first event,
+  which usually comes with the very request that started the process. A log line is one event, however short its
+  process's life.
+- **Page views, visitors and how much Cloudflare's cache served** come from Cloudflare's own analytics, for production
+  (staging isn't behind Cloudflare). Nothing new is collected about visitors: Grafana reads the zone's daily totals
+  through Cloudflare's GraphQL API. It needs, once:
+  1. **A read-only token** in Cloudflare: **My Profile → API Tokens → Create Token → Custom token**, permission
+     **Zone · Analytics · Read**, zone resources **Include · Specific zone · dailymachinespirit.fyi**. Nothing else: it
+     can't purge, change or read anything but the totals.
+  2. **The Infinity data source** in Grafana (**Connections → Add new connection → Infinity**, install it if the stack
+     hasn't), named so it has **Cloudflare** in it (the dashboard's picker looks for that). **Authentication: Bearer
+     token**, with the token pasted there, where Grafana keeps it encrypted; **Allowed hosts:**
+     `https://api.cloudflare.com`. The token stays there: never in the repository or a dashboard.
+  3. **The zone's ID** in the dashboard's *Cloudflare zone ID* field (the zone's Overview page shows it). Save the
+     dashboard once it's set, so it stays.
+
+| Counted (`LogCounters`, by its attribute) | Values |
+|---|---|
+| A Scribe's action (`ScribeAction`) | `anoint`, `exalt`, `humble`, `burn`, `restore`, `amend`, `rewrite` (asked the Machine Spirit), `judge` (again), `summon`, `augury` (let it decide), `distil`, `precept-add`, `precept-edit`, `precept-pin`, `precept-unpin`, `precept-delete`, `name` |
+| A reader's vote (`Vote`) | `blessed`, `heresy`, `withdrawn` |
+| A reader's sign-in (`SignIn`, with `Provider`) | as `dms_signins_total`: `signed-in`, `declined`, `refused`, `failed` |
+| A search of the Archive (`Search`) | `words`, `words-in-a-subject`; the first page of each search the app answers (the same search again within a minute is answered from a cache, and not counted), and a pause while typing in the Archive's field is a search too |
+
 ## The alerts
 
 Production only (the service `machinespirit-app`), so staging's experiments never wake anyone. Each one's description says
@@ -30,9 +65,8 @@ what to look at.
 | **Server errors** | more than 5% of requests answered 5xx for ten minutes, over at least ten requests |
 | **No telemetry from production** | nothing for 26 hours: the midnight timer wakes the app every day, so silence means a broken export or a dead app |
 
-Rare events are counted from logs, not metrics: each process keeps its own counters, and the app's processes come and
-go with traffic, so a counter's first value in a process (often its only one, for something that happens once a day)
-is never seen as an increase. Each log line is an event of its own.
+Rare events are counted from logs, not metrics, for the reason the activity dashboard's are (above): a counter's first
+value in a process, often its only one for something that happens once a day, is never seen as an increase.
 
 The Grafana rules are `grafana/alerts.json`, one rule group, evaluated every five minutes, and they notify through the
 stack's default notification policy (the default contact point emails the stack's owner). To put them into Grafana:
