@@ -165,10 +165,10 @@
             "method": "POST",
             "body_type": "graphql",
             "body_content_type": "application/json",
-            "body_graphql_query": "query ($zoneTag: String!, $since: Date!, $until: Date!) { viewer { zones(filter: {zoneTag: $zoneTag}) { httpRequests1dGroups(limit: 400, orderBy: [date_ASC], filter: {date_geq: $since, date_leq: $until}) { dimensions { date } sum { pageViews } uniq { uniques } } } } }",
-            "body_graphql_variables": "{\"zoneTag\": \"${zone}\", \"since\": \"${__timeFrom:YYYY-MM-DD}\", \"until\": \"${__timeTo:YYYY-MM-DD}\"}"
+            "body_graphql_query": "query ($zoneTag: String!) { viewer { zones(filter: {zoneTag: $zoneTag}) { httpRequests1dGroups(limit: 400, orderBy: [date_ASC], filter: {date_geq: \"${__timeFrom:date:YYYY-MM-DD}\", date_leq: \"${__timeTo:date:YYYY-MM-DD}\"}) { dimensions { date } sum { pageViews } uniq { uniques } } } } }",
+            "body_graphql_variables": "{\"zoneTag\": \"${zone}\"}"
           },
-          "root_selector": "data.viewer.zones[0].httpRequests1dGroups",
+          "root_selector": "data.viewer.zones.0.httpRequests1dGroups",
           "columns": [
             { "selector": "dimensions.date", "text": "Day", "type": "timestamp" },
             { "selector": "sum.pageViews", "text": "Page views", "type": "number" },
@@ -202,10 +202,10 @@
             "method": "POST",
             "body_type": "graphql",
             "body_content_type": "application/json",
-            "body_graphql_query": "query ($zoneTag: String!, $since: Date!, $until: Date!) { viewer { zones(filter: {zoneTag: $zoneTag}) { httpRequests1dGroups(limit: 400, orderBy: [date_ASC], filter: {date_geq: $since, date_leq: $until}) { dimensions { date } sum { requests cachedRequests } } } } }",
-            "body_graphql_variables": "{\"zoneTag\": \"${zone}\", \"since\": \"${__timeFrom:YYYY-MM-DD}\", \"until\": \"${__timeTo:YYYY-MM-DD}\"}"
+            "body_graphql_query": "query ($zoneTag: String!) { viewer { zones(filter: {zoneTag: $zoneTag}) { httpRequests1dGroups(limit: 400, orderBy: [date_ASC], filter: {date_geq: \"${__timeFrom:date:YYYY-MM-DD}\", date_leq: \"${__timeTo:date:YYYY-MM-DD}\"}) { dimensions { date } sum { requests cachedRequests } } } } }",
+            "body_graphql_variables": "{\"zoneTag\": \"${zone}\"}"
           },
-          "root_selector": "data.viewer.zones[0].httpRequests1dGroups",
+          "root_selector": "data.viewer.zones.0.httpRequests1dGroups",
           "columns": [
             { "selector": "dimensions.date", "text": "Day", "type": "timestamp" },
             { "selector": "sum.requests", "text": "Requests", "type": "number" },
