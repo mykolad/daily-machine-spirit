@@ -47,6 +47,7 @@ builder.UseMiddleware<InvocationMetricsMiddleware>();
 AppContext.SetSwitch("Azure.Experimental.EnableActivitySource", true);
 var telemetry = builder.Services.AddOpenTelemetry()
     .UseFunctionsWorkerDefaults()
+    .KeepConfiguredResourceAttributes()
     .WithTracing(tracing => tracing
         .AddHttpClientInstrumentation()
         .AddSource("Azure.Cosmos.Operation"))
