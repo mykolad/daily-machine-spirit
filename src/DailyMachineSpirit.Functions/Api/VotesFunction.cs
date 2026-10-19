@@ -82,14 +82,15 @@ public sealed class VotesFunction
         var saved = await votes.Vote(number, voterKey, vote, cancellationToken);
         // Taken after the save: any page whose counts were read later has this vote (see Script).
         var countedAt = time.GetUtcNow().ToUnixTimeMilliseconds();
-        if (saved.Exists(counts => counts.IsSome))
+        // Only a vote that changed something: the same vote sent again changes no count, and no page.
+        if (saved.Exists(counted => counted.Exists(result => result.Changed)))
         {
             purges.Add(Paths.ShowingVotesOf(number));
             logger.CountVote(Name(vote) ?? "withdrawn");
         }
         return saved.Match(
-            Right: counts => counts.Match<IActionResult>(
-                Some: shown => new OkObjectResult(new { blessed = shown.Blessed, heresy = shown.Heresy, vote = Name(vote), countedAt }),
+            Right: counted => counted.Match<IActionResult>(
+                Some: shown => new OkObjectResult(new { blessed = shown.Counts.Blessed, heresy = shown.Counts.Heresy, vote = Name(vote), countedAt }),
                 None: () => new NotFoundResult()),
             Left: error =>
             {

@@ -29,7 +29,7 @@ public class VoteRepository : IVoteRepository
         this.container = container;
     }
 
-    public Task<Either<Error, Option<ReactionCounts>>> Vote(
+    public Task<Either<Error, Option<SavedVote>>> Vote(
         int riteNumber, string voterKey, Option<Reaction> vote, CancellationToken cancellationToken)
         => AttemptEither(async () =>
         {
@@ -60,7 +60,7 @@ public class VoteRepository : IVoteRepository
 
     // The vote is read before the rite: a vote saved by the reader's other tab before this read is then already in the
     // counts read after it, so an unchanged vote never comes back with counts that leave it out.
-    private async Task<Either<Error, Option<ReactionCounts>>> VoteOnce(
+    private async Task<Either<Error, Option<SavedVote>>> VoteOnce(
         int riteNumber, string voterKey, Option<Reaction> vote, CancellationToken cancellationToken)
     {
         var id = VoteDocument.IdFor(riteNumber, voterKey);
@@ -72,13 +72,13 @@ public class VoteRepository : IVoteRepository
             cancellationToken)).HeadOrNone();
         return await rite.MatchAsync(
             Some: found => Move(found, id, existing, voterKey, vote, cancellationToken),
-            None: () => Right<Error, Option<ReactionCounts>>(None));
+            None: () => Right<Error, Option<SavedVote>>(None));
     }
 
     // Every answer comes from one transactional batch: the vote, changed only if it's still as read (a change by the
     // reader's other tab fails the batch, which is tried again), then the rite, with its counts moved or as they are. So
     // the counts answered always belong with the vote that was asked for.
-    private async Task<Either<Error, Option<ReactionCounts>>> Move(
+    private async Task<Either<Error, Option<SavedVote>>> Move(
         RiteDocument rite, string id, Option<(VoteDocument Document, string ETag)> existing, string voterKey, Option<Reaction> vote,
         CancellationToken cancellationToken)
     {
@@ -105,7 +105,7 @@ public class VoteRepository : IVoteRepository
         using var response = await batch.ExecuteAsync(cancellationToken);
         if (response.IsSuccessStatusCode)
         {
-            return Some(Counts(response.GetOperationResultAtIndex<RiteDocument>(riteIndex).Resource));
+            return Some(new SavedVote(Counts(response.GetOperationResultAtIndex<RiteDocument>(riteIndex).Resource), previous != vote));
         }
         return response[0].StatusCode is HttpStatusCode.PreconditionFailed or HttpStatusCode.Conflict or HttpStatusCode.NotFound
             ? LostRace

@@ -241,6 +241,41 @@ public sealed class VotesTests : IAsyncLifetime
         Assert.Equal(StatusCodes.Status415UnsupportedMediaType, status);
     }
 
+    // A vote, a switch or taking one back changes something; the same vote again, or taking back a vote never cast, doesn't.
+    [Fact]
+    public async Task AVote_SaysWhetherItChangedAnything()
+    {
+        await AddRite();
+
+        var changes = new List<bool>
+        {
+            (await Saved(Reader, None)).Changed,
+            (await Saved(Reader, Some(Reaction.Blessed))).Changed,
+            (await Saved(Reader, Some(Reaction.Blessed))).Changed,
+            (await Saved(Reader, Some(Reaction.Heresy))).Changed,
+            (await Saved(Reader, None)).Changed,
+            (await Saved(Reader, None)).Changed,
+        };
+
+        Assert.Equal([false, true, false, true, true, false], changes);
+    }
+
+    // The same vote sent twice (a double click, another tab) is answered with the counts, but changed nothing to refresh.
+    [Fact]
+    public async Task Post_TheSameVoteAgain_IsAnswered_ButPurgesNothing()
+    {
+        await AddRite();
+
+        // The first vote saved as the reader's, outside the batch, so only the second one's purge could be queued.
+        await Saved(session.VoterKeyFor("github", "583231"), Some(Reaction.Blessed));
+
+        var (status, body) = await Post(Function(), 1, """{"vote":"blessed"}""", "application/json", SignedIn());
+
+        Assert.Equal(StatusCodes.Status200OK, status);
+        Assert.Contains("\"blessed\":1", body);
+        Assert.Empty(await Purged());
+    }
+
     [Fact]
     public async Task Post_ToARiteThatDoesNotExist_IsNotFound()
     {
@@ -304,7 +339,9 @@ public sealed class VotesTests : IAsyncLifetime
 
     private string SignedIn() => $"{VoterSession.CookieName}={session.Issue(session.VoterKeyFor("github", "583231"))}";
 
-    private async Task<ReactionCounts> Vote(string voterKey, Option<Reaction> vote)
+    private async Task<ReactionCounts> Vote(string voterKey, Option<Reaction> vote) => (await Saved(voterKey, vote)).Counts;
+
+    private async Task<SavedVote> Saved(string voterKey, Option<Reaction> vote)
         => Ok(await Repository.Vote(1, voterKey, vote, CancellationToken.None))
             .IfNone(() => throw new Xunit.Sdk.XunitException("Expected rite NO. 1."));
 
