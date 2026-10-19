@@ -5,6 +5,7 @@ using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Caching;
 using DailyMachineSpirit.Functions.Pages;
+using DailyMachineSpirit.Functions.Telemetry;
 using DailyMachineSpirit.Functions.Voters;
 using LanguageExt;
 using Microsoft.AspNetCore.Http;
@@ -84,6 +85,7 @@ public sealed class VotesFunction
         if (saved.Exists(counts => counts.IsSome))
         {
             purges.Add(Paths.ShowingVotesOf(number));
+            logger.ReaderVoted(Name(vote) ?? "withdrawn");
         }
         return saved.Match(
             Right: counts => counts.Match<IActionResult>(

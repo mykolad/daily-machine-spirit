@@ -1,0 +1,221 @@
+{
+  "uid": "daily-machine-spirit-activity",
+  "title": "Daily Machine Spirit · Activity",
+  "description": "What the site's people do: the Scribes' actions, readers' votes, sign-ins and searches (counted from the app's logs), and visitors (Cloudflare's analytics). The technical dashboard is daily-machine-spirit.json.",
+  "tags": ["daily-machine-spirit"],
+  "timezone": "utc",
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 39,
+  "time": { "from": "now-30d", "to": "now" },
+  "refresh": "",
+  "templating": {
+    "list": [
+      { "name": "loki", "label": "Logs", "type": "datasource", "query": "loki", "regex": "/^grafanacloud-.*-logs$/", "hide": 0 },
+      { "name": "cloudflare", "label": "Cloudflare", "type": "datasource", "query": "yesoreyeram-infinity-datasource", "regex": "/cloudflare/i", "hide": 0 },
+      {
+        "name": "service",
+        "label": "Environment",
+        "type": "custom",
+        "query": "machinespirit-app,machinespirit-app-staging",
+        "current": { "text": "machinespirit-app", "value": "machinespirit-app" },
+        "hide": 0
+      },
+      {
+        "name": "zone",
+        "label": "Cloudflare zone ID",
+        "description": "The zone's ID (its Overview page in Cloudflare): an identifier, not a secret.",
+        "type": "textbox",
+        "query": "",
+        "hide": 0
+      }
+    ]
+  },
+  "panels": [
+    { "type": "row", "title": "The Scribes", "collapsed": false, "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 }, "id": 1, "panels": [] },
+    {
+      "type": "timeseries",
+      "title": "Scribes' actions per day",
+      "description": "Each action a Scribe took, by what it was: anoint, exalt, humble, burn, restore, amend, rewrite (asked the Machine Spirit to), judge (again), summon, augury (let it decide), distil, precept-add, -edit, -pin, -unpin, -delete, and name (chose one). Not who: the Record says that.",
+      "id": 2,
+      "gridPos": { "x": 0, "y": 1, "w": 16, "h": 9 },
+      "datasource": { "type": "loki", "uid": "${loki}" },
+      "interval": "1d",
+      "fieldConfig": {
+        "defaults": { "unit": "short", "decimals": 0, "custom": { "drawStyle": "bars", "fillOpacity": 80, "stacking": { "mode": "normal" }, "lineWidth": 1 } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (ScribeAction) (count_over_time({service_name=\"$service\"} | ScribeAction != \"\" [$__interval]))",
+          "legendFormat": "{{ScribeAction}}",
+          "queryType": "range"
+        }
+      ]
+    },
+    {
+      "type": "bargauge",
+      "title": "Scribes' actions in this time range",
+      "id": 3,
+      "gridPos": { "x": 16, "y": 1, "w": 8, "h": 9 },
+      "datasource": { "type": "loki", "uid": "${loki}" },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "#c9a25a" } }, "overrides": [] },
+      "options": { "orientation": "horizontal", "displayMode": "basic", "showUnfilled": false, "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sort_desc(sum by (ScribeAction) (count_over_time({service_name=\"$service\"} | ScribeAction != \"\" [$__range])))",
+          "legendFormat": "{{ScribeAction}}",
+          "queryType": "instant"
+        }
+      ]
+    },
+    { "type": "row", "title": "Readers", "collapsed": false, "gridPos": { "x": 0, "y": 10, "w": 24, "h": 1 }, "id": 4, "panels": [] },
+    {
+      "type": "timeseries",
+      "title": "Votes per day",
+      "description": "Each vote saved: blessed, heresy, or withdrawn (a reader took theirs back). Switching a vote counts as the new one.",
+      "id": 5,
+      "gridPos": { "x": 0, "y": 11, "w": 8, "h": 9 },
+      "datasource": { "type": "loki", "uid": "${loki}" },
+      "interval": "1d",
+      "fieldConfig": {
+        "defaults": { "unit": "short", "decimals": 0, "custom": { "drawStyle": "bars", "fillOpacity": 80, "stacking": { "mode": "normal" }, "lineWidth": 1 } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (Vote) (count_over_time({service_name=\"$service\"} | Vote != \"\" [$__interval]))",
+          "legendFormat": "{{Vote}}",
+          "queryType": "range"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Sign-ins per day",
+      "description": "Readers signing in to vote, by outcome: signed-in, declined (at the provider), refused (not started in that browser) or failed.",
+      "id": 6,
+      "gridPos": { "x": 8, "y": 11, "w": 8, "h": 9 },
+      "datasource": { "type": "loki", "uid": "${loki}" },
+      "interval": "1d",
+      "fieldConfig": {
+        "defaults": { "unit": "short", "decimals": 0, "custom": { "drawStyle": "bars", "fillOpacity": 80, "stacking": { "mode": "normal" }, "lineWidth": 1 } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (SignIn) (count_over_time({service_name=\"$service\"} | SignIn != \"\" [$__interval]))",
+          "legendFormat": "{{SignIn}}",
+          "queryType": "range"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Archive searches per day",
+      "description": "Searches the Archive answered (their first page): by words, or by words in a subject. As the Archive's field follows the typing, a pause while typing is a search too. The nav's search matches in the browser and isn't counted; what's searched for is never logged.",
+      "id": 7,
+      "gridPos": { "x": 16, "y": 11, "w": 8, "h": 9 },
+      "datasource": { "type": "loki", "uid": "${loki}" },
+      "interval": "1d",
+      "fieldConfig": {
+        "defaults": { "unit": "short", "decimals": 0, "custom": { "drawStyle": "bars", "fillOpacity": 80, "stacking": { "mode": "normal" }, "lineWidth": 1 } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (Search) (count_over_time({service_name=\"$service\"} | Search != \"\" [$__interval]))",
+          "legendFormat": "{{Search}}",
+          "queryType": "range"
+        }
+      ]
+    },
+    { "type": "row", "title": "Visitors (Cloudflare, production)", "collapsed": false, "gridPos": { "x": 0, "y": 20, "w": 24, "h": 1 }, "id": 8, "panels": [] },
+    {
+      "type": "timeseries",
+      "title": "Page views and visitors per day",
+      "description": "Cloudflare's own counts for the zone, by UTC day: page views (HTML answers), and unique visitors (distinct addresses, which Cloudflare counts; the site keeps none). Bots are in both.",
+      "id": 9,
+      "gridPos": { "x": 0, "y": 21, "w": 12, "h": 9 },
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "${cloudflare}" },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "decimals": 0, "custom": { "drawStyle": "bars", "fillOpacity": 70, "lineWidth": 1 } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "none" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "${cloudflare}" },
+          "type": "graphql",
+          "source": "url",
+          "parser": "backend",
+          "format": "timeseries",
+          "url": "https://api.cloudflare.com/client/v4/graphql",
+          "url_options": {
+            "method": "POST",
+            "body_type": "graphql",
+            "body_content_type": "application/json",
+            "body_graphql_query": "query ($zone: String!, $from: Date!, $to: Date!) { viewer { zones(filter: {zoneTag: $zone}) { httpRequests1dGroups(limit: 400, orderBy: [date_ASC], filter: {date_geq: $from, date_leq: $to}) { dimensions { date } sum { pageViews } uniq { uniques } } } } }",
+            "body_graphql_variables": "{\"zone\": \"${zone}\", \"from\": \"${__from:date:YYYY-MM-DD}\", \"to\": \"${__to:date:YYYY-MM-DD}\"}"
+          },
+          "root_selector": "data.viewer.zones[0].httpRequests1dGroups",
+          "columns": [
+            { "selector": "dimensions.date", "text": "Day", "type": "timestamp" },
+            { "selector": "sum.pageViews", "text": "Page views", "type": "number" },
+            { "selector": "uniq.uniques", "text": "Visitors", "type": "number" }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Served from Cloudflare's cache",
+      "description": "The share of each day's requests Cloudflare answered from its cache, without asking the app: Today and a rite's page stay cached until a change purges them.",
+      "id": 10,
+      "gridPos": { "x": 12, "y": 21, "w": 12, "h": 9 },
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "${cloudflare}" },
+      "fieldConfig": {
+        "defaults": { "unit": "percentunit", "min": 0, "max": 1, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "always" } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single", "sort": "none" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "${cloudflare}" },
+          "type": "graphql",
+          "source": "url",
+          "parser": "backend",
+          "format": "timeseries",
+          "url": "https://api.cloudflare.com/client/v4/graphql",
+          "url_options": {
+            "method": "POST",
+            "body_type": "graphql",
+            "body_content_type": "application/json",
+            "body_graphql_query": "query ($zone: String!, $from: Date!, $to: Date!) { viewer { zones(filter: {zoneTag: $zone}) { httpRequests1dGroups(limit: 400, orderBy: [date_ASC], filter: {date_geq: $from, date_leq: $to}) { dimensions { date } sum { requests cachedRequests } } } } }",
+            "body_graphql_variables": "{\"zone\": \"${zone}\", \"from\": \"${__from:date:YYYY-MM-DD}\", \"to\": \"${__to:date:YYYY-MM-DD}\"}"
+          },
+          "root_selector": "data.viewer.zones[0].httpRequests1dGroups",
+          "columns": [
+            { "selector": "dimensions.date", "text": "Day", "type": "timestamp" },
+            { "selector": "sum.requests", "text": "Requests", "type": "number" },
+            { "selector": "sum.cachedRequests", "text": "Cached", "type": "number" }
+          ]
+        }
+      ],
+      "transformations": [
+        { "id": "calculateField", "options": { "mode": "binary", "binary": { "left": "Cached", "operator": "/", "right": "Requests" }, "alias": "Served from the cache", "replaceFields": true } }
+      ]
+    }
+  ]
+}

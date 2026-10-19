@@ -114,7 +114,7 @@ public sealed class SignInFunction
             state.Provider == signIn.Name && FixedTimeEquals(state.State, request.Query["state"].ToString()));
         if (!stateMatches)
         {
-            metrics.SignIn(signIn.Name, "refused");
+            Counted(signIn.Name, "refused");
             return new BadRequestResult();
         }
 
@@ -123,14 +123,14 @@ public sealed class SignInFunction
         var error = request.Query["error"].ToString();
         if (error == "access_denied")
         {
-            metrics.SignIn(signIn.Name, "declined");
+            Counted(signIn.Name, "declined");
             return Redirect(returnPath);
         }
         var code = request.Query["code"].ToString();
         if (error.Length > 0 || code.Length == 0)
         {
             logger.LogWarning("{Provider} sent a reader back without a sign-in: {Error}", signIn.Name, error.Length > 0 ? error : "no code");
-            metrics.SignIn(signIn.Name, "failed");
+            Counted(signIn.Name, "failed");
             return Redirect(returnPath);
         }
 
@@ -139,13 +139,13 @@ public sealed class SignInFunction
             {
                 request.HttpContext.Response.Cookies.Append(VoterSession.CookieName,
                     session.Issue(session.VoterKeyFor(signIn.Name, accountId)), Cookie(VoterSession.Lasts));
-                metrics.SignIn(signIn.Name, "signed-in");
+                Counted(signIn.Name, "signed-in");
                 return Redirect(returnPath);
             },
             Left: failure =>
             {
                 logger.LogWarning(failure.ToException(), "A reader couldn't sign in with {Provider}: {Reason}", signIn.Name, failure.Message);
-                metrics.SignIn(signIn.Name, "failed");
+                Counted(signIn.Name, "failed");
                 return Redirect(returnPath);
             });
     }
@@ -203,4 +203,11 @@ public sealed class SignInFunction
 
     private static bool FixedTimeEquals(string expected, string actual)
         => CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(expected), Encoding.UTF8.GetBytes(actual));
+
+    // Counted twice: the metric for the technical dashboard, the log line for the activity dashboard, which counts each.
+    private void Counted(string provider, string outcome)
+    {
+        metrics.SignIn(provider, outcome);
+        logger.ReaderSignedIn(provider, outcome);
+    }
 }

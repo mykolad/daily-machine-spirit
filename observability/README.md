@@ -16,6 +16,34 @@ over this file, so the repository stays the truth.
 - **A regular expression in a LogQL query goes in backticks** (`` scope_name=~`Generation\..*` ``): in double quotes,
   `\.` is an escape LogQL doesn't know, and the query fails to parse.
 
+## The activity dashboard
+
+`grafana/daily-machine-spirit-activity.json`: what the site's people do, beside the technical dashboard above. Imported
+and exported the same way.
+
+- **The Scribes' actions, readers' votes, sign-ins and Archive searches** are counted from the app's logs (`SiteActivity`,
+  one line each, below), not metrics: they're rare, and a counter's first value in a process, often its only one, is
+  never seen as an increase. Each line says what was done, never who or what was searched for.
+- **Page views, visitors and how much Cloudflare's cache served** come from Cloudflare's own analytics, for production
+  (staging isn't behind Cloudflare). Nothing new is collected about visitors: Grafana reads the zone's daily totals
+  through Cloudflare's GraphQL API. It needs, once:
+  1. **A read-only token** in Cloudflare: **My Profile → API Tokens → Create Token → Custom token**, permission
+     **Zone · Analytics · Read**, zone resources **Include · Specific zone · dailymachinespirit.fyi**. Nothing else: it
+     can't purge, change or read anything but the totals.
+  2. **The Infinity data source** in Grafana (**Connections → Add new connection → Infinity**, install it if the stack
+     hasn't), named so it has **Cloudflare** in it (the dashboard's picker looks for that). **Authentication: Bearer
+     token**, with the token pasted there, where Grafana keeps it encrypted; **Allowed hosts:**
+     `https://api.cloudflare.com`. The token stays there: never in the repository or a dashboard.
+  3. **The zone's ID** in the dashboard's *Cloudflare zone ID* field (the zone's Overview page shows it). Save the
+     dashboard once it's set, so it stays.
+
+| Log line (its attribute) | Values |
+|---|---|
+| A Scribe acted (`ScribeAction`) | `anoint`, `exalt`, `humble`, `burn`, `restore`, `amend`, `rewrite` (asked the Machine Spirit), `judge` (again), `summon`, `augury` (let it decide), `distil`, `precept-add`, `precept-edit`, `precept-pin`, `precept-unpin`, `precept-delete`, `name` |
+| A reader voted (`Vote`) | `blessed`, `heresy`, `withdrawn` |
+| A reader signed in (`SignIn`, with `Provider`) | as `dms_signins_total`: `signed-in`, `declined`, `refused`, `failed` |
+| A reader searched the Archive (`Search`) | `words`, `words-in-a-subject`; its first page only, and a pause while typing in the Archive's field is a search too |
+
 ## The alerts
 
 Production only (the service `machinespirit-app`), so staging's experiments never wake anyone. Each one's description says
