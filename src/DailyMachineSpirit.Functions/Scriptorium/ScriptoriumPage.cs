@@ -194,8 +194,10 @@ public static partial class ScriptoriumPage
     /// The Ashes: the burned rites, the most recently burned first, each with a way back into the calendar. Plain forms:
     /// restoring goes to the calendar, where the restored rite now waits.
     /// </summary>
+    /// <param name="ashes">The rites burned most recently.</param>
+    /// <param name="older">A rite burned before those, which a burn's message linked to.</param>
     /// <param name="acted">The rite the calendar's last burn sent here, marked so the eye finds it.</param>
-    public static string RenderAshes(IReadOnlyList<Draft> ashes, Option<TabCounts> counts, Option<Guid> acted)
+    public static string RenderAshes(IReadOnlyList<Draft> ashes, Option<Draft> older, Option<TabCounts> counts, Option<Guid> acted)
     {
         var html = new StringBuilder();
         Head(html, "The Ashes", TabBar(ScriptoriumTab.Ashes, counts));
@@ -218,6 +220,12 @@ public static partial class ScriptoriumPage
             }
             html.Append("</ul>");
         }
+        older.IfSome(draft =>
+        {
+            html.Append("""<section aria-labelledby="older-heading"><h2 id="older-heading">Burned longer ago</h2><ul class="calendar">""");
+            Ash(html, draft, acted);
+            html.Append("</ul></section>");
+        });
         html.Append("</main>");
         Footer(html, None);
         return html.ToString();

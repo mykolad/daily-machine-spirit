@@ -150,6 +150,28 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Equal(Settings.ScriptoriumPages.AshesShown, html.Split("Restore from the Ashes<span").Length - 1);
     }
 
+    // A burn's message links to its rite in the Ashes; followed after newer burns pushed it past the ones shown, the
+    // page still shows it, to restore.
+    [Fact]
+    public async Task Ashes_ShowARiteBurnedLongerAgo_WhenALinkAsksForIt()
+    {
+        var first = await testbed.AddDraft("Burned first", 0.5f);
+        Ok(await testbed.Scribes().Burn(first.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        for (var i = 0; i < Settings.ScriptoriumPages.AshesShown; i++)
+        {
+            testbed.Time.Advance(TimeSpan.FromMinutes(1));
+            var draft = await testbed.AddDraft($"Burned later {i}", 0.5f);
+            Ok(await testbed.Scribes().Burn(draft.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        }
+
+        var html = Html(await Function().Ashes(Get($"?rite={first.Id:D}"), CancellationToken.None), 200);
+
+        Assert.Contains("Burned longer ago</h2>", html);
+        Assert.Contains($"""<article class="rite ash acted" id="rite-{first.Id:D}" """, html);
+        Assert.Contains($"/scriptorium/drafts/{first.Id:D}/restore", html);
+        Assert.Contains($"The {Settings.ScriptoriumPages.AshesShown} burned most recently, of {Settings.ScriptoriumPages.AshesShown + 1}.", html);
+    }
+
     [Fact]
     public async Task Page_CarriesTheSitesIcon_Inline()
     {

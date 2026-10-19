@@ -89,7 +89,8 @@ public sealed class ScriptoriumFunction
         var counts = await tabs.Count(cancellationToken);
         return await (await scribes.View(cancellationToken)).Match(
             Right: async view => Html(request,
-                ScriptoriumPage.Render(view, counts, outcome, rite, await BurnedFromTheCalendar(view, rite, cancellationToken), name),
+                ScriptoriumPage.Render(view, counts, outcome, rite,
+                    await BurnedUnlessShown(rite, id => view.Calendar.Exists(entry => entry.Draft.Id == id), cancellationToken), name),
                 StatusCodes.Status200OK),
             Left: error => Task.FromResult(Failed(request, error)));
     }
@@ -106,9 +107,12 @@ public sealed class ScriptoriumFunction
 
         var rite = Optional(request.Query["rite"].ToString()).Bind(text => Guid.TryParse(text, out var id) ? Some(id) : None);
         var counts = await tabs.Count(cancellationToken);
-        return (await scribes.Ashes(cancellationToken)).Match(
-            Right: ashes => Html(request, ScriptoriumPage.RenderAshes(ashes, counts, rite), StatusCodes.Status200OK),
-            Left: error => Failed(request, error));
+        return await (await scribes.Ashes(cancellationToken)).Match(
+            Right: async ashes => Html(request,
+                // A burn's message links to its rite, which newer burns may have pushed past the ones shown.
+                ScriptoriumPage.RenderAshes(ashes, await BurnedUnlessShown(rite, id => ashes.Exists(ash => ash.Id == id), cancellationToken), counts, rite),
+                StatusCodes.Status200OK),
+            Left: error => Task.FromResult(Failed(request, error)));
     }
 
     /// <summary>The page for amending a waiting draft's words (#8); its form posts the amend and rewrite actions.</summary>
@@ -312,11 +316,12 @@ public sealed class ScriptoriumFunction
         return new ScriptoriumResponse { Result = Failed(request, error) };
     }
 
-    // The rite the last action was on, when it burned it: the message names it and links to it in the Ashes. Unreadable,
-    // the message goes without its name.
-    private async Task<Option<Draft>> BurnedFromTheCalendar(ScriptoriumView view, Option<Guid> rite, CancellationToken cancellationToken)
+    // The rite an address names, when it's burned and not among the rites the page shows anyway: on the calendar, the one
+    // the last action burned, which the message names and links to; in the Ashes, one burned longer ago than those shown.
+    // Unreadable, the page goes without it.
+    private async Task<Option<Draft>> BurnedUnlessShown(Option<Guid> rite, Func<Guid, bool> shown, CancellationToken cancellationToken)
     {
-        var gone = rite.Filter(id => !view.Calendar.Exists(entry => entry.Draft.Id == id));
+        var gone = rite.Filter(id => !shown(id));
         return await gone.MatchAsync(
             Some: async id => (await scribes.FindBurned(id, cancellationToken)).IfLeft(Option<Draft>.None),
             None: () => Option<Draft>.None);
