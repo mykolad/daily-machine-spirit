@@ -99,7 +99,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
 
         Assert.All(pages, page =>
         {
-            Assert.Contains("""The Calendar<span class="count">2 by the Scribes · 1 by the Augury</span>""", page.Value);
+            Assert.Contains("""The Calendar<span class="count">Scribes 2 · Augury 1</span>""", page.Value);
             Assert.Contains("""The Ashes<span class="count">1</span>""", page.Value);
             Assert.Contains("""The Precepts<span class="count">1</span>""", page.Value);
             // Four drafts written, one anointed, one burned, and a precept added.

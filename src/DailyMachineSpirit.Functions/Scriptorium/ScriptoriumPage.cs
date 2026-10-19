@@ -35,7 +35,7 @@ public static partial class ScriptoriumPage
         .brand { display: inline-flex; align-items: center; gap: 10px; padding: 4px 8px 4px 0; font: 700 16px Cinzel, serif; letter-spacing: .04em; color: #c9a25a; text-decoration: none; }
         .brand:hover { color: #f0d59a; }
         .tabs ul { list-style: none; display: flex; flex-wrap: wrap; gap: 0 8px; margin: 16px 0 0; padding: 0; border-bottom: 1px solid rgba(237,227,207,.16); }
-        .tabs a { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; min-height: 44px; padding: 12px 12px 9px; margin-bottom: -1px; border-bottom: 3px solid transparent; font: 600 16px/1.2 Figtree, sans-serif; color: #cdbd9e; text-decoration: none; }
+        .tabs a { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-height: 44px; padding: 12px 10px 9px; margin-bottom: -1px; border-bottom: 3px solid transparent; font: 600 16px/1.2 Figtree, sans-serif; color: #cdbd9e; text-decoration: none; }
         .tabs a:hover { color: #f0d59a; border-bottom-color: rgba(201,162,90,.4); }
         .tabs a[aria-current=page] { color: #ede3cf; border-bottom-color: #c9a25a; }
         .tabs .count { font: 500 13px "JetBrains Mono", monospace; color: #b6a98f; }
@@ -516,7 +516,7 @@ public static partial class ScriptoriumPage
             => $"""<li><a href="{path}"{(tab == current ? " aria-current=\"page\"" : string.Empty)}>{name}{counts.Map(counted => $"""<span class="count">{count(counted)}</span>""").IfNone(string.Empty)}</a></li>""";
         return $"""
             <nav class="tabs" aria-label="The Scriptorium"><ul>
-            {Tab(ScriptoriumTab.Calendar, "/scriptorium", "The Calendar", counted => $"{Number(counted.PlacedByScribes)} by the Scribes · {Number(counted.PlacedByAugury)} by the Augury")}
+            {Tab(ScriptoriumTab.Calendar, "/scriptorium", "The Calendar", counted => $"Scribes {Number(counted.PlacedByScribes)} · Augury {Number(counted.PlacedByAugury)}")}
             {Tab(ScriptoriumTab.Ashes, "/scriptorium/ashes", "The Ashes", counted => Number(counted.Ashes))}
             {Tab(ScriptoriumTab.Precepts, "/scriptorium/precepts", "The Precepts", counted => Number(counted.Precepts))}
             {Tab(ScriptoriumTab.Record, "/scriptorium/record", "The Record", counted => Number(counted.RecordEntries))}
