@@ -34,7 +34,7 @@ public sealed class ScribesTests : IAsyncLifetime
         Assert.Equal([Today, Today.AddDays(1)], view.Calendar.Select(entry => entry.PublishesOnUtc));
         Assert.Equal([1, 2], view.Calendar.Select(entry => entry.AuguryPlace));
         Assert.All(view.Calendar, entry => Assert.False(entry.PlacedByScribes));
-        Assert.Empty(view.Ashes);
+        Assert.Empty(Ok(await testbed.Scribes().Ashes(CancellationToken.None)));
         Assert.Empty(view.Decisions);
     }
 
@@ -47,6 +47,66 @@ public sealed class ScribesTests : IAsyncLifetime
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
 
         Assert.Equal(Today.AddDays(1), Assert.Single(view.Calendar).PublishesOnUtc);
+    }
+
+    // A move places the drafts it passes as well as the one moved: whoever moved it placed them, unless another Scribe
+    // already had. The one moved is always the mover's.
+    [Fact]
+    public async Task Moves_KeepWhoPlacedEachDraft()
+    {
+        var excellent = await testbed.AddDraft("Excellent", 0.95f);
+        var good = await testbed.AddDraft("Good", 0.7f);
+        var fair = await testbed.AddDraft("Fair", 0.4f);
+        var poor = await testbed.AddDraft("Poor", 0.2f);
+
+        Ok(await testbed.Scribes().Exalt(good.Id, "", "first-scribe", CancellationToken.None));
+        Ok(await testbed.Scribes().Humble(excellent.Id, "", "second-scribe", CancellationToken.None));
+        Ok(await testbed.Scribes().Anoint(poor.Id, "", "third-scribe", CancellationToken.None));
+
+        var view = Ok(await testbed.Scribes().View(CancellationToken.None));
+        Assert.Equal(["Poor", "Good", "Fair", "Excellent"], view.Calendar.Select(entry => entry.Draft.Writing.Title));
+        Assert.Equal(
+            [Some("third-scribe"), Some("first-scribe"), Some("second-scribe"), Some("second-scribe")],
+            view.Calendar.Select(entry => entry.PlacedBy));
+    }
+
+    // A draft burned or published leaves the order, and who placed it with it; the Augury's drafts have no placer.
+    [Fact]
+    public async Task WhoPlacedADraft_LeavesTheOrderWithIt()
+    {
+        await testbed.AddDraft("Excellent", 0.95f);
+        var good = await testbed.AddDraft("Good", 0.7f);
+        await testbed.AddDraft("Fair", 0.4f);
+        Ok(await testbed.Scribes().Anoint(good.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+
+        Ok(await testbed.Scribes().Burn(good.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+
+        var placements = Ok(await testbed.Scriptorium.GetPlacements(CancellationToken.None));
+        Assert.DoesNotContain(good.Id, placements.PlacedBy.Keys);
+        Assert.Equal(placements.Order.Order(), placements.PlacedBy.Keys.Order());
+        var view = Ok(await testbed.Scribes().View(CancellationToken.None));
+        Assert.Equal([Some(BacklogTestbed.Tester), None], view.Calendar.Select(entry => entry.PlacedBy));
+    }
+
+    // Publishing leaves the order as it was, as it always has: the published draft no longer waits, so the calendar
+    // doesn't show it, and the next change to the order leaves it out, with who placed it.
+    [Fact]
+    public async Task WhoPlacedAPublishedDraft_LeavesWithTheNextChangeToTheOrder()
+    {
+        await testbed.AddDraft("Excellent", 0.95f);
+        var good = await testbed.AddDraft("Good", 0.7f);
+        var fair = await testbed.AddDraft("Fair", 0.4f);
+        Ok(await testbed.Scribes().Anoint(good.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        Ok(await testbed.Publisher().PublishToday(CancellationToken.None));
+
+        Ok(await testbed.Scribes().Exalt(fair.Id, "", "another-scribe", CancellationToken.None));
+
+        var placements = Ok(await testbed.Scriptorium.GetPlacements(CancellationToken.None));
+        Assert.DoesNotContain(good.Id, placements.Order);
+        Assert.DoesNotContain(good.Id, placements.PlacedBy.Keys);
+        var view = Ok(await testbed.Scribes().View(CancellationToken.None));
+        Assert.Equal(["Fair", "Excellent"], view.Calendar.Select(entry => entry.Draft.Writing.Title));
+        Assert.Equal([Some("another-scribe"), Some(BacklogTestbed.Tester)], view.Calendar.Select(entry => entry.PlacedBy));
     }
 
     [Fact]
@@ -141,7 +201,7 @@ public sealed class ScribesTests : IAsyncLifetime
 
         var burned = Ok(await testbed.Scribes().View(CancellationToken.None));
         Assert.Equal(["Excellent"], burned.Calendar.Select(entry => entry.Draft.Writing.Title));
-        Assert.Equal(["Fair"], burned.Ashes.Select(draft => draft.Writing.Title));
+        Assert.Equal(["Fair"], Ok(await testbed.Scribes().Ashes(CancellationToken.None)).Select(draft => draft.Writing.Title));
         Ok(await testbed.Scribes().Restore(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         var restored = Ok(await testbed.Scribes().View(CancellationToken.None));
         Assert.Equal(["Excellent", "Fair"], restored.Calendar.Select(entry => entry.Draft.Writing.Title));
@@ -274,7 +334,7 @@ public sealed class ScribesTests : IAsyncLifetime
         Assert.Equal(1, waiting);
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
         Assert.Equal(["Fair"], view.Calendar.Select(entry => entry.Draft.Writing.Title));
-        var ash = Assert.Single(view.Ashes);
+        var ash = Assert.Single(Ok(await testbed.Scribes().Ashes(CancellationToken.None)));
         Assert.Equal(DraftState.Burned, ash.State);
         Assert.Equal(Some(testbed.Time.GetUtcNow().UtcDateTime), ash.BurnedAtUtc);
         var decision = Assert.Single(view.Decisions);
@@ -295,7 +355,7 @@ public sealed class ScribesTests : IAsyncLifetime
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
         Assert.Equal("Second chance", Assert.Single(view.Calendar).Draft.Writing.Title);
         Assert.True(view.Calendar[0].Draft.BurnedAtUtc.IsNone);
-        Assert.Empty(view.Ashes);
+        Assert.Empty(Ok(await testbed.Scribes().Ashes(CancellationToken.None)));
         var restored = view.Decisions[0];
         Assert.Equal(ScribeAction.Restore, restored.Action);
         Assert.Equal(None, restored.CalendarPlace);
@@ -329,7 +389,7 @@ public sealed class ScribesTests : IAsyncLifetime
             var later = await testbed.AddDraft($"Burned later {i}", 0.5f);
             Ok(await testbed.Scribes().Burn(later.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         }
-        Assert.DoesNotContain(Ok(await testbed.Scribes().View(CancellationToken.None)).Ashes, ash => ash.Id == first.Id);
+        Assert.DoesNotContain(Ok(await testbed.Scribes().Ashes(CancellationToken.None)), ash => ash.Id == first.Id);
 
         Ok(await testbed.Scribes().Restore(first.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 

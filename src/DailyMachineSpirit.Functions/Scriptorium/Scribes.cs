@@ -8,11 +8,14 @@ using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Functions.Scriptorium;
 
-/// <summary>A draft in the Liturgical Calendar, as the Scriptorium shows it.</summary>
-public sealed record CalendarEntry(Draft Draft, DateOnly PublishesOnUtc, bool PlacedByScribes, int AuguryPlace);
+/// <summary>
+/// A draft in the Liturgical Calendar, as the Scriptorium shows it. <see cref="PlacedBy"/> is the Scribe who placed it
+/// (their Access id), when the order knows.
+/// </summary>
+public sealed record CalendarEntry(Draft Draft, DateOnly PublishesOnUtc, bool PlacedByScribes, Option<string> PlacedBy, int AuguryPlace);
 
 /// <summary><see cref="Today"/> (UTC) tells whether the first entry goes out at the coming midnight, or is already due.</summary>
-public sealed record ScriptoriumView(List<CalendarEntry> Calendar, List<Draft> Ashes, List<ScribeDecision> Decisions, DateOnly Today);
+public sealed record ScriptoriumView(List<CalendarEntry> Calendar, List<ScribeDecision> Decisions, DateOnly Today);
 
 /// <summary>
 /// What the Scribes of the Scriptorium do: anoint, exalt and humble drafts (placing them in their order, ahead of the
@@ -54,20 +57,29 @@ public sealed class Scribes
         var today = Today;
         return Calendar(cancellationToken)
             .BindAsync(calendar => rites.GetPublishedOn(today, cancellationToken)
-                .BindAsync(todays => scriptorium.GetBurned(pages.Value.AshesShown, cancellationToken)
-                    .BindAsync(ashes => scriptorium.GetDecisions(pages.Value.JudgmentsShown, cancellationToken)
-                        .MapAsync(decisions =>
-                        {
-                            // The next one goes out at the coming midnight: tonight's, unless today's is still to come.
-                            var first = todays.IsSome ? today.AddDays(1) : today;
-                            var placed = calendar.Placements.Order.ToHashSet();
-                            var entries = calendar.Ordered
-                                .Select((draft, place) => new CalendarEntry(
-                                    draft, first.AddDays(place), placed.Contains(draft.Id), calendar.AuguryPlace(draft)))
-                                .ToList();
-                            return Task.FromResult(new ScriptoriumView(entries, ashes, decisions, today));
-                        }))));
+                .BindAsync(todays => scriptorium.GetDecisions(pages.Value.JudgmentsShown, cancellationToken)
+                    .MapAsync(decisions =>
+                    {
+                        // The next one goes out at the coming midnight: tonight's, unless today's is still to come.
+                        var first = todays.IsSome ? today.AddDays(1) : today;
+                        var placed = calendar.Placements.Order.ToHashSet();
+                        var entries = calendar.Ordered
+                            .Select((draft, place) => new CalendarEntry(
+                                draft, first.AddDays(place), placed.Contains(draft.Id), Placer(calendar.Placements, draft.Id),
+                                calendar.AuguryPlace(draft)))
+                            .ToList();
+                        return Task.FromResult(new ScriptoriumView(entries, decisions, today));
+                    })));
     }
+
+    /// <summary>The Ashes: the drafts burned most recently, the newest first.</summary>
+    public Task<Either<Error, List<Draft>>> Ashes(CancellationToken cancellationToken)
+        => scriptorium.GetBurned(pages.Value.AshesShown, cancellationToken);
+
+    /// <summary>The draft, if it's burned: what the calendar's message names after a burn, the draft having left it.</summary>
+    public Task<Either<Error, Option<Draft>>> FindBurned(Guid draftId, CancellationToken cancellationToken)
+        => drafts.Get(draftId, cancellationToken)
+            .MapAsync(found => Task.FromResult(found.Filter(draft => draft.State == DraftState.Burned)));
 
     /// <summary>Makes the draft the next to be published; for the first, it keeps it there, ahead of the Augury's later picks.</summary>
     public Task<Either<Error, Unit>> Anoint(Guid draftId, string note, string scribe, CancellationToken cancellationToken)
@@ -142,7 +154,7 @@ public sealed class Scribes
                 Some: found => reorder(calendar.Ordered.Select(draft => draft.Id).ToList(), found.Place - 1).Match(
                     // Every draft in the moved stretch must still wait: it was read waiting, and the new order places it.
                     Some: moved => scriptorium.SavePlacements(
-                        calendar.Placements with { Order = KeepingTheRest(moved, calendar) },
+                        Placed(calendar.Placements, KeepingTheRest(moved, calendar), draftId, scribe),
                         Decision(found.Draft, action, checkedNote, Some(calendar.PlacesOf(found))),
                         moved,
                         AuditEntries.Of(time, scribe, Audited(action), found.Draft, $"from #{found.Place} to #{moved.IndexOf(draftId) + 1}"),
@@ -159,6 +171,21 @@ public sealed class Scribes
             .Where(id => calendar.Placements.Order.Contains(id) && !moved.Contains(id));
         return [.. moved, .. placedBelow];
     }
+
+    // The new order, and who placed each draft in it: the Scribe who moved it, or who placed it by moving another. One
+    // already placed keeps the Scribe who placed it, unless it's the one moved.
+    private static Placements Placed(Placements before, List<Guid> order, Guid moved, string scribe)
+        => before with
+        {
+            Order = order,
+            PlacedBy = order
+                .Select(id => (Id: id, Placer: id == moved || !before.Order.Contains(id) ? Some(scribe) : Placer(before, id)))
+                .SelectMany(placed => placed.Placer.Map(placer => KeyValuePair.Create(placed.Id, placer)))
+                .ToDictionary(),
+        };
+
+    private static Option<string> Placer(Placements placements, Guid draftId)
+        => placements.PlacedBy.TryGetValue(draftId, out var placer) ? Some(placer) : None;
 
     // A burned or restored draft leaves the Scribes' order: a restored one starts again in the Augury's.
     private static Option<Placements> WithoutDraft(Placements placements, Guid draftId)

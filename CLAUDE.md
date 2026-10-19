@@ -304,7 +304,10 @@ observability/                    — the Grafana dashboards (technical, activit
     rewrite request that fails outright (the network, or Cloudflare Access wanting a new sign-in, which a background
     request can't give) keeps the words and offers the page in a new tab, to sign in there and try again here.
   - **The Scribes' order** (the `placements` document) comes first; the Augury orders the rest. Moving a draft places
-    everything above it too, so the order stays what the Scribes saw.
+    everything above it too, so the order stays what the Scribes saw. The order keeps who placed each draft (`placedBy`, by Access
+    id): the Scribe who moved it, or who placed it by moving another; one already placed keeps its Scribe unless it's
+    the one moved. On the calendar, a rite the Scribes placed wears a brass frame and says "Placed by <name>"
+    (`ScribeNames`), or "Placed by the Scribes" when its order was saved before it kept who.
   - **Every action is a lesson:** it saves a `ScribeDecision` with the draft as it was, the Augury's place and quality
     for it, and the Scribe's optional note, in the same batch as the change. The Precepts are learned from them.
   - **The Precepts** (`/scriptorium/precepts`, #12): rules for writing and choosing rites, learned from the Scribes'
@@ -368,10 +371,16 @@ observability/                    — the Grafana dashboards (technical, activit
     does in its `title`, the browser's own tooltip on hover: a reminder for the Scribes, chosen over a custom tooltip
     for being simple (the labels themselves stay the rite's names). Each draft's tags show as chips under its title,
     to match against the calendar's subjects.
+  - **Tabs** (`TabCounting`): the Calendar (`/scriptorium`), the Ashes (`/scriptorium/ashes`), the Precepts and the
+    Record each start with the tab bar, every tab saying what its page holds: the waiting rites the Scribes placed and
+    those the Augury places, the burned ones, the precepts, the Record's entries. They're counted on every load, a few
+    small queries; when a count fails, the tabs show without counts. The Ashes shows the newest burned
+    (`ScriptoriumPages:AshesShown`) and says how many there are in all. Amending a rite and choosing a name are pages
+    under a tab, without the bar: they lead back where they came from.
   - **Shown in place** (`ScriptoriumScript`): where scripts run, an action is posted in the background, the new page's
     calendar replaces the old, and each rite that moved slides from its old place to its new one, so a Scribe sees
     what changed (an Exalt can reorder the rites the Augury places, too). The status message stays the same element,
-    so it's announced; focus returns to the same button (after a burn, to the rite now in its place in the calendar,
+    so it's announced, and the tab bar is swapped for the new page's, with its new counts; focus returns to the same button (after a burn, to the rite now in its place in the calendar,
     which the Augury may have reordered, without scrolling away). Anything unexpected (an error, Cloudflare Access wanting a new sign-in) loads `/scriptorium`
     afresh. Reduced motion: no slide, only the mark.
   - **Access:** who counts as a Scribe is an `IScribeSignIn`

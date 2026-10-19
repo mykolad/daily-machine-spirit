@@ -96,6 +96,8 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public Scribes Scribes() => new(Drafts, Rites, Scriptorium, Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages), Time);
 
+    public TabCounting Tabs() => new(Drafts, Scriptorium, Precepts, Audit, NullLogger<TabCounting>.Instance);
+
     public JudgingAgain JudgingAgain() => new(Drafts, Jev.NewJudge(Time, JevApiKey), Time, NullLogger<JudgingAgain>.Instance);
 
     public PreceptKeeping PreceptKeeping() => new(Precepts, PreceptCheck(), Time, NullLogger<PreceptKeeping>.Instance);
@@ -114,6 +116,13 @@ public sealed class BacklogTestbed : IAsyncLifetime
         => new(Drafts, Scriptorium, Scribes(), Jev.NewJudge(Time, JevApiKey), Writer(), Time, NullLogger<Amendments>.Instance);
 
     /// <summary>Scribes whose every read fails, as when Cosmos is down: the container doesn't exist.</summary>
+    public TabCounting TabsWithoutCosmos()
+    {
+        var missing = cosmos.Container.Database.GetContainer("missing");
+        return new TabCounting(new DraftRepository(missing), new ScriptoriumRepository(missing), new PreceptRepository(missing), new AuditRepository(missing),
+            NullLogger<TabCounting>.Instance);
+    }
+
     public Scribes ScribesWithoutCosmos()
     {
         var missing = cosmos.Container.Database.GetContainer("missing");

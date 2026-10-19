@@ -1,4 +1,5 @@
 using DailyMachineSpirit.Data.Entities;
+using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Scriptorium;
 using DailyMachineSpirit.Functions.Scriptorium.SignIn;
 using Microsoft.AspNetCore.Http;
@@ -22,7 +23,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     public Task DisposeAsync() => testbed.DisposeAsync();
 
     [Fact]
-    public async Task Page_ShowsTheCalendar_TheAshes_AndTheJudgments()
+    public async Task Page_ShowsTheCalendar_AndTheJudgments_ButNotTheAshes()
     {
         await testbed.AddDraft("The Rite of `git push --force`", 0.9f);
         var burned = await testbed.AddDraft("Litany of the Endless Spinner", 0.3f, RiteKind.Ritual);
@@ -33,14 +34,13 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
 
         Assert.Contains("The Liturgical Calendar", html);
         Assert.Contains("The Rite of <code>git push --force</code>", html);
-        Assert.Contains("Litany of the Endless Spinner", html);
-        Assert.Contains("Restore from the Ashes", html);
+        Assert.DoesNotContain($"""<h3 id="title-{burned.Id:D}">""", html);
+        Assert.DoesNotContain("Restore from the Ashes", html);
         // The top draft can be anointed (to keep it first), but not exalted.
         var top = Ok(await testbed.Scribes().View(CancellationToken.None)).Calendar[0].Draft.Id;
         Assert.Contains($"/scriptorium/drafts/{top:D}/anoint", html);
         Assert.DoesNotContain($"/scriptorium/drafts/{top:D}/exalt", html);
         Assert.Contains("“Spinners &lt;again&gt;.”", html);
-        Assert.Contains("and whether the Scribes agree with the Augury.", html);
         Assert.Contains("not affiliated with or endorsed by Games Workshop", html);
         Assert.Equal("no-store", request.HttpContext.Response.Headers.CacheControl.ToString());
         Assert.Equal("noindex", request.HttpContext.Response.Headers["X-Robots-Tag"].ToString());
@@ -70,8 +70,107 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
 
         Assert.Contains("No rite waits", html);
         Assert.Contains("Summon New Rites", html);
-        Assert.Contains("Nothing has been consigned to the flames.", html);
         Assert.DoesNotContain("Let the Augury Decide", html);
+    }
+
+    // Each tab says what its page holds: the calendar's, how many rites the Scribes placed and how many the Augury does.
+    [Fact]
+    public async Task EveryPage_HasTheTabs_CountingWhatEachHolds_AndMarkingItsOwn()
+    {
+        await testbed.AddDraft("Excellent", 0.95f);
+        var good = await testbed.AddDraft("Good", 0.7f);
+        await testbed.AddDraft("Fair", 0.4f);
+        var burned = await testbed.AddDraft("Burned", 0.3f);
+        // Anointing the second places it and the one above it.
+        Ok(await testbed.Scribes().Anoint(good.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        Ok(await testbed.Scribes().Burn(burned.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        Ok(await testbed.PreceptKeeping().AddPinned("Name the command.", BacklogTestbed.Tester, CancellationToken.None));
+        var function = Function();
+        var precepts = new PreceptsFunction(testbed.PreceptKeeping(), testbed.Distiller(),
+            new AgreementTrend(testbed.Scriptorium, Options.Create(Settings.ScriptoriumPages), testbed.Time), testbed.Tabs(),
+            new EveryoneIsScribeSignIn(), NullLogger<PreceptsFunction>.Instance);
+
+        var pages = new Dictionary<string, string>
+        {
+            ["/scriptorium"] = Html(await function.Page(Get(""), CancellationToken.None), 200),
+            ["/scriptorium/ashes"] = Html(await function.Ashes(Get(""), CancellationToken.None), 200),
+            ["/scriptorium/precepts"] = Html(await precepts.Page(Get(""), CancellationToken.None), 200),
+            ["/scriptorium/record"] = Html(await function.Record(Get(""), CancellationToken.None), 200),
+        };
+
+        Assert.All(pages, page =>
+        {
+            Assert.Contains("""The Calendar<span class="count">Scribes 2 · Augury 1</span>""", page.Value);
+            Assert.Contains("""The Ashes<span class="count">1</span>""", page.Value);
+            Assert.Contains("""The Precepts<span class="count">1</span>""", page.Value);
+            // Four drafts written, one anointed, one burned, and a precept added.
+            Assert.Contains("""The Record<span class="count">7</span>""", page.Value);
+            Assert.Contains($"""<a href="{page.Key}" aria-current="page">""", page.Value);
+            Assert.Single(page.Value.Split("aria-current=\"page\"").Skip(1));
+        });
+    }
+
+    // The counts are a nicety: without them, the tabs still lead everywhere.
+    [Fact]
+    public async Task Tabs_WhenTheyCantBeCounted_StillShow_WithoutCounts()
+    {
+        var function = new ScriptoriumFunction(
+            testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), testbed.TabsWithoutCosmos(), Options.Create(Settings.ScriptoriumPages), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+
+        var html = Html(await function.Page(Get(""), CancellationToken.None), 200);
+
+        Assert.Contains("""<a href="/scriptorium" aria-current="page">The Calendar</a>""", html);
+        Assert.Contains("""<a href="/scriptorium/ashes">The Ashes</a>""", html);
+        Assert.DoesNotContain("""class="count""", html);
+    }
+
+    [Fact]
+    public async Task Ashes_WhenNothingBurned_SaySo()
+    {
+        var html = Html(await Function().Ashes(Get(""), CancellationToken.None), 200);
+
+        Assert.Contains("Nothing has been consigned to the flames.", html);
+    }
+
+    // The page shows the newest; the tab counts them all, so the page says how many more there are.
+    [Fact]
+    public async Task Ashes_ShowTheNewestBurned_EachToRestore_AndHowManyBurnedInAll()
+    {
+        for (var i = 0; i <= Settings.ScriptoriumPages.AshesShown; i++)
+        {
+            testbed.Time.Advance(TimeSpan.FromMinutes(1));
+            var draft = await testbed.AddDraft($"Burned {i}", 0.5f);
+            Ok(await testbed.Scribes().Burn(draft.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        }
+
+        var html = Html(await Function().Ashes(Get(""), CancellationToken.None), 200);
+
+        Assert.Contains($"The {Settings.ScriptoriumPages.AshesShown} burned most recently, of {Settings.ScriptoriumPages.AshesShown + 1}.", html);
+        Assert.Contains($"Burned {Settings.ScriptoriumPages.AshesShown}", html);
+        Assert.DoesNotContain("Burned 0<", html);
+        Assert.Equal(Settings.ScriptoriumPages.AshesShown, html.Split("Restore from the Ashes<span").Length - 1);
+    }
+
+    // A burn's message links to its rite in the Ashes; followed after newer burns pushed it past the ones shown, the
+    // page still shows it, to restore.
+    [Fact]
+    public async Task Ashes_ShowARiteBurnedLongerAgo_WhenALinkAsksForIt()
+    {
+        var first = await testbed.AddDraft("Burned first", 0.5f);
+        Ok(await testbed.Scribes().Burn(first.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        for (var i = 0; i < Settings.ScriptoriumPages.AshesShown; i++)
+        {
+            testbed.Time.Advance(TimeSpan.FromMinutes(1));
+            var draft = await testbed.AddDraft($"Burned later {i}", 0.5f);
+            Ok(await testbed.Scribes().Burn(draft.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        }
+
+        var html = Html(await Function().Ashes(Get($"?rite={first.Id:D}"), CancellationToken.None), 200);
+
+        Assert.Contains("Burned longer ago</h2>", html);
+        Assert.Contains($"""<article class="rite ash acted" id="rite-{first.Id:D}" """, html);
+        Assert.Contains($"/scriptorium/drafts/{first.Id:D}/restore", html);
+        Assert.Contains($"The {Settings.ScriptoriumPages.AshesShown} burned most recently, of {Settings.ScriptoriumPages.AshesShown + 1}.", html);
     }
 
     [Fact]
@@ -141,7 +240,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Equal(good.Id, first.Draft.Id);
         Assert.Contains($"{done} “Good”", html);
         Assert.Contains(first.PublishesOnUtc.ToString("ddd d MMM", CultureInfo.InvariantCulture) + ".", html);
-        Assert.Contains($"""<article class="rite acted" id="rite-{good.Id:D}" """, html);
+        Assert.Contains($"""<article class="rite placed-by-scribes acted" id="rite-{good.Id:D}" """, html);
     }
 
     [Fact]
@@ -160,7 +259,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task AfterABurn_TheMessageLinksToTheRiteInTheAshes()
+    public async Task AfterABurn_TheMessageLinksToTheRiteInTheAshes_WhichMarkIt()
     {
         var burned = await testbed.AddDraft("Burned", 0.5f);
         await testbed.AddDraft("Still waiting", 0.5f);
@@ -169,8 +268,11 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var response = await function.Decide(Post(""), burned.Id, "burn", CancellationToken.None);
         var html = Html(await function.Page(Following(response.Result), CancellationToken.None), 200);
 
-        Assert.Contains($"""Consigned “Burned” to the flames. <a href="#rite-{burned.Id:D}">Restore it from the Ashes</a>.""", html);
-        Assert.Contains($"""<article class="rite ash acted" id="rite-{burned.Id:D}" """, html);
+        var link = $"/scriptorium/ashes?rite={burned.Id:D}#rite-{burned.Id:D}";
+        Assert.Contains($"""Consigned “Burned” to the flames. <a href="{link}">Restore it from the Ashes</a>.""", html);
+        Assert.DoesNotContain("acted\" id=", html);
+        var ashes = Html(await function.Ashes(Get(new Uri(new Uri("https://dailymachinespirit.fyi"), link).Query), CancellationToken.None), 200);
+        Assert.Contains($"""<article class="rite ash acted" id="rite-{burned.Id:D}" """, ashes);
     }
 
     // So the Scribe's eye finds where it went, with or without the script that slides it there.
@@ -185,9 +287,9 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var html = Html(await function.Page(Following(response.Result), CancellationToken.None), 200);
         var before = Html(await function.Page(Get(""), CancellationToken.None), 200);
 
-        Assert.Contains($"""<article class="rite acted" id="rite-{exalted.Id:D}" """, html);
-        Assert.Single(html.Split("class=\"rite acted\"").Skip(1));
-        Assert.DoesNotContain("class=\"rite acted\"", before);
+        Assert.Contains($"""<article class="rite placed-by-scribes acted" id="rite-{exalted.Id:D}" """, html);
+        Assert.Single(html.Split(" acted\" id=").Skip(1));
+        Assert.DoesNotContain(" acted\" id=", before);
     }
 
     // The forms work without it; with it, an action is shown in place.
@@ -247,7 +349,40 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Contains("it would place it #2", html);
         Assert.Contains("it would place it #1", html);
         Assert.Equal(2, html.Split("it would place it").Length - 1);
-        Assert.Equal(2, html.Split("Placed by the Scribes").Length - 1);
+        Assert.Equal(2, html.Split("Placed by A Scribe (…456789)").Length - 1);
+        Assert.Equal(2, html.Split("class=\"rite placed-by-scribes\"").Length - 1);
+    }
+
+    // The brass frame isn't the only sign: the rite says who placed it, by the name they chose.
+    [Fact]
+    public async Task Page_FramesTheRitesTheScribesPlaced_AndNamesWhoPlacedThem()
+    {
+        await testbed.AddDraft("Excellent", 0.95f);
+        var good = await testbed.AddDraft("Good", 0.7f);
+        Ok(await testbed.ScribeNaming().Choose(BacklogTestbed.Tester, "Magos Ferrum", CancellationToken.None));
+
+        Ok(await testbed.Scribes().Anoint(good.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
+
+        Assert.Contains($"""<article class="rite placed-by-scribes" id="rite-{good.Id:D}" """, html);
+        Assert.Contains("Placed by Magos Ferrum</p>", html);
+        Assert.DoesNotContain("Placed by the Scribes", html);
+    }
+
+    // Orders saved before they kept who placed each draft still frame their drafts, as the Scribes'.
+    [Fact]
+    public async Task Page_SaysTheScribesPlacedARite_WhenTheOrderDoesntKnowWho()
+    {
+        await testbed.AddDraft("Excellent", 0.95f);
+        var good = await testbed.AddDraft("Good", 0.7f);
+        Ok(await testbed.Scriptorium.SavePlacements(new Placements([good.Id], new Dictionary<Guid, string>(), LanguageExt.Prelude.None), LanguageExt.Prelude.None, [],
+            AuditEntries.Of(testbed.Time, BacklogTestbed.Tester, AuditAction.Anoint, LanguageExt.Prelude.None, LanguageExt.Prelude.None), CancellationToken.None));
+
+        var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
+
+        Assert.Contains($"""<article class="rite placed-by-scribes" id="rite-{good.Id:D}" """, html);
+        Assert.Contains("Placed by the Scribes</p>", html);
+        Assert.Single(html.Split("placed-by-scribes\" id=").Skip(1));
     }
 
     [Fact]
@@ -267,11 +402,11 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Contains($""" class="danger burn" formaction="/scriptorium/drafts/{top.Id:D}/burn">""", html);
         Assert.Contains("Let the Augury Decide", html);
         var buttons = Regex.Matches(html, "<button[^>]*>(.{0,120})").Select(match => match.Groups[1].Value).ToList();
-        Assert.Equal(9, buttons.Count);
+        Assert.Equal(8, buttons.Count);
         Assert.All(buttons, label => Assert.StartsWith("""<svg class="icon" aria-hidden="true" focusable="false" """, label));
         Assert.All(Regex.Matches(html, "<svg[^>]*>"), icon => Assert.Contains("""aria-hidden="true" focusable="false" """, icon.Value));
-        Assert.Equal(3, html.Split("""<details class="fold">""").Length - 1);
-        Assert.Equal(3, html.Split("""<label class="visually-hidden" for="note-""").Length - 1);
+        Assert.Equal(2, html.Split("""<details class="fold">""").Length - 1);
+        Assert.Equal(2, html.Split("""<label class="visually-hidden" for="note-""").Length - 1);
     }
 
     // A Scribe who acts once a month needn't remember what each of the rite's names means.
@@ -287,7 +422,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
         var buttons = Regex.Matches(html, "<button[^>]*>").Select(match => match.Value).ToList();
-        Assert.Equal(9, buttons.Count);
+        Assert.Equal(8, buttons.Count);
         Assert.All(buttons, button => Assert.Matches("""^<button title="[^"]{20,}" """, button));
         Assert.Contains("""<button title="Forgets the Scribes&#39; order: the Augury orders every waiting rite again, by quality and variety." class="outline">""", html);
         Assert.Contains($"""<button title="Takes this rite out of the calendar, into the Ashes. Nothing is deleted: it can be restored." class="danger burn" formaction="/scriptorium/drafts/{top.Id:D}/burn">""", html);
@@ -297,7 +432,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     public async Task Page_WhenCosmosFails_SaysTheScriptoriumIsSilent()
     {
         var function = new ScriptoriumFunction(
-            testbed.ScribesWithoutCosmos(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), Options.Create(Settings.ScriptoriumPages), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+            testbed.ScribesWithoutCosmos(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), testbed.Tabs(), Options.Create(Settings.ScriptoriumPages), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
         var html = Html(await function.Page(Get(""), CancellationToken.None), 500);
 
@@ -353,7 +488,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var burned = await testbed.AddDraft("Burned", 0.5f);
         await testbed.AddDraft("Still waiting", 0.5f);
         var scribes = new Scribes(new DraftsFailingAfterFirstRead(testbed.Drafts), testbed.Rites, testbed.Scriptorium, Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages), testbed.Time);
-        var function = new ScriptoriumFunction(scribes, testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), Options.Create(Settings.ScriptoriumPages), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+        var function = new ScriptoriumFunction(scribes, testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), testbed.Tabs(), Options.Create(Settings.ScriptoriumPages), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
         var response = await function.Decide(Post(""), burned.Id, "burn", CancellationToken.None);
 
@@ -481,14 +616,15 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var draft = await testbed.AddDraft("Kept", 0.5f);
         var function = new ScriptoriumFunction(
-            testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), Options.Create(Settings.ScriptoriumPages), new NobodyIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+            testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), testbed.Tabs(), Options.Create(Settings.ScriptoriumPages), new NobodyIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
         var page = await function.Page(Get(""), CancellationToken.None);
         var decision = await function.Decide(Post(""), draft.Id, "burn", CancellationToken.None);
         var summon = await function.Summon(Post(""), CancellationToken.None);
         var augury = await function.LetTheAuguryDecide(Post(""), CancellationToken.None);
+        var ashes = await function.Ashes(Get(""), CancellationToken.None);
 
-        Assert.All([page, decision.Result, summon.Result, augury],
+        Assert.All([page, decision.Result, summon.Result, augury, ashes],
             result => Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<StatusCodeResult>(result).StatusCode));
         Assert.Null(summon.RefillReason);
         Assert.Single(await testbed.Waiting());
@@ -573,7 +709,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var html = Html(await Function().Page(Following(response.Result), CancellationToken.None), 200);
         Assert.Matches("Judged “Litany of the Cold Cache” again, \\d+ %: the Augury places it for ", html);
         Assert.Contains($"""A Scribe on staging judged <a href="/scriptorium/record?draft={unjudged.Id:D}">“Litany of the Cold Cache”</a> again""", ScriptoriumPage.RenderRecord(
-            Ok(await testbed.Audit.GetHistory(unjudged.Id, CancellationToken.None)), [], LanguageExt.Prelude.None));
+            Ok(await testbed.Audit.GetHistory(unjudged.Id, CancellationToken.None)), [], LanguageExt.Prelude.None, LanguageExt.Prelude.None));
     }
 
     [Fact]
@@ -742,19 +878,19 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Contains("One rite's record.", one);
         Assert.DoesNotContain("“The Rite of Re-Run”", one);
         var calendar = Html(await Function().Page(Get(""), CancellationToken.None), 200);
-        Assert.Contains("""<a href="/scriptorium/record">The Record</a>""", calendar);
+        Assert.Contains("""<a href="/scriptorium/record">The Record<span class="count">""", calendar);
     }
 
     [Fact]
     public async Task TheRecord_IsTheScribesAlone()
     {
-        var notAScribe = new ScriptoriumFunction(testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), Options.Create(Settings.ScriptoriumPages), new NobodyIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+        var notAScribe = new ScriptoriumFunction(testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), testbed.Tabs(), Options.Create(Settings.ScriptoriumPages), new NobodyIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
         Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<StatusCodeResult>(await notAScribe.Record(Get(""), CancellationToken.None)).StatusCode);
     }
 
     private ScriptoriumFunction Function()
-        => new(testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), Options.Create(Settings.ScriptoriumPages), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+        => new(testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), testbed.Tabs(), Options.Create(Settings.ScriptoriumPages), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
     private static HttpRequest Get(string query)
     {

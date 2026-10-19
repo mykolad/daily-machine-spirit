@@ -34,6 +34,11 @@ public static partial class ScriptoriumPage
         .disclaimer { margin: 0; font: 400 14px/1.6 Figtree, sans-serif; color: #b6a98f; }
         .brand { display: inline-flex; align-items: center; gap: 10px; padding: 4px 8px 4px 0; font: 700 16px Cinzel, serif; letter-spacing: .04em; color: #c9a25a; text-decoration: none; }
         .brand:hover { color: #f0d59a; }
+        .tabs ul { list-style: none; display: flex; flex-wrap: wrap; gap: 0 8px; margin: 16px 0 0; padding: 0; border-bottom: 1px solid rgba(237,227,207,.16); }
+        .tabs a { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-height: 44px; padding: 12px 10px 9px; margin-bottom: -1px; border-bottom: 3px solid transparent; font: 600 16px/1.2 Figtree, sans-serif; color: #cdbd9e; text-decoration: none; }
+        .tabs a:hover { color: #f0d59a; border-bottom-color: rgba(201,162,90,.4); }
+        .tabs a[aria-current=page] { color: #ede3cf; border-bottom-color: #c9a25a; }
+        .tabs .count { font: 500 13px "JetBrains Mono", monospace; color: #b6a98f; }
         h1 { font: 700 clamp(30px, 4.4vw, 46px)/1.1 Cinzel, serif; margin: 24px 0 8px; }
         h2 { font: 700 26px/1.2 Cinzel, serif; margin: 0; }
         h3 { font: 700 21px/1.2 Cinzel, serif; margin: 6px 0 8px; }
@@ -57,6 +62,9 @@ public static partial class ScriptoriumPage
         .suggest-others .button-link { border-style: dashed; }
         .rite { background: #1a1612; border: 1px solid rgba(237,227,207,.1); border-radius: 20px; padding: 20px clamp(16px, 3vw, 24px); scroll-margin-top: 16px; }
         .next { display: inline-block; margin: 8px 0 0; padding: 2px 10px; border: 1px solid #2e4248; border-radius: 999px; font: 500 13px "JetBrains Mono", monospace; color: #8cc4ae; }
+        .placed-by-scribes { border: 2px solid #c9a25a; }
+        .placer { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; font-weight: 600; color: #d9b874; }
+        .placer .icon { width: 16px; height: 16px; }
         .ash { opacity: .92; }
         .acted { border-color: #f0b45a; animation: acted 1.6s ease-out; }
         @keyframes acted { from { box-shadow: 0 0 0 4px rgba(240, 180, 90, .55); } to { box-shadow: 0 0 0 4px rgba(240, 180, 90, 0); } }
@@ -113,20 +121,24 @@ public static partial class ScriptoriumPage
         @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
         """;
 
+    /// <param name="counts">What each tab holds; none when it couldn't be counted.</param>
     /// <param name="outcome">What the last action did (<see cref="ScriptoriumFunction"/>'s <c>done</c>), if anything.</param>
     /// <param name="rite">The draft it acted on, so the message can name it and say where it went.</param>
+    /// <param name="burned">That draft, when the action burned it: it's in the Ashes now, not on this page.</param>
     /// <param name="name">How the Record shows the Scribe looking, with a way to choose or change it (#84); none on staging.</param>
-    public static string Render(ScriptoriumView view, Option<string> outcome, Option<Guid> rite, Option<NameInTheRecord> name)
+    /// <param name="names">The names the Scribes chose, to say who placed a rite.</param>
+    public static string Render(
+        ScriptoriumView view, Option<TabCounts> counts, Option<string> outcome, Option<Guid> rite, Option<Draft> burned, Option<NameInTheRecord> name,
+        IReadOnlyList<ScribeName> names)
     {
-        var status = outcome.Bind(done => Status(done, view, rite));
+        var status = outcome.Bind(done => Status(done, view, rite, burned));
         var html = new StringBuilder();
-        Head(html, "The Scriptorium");
+        Head(html, "The Scriptorium", TabBar(ScriptoriumTab.Calendar, counts));
         html.Append("""
             <main id="main">
             """);
         Heading(html, "The Scriptorium",
             "Unconsecrated rites await the judgment of the Scribes. Your notes teach the Augury what to choose when no Scribe is watching.");
-        html.Append("""<p class="record-link"><a href="/scriptorium/precepts">The Precepts</a>: what the Machine Spirit has learned from your judgments, and whether the Scribes agree with the Augury. <a href="/scriptorium/record">The Record</a>: every change, and who made it.</p>""");
         name.IfSome(yours => html.Append(yours.Chosen
             ? $"""<p class="record-link">The Record calls you “{Encode(yours.Shown)}”. <a href="/scriptorium/name">Change your name</a></p>"""
             : $"""<p class="record-link">The Record shows you as “{Encode(yours.Shown)}”. <a href="/scriptorium/name">Choose a name</a> for it.</p>"""));
@@ -156,25 +168,9 @@ public static partial class ScriptoriumPage
             html.Append("""<ol class="calendar">""");
             for (var index = 0; index < view.Calendar.Count; index++)
             {
-                CalendarEntry(html, view.Calendar[index], place: index + 1, isLast: index == view.Calendar.Count - 1, view.Today, rite);
+                CalendarEntry(html, view.Calendar[index], place: index + 1, isLast: index == view.Calendar.Count - 1, view.Today, rite, names);
             }
             html.Append("</ol>");
-        }
-        html.Append("</section>");
-
-        html.Append("""<section aria-labelledby="ashes-heading"><h2 id="ashes-heading">The Ashes</h2>""");
-        if (view.Ashes.Count == 0)
-        {
-            html.Append("<p>Nothing has been consigned to the flames.</p>");
-        }
-        else
-        {
-            html.Append("""<ul class="calendar">""");
-            foreach (var draft in view.Ashes)
-            {
-                Ash(html, draft, rite);
-            }
-            html.Append("</ul>");
         }
         html.Append("</section>");
 
@@ -196,6 +192,47 @@ public static partial class ScriptoriumPage
         }
         html.Append("</section></main>");
         Footer(html, Some(ScriptoriumScript.Js));
+        return html.ToString();
+    }
+
+    /// <summary>
+    /// The Ashes: the burned rites, the most recently burned first, each with a way back into the calendar. Plain forms:
+    /// restoring goes to the calendar, where the restored rite now waits.
+    /// </summary>
+    /// <param name="ashes">The rites burned most recently.</param>
+    /// <param name="older">A rite burned before those, which a burn's message linked to.</param>
+    /// <param name="acted">The rite the calendar's last burn sent here, marked so the eye finds it.</param>
+    public static string RenderAshes(IReadOnlyList<Draft> ashes, Option<Draft> older, Option<TabCounts> counts, Option<Guid> acted)
+    {
+        var html = new StringBuilder();
+        Head(html, "The Ashes", TabBar(ScriptoriumTab.Ashes, counts));
+        html.Append("""<main id="main">""");
+        Heading(html, "The Ashes",
+            "Rites consigned to the flames. Nothing burned is lost: a restored rite waits again, where the Augury places it.");
+        if (ashes.Count == 0)
+        {
+            html.Append("<p>Nothing has been consigned to the flames.</p>");
+        }
+        else
+        {
+            // The page shows the newest; the tab counts them all.
+            counts.Filter(counted => counted.Ashes > ashes.Count)
+                .IfSome(counted => html.Append($"<p>The {ashes.Count} burned most recently, of {Number(counted.Ashes)}.</p>"));
+            html.Append("""<ul class="calendar">""");
+            foreach (var draft in ashes)
+            {
+                Ash(html, draft, acted);
+            }
+            html.Append("</ul>");
+        }
+        older.IfSome(draft =>
+        {
+            html.Append("""<section aria-labelledby="older-heading"><h2 id="older-heading">Burned longer ago</h2><ul class="calendar">""");
+            Ash(html, draft, acted);
+            html.Append("</ul></section>");
+        });
+        html.Append("</main>");
+        Footer(html, None);
         return html.ToString();
     }
 
@@ -290,16 +327,14 @@ public static partial class ScriptoriumPage
     /// first draft to its publishing.
     /// </summary>
     /// <param name="names">The names the Scribes chose (#84); the others show by the end of their ids.</param>
-    public static string RenderRecord(IReadOnlyList<AuditEntry> entries, IReadOnlyList<ScribeName> names, Option<Guid> draft)
+    public static string RenderRecord(IReadOnlyList<AuditEntry> entries, IReadOnlyList<ScribeName> names, Option<TabCounts> counts, Option<Guid> draft)
     {
         var html = new StringBuilder();
-        Head(html, "The Record");
+        Head(html, "The Record", TabBar(ScriptoriumTab.Record, counts));
         html.Append("""<main id="main">""");
         Heading(html, "The Record",
             "Every change to the calendar, the rites and the Precepts, and who made it, newest first: the Scribes' actions and the Machine Spirit's own.");
-        html.Append(draft.Match(
-            Some: _ => """<p>One rite's record. <a href="/scriptorium/record">The whole record</a> · <a href="/scriptorium">Back to the Scriptorium</a></p>""",
-            None: () => """<p><a href="/scriptorium">Back to the Scriptorium</a></p>"""));
+        draft.IfSome(_ => html.Append("""<p>One rite's record. <a href="/scriptorium/record">The whole record</a></p>"""));
         if (entries.Count == 0)
         {
             html.Append("<p>Nothing is recorded yet.</p>");
@@ -319,12 +354,21 @@ public static partial class ScriptoriumPage
     }
 
     /// <param name="acted">The rite the last action was on, marked so the Scribe's eye finds where it went.</param>
-    private static void CalendarEntry(StringBuilder html, CalendarEntry entry, int place, bool isLast, DateOnly today, Option<Guid> acted)
+    private static void CalendarEntry(
+        StringBuilder html, CalendarEntry entry, int place, bool isLast, DateOnly today, Option<Guid> acted, IReadOnlyList<ScribeName> names)
     {
         var draft = entry.Draft;
         var id = draft.Id.ToString("D");
-        html.Append($"""<li><article class="rite{Acted(draft, acted)}" id="rite-{id}" aria-labelledby="title-{id}">""");
+        // A rite the Scribes placed wears a brass frame and says who placed it, so the frame's colour isn't the only sign.
+        var placedByScribes = entry.PlacedByScribes ? " placed-by-scribes" : string.Empty;
+        html.Append($"""<li><article class="rite{placedByScribes}{Acted(draft, acted)}" id="rite-{id}" aria-labelledby="title-{id}">""");
         html.Append($"""<p class="kicker"><time datetime="{entry.PublishesOnUtc:yyyy-MM-dd}">{Date(entry.PublishesOnUtc)}</time> · {Kind(draft.Writing.Kind)}</p>""");
+        if (entry.PlacedByScribes)
+        {
+            // Placed before the order kept who placed it, it's the Scribes'.
+            var placer = entry.PlacedBy.Map(scribe => ScribeNames.Of(scribe, names)).IfNone("the Scribes");
+            html.Append($"""<p class="placer">{ScriptoriumIcons.Anoint}Placed by {Encode(placer)}</p>""");
+        }
         // Today's own rite is only still due when the midnight run failed; its retry publishes it.
         if (place == 1)
         {
@@ -337,8 +381,7 @@ public static partial class ScriptoriumPage
                 ? $"The Augury: {judged.Quality:P0}, it would place it #{entry.AuguryPlace}"
                 : $"The Augury: {judged.Quality:P0}")
             .IfNone("Not yet judged by the Augury");
-        var placedBy = entry.PlacedByScribes ? """<span class="placed">Placed by the Scribes</span> · """ : string.Empty;
-        html.Append($"""<p class="meta">{placedBy}{Encode(augury)} · written by <span class="nowrap">{Encode(draft.Writing.GeneratedByModel)}</span>{(draft.Writing.Edited ? ", amended by a Scribe" : string.Empty)} · <a href="/scriptorium/record?draft={id}">its record</a></p>""");
+        html.Append($"""<p class="meta">{Encode(augury)} · written by <span class="nowrap">{Encode(draft.Writing.GeneratedByModel)}</span>{(draft.Writing.Edited ? ", amended by a Scribe" : string.Empty)} · <a href="/scriptorium/record?draft={id}">its record</a></p>""");
         // Written again and again, it still repeated a rite: the Scribes decide whether it's new enough.
         draft.Resembles.IfSome(title => html.Append($"""<p class="resembles">Much like “{WithCode(title)}”, already written.</p>"""));
 
@@ -454,7 +497,10 @@ public static partial class ScriptoriumPage
             </div>
             """).Append(script.Map(js => $"<script>{js}</script>").IfNone(string.Empty)).Append("</body></html>");
 
-    private static void Head(StringBuilder html, string title)
+    // The pages under a tab (amending a rite, choosing a name) have none: they lead back where they came from.
+    private static void Head(StringBuilder html, string title) => Head(html, title, string.Empty);
+
+    private static void Head(StringBuilder html, string title, string tabs)
     {
         html.Append($"""
             <!doctype html>
@@ -470,9 +516,28 @@ public static partial class ScriptoriumPage
             <body>
             <a class="skip" href="#main">Skip to content</a>
             <div class="frame">
-            <header><a class="brand" href="/">{Pages.Svg.BrandCog}The Daily Machine Spirit</a></header>
+            <header><a class="brand" href="/">{Pages.Svg.BrandCog}The Daily Machine Spirit</a>{tabs}</header>
             """);
     }
+
+    // Each page's tab says what it holds. The calendar's counts the rites each orderer placed, in words, so a count is
+    // never told apart by colour alone; the current tab is marked by its underline, as well as for screen readers.
+    // In the header, outside the main part the calendar's script replaces, which swaps the bar itself.
+    private static string TabBar(ScriptoriumTab current, Option<TabCounts> counts)
+    {
+        string Tab(ScriptoriumTab tab, string path, string name, Func<TabCounts, string> count)
+            => $"""<li><a href="{path}"{(tab == current ? " aria-current=\"page\"" : string.Empty)}>{name}{counts.Map(counted => $"""<span class="count">{count(counted)}</span>""").IfNone(string.Empty)}</a></li>""";
+        return $"""
+            <nav class="tabs" aria-label="The Scriptorium"><ul>
+            {Tab(ScriptoriumTab.Calendar, "/scriptorium", "The Calendar", counted => $"Scribes {Number(counted.PlacedByScribes)} · Augury {Number(counted.PlacedByAugury)}")}
+            {Tab(ScriptoriumTab.Ashes, "/scriptorium/ashes", "The Ashes", counted => Number(counted.Ashes))}
+            {Tab(ScriptoriumTab.Precepts, "/scriptorium/precepts", "The Precepts", counted => Number(counted.Precepts))}
+            {Tab(ScriptoriumTab.Record, "/scriptorium/record", "The Record", counted => Number(counted.RecordEntries))}
+            </ul></nav>
+            """;
+    }
+
+    private static string Number(int count) => count.ToString("N0", CultureInfo.InvariantCulture);
 
     // What the waiting drafts are about, by their tags, so the Scribes see a calendar heavy on one subject.
     private static string Subjects(IEnumerable<Draft> drafts)
@@ -501,16 +566,15 @@ public static partial class ScriptoriumPage
 
     // What the last action did, as HTML. It names the rite and where it went when the rite is still on the page (it may
     // have been published or moved again since), and links a burned rite to its place in the Ashes, to restore it.
-    private static Option<string> Status(string outcome, ScriptoriumView view, Option<Guid> rite)
+    private static Option<string> Status(string outcome, ScriptoriumView view, Option<Guid> rite, Option<Draft> burned)
     {
         var entry = rite.Bind(id => view.Calendar.Where(waiting => waiting.Draft.Id == id).HeadOrNone());
-        var ash = rite.Bind(id => view.Ashes.Where(burned => burned.Id == id).HeadOrNone());
-        var title = (entry.Map(waiting => waiting.Draft) | ash).Map(draft => $"“{WithCode(draft.Writing.Title)}”");
+        var title = (entry.Map(waiting => waiting.Draft) | burned).Map(draft => $"“{WithCode(draft.Writing.Title)}”");
         var date = entry.Map(waiting => Date(waiting.PublishesOnUtc));
         var augury = entry.Bind(waiting => waiting.Draft.Augury)
             .Map(judged => $", {judged.Quality.ToString("P0", CultureInfo.InvariantCulture)}").IfNone(string.Empty);
         string Named(string done) => title.Map(name => $"{done} {name}").IfNone(done);
-        var restore = ash.Map(burned => $""" <a href="#rite-{burned.Id:D}">Restore it from the Ashes</a>.""").IfNone(string.Empty);
+        var restore = burned.Map(ash => $""" <a href="/scriptorium/ashes?rite={ash.Id:D}#rite-{ash.Id:D}">Restore it from the Ashes</a>.""").IfNone(string.Empty);
         return outcome switch
         {
             "anoint" => $"{Named("Anointed")}: it goes out next{date.Map(day => $", {day}").IfNone(string.Empty)}.",
