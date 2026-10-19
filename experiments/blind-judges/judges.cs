@@ -40,6 +40,10 @@ else if (step == "pairs")
 {
     Pairs();
 }
+else if (step == "tally")
+{
+    Tally();
+}
 else
 {
     Console.Error.WriteLine("Steps: score, pairs.");
@@ -152,6 +156,29 @@ void Pairs()
     Console.WriteLine($"{pairs.Count} pairs, from {uses.Count(use => use.Value > 0)} drafts.");
 }
 
+// For each judge, how often it preferred the rite the owner picked, of the pairs where both had a preference. The
+// picks come from the page's database (results/picks-raw/picks/<pair>.json, saved by ArtifactData).
+void Tally()
+{
+    var pairs = JsonSerializer.Deserialize<List<BlindPair>>(File.ReadAllText(Path.Combine(folder, "pairs.json")), json)!;
+    var picks = Directory.GetFiles(Path.Combine(folder, "picks-raw", "picks"), "*.json")
+        .ToDictionary(file => Path.GetFileNameWithoutExtension(file), file => JsonSerializer.Deserialize<Pick>(File.ReadAllText(file), json)!.Value);
+    var decided = pairs.Where(pair => picks.TryGetValue(pair.Id, out var pick) && pick != "same").ToList();
+    Console.WriteLine($"{picks.Count} picks: {decided.Count} with a better rite, {picks.Count(pick => pick.Value == "same")} about the same.");
+    foreach (var judge in new[] { "jev", "rubric", "taught" })
+    {
+        var opinions = decided.Where(pair => pair.Prefers[judge] != "same").ToList();
+        var agreed = opinions.Count(pair => pair.Prefers[judge] == picks[pair.Id]);
+        Console.WriteLine($"{judge,-7} agreed {agreed} of {opinions.Count} ({(opinions.Count == 0 ? 0 : 100.0 * agreed / opinions.Count):F0}%), no preference in {decided.Count - opinions.Count}");
+    }
+    // Head to head: where two judges preferred opposite rites, which one the owner sided with.
+    foreach (var (one, other) in new[] { ("jev", "rubric"), ("jev", "taught"), ("rubric", "taught") })
+    {
+        var split = decided.Where(pair => pair.Prefers[one] != "same" && pair.Prefers[other] != "same" && pair.Prefers[one] != pair.Prefers[other]).ToList();
+        Console.WriteLine($"{one} against {other}: {split.Count(pair => pair.Prefers[one] == picks[pair.Id])} to {split.Count(pair => pair.Prefers[other] == picks[pair.Id])}");
+    }
+}
+
 static object Shown(StoredDraft draft) => new { draft.Kind, draft.Title, draft.Text, draft.HereticalTruth };
 
 // The deployments' quota is small: past it, wait and ask again.
@@ -232,5 +259,11 @@ record StoredDecision(string DraftId, string Action, string Title, string? Note)
 record Judgment(int Score, string Reason);
 
 record ScoredDraft(StoredDraft Draft, string Judge, Judgment Rubric, Judgment Taught);
+
+record Pick(string Value)
+{
+    [JsonPropertyName("pick")]
+    public string Value { get; init; } = Value;
+}
 
 record BlindPair(string Id, StoredDraft Left, StoredDraft Right, Dictionary<string, string> Prefers);
