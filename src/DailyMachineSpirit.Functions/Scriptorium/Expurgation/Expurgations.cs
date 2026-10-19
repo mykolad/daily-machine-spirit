@@ -186,6 +186,7 @@ public sealed partial class Expurgations
             .Select(counted => $"{counted.Words} {(counted.Words == 1 ? "word" : "words")} of its {counted.Part.Name()}")),
     };
 
-    [GeneratedRegex("“[^”]*”")]
+    // From the first opening mark to the last closing one: a title may hold quotation marks of its own.
+    [GeneratedRegex("“.*”", RegexOptions.Singleline)]
     private static partial Regex Quoted();
 }

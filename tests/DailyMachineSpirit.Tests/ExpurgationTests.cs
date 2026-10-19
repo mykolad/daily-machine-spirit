@@ -215,6 +215,24 @@ public sealed class ExpurgationTests : IAsyncLifetime
         Assert.Equal(Some("from #1 to #1"), history.Single(entry => entry.Action == AuditAction.Anoint).Detail);
     }
 
+    // An amendment's detail quotes the old title whole, even one with quotation marks of its own.
+    [Fact]
+    public async Task Erase_ReachesAnOldTitleWithQuotationMarksOfItsOwn()
+    {
+        var draft = await testbed.AddDraft("The “Cold” Cache", 0.9f);
+        var amendable = Ok(await testbed.Amendments().FindWaiting(draft.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Not amendable."));
+        Ok(await testbed.Amendments().SaveAndJudgeAgain(draft.Id, amendable.ETag, Amended, "", BacklogTestbed.Tester, CancellationToken.None));
+        Ok(await testbed.Scribes().Anoint(draft.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        var number = Ok(await testbed.Publisher().PublishToday(CancellationToken.None)).Rite.Number;
+
+        // "The Litany of the Warm Cache": Cache is its sixth word.
+        Ok(await Expurgations().Erase(number, Found(await Expurgations().Find(number, CancellationToken.None)).Version,
+            [new(RitePart.Title, 5, "🐀")], Expurgator, CancellationToken.None));
+
+        var amended = Ok(await testbed.Audit.GetHistory(draft.Id, CancellationToken.None)).Single(entry => entry.Action == AuditAction.Amend);
+        Assert.Equal(Some("was “The “Cold” 🐀”"), amended.Detail);
+    }
+
     // A batch takes at most 100 operations: rather than erase some copies and not others, none.
     [Fact]
     public async Task Erase_MoreCopiesThanABatchTakes_IsRefused()
