@@ -24,8 +24,8 @@ var roles = {
 var productionAccess = {
   teamDomain: 'restless-river-ab5e.cloudflareaccess.com'
   audience: '3fac1c3c199e53f8242ae90f5c539f443843eaeff7a9d7ece38afe992f18d1ef'
-  // The Expurgators' own application (infra/README.md): empty until it's set up, and until then nobody may expurgate.
-  expurgatorAudience: ''
+  // The Expurgators' own application (infra/README.md), on /scriptorium/expurgate*: its policy admits them.
+  expurgatorAudience: 'cb167b1fdfb104ff7bd074d8a4ca986b20014ebd48b5d68c1d465811650fe5d7'
 }
 
 // The GitHub OAuth apps readers sign in with to vote, one per environment, since each has its own callback URL
