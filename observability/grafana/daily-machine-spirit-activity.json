@@ -36,7 +36,7 @@
     {
       "type": "timeseries",
       "title": "Scribes' actions per day",
-      "description": "Each action a Scribe took, by what it was: anoint, exalt, humble, burn, restore, amend, rewrite (asked the Machine Spirit to), judge (again), summon, augury (let it decide), distil, precept-add, -edit, -pin, -unpin, -delete, and name (chose one). Not who: the Record says that.",
+      "description": "Each action a Scribe took, by what it was: anoint, exalt, humble, burn, restore, amend, rewrite (asked the Machine Spirit to), judge (again), summon, augury (let it decide), distil, precept-add, -edit, -pin, -unpin, -delete, name (chose one), and expurgate (erased words from a published rite). Not who: the Record says that.",
       "id": 2,
       "gridPos": { "x": 0, "y": 1, "w": 16, "h": 9 },
       "datasource": { "type": "loki", "uid": "${loki}" },

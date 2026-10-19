@@ -1,5 +1,6 @@
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Scriptorium.SignIn;
+using DailyMachineSpirit.Functions.Telemetry;
 using LanguageExt;
 using LanguageExt.Common;
 using Microsoft.AspNetCore.Http;
@@ -141,7 +142,11 @@ public sealed class ExpurgationFunction
     private IActionResult Erased(HttpRequest request, int number, Either<Error, Option<Data.Entities.Rite>> erased)
         => erased.Match(
             Right: rite => rite.Match(
-                Some: _ => Redirect($"/scriptorium/expurgate/{number}?done=erased"),
+                Some: _ =>
+                {
+                    logger.CountScribeAction("expurgate");
+                    return Redirect($"/scriptorium/expurgate/{number}?done=erased");
+                },
                 None: () => Redirect("/scriptorium/expurgate?done=no-rite")),
             Left: error =>
             {
