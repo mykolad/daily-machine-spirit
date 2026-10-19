@@ -255,8 +255,8 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
   - **Its Application Audience (AUD) tag** and the team domain (Settings → Team domain) are in `productionAccess` in
     `resources.bicep`: neither is secret, and there every deployment keeps them. Without both, production's
     Scriptorium lets nobody in.
-  - **The Expurgators** erase words from published rites (`/scriptorium/expurgate`), so they have an application of
-    their own, which takes those paths from the Scribes' (Access applies the most specific path):
+  - **The Expurgators** erase words from published rites (`/scriptorium/expurgate`) (set up 2026-10-19), so they have an
+    application of their own, which takes those paths from the Scribes' (Access applies the most specific path):
     1. **An Access group** (Access controls → Access groups), *Expurgators*, including the emails of the Scribes who
        may expurgate.
     2. **A self-hosted application**, *Expurgators*, with two destinations, `dailymachinespirit.fyi/scriptorium/expurgate`
