@@ -36,6 +36,8 @@ public static class Settings
 
     public static JevOptions Jev => Section<JevOptions>(JevOptions.SectionName);
 
+    public static QualityJudgingOptions QualityJudging => Section<QualityJudgingOptions>(QualityJudgingOptions.SectionName);
+
     public static PagePurgingOptions PagePurging => Section<PagePurgingOptions>(PagePurgingOptions.SectionName);
 
     public static PublicPagesOptions PublicPages => Section<PublicPagesOptions>(PublicPagesOptions.SectionName);

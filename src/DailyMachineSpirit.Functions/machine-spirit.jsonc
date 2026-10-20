@@ -69,7 +69,16 @@
     "SameKindPenalty": 0.1
   },
 
-  // Jev, the judge: its quality for the Augury, its scores for "More rites", and its topics for the tags.
+  // The Augury's quality (#10): the model that didn't write a draft scores it against a rubric, from 1 to 10, this many
+  // times at once, and the quality is the average. A model's score for one draft varies by a point or two between asks.
+  "QualityJudging": {
+    "Models": [ "gpt-6-luna", "gpt-6-sol" ],
+    "ScoresPerDraft": 3,
+    // Each score at once, so a Scribe saving an amendment waits for one, beside Jev's.
+    "Patience": { "TimePerTry": "00:00:30" }
+  },
+
+  // Jev, the judge of similarity: its scores for "More rites", and its topics for the tags.
   "Jev": {
     "Endpoint": "https://jevtypesafeai.com/api/v1/decide",
     // Pinned, so scores made months apart stay comparable. A new version means judging every rite again.

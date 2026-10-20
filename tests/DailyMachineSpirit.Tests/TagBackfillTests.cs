@@ -17,10 +17,15 @@ public sealed class TagBackfillTests : IAsyncLifetime
 
     private readonly CosmosTestContainer cosmos = new();
     private readonly FakeTimeProvider time = new(new DateTimeOffset(2026, 10, 9, 20, 48, 0, TimeSpan.Zero));
+    private readonly MetricsProbe probe = new();
 
     public Task InitializeAsync() => cosmos.InitializeAsync();
 
-    public Task DisposeAsync() => cosmos.DisposeAsync();
+    public Task DisposeAsync()
+    {
+        probe.Dispose();
+        return cosmos.DisposeAsync();
+    }
 
     [Fact]
     public async Task Run_TagsOlderRitesAndDrafts_FromTheirScores()
@@ -98,8 +103,10 @@ public sealed class TagBackfillTests : IAsyncLifetime
 
     private TagBackfill Backfill() => new(Rites, Drafts, Judge(), NullLogger<TagBackfill>.Instance);
 
-    // Reading tags from stored scores never asks Jev, so a Jev that can't answer does.
-    private JevJudge Judge() => new FakeJev(HttpStatusCode.InternalServerError, "").NewJudge(time, FakeJev.ApiKey);
+    // Reading tags from stored scores never asks a judge, so a Jev that can't answer, and models that never do, do.
+    private RiteJudge Judge() => new(
+        new FakeJev(HttpStatusCode.InternalServerError, "").NewJudge(time, FakeJev.ApiKey),
+        new RubricJudge(new FakeChatClients(), Microsoft.Extensions.Options.Options.Create(BacklogTestbed.QualityJudging), time, probe.Metrics));
 
     private async Task AddRite(DateOnly day, RiteSimilarity similarity)
         => Ok(await Rites.Add(new Rite

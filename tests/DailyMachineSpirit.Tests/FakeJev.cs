@@ -27,8 +27,7 @@ public sealed class FakeJev : HttpMessageHandler
             {
               "answers": {
                 "topic": { "probabilities": { "builds": 1.0 } },
-                "act": { "probabilities": { "repetition": 0.75, "waiting": 0.25 } },
-                "quality": { "probabilities": { "excellent": 0.5, "good": 0.5 } }
+                "act": { "probabilities": { "repetition": 0.75, "waiting": 0.25 } }
               }
             }
             """);

@@ -19,8 +19,10 @@ public class SettingsTests
         var distillation = Longest(distilling.Patience, distilling.Models.Length)
             + Settings.PreceptCheck.Patience.OverallLimit.IfNone(() => throw new Xunit.Sdk.XunitException("The precept check has no limit."));
         var names = Longest(Settings.ScribeNameSuggestions.Patience, 1);
+        // A saved amendment is judged again while the Scribe waits: Jev and every score at once.
+        var judging = new[] { Longest(Settings.Jev.Patience, 1), Longest(Settings.QualityJudging.Patience, 1) }.Max();
 
-        Assert.All([rewrite, distillation, names], waited => Assert.True(waited < CloudflareWaits, $"{waited} is past {CloudflareWaits}."));
+        Assert.All([rewrite, distillation, names, judging], waited => Assert.True(waited < CloudflareWaits, $"{waited} is past {CloudflareWaits}."));
     }
 
     // The binder leaves a value unset when its key is missing: every number, name and list must come from the file.
@@ -30,7 +32,7 @@ public class SettingsTests
         object[] sections =
         [
             Settings.RiteWriting, Settings.Backlog, Settings.DuplicateRiteCheck, Settings.PreceptDistilling, Settings.PreceptCheck,
-            Settings.ScribeNameSuggestions, Settings.Augury, Settings.Jev, Settings.PagePurging, Settings.PublicPages, Settings.ScriptoriumPages,
+            Settings.ScribeNameSuggestions, Settings.Augury, Settings.QualityJudging, Settings.Jev, Settings.PagePurging, Settings.PublicPages, Settings.ScriptoriumPages,
         ];
 
         var unset = sections
@@ -61,6 +63,7 @@ public class SettingsTests
     [InlineData("PreceptCheck:Patience", "TimeInAll")]
     [InlineData("ScribeNameSuggestions:Patience", "TimePerTry")]
     [InlineData("Jev:Patience", "TimePerTry")]
+    [InlineData("QualityJudging:Patience", "TimePerTry")]
     public void EachPatience_SetsTheLimitsItsCodeHonours(string path, string honoured)
         => Assert.Equal(honoured.Split(' ').Order(), Settings.KeysIn(path).Order());
 

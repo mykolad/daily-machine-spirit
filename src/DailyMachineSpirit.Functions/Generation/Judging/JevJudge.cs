@@ -9,10 +9,11 @@ using Microsoft.Extensions.Options;
 namespace DailyMachineSpirit.Functions.Generation.Judging;
 
 /// <summary>
-/// Judges drafts with Jev's decide API (jevtypesafeai.com), for "More rites" and the Augury, in one request: only the
-/// draft's own text goes there, never anything about visitors. The key is a header, never logged.
+/// Scores drafts with Jev's decide API (jevtypesafeai.com) for "More rites", and tags them, in one request: only the
+/// draft's own text goes there, never anything about visitors. The key is a header, never logged. The Augury's quality
+/// is the <see cref="RubricJudge"/>'s: Jev's own quality question barely told drafts apart (#10).
 /// </summary>
-public sealed class JevJudge : IRiteJudge
+public sealed class JevJudge : ISimilarityJudge
 {
     private readonly HttpClient http;
     private readonly IOptions<JevOptions> options;
@@ -26,8 +27,8 @@ public sealed class JevJudge : IRiteJudge
     }
 
     /// <summary>
-    /// The draft with its similarity scores (the topic probabilities, then the act probabilities), its tags and its
-    /// quality; the draft as it was while Jev is off.
+    /// The draft with its similarity scores (the topic probabilities, then the act probabilities) and its tags; the draft
+    /// as it was while Jev is off.
     /// </summary>
     public async Task<Either<Error, Draft>> Judge(Draft draft, CancellationToken cancellationToken)
     {
@@ -49,9 +50,6 @@ public sealed class JevJudge : IRiteJudge
                     {
                         ["topic"] = Question("Which software habit or practice is this satirical rite about?", JevQuestions.Topics),
                         ["act"] = Question("What does the rite ask its believers to do?", JevQuestions.Acts),
-                        ["quality"] = Question(
-                            "How good is this as satire of software habits? Judge whether it's funny, and whether its 'What really happens' part is accurate and useful.",
-                            JevQuestions.Qualities.Select(q => new KeyValuePair<string, string>(q.Key, q.Description)).ToList()),
                     },
                 }),
             };
@@ -68,30 +66,18 @@ public sealed class JevJudge : IRiteJudge
             var answers = JsonNode.Parse(body)?["answers"];
             var topic = answers?["topic"]?["probabilities"];
             var act = answers?["act"]?["probabilities"];
-            var quality = answers?["quality"]?["probabilities"];
-            if (topic is null || act is null || quality is null)
+            if (topic is null || act is null)
             {
                 return Error.New($"Jev's answer has no probabilities: {Shorten(body)}");
             }
 
-            var now = time.GetUtcNow().UtcDateTime;
             var similarity = new RiteSimilarity
             {
                 ScoresGeneratorVersion = JevQuestions.Version(jev.Model),
                 Scores = [.. Probabilities(topic, JevQuestions.Topics), .. Probabilities(act, JevQuestions.Acts)],
-                CreatedAtUtc = now,
+                CreatedAtUtc = time.GetUtcNow().UtcDateTime,
             };
-            return draft with
-            {
-                Similarity = similarity,
-                Tags = TagsFrom(similarity),
-                Augury = new Augury
-                {
-                    Quality = JevQuestions.Qualities.Sum(q => Probability(quality, q.Key) * q.Quality),
-                    JudgedBy = JevQuestions.QualityVersion(jev.Model),
-                    JudgedAtUtc = now,
-                },
-            };
+            return draft with { Similarity = similarity, Tags = TagsFrom(similarity) };
         }
         // An outage, a timeout or an answer that isn't JSON. Only the caller's own cancellation throws.
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
@@ -99,6 +85,12 @@ public sealed class JevJudge : IRiteJudge
             return Error.New(ex);
         }
     }
+
+    // Without its key Jev isn't asked at all, and drafts go without scores and tags. Scores from another model or
+    // question set can't be compared with its own (the Augury and More rites compare only the same version).
+    public bool NeedsJudging(Draft draft)
+        => options.Value.Enabled
+            && !draft.Similarity.Exists(scores => scores.ScoresGeneratorVersion == JevQuestions.Version(options.Value.Model));
 
     public Option<string[]> TagsFrom(RiteSimilarity similarity) => JevTags.From(similarity, options.Value);
 

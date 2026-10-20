@@ -19,7 +19,7 @@ public sealed class BacklogRefiller
     private readonly IScriptoriumRepository scriptorium;
     private readonly RiteWriter writer;
     private readonly DuplicateCheck duplicates;
-    private readonly JudgingAgain judgingAgain;
+    private readonly DraftJudging judging;
     private readonly IRiteJudge judge;
     private readonly IOptions<BacklogOptions> options;
     private readonly SiteMetrics metrics;
@@ -31,7 +31,7 @@ public sealed class BacklogRefiller
         IScriptoriumRepository scriptorium,
         RiteWriter writer,
         DuplicateCheck duplicates,
-        JudgingAgain judgingAgain,
+        DraftJudging judging,
         IRiteJudge judge,
         IOptions<BacklogOptions> options,
         SiteMetrics metrics,
@@ -42,7 +42,7 @@ public sealed class BacklogRefiller
         this.scriptorium = scriptorium;
         this.writer = writer;
         this.duplicates = duplicates;
-        this.judgingAgain = judgingAgain;
+        this.judging = judging;
         this.judge = judge;
         this.options = options;
         this.metrics = metrics;
@@ -55,9 +55,7 @@ public sealed class BacklogRefiller
     /// </summary>
     public async Task<Either<Error, int>> Refill(CancellationToken cancellationToken)
     {
-        // First the drafts judging couldn't score: an outage that's over heals here. It never stops the refill.
-        (await judgingAgain.JudgeTheUnjudged(cancellationToken))
-            .IfLeft(error => logger.LogWarning(error.ToException(), "Unjudged drafts couldn't be judged again: {Reason}", error.Message));
+        await JudgeTheUnjudged(cancellationToken);
 
         for (var written = 0; ; written++)
         {
@@ -123,6 +121,31 @@ public sealed class BacklogRefiller
             return Right<Error, Draft>(repeating with { Resembles = same.Title });
         });
 
+    // First the drafts the current judge hasn't judged (judging failed, or was off, or an older judge scored them), one
+    // at a time: an outage that's over, or a new judge, heals here. Nothing here stops the refill.
+    private async Task JudgeTheUnjudged(CancellationToken cancellationToken)
+    {
+        var waiting = (await drafts.GetWaiting(cancellationToken)).IfLeft(error =>
+        {
+            logger.LogWarning(error.ToException(), "Unjudged drafts couldn't be listed: {Reason}", error.Message);
+            return new List<Draft>();
+        });
+        foreach (var draft in waiting.Where(judge.NeedsJudging))
+        {
+            (await judging.Judge(draft.Id, AuditEntry.MachineSpirit, cancellationToken))
+                .IfLeft(error => LogUnlessChangedMeanwhile(draft, error));
+        }
+    }
+
+    // Amended, burned, published or judged since the list was read: no failure, just nothing left to judge.
+    private void LogUnlessChangedMeanwhile(Draft draft, Error error)
+    {
+        if (error != ScriptoriumRepository.ChangedMeanwhile && error != DraftJudging.NothingToJudge)
+        {
+            logger.LogWarning(error.ToException(), "Draft {Title} couldn't be judged: {Reason}", draft.Writing.Title, error.Message);
+        }
+    }
+
     // Another refill may have saved drafts while this one wrote (Summon twice, or a burn's refill): read the waiting ones
     // again just before the check. Two checks at the same moment can still miss each other; the Scribes see both.
     private async Task<IReadOnlyList<TakenRite>> WithDraftsSavedMeanwhile(IReadOnlyList<TakenRite> taken, CancellationToken cancellationToken)
@@ -160,7 +183,7 @@ public sealed class BacklogRefiller
             ? RiteKind.Prayer
             : RiteKind.Ritual;
 
-    // Judging only orders the backlog and powers "More rites": a draft Jev couldn't judge still joins it, after the
+    // Judging only orders the backlog and powers "More rites": a draft that couldn't be judged still joins it, after the
     // judged ones, rather than being lost.
     private async Task<Draft> Judged(Draft draft, CancellationToken cancellationToken)
         => (await judge.Judge(draft, cancellationToken)).Match(
@@ -175,7 +198,7 @@ public sealed class BacklogRefiller
                     },
                     None: () =>
                     {
-                        logger.LogInformation("Draft {Title} joins the backlog without scores: judging is turned off.", draft.Writing.Title);
+                        logger.LogInformation("Draft {Title} joins the backlog without similarity scores: Jev is turned off.", draft.Writing.Title);
                         metrics.Judging("off");
                     });
                 return judged;
