@@ -1,9 +1,11 @@
+using System.Globalization;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Generation.Judging;
 using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Scriptorium.Naming;
 using DailyMachineSpirit.Functions.Scriptorium.SignIn;
+using DailyMachineSpirit.Functions.Tags;
 using DailyMachineSpirit.Functions.Telemetry;
 using LanguageExt;
 using LanguageExt.Common;
@@ -86,12 +88,13 @@ public sealed class ScriptoriumFunction
 
         var outcome = Optional(request.Query["done"].ToString()).Filter(done => done.Length > 0);
         var rite = Optional(request.Query["rite"].ToString()).Bind(text => Guid.TryParse(text, out var id) ? Some(id) : None);
+        var shown = new CalendarShown(Subject(request.Query["subject"].ToString()), request.Query["open"].ToString() == "all");
         var name = await NameOf(scribe, cancellationToken);
         var names = await Names(cancellationToken);
         var counts = await tabs.Count(cancellationToken);
         return await (await scribes.View(cancellationToken)).Match(
             Right: async view => Html(request,
-                ScriptoriumPage.Render(view, counts, outcome, rite,
+                ScriptoriumPage.Render(view, shown, counts, outcome, rite,
                     await BurnedUnlessShown(rite, id => view.Calendar.Exists(entry => entry.Draft.Id == id), cancellationToken), name, names),
                 StatusCodes.Status200OK),
             Left: error => Task.FromResult(Failed(request, error)));
@@ -133,7 +136,7 @@ public sealed class ScriptoriumFunction
             Right: found => found.Match(
                 Some: amendable => Html(request, ScriptoriumPage.RenderAmend(amendable, Words(amendable.Draft), string.Empty, None, None), StatusCodes.Status200OK),
                 // Burned or published since the calendar was shown: the page says to look again.
-                None: () => Back("changed", draftId)),
+                None: () => Back("changed", draftId, None)),
             Left: error => Failed(request, error));
     }
 
@@ -180,7 +183,7 @@ public sealed class ScriptoriumFunction
                 (await audit.Add(AuditEntries.Of(time, scribe, AuditAction.Summon, None, None), cancellationToken))
                     .IfLeft(error => logger.LogError(error.ToException(), "A summon wasn't recorded: {Reason}", error.Message));
                 logger.CountScribeAction("summon");
-                return new ScriptoriumResponse { Result = BackToPage("summon"), RefillReason = Summoned };
+                return new ScriptoriumResponse { Result = BackToPage("summon", None), RefillReason = Summoned };
             });
 
     [Function("ScriptoriumAugury")]
@@ -188,7 +191,7 @@ public sealed class ScriptoriumFunction
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "scriptorium/augury")] HttpRequest request, CancellationToken cancellationToken)
         => await (await gate.ActingScribe(request, cancellationToken)).Match(
             Left: refused => Task.FromResult(refused),
-            Right: async scribe => Answer(request, "augury", None, await scribes.LetTheAuguryDecide(scribe, cancellationToken)).Result);
+            Right: async scribe => Answer(request, "augury", None, None, await scribes.LetTheAuguryDecide(scribe, cancellationToken)).Result);
 
     private async Task<ScriptoriumResponse> Act(HttpRequest request, Guid draftId, string action, string scribe, CancellationToken cancellationToken)
         => await (await ReadForm(request, cancellationToken)).Match(
@@ -199,15 +202,16 @@ public sealed class ScriptoriumFunction
         HttpRequest request, Guid draftId, string action, IFormCollection fields, string scribe, CancellationToken cancellationToken)
     {
         var note = fields["note"].ToString();
+        var subject = Subject(fields["subject"].ToString());
         return action switch
         {
             "amend" => await Amend(request, draftId, fields, scribe, cancellationToken),
             "rewrite" => await Rewrite(request, draftId, fields, cancellationToken),
-            "anoint" => Answer(request, action, draftId, await scribes.Anoint(draftId, note, scribe, cancellationToken)),
-            "exalt" => Answer(request, action, draftId, await scribes.Exalt(draftId, note, scribe, cancellationToken)),
-            "humble" => Answer(request, action, draftId, await scribes.Humble(draftId, note, scribe, cancellationToken)),
-            "restore" => Answer(request, action, draftId, await scribes.Restore(draftId, note, scribe, cancellationToken)),
-            "judge" => JudgedAgain(request, draftId, await judgingAgain.JudgeAgain(draftId, scribe, cancellationToken)),
+            "anoint" => Answer(request, action, draftId, subject, await scribes.Anoint(draftId, note, scribe, cancellationToken)),
+            "exalt" => Answer(request, action, draftId, subject, await scribes.Exalt(draftId, note, scribe, cancellationToken)),
+            "humble" => Answer(request, action, draftId, subject, await scribes.Humble(draftId, note, scribe, cancellationToken)),
+            "restore" => Answer(request, action, draftId, subject, await scribes.Restore(draftId, note, scribe, Place(fields), cancellationToken)),
+            "judge" => JudgedAgain(request, draftId, subject, await judgingAgain.JudgeAgain(draftId, scribe, cancellationToken)),
             "burn" => (await scribes.Burn(draftId, note, scribe, cancellationToken)).Match(
                 // Nothing waits any more, or it can't be told: refill now rather than at the next daily run. A refill
                 // only writes what's missing, so an unneeded one costs a read.
@@ -216,11 +220,11 @@ public sealed class ScriptoriumFunction
                     logger.CountScribeAction(action);
                     return waiting.Match(
                         Some: count => count == 0
-                            ? new ScriptoriumResponse { Result = AfterBurning("burn-last", draftId), RefillReason = AllBurned }
-                            : new ScriptoriumResponse { Result = AfterBurning("burn", draftId) },
-                        None: () => new ScriptoriumResponse { Result = AfterBurning("burn", draftId), RefillReason = Uncounted });
+                            ? new ScriptoriumResponse { Result = AfterBurning("burn-last", draftId, subject), RefillReason = AllBurned }
+                            : new ScriptoriumResponse { Result = AfterBurning("burn", draftId, subject) },
+                        None: () => new ScriptoriumResponse { Result = AfterBurning("burn", draftId, subject), RefillReason = Uncounted });
                 },
-                Left: error => Failure(request, error, draftId)),
+                Left: error => Failure(request, error, draftId, subject)),
             _ => new ScriptoriumResponse { Result = new NotFoundResult() },
         };
     }
@@ -236,11 +240,11 @@ public sealed class ScriptoriumFunction
             Right: saved =>
             {
                 logger.CountScribeAction("amend");
-                return Task.FromResult(new ScriptoriumResponse { Result = Back(saved.JudgedAgain ? "amend" : "amend-unjudged", draftId) });
+                return Task.FromResult(new ScriptoriumResponse { Result = Back(saved.JudgedAgain ? "amend" : "amend-unjudged", draftId, None) });
             },
             Left: error => IsTheScribes(error)
                 ? AmendAgain(request, draftId, etag, words, None, note, error.Message, StatusCodes.Status422UnprocessableEntity, cancellationToken)
-                : Task.FromResult(Failure(request, error, draftId)));
+                : Task.FromResult(Failure(request, error, draftId, None)));
     }
 
     // The rewrite goes into the form, unsaved: the Scribe reads it before saving it.
@@ -261,7 +265,7 @@ public sealed class ScriptoriumFunction
             {
                 if (error == ScriptoriumRepository.ChangedMeanwhile)
                 {
-                    return Task.FromResult(new ScriptoriumResponse { Result = Back("changed", draftId) });
+                    return Task.FromResult(new ScriptoriumResponse { Result = Back("changed", draftId, None) });
                 }
                 if (IsTheScribes(error))
                 {
@@ -286,8 +290,8 @@ public sealed class ScriptoriumFunction
                 {
                     Result = Html(request, ScriptoriumPage.RenderAmend(amendable with { ETag = etag }, words, note, Some(message), rewrittenFrom), status),
                 },
-                None: () => new ScriptoriumResponse { Result = Back("changed", draftId) }),
-            Left: error => Failure(request, error, draftId));
+                None: () => new ScriptoriumResponse { Result = Back("changed", draftId, None) }),
+            Left: error => Failure(request, error, draftId, None));
 
     // The Scribe's to fix on the page: words breaking a rule, a note too long, or no note to rewrite by.
     private static bool IsTheScribes(Error error) => error is AmendmentRefused || error == Scribes.NoteTooLong;
@@ -302,39 +306,39 @@ public sealed class ScriptoriumFunction
     private static RiteContent Words(Draft draft) => new(draft.Writing.Title, draft.Writing.Text, draft.Writing.HereticalTruth);
 
     // Judged meanwhile (a refill did it), amended, burned or published: there's nothing left to judge, so look again.
-    private ScriptoriumResponse JudgedAgain(HttpRequest request, Guid draftId, Either<Error, Option<Augury>> result)
+    private ScriptoriumResponse JudgedAgain(HttpRequest request, Guid draftId, Option<Tag> subject, Either<Error, Option<Augury>> result)
         => result.Match(
             Right: augury =>
             {
                 logger.CountScribeAction("judge");
-                return new ScriptoriumResponse { Result = Back(augury.IsSome ? "judged" : "still-unjudged", draftId) };
+                return new ScriptoriumResponse { Result = Back(augury.IsSome ? "judged" : "still-unjudged", draftId, subject) };
             },
             Left: error => error == JudgingAgain.NothingToJudge
-                ? new ScriptoriumResponse { Result = Back("changed", draftId) }
-                : Failure(request, error, draftId));
+                ? new ScriptoriumResponse { Result = Back("changed", draftId, subject) }
+                : Failure(request, error, draftId, subject));
 
-    private ScriptoriumResponse Answer(HttpRequest request, string action, Option<Guid> draftId, Either<Error, Unit> result)
+    private ScriptoriumResponse Answer(HttpRequest request, string action, Option<Guid> draftId, Option<Tag> subject, Either<Error, Unit> result)
         => result.Match(
             Right: _ =>
             {
                 logger.CountScribeAction(action);
-                return new ScriptoriumResponse { Result = Back(action, draftId) };
+                return new ScriptoriumResponse { Result = Back(action, draftId, subject) };
             },
-            Left: error => Failure(request, error, draftId));
+            Left: error => Failure(request, error, draftId, subject));
 
-    private ScriptoriumResponse Failure(HttpRequest request, Error error, Option<Guid> draftId)
+    private ScriptoriumResponse Failure(HttpRequest request, Error error, Option<Guid> draftId, Option<Tag> subject)
     {
         if (error == ScriptoriumRepository.ChangedMeanwhile)
         {
-            return new ScriptoriumResponse { Result = Back("changed", draftId) };
+            return new ScriptoriumResponse { Result = Back("changed", draftId, subject) };
         }
         if (error == Scribes.NothingToMove)
         {
-            return new ScriptoriumResponse { Result = Back("unmoved", draftId) };
+            return new ScriptoriumResponse { Result = Back("unmoved", draftId, subject) };
         }
         if (error == Scribes.NoteTooLong)
         {
-            return new ScriptoriumResponse { Result = Back("note-too-long", draftId) };
+            return new ScriptoriumResponse { Result = Back("note-too-long", draftId, subject) };
         }
         return new ScriptoriumResponse { Result = Failed(request, error) };
     }
@@ -377,14 +381,25 @@ public sealed class ScriptoriumFunction
         return Html(request, ScriptoriumPage.RenderError(), StatusCodes.Status500InternalServerError);
     }
 
-    private static IActionResult BackToPage(string outcome) => Redirect($"/scriptorium?done={outcome}");
+    private static IActionResult BackToPage(string outcome, Option<Tag> subject) => Redirect($"/scriptorium?done={outcome}{Narrowed(subject)}");
 
     // Back to the rite the Scribe acted on, where they were on the page, and the message names it.
-    private static IActionResult Back(string outcome, Option<Guid> draftId)
+    private static IActionResult Back(string outcome, Option<Guid> draftId, Option<Tag> subject)
         => draftId.Match(
-            Some: id => Redirect($"/scriptorium?done={outcome}&rite={id:D}#rite-{id:D}"),
-            None: () => BackToPage(outcome));
+            Some: id => Redirect($"/scriptorium?done={outcome}&rite={id:D}{Narrowed(subject)}#rite-{id:D}"),
+            None: () => BackToPage(outcome, subject));
 
     // A burned rite has left the calendar, so the page stays at the message, which links to the rite in the Ashes.
-    private static IActionResult AfterBurning(string outcome, Guid draftId) => Redirect($"/scriptorium?done={outcome}&rite={draftId:D}");
+    private static IActionResult AfterBurning(string outcome, Guid draftId, Option<Tag> subject)
+        => Redirect($"/scriptorium?done={outcome}&rite={draftId:D}{Narrowed(subject)}");
+
+    // The calendar narrowed to one subject stays narrowed after an action: its forms carry the subject.
+    private static string Narrowed(Option<Tag> subject) => subject.Map(tag => $"&subject={tag.Key}").IfNone(string.Empty);
+
+    // A key the vocabulary doesn't have is no filter.
+    private static Option<Tag> Subject(string key) => RiteTags.Find(key);
+
+    // Where an Undo puts a burned rite back in the Scribes' order; none for a rite the Augury placed.
+    private static Option<int> Place(IFormCollection fields)
+        => int.TryParse(fields["place"].ToString(), NumberStyles.None, CultureInfo.InvariantCulture, out var place) && place > 0 ? Some(place) : None;
 }

@@ -202,7 +202,7 @@ public sealed class ScribesTests : IAsyncLifetime
         var burned = Ok(await testbed.Scribes().View(CancellationToken.None));
         Assert.Equal(["Excellent"], burned.Calendar.Select(entry => entry.Draft.Writing.Title));
         Assert.Equal(["Fair"], Ok(await testbed.Scribes().Ashes(CancellationToken.None)).Select(draft => draft.Writing.Title));
-        Ok(await testbed.Scribes().Restore(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        Ok(await testbed.Scribes().Restore(fair.Id, "", BacklogTestbed.Tester, None, CancellationToken.None));
         var restored = Ok(await testbed.Scribes().View(CancellationToken.None));
         Assert.Equal(["Excellent", "Fair"], restored.Calendar.Select(entry => entry.Draft.Writing.Title));
         Assert.False(restored.Calendar.Single(entry => entry.Draft.Id == fair.Id).PlacedByScribes);
@@ -350,7 +350,7 @@ public sealed class ScribesTests : IAsyncLifetime
         Ok(await testbed.Scribes().Burn(draft.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         testbed.Time.Advance(TimeSpan.FromMinutes(1));
 
-        Ok(await testbed.Scribes().Restore(draft.Id, "Funnier than I thought.", BacklogTestbed.Tester, CancellationToken.None));
+        Ok(await testbed.Scribes().Restore(draft.Id, "Funnier than I thought.", BacklogTestbed.Tester, None, CancellationToken.None));
 
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
         Assert.Equal("Second chance", Assert.Single(view.Calendar).Draft.Writing.Title);
@@ -370,7 +370,7 @@ public sealed class ScribesTests : IAsyncLifetime
         Ok(await testbed.Scribes().Anoint(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         Ok(await testbed.Scribes().Burn(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
-        Ok(await testbed.Scribes().Restore(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        Ok(await testbed.Scribes().Restore(fair.Id, "", BacklogTestbed.Tester, None, CancellationToken.None));
 
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
         Assert.Equal(["Excellent", "Fair"], view.Calendar.Select(entry => entry.Draft.Writing.Title));
@@ -391,7 +391,7 @@ public sealed class ScribesTests : IAsyncLifetime
         }
         Assert.DoesNotContain(Ok(await testbed.Scribes().Ashes(CancellationToken.None)), ash => ash.Id == first.Id);
 
-        Ok(await testbed.Scribes().Restore(first.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        Ok(await testbed.Scribes().Restore(first.Id, "", BacklogTestbed.Tester, None, CancellationToken.None));
 
         Assert.Equal("Burned first", Assert.Single(await testbed.Waiting()).Writing.Title);
     }
@@ -442,7 +442,7 @@ public sealed class ScribesTests : IAsyncLifetime
 
         Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Failed(await testbed.Scribes().Anoint(unknown, "", BacklogTestbed.Tester, CancellationToken.None)));
         Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Failed(await testbed.Scribes().Burn(unknown, "", BacklogTestbed.Tester, CancellationToken.None)));
-        Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Failed(await testbed.Scribes().Restore(unknown, "", BacklogTestbed.Tester, CancellationToken.None)));
+        Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Failed(await testbed.Scribes().Restore(unknown, "", BacklogTestbed.Tester, None, CancellationToken.None)));
     }
 
     [Fact]

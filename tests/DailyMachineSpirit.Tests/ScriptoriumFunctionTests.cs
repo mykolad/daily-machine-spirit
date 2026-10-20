@@ -34,7 +34,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
 
         Assert.Contains("The Liturgical Calendar", html);
         Assert.Contains("The Rite of <code>git push --force</code>", html);
-        Assert.DoesNotContain($"""<h3 id="title-{burned.Id:D}">""", html);
+        Assert.DoesNotContain($"""<h4 id="title-{burned.Id:D}">""", html);
         Assert.DoesNotContain("Restore from the Ashes", html);
         // The top draft can be anointed (to keep it first), but not exalted.
         var top = Ok(await testbed.Scribes().View(CancellationToken.None)).Calendar[0].Draft.Id;
@@ -48,7 +48,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Equal("DENY", request.HttpContext.Response.Headers.XFrameOptions.ToString());
     }
 
-    // So the Scribes see what the calendar covers before it's published.
+    // So the Scribes see what the calendar covers before it's published: each subject, the most first, narrows it.
     [Fact]
     public async Task Page_ShowsWhatEachDraftIsAbout_AndTheCalendarsSubjects()
     {
@@ -58,9 +58,78 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
 
         var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
-        Assert.Contains("Subjects waiting: Caches (2), Infrastructure (1), untagged (1).", html);
-        Assert.Contains("""Forgotten Names</h3><p class="tags"><span class="visually-hidden">Filed under </span><span class="tag">Infrastructure</span><span class="tag">Caches</span></p>""", html);
-        Assert.DoesNotContain("filed under Infrastructure", html);
+        Assert.Contains("""<p class="subjects" role="group" aria-label="Filter by subject"><a class="chip" href="/scriptorium" aria-current="true">All<span class="chip-count">3</span></a><a class="chip" href="/scriptorium?subject=caches">Caches<span class="chip-count">2</span></a><a class="chip" href="/scriptorium?subject=infrastructure">Infrastructure<span class="chip-count">1</span></a></p>""", html);
+        Assert.Contains("""Forgotten Names</h4><p class="tags"><span class="visually-hidden">Filed under </span><span class="tag">Infrastructure</span><span class="tag">Caches</span></p>""", html);
+    }
+
+    // Narrowed to a subject, each order shows that subject's rites in their own places, and says how many of its own
+    // those are; the chosen subject's chip clears it.
+    [Fact]
+    public async Task Page_NarrowedToASubject_ShowsItsRitesInTheirPlaces()
+    {
+        var refresh = await testbed.AddDraft("The Rite of the Hard Refresh", 0.9f, RiteKind.Ritual, new[] { "caches" });
+        var names = await testbed.AddDraft("The Litany of Forgotten Names", 0.8f, RiteKind.Prayer, new[] { "infrastructure" });
+        var cold = await testbed.AddDraft("The Litany of the Cold Cache", 0.7f, RiteKind.Prayer, new[] { "caches" });
+        Ok(await testbed.Scribes().Anoint(refresh.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+
+        var html = Html(await Function().Page(Get("?subject=caches"), CancellationToken.None), 200);
+        var unknown = Html(await Function().Page(Get("?subject=gossip"), CancellationToken.None), 200);
+
+        Assert.Contains("""<a class="chip" href="/scriptorium" aria-current="true">Caches<span class="chip-count">2</span></a>""", html);
+        Assert.Contains("""Placed by the Scribes<span class="group-count">1 of 1</span>""", html);
+        Assert.Contains("""The Augury’s order<span class="group-count">1 of 2</span>""", html);
+        Assert.Contains($"""id="rite-{cold.Id:D}" aria-labelledby="title-{cold.Id:D}" data-place="3">""", html);
+        Assert.DoesNotContain($"""id="rite-{names.Id:D}" """, html);
+        Assert.Equal(2, html.Split("""<input type="hidden" name="subject" value="caches">""").Length - 1);
+        Assert.Contains($"""id="rite-{names.Id:D}" """, unknown);
+        Assert.DoesNotContain("""name="subject" """, unknown);
+    }
+
+    [Fact]
+    public async Task Page_NarrowedToASubjectWithoutRites_SaysSo_InEachOrder()
+    {
+        await testbed.AddDraft("The Rite of the Hard Refresh", 0.9f, RiteKind.Ritual, new[] { "caches" });
+
+        var html = Html(await Function().Page(Get("?subject=security"), CancellationToken.None), 200);
+        var all = Html(await Function().Page(Get(""), CancellationToken.None), 200);
+
+        Assert.Contains("""<a class="chip" href="/scriptorium" aria-current="true">Security<span class="chip-count">0</span></a>""", html);
+        Assert.Contains("No Security rites in the Scribes’ order.", html);
+        Assert.Contains("No Security rites in the Augury’s order.", html);
+        Assert.Contains("The Scribes have placed nothing yet.", all);
+    }
+
+    // An action on the narrowed calendar comes back to it, narrowed.
+    [Theory]
+    [InlineData("exalt")]
+    [InlineData("burn")]
+    public async Task AnActionOnANarrowedCalendar_ComesBackNarrowed(string action)
+    {
+        await testbed.AddDraft("The Rite of the Hard Refresh", 0.9f, RiteKind.Ritual, new[] { "caches" });
+        var cold = await testbed.AddDraft("The Litany of the Cold Cache", 0.7f, RiteKind.Prayer, new[] { "caches" });
+
+        var response = await Function().Decide(Post("application/x-www-form-urlencoded", "note=&subject=caches"), cold.Id, action, CancellationToken.None);
+
+        Assert.Contains("&subject=caches", Assert.IsType<RedirectResult>(response.Result).Url);
+    }
+
+    // Straight after a burn, the calendar's Undo puts a rite the Scribes placed back in its place.
+    [Fact]
+    public async Task Undo_PutsABurnedRiteBackInItsPlace()
+    {
+        var first = await testbed.AddDraft("First", 0.9f);
+        var second = await testbed.AddDraft("Second", 0.8f);
+        await testbed.AddDraft("Third", 0.7f);
+        Ok(await testbed.Scribes().Anoint(second.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        var function = Function();
+        Ok(await testbed.Scribes().Burn(first.Id, "Duplicate", BacklogTestbed.Tester, CancellationToken.None));
+
+        var response = await function.Decide(Post("application/x-www-form-urlencoded", "note=&place=2"), first.Id, "restore", CancellationToken.None);
+
+        var calendar = Ok(await testbed.Scribes().View(CancellationToken.None)).Calendar;
+        Assert.Equal([second.Id, first.Id], calendar.Take(2).Select(entry => entry.Draft.Id));
+        Assert.True(calendar[1].PlacedByScribes);
+        Assert.Equal($"/scriptorium?done=restore&rite={first.Id:D}#rite-{first.Id:D}", Assert.IsType<RedirectResult>(response.Result).Url);
     }
 
     [Fact]
@@ -100,7 +169,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
 
         Assert.All(pages, page =>
         {
-            Assert.Contains("""The Calendar<span class="count">Scribes 2 · Augury 1</span>""", page.Value);
+            Assert.Contains("""The Calendar<span class="count">3</span>""", page.Value);
             Assert.Contains("""The Ashes<span class="count">1</span>""", page.Value);
             Assert.Contains("""The Precepts<span class="count">1</span>""", page.Value);
             // Four drafts written, one anointed, one burned, and a precept added.
@@ -203,7 +272,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     [InlineData("exalt", "Exalted.")]
     [InlineData("humble", "Humbled.")]
     [InlineData("restore", "Restored from the ashes.")]
-    [InlineData("burn-last", "Consigned to the flames. No rite waits now")]
+    [InlineData("burn-last", "<span data-undoable>Consigned to the flames.</span> No rite waits now")]
     [InlineData("summon", "New rites are being summoned")]
     [InlineData("augury", "The Augury orders every draft again.")]
     [InlineData("changed", "Another Scribe changed the calendar meanwhile.")]
@@ -240,7 +309,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Equal(good.Id, first.Draft.Id);
         Assert.Contains($"{done} “Good”", html);
         Assert.Contains(first.PublishesOnUtc.ToString("ddd d MMM", CultureInfo.InvariantCulture) + ".", html);
-        Assert.Contains($"""<article class="rite placed-by-scribes acted" id="rite-{good.Id:D}" """, html);
+        Assert.Contains($"""<article class="rite row scribes next acted" id="rite-{good.Id:D}" """, html);
     }
 
     [Fact]
@@ -269,7 +338,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var html = Html(await function.Page(Following(response.Result), CancellationToken.None), 200);
 
         var link = $"/scriptorium/ashes?rite={burned.Id:D}#rite-{burned.Id:D}";
-        Assert.Contains($"""Consigned “Burned” to the flames. <a href="{link}">Restore it from the Ashes</a>.""", html);
+        Assert.Contains($"""<span data-undoable>Consigned “Burned” to the flames.</span><span data-undoable> <a href="{link}">Restore it from the Ashes</a>.</span>""", html);
         Assert.DoesNotContain("acted\" id=", html);
         var ashes = Html(await function.Ashes(Get(new Uri(new Uri("https://dailymachinespirit.fyi"), link).Query), CancellationToken.None), 200);
         Assert.Contains($"""<article class="rite ash acted" id="rite-{burned.Id:D}" """, ashes);
@@ -287,7 +356,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var html = Html(await function.Page(Following(response.Result), CancellationToken.None), 200);
         var before = Html(await function.Page(Get(""), CancellationToken.None), 200);
 
-        Assert.Contains($"""<article class="rite placed-by-scribes acted" id="rite-{exalted.Id:D}" """, html);
+        Assert.Contains($"""<article class="rite row scribes next acted" id="rite-{exalted.Id:D}" """, html);
         Assert.Single(html.Split(" acted\" id=").Skip(1));
         Assert.DoesNotContain(" acted\" id=", before);
     }
@@ -328,13 +397,14 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Ok(await testbed.Publisher().PublishToday(CancellationToken.None));
         var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
-        Assert.Contains("Publishes next", due);
+        Assert.Contains("· publishes next</span>", due);
         Assert.DoesNotContain("00:00 UTC", due);
-        Assert.Single(html.Split("Publishes at 00:00 UTC").Skip(1));
+        Assert.Single(html.Split("""<span class="next-label">Next to publish</span>""").Skip(1));
+        Assert.Matches(""", 00:00 UTC · in (\d+h )?\d+m</span>""", html);
     }
 
     [Fact]
-    public async Task Page_ShowsTheAuguryPlace_OnlyWhereTheScribesOverruledIt()
+    public async Task Page_ShowsTheAuguryRank_OnlyWhereTheScribesOverruledIt()
     {
         await testbed.AddDraft("Excellent", 0.95f);
         var good = await testbed.AddDraft("Good", 0.7f);
@@ -345,17 +415,17 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Ok(await testbed.Scribes().Exalt(good.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
-        Assert.DoesNotContain("it would place it", before);
-        Assert.Contains("it would place it #2", html);
-        Assert.Contains("it would place it #1", html);
-        Assert.Equal(2, html.Split("it would place it").Length - 1);
-        Assert.Equal(2, html.Split("Placed by A Scribe (…456789)").Length - 1);
-        Assert.Equal(2, html.Split("class=\"rite placed-by-scribes\"").Length - 1);
+        Assert.DoesNotContain("would rank it", before);
+        Assert.Contains("would rank it #2", html);
+        Assert.Contains("would rank it #1", html);
+        Assert.Equal(2, html.Split("would rank it").Length - 1);
+        Assert.Equal(2, html.Split("placed by A Scribe (…456789)").Length - 1);
+        Assert.Equal(2, html.Split("class=\"rite row scribes").Length - 1);
     }
 
-    // The brass frame isn't the only sign: the rite says who placed it, by the name they chose.
+    // The rites the Scribes placed come first, in a group of their own, each saying who placed it, by the name they chose.
     [Fact]
-    public async Task Page_FramesTheRitesTheScribesPlaced_AndNamesWhoPlacedThem()
+    public async Task Page_GroupsTheRitesTheScribesPlaced_AndNamesWhoPlacedThem()
     {
         await testbed.AddDraft("Excellent", 0.95f);
         var good = await testbed.AddDraft("Good", 0.7f);
@@ -364,14 +434,15 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Ok(await testbed.Scribes().Anoint(good.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
-        Assert.Contains($"""<article class="rite placed-by-scribes" id="rite-{good.Id:D}" """, html);
-        Assert.Contains("Placed by Magos Ferrum</p>", html);
-        Assert.DoesNotContain("Placed by the Scribes", html);
+        Assert.Contains($"""<article class="rite row scribes next" id="rite-{good.Id:D}" """, html);
+        Assert.Contains("""Placed by the Scribes<span class="group-count">2</span>""", html);
+        Assert.Contains("Every rite has a Scribe’s place.", html);
+        Assert.Equal(2, html.Split("placed by Magos Ferrum ·").Length - 1);
     }
 
-    // Orders saved before they kept who placed each draft still frame their drafts, as the Scribes'.
+    // Orders saved before they kept who placed each draft still group their drafts as the Scribes'.
     [Fact]
-    public async Task Page_SaysTheScribesPlacedARite_WhenTheOrderDoesntKnowWho()
+    public async Task Page_GroupsARiteAsTheScribes_WhenTheOrderDoesntKnowWhoPlacedIt()
     {
         await testbed.AddDraft("Excellent", 0.95f);
         var good = await testbed.AddDraft("Good", 0.7f);
@@ -380,13 +451,34 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
 
         var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
-        Assert.Contains($"""<article class="rite placed-by-scribes" id="rite-{good.Id:D}" """, html);
-        Assert.Contains("Placed by the Scribes</p>", html);
-        Assert.Single(html.Split("placed-by-scribes\" id=").Skip(1));
+        Assert.Contains($"""<article class="rite row scribes next" id="rite-{good.Id:D}" """, html);
+        Assert.Single(html.Split("class=\"rite row scribes").Skip(1));
+        Assert.DoesNotContain("placed by ", html);
+    }
+
+    // Exalt and Humble say where they move a rite: one moved from the Augury's order joins the Scribes', with every rite
+    // above it. At the ends they can't be pressed, and say why.
+    [Fact]
+    public async Task Page_LabelsExaltAndHumble_ByWhereTheyMoveTheRite()
+    {
+        var first = await testbed.AddDraft("First", 0.9f);
+        var second = await testbed.AddDraft("Second", 0.8f);
+        var third = await testbed.AddDraft("Third", 0.7f);
+        var augurys = Html(await Function().Page(Get(""), CancellationToken.None), 200);
+        Ok(await testbed.Scribes().Anoint(second.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+
+        var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
+
+        Assert.Contains("""<button class="step" title="Already next to publish" disabled>""", augurys);
+        Assert.Contains($"""<button class="step" title="Exalt: one day earlier, into the Scribes’ order" formaction="/scriptorium/drafts/{second.Id:D}/exalt">""", augurys);
+        Assert.Contains("""<button class="step" title="Already the last in the calendar" disabled>""", augurys);
+        Assert.Contains($"""<button class="step" title="Humble: one day later" formaction="/scriptorium/drafts/{first.Id:D}/humble">""", html);
+        Assert.Contains($"""<button class="step" title="Exalt: one day earlier, into the Scribes’ order" formaction="/scriptorium/drafts/{third.Id:D}/exalt">""", html);
+        Assert.Contains("""<span class="visually-hidden">Exalt: Third</span>""", html);
     }
 
     [Fact]
-    public async Task Page_GroupsTheButtons_EachWithAnIconHiddenFromScreenReaders_AndFoldsTheNotes()
+    public async Task Page_GivesEachRiteItsButtons_EachIconHiddenFromScreenReaders_AndFoldsTheNotes()
     {
         await testbed.AddDraft("Excellent", 0.95f);
         var top = await testbed.AddDraft("Good", 0.7f);
@@ -401,12 +493,16 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Contains("""<span class="pair" role="group" aria-label="Reorder">""", html);
         Assert.Contains($""" class="danger burn" formaction="/scriptorium/drafts/{top.Id:D}/burn">""", html);
         Assert.Contains("Let the Augury Decide", html);
-        var buttons = Regex.Matches(html, "<button[^>]*>(.{0,120})").Select(match => match.Groups[1].Value).ToList();
-        Assert.Equal(8, buttons.Count);
-        Assert.All(buttons, label => Assert.StartsWith("""<svg class="icon" aria-hidden="true" focusable="false" """, label));
+        // Every button but the burn panel's reasons and its Cancel, which are words alone.
+        var labels = Regex.Matches(html, """<button(?![^>]*class="(reason|cancel)")[^>]*>(.{0,120})""").Select(match => match.Groups[2].Value).ToList();
+        Assert.All(labels, label => Assert.StartsWith("""<svg class="icon" aria-hidden="true" focusable="false" """, label));
         Assert.All(Regex.Matches(html, "<svg[^>]*>"), icon => Assert.Contains("""aria-hidden="true" focusable="false" """, icon.Value));
-        Assert.Equal(2, html.Split("""<details class="fold">""").Length - 1);
-        Assert.Equal(2, html.Split("""<label class="visually-hidden" for="note-""").Length - 1);
+        Assert.Equal(2, html.Split("""<details class="note-fold">""").Length - 1);
+        Assert.Equal(2, html.Split("""<label for="note-""").Length - 1);
+        // The script folds the cards and asks why before a burn; without it, every card is open and burns at once.
+        Assert.Equal(2, html.Split("""aria-expanded="true" """).Length - 1);
+        Assert.Equal(2, Regex.Matches(html, """<div class="burn-panel" role="group" aria-labelledby="why-[^"]+" hidden>""").Count);
+        Assert.Equal(2, html.Split("""<button type="button" class="reason" aria-pressed="false">The joke falls flat</button>""").Length - 1);
     }
 
     // A Scribe who acts once a month needn't remember what each of the rite's names means.
@@ -421,9 +517,8 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
 
         var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
-        var buttons = Regex.Matches(html, "<button[^>]*>").Select(match => match.Value).ToList();
-        Assert.Equal(8, buttons.Count);
-        Assert.All(buttons, button => Assert.Matches("""^<button title="[^"]{20,}" """, button));
+        var buttons = Regex.Matches(html, """<button(?![^>]*class="(reason|cancel)")[^>]*>""").Select(match => match.Value).ToList();
+        Assert.All(buttons, button => Assert.Matches(""" title="[^"]{20,}"[ >]""", button));
         Assert.Contains("""<button title="Forgets the Scribes&#39; order: the Augury orders every waiting rite again, by quality and variety." class="outline">""", html);
         Assert.Contains($"""<button title="Takes this rite out of the calendar, into the Ashes. Nothing is deleted: it can be restored." class="danger burn" formaction="/scriptorium/drafts/{top.Id:D}/burn">""", html);
     }
@@ -707,7 +802,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
 
         Assert.Equal($"/scriptorium?done=judged&rite={unjudged.Id:D}#rite-{unjudged.Id:D}", Assert.IsType<RedirectResult>(response.Result).Url);
         var html = Html(await Function().Page(Following(response.Result), CancellationToken.None), 200);
-        Assert.Matches("Judged “Litany of the Cold Cache” again, \\d+ %: the Augury places it for ", html);
+        Assert.Matches("Judged “Litany of the Cold Cache” again, \\d+%: the Augury places it for ", html);
         Assert.Contains($"""A Scribe on staging judged <a href="/scriptorium/record?draft={unjudged.Id:D}">“Litany of the Cold Cache”</a> again""", ScriptoriumPage.RenderRecord(
             Ok(await testbed.Audit.GetHistory(unjudged.Id, CancellationToken.None)), [], LanguageExt.Prelude.None, LanguageExt.Prelude.None));
     }
@@ -767,7 +862,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var html = Html(await Function().Page(Following(response.Result), CancellationToken.None), 200);
         Assert.Contains("Amended “The Litany of the Warm Cache”: judged again, it waits for Wed 7 Oct.", html);
         Assert.Contains("""written by <span class="nowrap">gpt-6-sol</span>, amended by a Scribe""", html);
-        Assert.Contains("Amended: <cite>Litany of the Cold Cache</cite>", html);
+        Assert.Contains("""<span class="verb">Amended:</span> <cite>Litany of the Cold Cache</cite>""", html);
     }
 
     // Unjudged, a draft the Scribes placed keeps its place, even first: the message says when it goes out.

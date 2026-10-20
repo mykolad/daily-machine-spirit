@@ -34,15 +34,18 @@ public static partial class ScriptoriumPage
         .disclaimer { margin: 0; font: 400 14px/1.6 Figtree, sans-serif; color: #b6a98f; }
         .brand { display: inline-flex; align-items: center; gap: 10px; padding: 4px 8px 4px 0; font: 700 16px Cinzel, serif; letter-spacing: .04em; color: #c9a25a; text-decoration: none; }
         .brand:hover { color: #f0d59a; }
+        .masthead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; }
+        .identity { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin: 0; font-size: 14px; color: #b6a98f; }
+        .identity strong { font-weight: 600; color: #ede3cf; }
         .tabs ul { list-style: none; display: flex; flex-wrap: wrap; gap: 0 8px; margin: 16px 0 0; padding: 0; border-bottom: 1px solid rgba(237,227,207,.16); }
-        .tabs a { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-height: 44px; padding: 12px 10px 9px; margin-bottom: -1px; border-bottom: 3px solid transparent; font: 600 16px/1.2 Figtree, sans-serif; color: #cdbd9e; text-decoration: none; }
+        .tabs a { display: inline-flex; align-items: baseline; gap: 8px; white-space: nowrap; min-height: 44px; padding: 12px 10px 9px; margin-bottom: -1px; border-bottom: 3px solid transparent; font: 600 16px/1.2 Figtree, sans-serif; color: #cdbd9e; text-decoration: none; }
         .tabs a:hover { color: #f0d59a; border-bottom-color: rgba(201,162,90,.4); }
         .tabs a[aria-current=page] { color: #ede3cf; border-bottom-color: #c9a25a; }
         .tabs .count { font: 500 13px "JetBrains Mono", monospace; color: #b6a98f; }
-        h1 { font: 700 clamp(30px, 4.4vw, 46px)/1.1 Cinzel, serif; margin: 24px 0 8px; }
+        h1 { font: 700 clamp(30px, 4.4vw, 46px)/1.1 Cinzel, serif; margin: 32px 0 8px; }
         h2 { font: 700 26px/1.2 Cinzel, serif; margin: 0; }
         h3 { font: 700 21px/1.2 Cinzel, serif; margin: 6px 0 8px; }
-        .lede { font: italic 400 20px/1.4 "EB Garamond", serif; color: #cdbd9e; margin: 0 0 16px; }
+        .lede { font: italic 400 20px/1.4 "EB Garamond", serif; color: #cdbd9e; margin: 0 0 16px; max-width: 62ch; }
         .status:not(:empty) { background: #1a1612; border-left: 4px solid #c9a25a; padding: 12px 16px; border-radius: 12px; }
         section { margin-top: 44px; }
         .section-head { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; margin-bottom: 8px; }
@@ -61,13 +64,95 @@ public static partial class ScriptoriumPage
         .suggest-others { margin: 16px 0 0; }
         .suggest-others .button-link { border-style: dashed; }
         .rite { background: #1a1612; border: 1px solid rgba(237,227,207,.1); border-radius: 20px; padding: 20px clamp(16px, 3vw, 24px); scroll-margin-top: 16px; }
-        .next { display: inline-block; margin: 8px 0 0; padding: 2px 10px; border: 1px solid #2e4248; border-radius: 999px; font: 500 13px "JetBrains Mono", monospace; color: #8cc4ae; }
-        .placed-by-scribes { border: 2px solid #c9a25a; }
-        .placer { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; font-weight: 600; color: #d9b874; }
-        .placer .icon { width: 16px; height: 16px; }
         .ash { opacity: .92; }
-        .acted { border-color: #f0b45a; animation: acted 1.6s ease-out; }
-        @keyframes acted { from { box-shadow: 0 0 0 4px rgba(240, 180, 90, .55); } to { box-shadow: 0 0 0 4px rgba(240, 180, 90, 0); } }
+        .acted { border-color: #f0b45a; animation: acted 1.4s ease-out; }
+        @keyframes acted { from { box-shadow: 0 0 0 4px rgba(240, 180, 90, .45); } to { box-shadow: 0 0 0 4px rgba(240, 180, 90, 0); } }
+        .summary { margin: 12px 0 0; }
+        .help { margin: 4px 0 0; font-size: 15px; color: #b6a98f; }
+        .subjects { display: flex; flex-wrap: wrap; gap: 6px; margin: 18px 0 0; }
+        .chip { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; min-height: 34px; padding: 5px 12px; border-radius: 999px; border: 1px solid rgba(201,162,90,.45); font: 600 14px/1.4 Figtree, sans-serif; color: #d9b874; text-decoration: none; }
+        .chip:hover { border-color: #c9a25a; color: #f0d59a; }
+        .chip[aria-current] { background: #c9a25a; border-color: #c9a25a; color: #100e0b; }
+        .chip-count { font: 500 12px "JetBrains Mono", monospace; opacity: .8; }
+        .group { margin-top: 32px; }
+        .group-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding-bottom: 10px; }
+        .group-title { display: inline-flex; align-items: center; gap: 8px; margin: 0; font: 700 13px Cinzel, serif; letter-spacing: .16em; text-transform: uppercase; color: #d9b874; }
+        .augury-group .group-title { color: #8cc4ae; }
+        .group-title .icon { width: 16px; height: 16px; }
+        .group-count { font: 500 13px "JetBrains Mono", monospace; letter-spacing: 0; color: #b6a98f; }
+        .group-hint { margin: 0; font-size: 14px; color: #b6a98f; }
+        .empty { margin: 0; padding: 16px 20px; border: 1px dashed rgba(237,227,207,.16); border-radius: 16px; font-size: 15px; color: #b6a98f; }
+        .rites { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+        .row { padding: 0; overflow: hidden; }
+        .row.scribes { border-color: rgba(201,162,90,.32); }
+        .row.next { border: 2px solid #c9a25a; }
+        .row.acted { border-color: #f0b45a; }
+        .row form { margin: 0; }
+        .next-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; margin: 0; padding: 10px 20px; background: #241c12; border-bottom: 1px solid rgba(201,162,90,.25); }
+        .next-label { font: 700 12px Cinzel, serif; letter-spacing: .2em; text-transform: uppercase; color: #c9a25a; }
+        .next-when { font: 500 13px "JetBrains Mono", monospace; color: #8cc4ae; white-space: nowrap; }
+        .row-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 12px 12px 12px 20px; }
+        [data-folding] .row-head { cursor: pointer; }
+        [data-folding] .row-head:hover { background: rgba(237,227,207,.03); }
+        .where { display: flex; align-items: center; gap: 12px; flex: none; margin: 0; }
+        .place { width: 40px; font: 700 20px/1 Cinzel, serif; color: #b6a98f; }
+        .scribes .place { color: #c9a25a; }
+        .day { display: grid; gap: 2px; width: 88px; }
+        .day time { font: 500 13px "JetBrains Mono", monospace; color: #cdbd9e; white-space: nowrap; }
+        .kind { font: 700 11px Cinzel, serif; letter-spacing: .14em; text-transform: uppercase; color: #b6a98f; }
+        .heading { flex: 1 1 240px; min-width: 0; display: grid; gap: 6px; }
+        .row h4 { margin: 0; font: 700 18px/1.25 Cinzel, serif; color: #ede3cf; text-wrap: pretty; }
+        .row .tags { margin: 0; }
+        .row .tag { padding: 0 10px; font-size: 13px; line-height: 1.6; }
+        .cluster { display: flex; align-items: center; gap: 12px; margin-left: auto; flex: none; }
+        .score { display: grid; justify-items: end; gap: 1px; }
+        .score-label { font: 700 10px Cinzel, serif; letter-spacing: .16em; text-transform: uppercase; color: #b6a98f; }
+        .score-value { font: 500 14px "JetBrains Mono", monospace; color: #8cc4ae; }
+        .step, .expand { justify-content: center; width: 44px; height: 44px; min-height: 44px; padding: 0; background: transparent; }
+        .step { color: #ede3cf; border-color: rgba(237,227,207,.22); }
+        .step:hover:not(:disabled) { background: rgba(237,227,207,.08); }
+        .pair .step:disabled { opacity: .3; cursor: default; }
+        .expand { border: 0; color: #cdbd9e; }
+        .expand:hover { background: rgba(237,227,207,.08); color: #f0d59a; }
+        .expand .icon { width: 20px; height: 20px; transition: transform .2s; }
+        .expand[aria-expanded=true] .icon { transform: rotate(180deg); }
+        .body { display: grid; gap: 12px; padding: 4px 20px 20px; }
+        .body > p { margin: 0; }
+        .note-fold summary { display: inline-flex; align-items: center; gap: 6px; padding: 6px 0; font: 600 15px Figtree, sans-serif; color: #cdbd9e; cursor: pointer; list-style: none; }
+        .note-fold summary::-webkit-details-marker { display: none; }
+        .note-fold summary:hover { color: #f0d59a; }
+        .note-fold summary .icon { width: 16px; height: 16px; }
+        .note-fold[open] summary { display: none; }
+        .note-fold label { display: block; margin: 0 0 6px; font-size: 15px; font-weight: 600; color: #cdbd9e; }
+        .note-fold .optional { font-weight: 400; }
+        .burn-panel { display: grid; gap: 12px; padding: 16px; background: #1f1210; border: 1px solid #5a2a22; border-radius: 16px; }
+        .why, .reasons { margin: 0; }
+        .why { font-weight: 600; color: #f6cfc6; }
+        .reasons { display: flex; flex-wrap: wrap; gap: 6px; }
+        .reason { min-height: 36px; padding: 6px 14px; font-size: 14px; background: transparent; color: #f6cfc6; border-color: #8a5a50; }
+        .reason:hover { background: rgba(246,207,198,.08); }
+        .reason[aria-pressed=true] { background: #d0604d; border-color: #d0604d; color: #100e0b; }
+        .burn-panel textarea { margin: 0; border-color: #8a5a50; }
+        .burn-buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+        .cancel { padding: 10px 16px; background: transparent; color: #cdbd9e; }
+        .cancel:hover { background: rgba(237,227,207,.08); }
+        .burn-help { flex: 1 1 220px; font-size: 14px; color: #b6a98f; }
+        .more { font-weight: 600; }
+        .recent { list-style: none; margin: 14px 0 0; padding: 6px 0; background: #1a1612; border-radius: 20px; }
+        .recent li { display: grid; grid-template-columns: 20px 84px minmax(0, 1fr); gap: 4px 14px; align-items: baseline; padding: 10px 20px; }
+        .recent p { margin: 0; }
+        .recent time { font: 500 13px "JetBrains Mono", monospace; color: #b6a98f; white-space: nowrap; }
+        .recent cite { font-style: normal; font-weight: 600; }
+        .verb { color: #cdbd9e; }
+        .judgment-icon { align-self: center; display: grid; color: #b6a98f; }
+        .judgment-icon.burned { color: #d0604d; }
+        .judgment-icon.anointed { color: #c9a25a; }
+        .toasts { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 10; max-width: calc(100vw - 32px); }
+        .toast { display: flex; align-items: center; gap: 16px; padding: 10px 10px 10px 20px; background: #241c12; border: 1px solid rgba(201,162,90,.4); border-radius: 999px; box-shadow: 0 12px 40px rgba(0,0,0,.5); font-size: 15px; }
+        .toast form { margin: 0; }
+        .undo { min-height: 44px; padding: 8px 16px 8px 12px; font-size: 15px; background: transparent; color: #f0d59a; border-color: rgba(237,227,207,.22); }
+        .undo:hover { background: rgba(237,227,207,.08); }
+        .undo .icon { width: 16px; height: 16px; }
         .kicker { margin: 0; font: 700 13px Cinzel, serif; letter-spacing: .16em; text-transform: uppercase; color: #c9a25a; }
         .placed { color: #f0b45a; }
         .resembles { margin: 0 0 12px; padding: 8px 12px; border-left: 4px solid #f0b45a; background: #241c12; border-radius: 8px; color: #ede3cf; }
@@ -79,7 +164,7 @@ public static partial class ScriptoriumPage
         .meta, .when, .optional { color: #b6a98f; }
         .meta { margin: 0 0 12px; font-size: 15px; }
         .tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
-        .tag { padding: 2px 12px; border-radius: 999px; border: 1px solid rgba(201,162,90,.45); font: 600 14px/1.5 Figtree, sans-serif; color: #d9b874; }
+        .tag { white-space: nowrap; padding: 2px 12px; border-radius: 999px; border: 1px solid rgba(201,162,90,.45); font: 600 14px/1.5 Figtree, sans-serif; color: #d9b874; }
         .fold summary { cursor: pointer; padding: 10px 0; font-weight: 600; color: #cdbd9e; }
         .fold summary .icon { width: 16px; height: 16px; vertical-align: -2px; margin: 0 4px; }
         .amend { max-width: 740px; }
@@ -89,10 +174,10 @@ public static partial class ScriptoriumPage
         .changed-mark { font-weight: 400; color: #f0b45a; }
         .amend .buttons { margin-top: 20px; }
         .amend input[type=text], textarea { width: 100%; background: #100e0b; color: #ede3cf; border: 1px solid #b6a98f; border-radius: 12px; padding: 8px 12px; font: 16px/1.4 Figtree, sans-serif; margin-bottom: 8px; }
-        button { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 10px 18px 10px 14px; border-radius: 999px; font: 600 16px/1.2 Figtree, sans-serif; cursor: pointer; border: 1px solid transparent; }
+        button { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; min-height: 46px; padding: 10px 18px 10px 14px; border-radius: 999px; font: 600 16px/1.2 Figtree, sans-serif; cursor: pointer; border: 1px solid transparent; }
         .icon { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
         .primary { background: #c9a25a; color: #100e0b; }
-        .button-link { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 10px 18px 10px 14px; border-radius: 999px; border: 1px solid rgba(237,227,207,.22); font: 600 16px/1.2 Figtree, sans-serif; color: #ede3cf; text-decoration: none; }
+        .button-link { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; min-height: 46px; padding: 10px 18px 10px 14px; border-radius: 999px; border: 1px solid rgba(237,227,207,.22); font: 600 16px/1.2 Figtree, sans-serif; color: #ede3cf; text-decoration: none; }
         .button-link:hover { background: rgba(237,227,207,.08); border-color: rgba(237,227,207,.4); color: #ede3cf; }
         .primary:hover { background: #d6b170; }
         .outline, .secondary { background: transparent; color: #ede3cf; border-color: rgba(237,227,207,.22); }
@@ -113,10 +198,11 @@ public static partial class ScriptoriumPage
         .note { display: block; font: italic 18px/1.4 "EB Garamond", serif; color: #cdbd9e; }
         a { color: #d9b874; }
         a:hover { color: #f0d59a; }
-        :focus-visible { outline: 2px solid #f0b45a; outline-offset: 4px; }
+        :focus-visible { outline: 2px solid #f0b45a; outline-offset: 3px; }
         .skip { position: absolute; left: -9999px; }
         .skip:focus { left: 16px; top: 16px; background: #c9a25a; color: #100e0b; padding: 8px 16px; border-radius: 999px; }
         .nowrap { white-space: nowrap; }
+        [hidden] { display: none !important; }
         .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
         .number-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 16px 0 0; }
         .number-form input { width: 7em; background: #100e0b; color: #ede3cf; border: 1px solid #b6a98f; border-radius: 12px; padding: 10px 12px; font: 16px Figtree, sans-serif; }
@@ -130,82 +216,6 @@ public static partial class ScriptoriumPage
         .word:has(input:focus-visible) { outline: 2px solid #f0b45a; outline-offset: 2px; }
         @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
         """;
-
-    /// <param name="counts">What each tab holds; none when it couldn't be counted.</param>
-    /// <param name="outcome">What the last action did (<see cref="ScriptoriumFunction"/>'s <c>done</c>), if anything.</param>
-    /// <param name="rite">The draft it acted on, so the message can name it and say where it went.</param>
-    /// <param name="burned">That draft, when the action burned it: it's in the Ashes now, not on this page.</param>
-    /// <param name="name">How the Record shows the Scribe looking, with a way to choose or change it (#84); none on staging.</param>
-    /// <param name="names">The names the Scribes chose, to say who placed a rite.</param>
-    public static string Render(
-        ScriptoriumView view, Option<TabCounts> counts, Option<string> outcome, Option<Guid> rite, Option<Draft> burned, Option<NameInTheRecord> name,
-        IReadOnlyList<ScribeName> names)
-    {
-        var status = outcome.Bind(done => Status(done, view, rite, burned));
-        var html = new StringBuilder();
-        Head(html, "The Scriptorium", TabBar(ScriptoriumTab.Calendar, counts));
-        html.Append("""
-            <main id="main">
-            """);
-        Heading(html, "The Scriptorium",
-            "Unconsecrated rites await the judgment of the Scribes. Your notes teach the Augury what to choose when no Scribe is watching.");
-        // Not a tab: only the Expurgators may open it (their own Access application).
-        html.Append("""<p class="record-link"><a href="/scriptorium/expurgate">The Expurgator's Desk</a>: erasing words from published rites, for the Expurgators.</p>""");
-        name.IfSome(yours => html.Append(yours.Chosen
-            ? $"""<p class="record-link">The Record calls you “{Encode(yours.Shown)}”. <a href="/scriptorium/name">Change your name</a></p>"""
-            : $"""<p class="record-link">The Record shows you as “{Encode(yours.Shown)}”. <a href="/scriptorium/name">Choose a name</a> for it.</p>"""));
-        html.Append($"""<p class="status" role="status">{status.IfNone(string.Empty)}</p>""");
-
-        html.Append($"""
-            <section aria-labelledby="calendar-heading">
-            <div class="section-head">
-            <h2 id="calendar-heading">The Liturgical Calendar</h2>
-            <div class="actions">
-            <form method="post" action="/scriptorium/summon"><button title="{Encode(About("summon"))}" class="primary">{ScriptoriumIcons.Summon}Summon New Rites</button></form>
-            """);
-        if (view.Calendar.Any(entry => entry.PlacedByScribes))
-        {
-            html.Append($"""<form method="post" action="/scriptorium/augury"><button title="{Encode(About("augury"))}" class="outline">{ScriptoriumIcons.Augury}Let the Augury Decide</button></form>""");
-        }
-        html.Append("</div></div>");
-
-        if (view.Calendar.Count == 0)
-        {
-            html.Append("<p>No rite waits. Summon new rites, or the Machine Spirit writes tonight's on the spot.</p>");
-        }
-        else
-        {
-            html.Append($"<p>{view.Calendar.Count} unconsecrated {(view.Calendar.Count == 1 ? "rite waits" : "rites wait")}. The Scribes' order comes first; the Augury orders the rest.</p>");
-            html.Append($"""<p class="meta">{Subjects(view.Calendar.Select(entry => entry.Draft))}</p>""");
-            html.Append("""<ol class="calendar">""");
-            for (var index = 0; index < view.Calendar.Count; index++)
-            {
-                CalendarEntry(html, view.Calendar[index], place: index + 1, isLast: index == view.Calendar.Count - 1, view.Today, rite, names);
-            }
-            html.Append("</ol>");
-        }
-        html.Append("</section>");
-
-        html.Append("""<section aria-labelledby="judgments-heading"><h2 id="judgments-heading">Recent judgments</h2>""");
-        if (view.Decisions.Count == 0)
-        {
-            html.Append("<p>The Scribes have not judged yet.</p>");
-        }
-        else
-        {
-            html.Append("""<ul class="judgments">""");
-            foreach (var decision in view.Decisions)
-            {
-                html.Append($"""<li><span class="when">{Date(DateOnly.FromDateTime(decision.DecidedAtUtc))}</span> {Encode(Done(decision.Action))}: <cite>{Encode(decision.Title)}</cite>""");
-                decision.Note.IfSome(note => html.Append($"""<span class="note">“{Encode(note)}”</span>"""));
-                html.Append("</li>");
-            }
-            html.Append("</ul>");
-        }
-        html.Append("</section></main>");
-        Footer(html, Some(ScriptoriumScript.Js));
-        return html.ToString();
-    }
 
     /// <summary>
     /// The Ashes: the burned rites, the most recently burned first, each with a way back into the calendar. Plain forms:
@@ -365,60 +375,6 @@ public static partial class ScriptoriumPage
         return html.ToString();
     }
 
-    /// <param name="acted">The rite the last action was on, marked so the Scribe's eye finds where it went.</param>
-    private static void CalendarEntry(
-        StringBuilder html, CalendarEntry entry, int place, bool isLast, DateOnly today, Option<Guid> acted, IReadOnlyList<ScribeName> names)
-    {
-        var draft = entry.Draft;
-        var id = draft.Id.ToString("D");
-        // A rite the Scribes placed wears a brass frame and says who placed it, so the frame's colour isn't the only sign.
-        var placedByScribes = entry.PlacedByScribes ? " placed-by-scribes" : string.Empty;
-        html.Append($"""<li><article class="rite{placedByScribes}{Acted(draft, acted)}" id="rite-{id}" aria-labelledby="title-{id}">""");
-        html.Append($"""<p class="kicker"><time datetime="{entry.PublishesOnUtc:yyyy-MM-dd}">{Date(entry.PublishesOnUtc)}</time> · {Kind(draft.Writing.Kind)}</p>""");
-        if (entry.PlacedByScribes)
-        {
-            // Placed before the order kept who placed it, it's the Scribes'.
-            var placer = entry.PlacedBy.Map(scribe => ScribeNames.Of(scribe, names)).IfNone("the Scribes");
-            html.Append($"""<p class="placer">{ScriptoriumIcons.Anoint}Placed by {Encode(placer)}</p>""");
-        }
-        // Today's own rite is only still due when the midnight run failed; its retry publishes it.
-        if (place == 1)
-        {
-            html.Append($"""<p class="next">{(entry.PublishesOnUtc > today ? "Publishes at 00:00 UTC" : "Publishes next")}</p>""");
-        }
-        RiteBody(html, draft, id);
-
-        // The Augury's own place for a draft only says something where the Scribes put it elsewhere.
-        var augury = draft.Augury.Map(judged => entry.PlacedByScribes && entry.AuguryPlace != place
-                ? $"The Augury: {judged.Quality:P0}, it would place it #{entry.AuguryPlace}"
-                : $"The Augury: {judged.Quality:P0}")
-            .IfNone("Not yet judged by the Augury");
-        html.Append($"""<p class="meta">{Encode(augury)} · written by <span class="nowrap">{Encode(draft.Writing.GeneratedByModel)}</span>{(draft.Writing.Edited ? ", amended by a Scribe" : string.Empty)} · <a href="/scriptorium/record?draft={id}">its record</a></p>""");
-        // Written again and again, it still repeated a rite: the Scribes decide whether it's new enough.
-        draft.Resembles.IfSome(title => html.Append($"""<p class="resembles">Much like “{WithCode(title)}”, already written.</p>"""));
-
-        var reorder = new List<string>();
-        if (place > 1)
-        {
-            reorder.Add(Button(id, draft.Writing.Title, "exalt", ScriptoriumIcons.Exalt, "Exalt", "secondary"));
-        }
-        if (!isLast)
-        {
-            reorder.Add(Button(id, draft.Writing.Title, "humble", ScriptoriumIcons.Humble, "Humble", "secondary"));
-        }
-        DecisionForm(html, id,
-        [
-            // Anointing the first is useful too: it keeps it first, ahead of a better draft a refill may bring.
-            Button(id, draft.Writing.Title, "anoint", ScriptoriumIcons.Anoint, "Anoint", "primary"),
-            .. reorder.Count == 0 ? [] : new[] { $"""<span class="pair" role="group" aria-label="Reorder">{string.Concat(reorder)}</span>""" },
-            AmendLink(id, draft.Writing.Title),
-            // Only where judging couldn't score it: judging a judged draft again would change nothing its words did.
-            .. draft.Augury.IsSome ? [] : new[] { Button(id, draft.Writing.Title, "judge", ScriptoriumIcons.Augury, "Judge Again", "secondary") },
-            Button(id, draft.Writing.Title, "burn", ScriptoriumIcons.Burn, "Consign to the Flames", "danger burn"),
-        ]);
-        html.Append("</article></li>");
-    }
-
     private static void Ash(StringBuilder html, Draft draft, Option<Guid> acted)
     {
         var id = draft.Id.ToString("D");
@@ -446,8 +402,7 @@ public static partial class ScriptoriumPage
         html.Append($"""<p class="truth"><span class="truth-label">Heretical Truth</span> {WithCode(draft.Writing.HereticalTruth)}</p>""");
     }
 
-    // One form per draft, so its note goes with whichever button is pressed. The note is folded away: twenty open boxes
-    // would make the page very long, and most decisions go without one.
+    // One form per draft, so its note goes with the button pressed. The note is folded away: most decisions go without one.
     private static void DecisionForm(StringBuilder html, string id, IEnumerable<string> buttons)
         => html.Append($"""
             <form method="post" class="decide">
@@ -474,9 +429,7 @@ public static partial class ScriptoriumPage
     {
         "summon" => "Writes new drafts in the background until the calendar is full again. Look again in a few minutes.",
         "augury" => "Forgets the Scribes' order: the Augury orders every waiting rite again, by quality and variety.",
-        "anoint" => "Makes this rite the next one published, ahead of the Augury's picks.",
-        "exalt" => "Moves this rite one day earlier. It and every rite above it then keep the Scribes' order.",
-        "humble" => "Moves this rite one day later, swapping it with the next; both then keep the Scribes' order.",
+        "anoint" => "Makes this rite the next one published. It and every rite it passed then keep the Scribes' order.",
         "burn" => "Takes this rite out of the calendar, into the Ashes. Nothing is deleted: it can be restored.",
         "amend" => "Changes its words by hand, or asks the Machine Spirit to rewrite them as your note says. It's judged again when saved.",
         "judge" => "Asks the Augury to judge this rite now, as the next refill would: judging it failed, or was off, when it was written.",
@@ -512,7 +465,10 @@ public static partial class ScriptoriumPage
     // The pages under a tab (amending a rite, choosing a name) have none: they lead back where they came from.
     private static void Head(StringBuilder html, string title) => Head(html, title, string.Empty);
 
-    private static void Head(StringBuilder html, string title, string tabs)
+    private static void Head(StringBuilder html, string title, string tabs) => Head(html, title, tabs, string.Empty);
+
+    // The brand, and beside it who's looking (only the calendar says so, for now), then the tabs.
+    private static void Head(StringBuilder html, string title, string tabs, string identity)
     {
         html.Append($"""
             <!doctype html>
@@ -528,12 +484,12 @@ public static partial class ScriptoriumPage
             <body>
             <a class="skip" href="#main">Skip to content</a>
             <div class="frame">
-            <header><a class="brand" href="/">{Pages.Svg.BrandCog}The Daily Machine Spirit</a>{tabs}</header>
+            <header><div class="masthead"><a class="brand" href="/">{Pages.Svg.BrandCog}The Daily Machine Spirit</a>{identity}</div>{tabs}</header>
             """);
     }
 
-    // Each page's tab says what it holds. The calendar's counts the rites each orderer placed, in words, so a count is
-    // never told apart by colour alone; the current tab is marked by its underline, as well as for screen readers.
+    // Each page's tab says what it holds: the calendar's, every rite waiting (the calendar itself says which order each is
+    // in). The current tab is marked by its underline, as well as for screen readers.
     // In the header, outside the main part the calendar's script replaces, which swaps the bar itself.
     private static string TabBar(ScriptoriumTab current, Option<TabCounts> counts)
     {
@@ -541,7 +497,7 @@ public static partial class ScriptoriumPage
             => $"""<li><a href="{path}"{(tab == current ? " aria-current=\"page\"" : string.Empty)}>{name}{counts.Map(counted => $"""<span class="count">{count(counted)}</span>""").IfNone(string.Empty)}</a></li>""";
         return $"""
             <nav class="tabs" aria-label="The Scriptorium"><ul>
-            {Tab(ScriptoriumTab.Calendar, "/scriptorium", "The Calendar", counted => $"Scribes {Number(counted.PlacedByScribes)} · Augury {Number(counted.PlacedByAugury)}")}
+            {Tab(ScriptoriumTab.Calendar, "/scriptorium", "The Calendar", counted => Number(counted.Waiting))}
             {Tab(ScriptoriumTab.Ashes, "/scriptorium/ashes", "The Ashes", counted => Number(counted.Ashes))}
             {Tab(ScriptoriumTab.Precepts, "/scriptorium/precepts", "The Precepts", counted => Number(counted.Precepts))}
             {Tab(ScriptoriumTab.Record, "/scriptorium/record", "The Record", counted => Number(counted.RecordEntries))}
@@ -550,25 +506,6 @@ public static partial class ScriptoriumPage
     }
 
     private static string Number(int count) => count.ToString("N0", CultureInfo.InvariantCulture);
-
-    // What the waiting drafts are about, by their tags, so the Scribes see a calendar heavy on one subject.
-    private static string Subjects(IEnumerable<Draft> drafts)
-    {
-        var tagged = drafts.Select(draft => RiteTags.Of(draft.Tags)).ToList();
-        var counts = tagged
-            .SelectMany(tags => tags)
-            .GroupBy(tag => tag.Label)
-            .OrderByDescending(group => group.Count())
-            .ThenBy(group => group.Key, StringComparer.Ordinal)
-            .Select(group => $"{group.Key} ({group.Count()})")
-            .ToList();
-        var untagged = tagged.Count(tags => tags.Count == 0);
-        if (untagged > 0)
-        {
-            counts.Add($"untagged ({untagged})");
-        }
-        return Encode($"Subjects waiting: {string.Join(", ", counts)}.");
-    }
 
     private static string Acted(Draft draft, Option<Guid> acted) => acted.Exists(id => id == draft.Id) ? " acted" : string.Empty;
 
@@ -584,16 +521,17 @@ public static partial class ScriptoriumPage
         var title = (entry.Map(waiting => waiting.Draft) | burned).Map(draft => $"“{WithCode(draft.Writing.Title)}”");
         var date = entry.Map(waiting => Date(waiting.PublishesOnUtc));
         var augury = entry.Bind(waiting => waiting.Draft.Augury)
-            .Map(judged => $", {judged.Quality.ToString("P0", CultureInfo.InvariantCulture)}").IfNone(string.Empty);
+            .Map(judged => $", {Percent(judged.Quality)}").IfNone(string.Empty);
         string Named(string done) => title.Map(name => $"{done} {name}").IfNone(done);
-        var restore = burned.Map(ash => $""" <a href="/scriptorium/ashes?rite={ash.Id:D}#rite-{ash.Id:D}">Restore it from the Ashes</a>.""").IfNone(string.Empty);
+        // What a burn says that the script's Undo says instead (data-undoable): that it burned, and the way back.
+        var restore = burned.Map(ash => $"""<span data-undoable> <a href="/scriptorium/ashes?rite={ash.Id:D}#rite-{ash.Id:D}">Restore it from the Ashes</a>.</span>""").IfNone(string.Empty);
         return outcome switch
         {
             "anoint" => $"{Named("Anointed")}: it goes out next{date.Map(day => $", {day}").IfNone(string.Empty)}.",
             "exalt" => $"{Named("Exalted")}{date.Map(day => $" to {day}").IfNone(string.Empty)}.",
             "humble" => $"{Named("Humbled")}{date.Map(day => $" to {day}").IfNone(string.Empty)}.",
-            "burn" => $"{Named("Consigned")} to the flames.{restore}",
-            "burn-last" => $"{Named("Consigned")} to the flames. No rite waits now, so new ones are being summoned: look again in a few minutes.{restore}",
+            "burn" => $"""<span data-undoable>{Named("Consigned")} to the flames.</span>{restore}""",
+            "burn-last" => $"""<span data-undoable>{Named("Consigned")} to the flames.</span> No rite waits now, so new ones are being summoned: look again in a few minutes.{restore}""",
             "restore" => $"{Named("Restored")} from the ashes{date.Map(day => $": it waits for {day}").IfNone(string.Empty)}.",
             "summon" => "New rites are being summoned: look again in a few minutes.",
             "amend" => $"{Named("Amended")}: judged again, it waits{date.Map(day => $" for {day}").IfNone(string.Empty)}.",

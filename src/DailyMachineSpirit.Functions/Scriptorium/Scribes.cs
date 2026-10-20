@@ -14,8 +14,14 @@ namespace DailyMachineSpirit.Functions.Scriptorium;
 /// </summary>
 public sealed record CalendarEntry(Draft Draft, DateOnly PublishesOnUtc, bool PlacedByScribes, Option<string> PlacedBy, int AuguryPlace);
 
-/// <summary><see cref="Today"/> (UTC) tells whether the first entry goes out at the coming midnight, or is already due.</summary>
-public sealed record ScriptoriumView(List<CalendarEntry> Calendar, List<ScribeDecision> Decisions, DateOnly Today);
+/// <summary>
+/// <see cref="NowUtc"/> tells whether the first entry goes out at the coming midnight, or is already due, and how long
+/// until it does.
+/// </summary>
+public sealed record ScriptoriumView(List<CalendarEntry> Calendar, List<ScribeDecision> Decisions, DateTime NowUtc)
+{
+    public DateOnly Today => DateOnly.FromDateTime(NowUtc);
+}
 
 /// <summary>
 /// What the Scribes of the Scriptorium do: anoint, exalt and humble drafts (placing them in their order, ahead of the
@@ -54,7 +60,8 @@ public sealed class Scribes
 
     public Task<Either<Error, ScriptoriumView>> View(CancellationToken cancellationToken)
     {
-        var today = Today;
+        var now = time.GetUtcNow().UtcDateTime;
+        var today = DateOnly.FromDateTime(now);
         return Calendar(cancellationToken)
             .BindAsync(calendar => rites.GetPublishedOn(today, cancellationToken)
                 .BindAsync(todays => scriptorium.GetDecisions(pages.Value.JudgmentsShown, cancellationToken)
@@ -68,7 +75,7 @@ public sealed class Scribes
                                 draft, first.AddDays(place), placed.Contains(draft.Id), Placer(calendar.Placements, draft.Id),
                                 calendar.AuguryPlace(draft)))
                             .ToList();
-                        return Task.FromResult(new ScriptoriumView(entries, decisions, today));
+                        return Task.FromResult(new ScriptoriumView(entries, decisions, now));
                     })));
     }
 
@@ -117,16 +124,19 @@ public sealed class Scribes
                         Left: _ => Option<int>.None)),
                 None: () => Task.FromResult(Left<Error, Option<int>>(ScriptoriumRepository.ChangedMeanwhile)))));
 
-    /// <summary>Restores a burned draft, however long ago it burned: it waits again, in the Augury's order.</summary>
-    public Task<Either<Error, Unit>> Restore(Guid draftId, string note, string scribe, CancellationToken cancellationToken)
+    /// <summary>
+    /// Restores a burned draft, however long ago it burned: it waits again, in the Augury's order. Given the place it had
+    /// in the Scribes' order (1 is next), as the calendar's Undo gives it straight after a burn, it goes back there.
+    /// </summary>
+    public Task<Either<Error, Unit>> Restore(Guid draftId, string note, string scribe, Option<int> scribesPlace, CancellationToken cancellationToken)
         => Note(note).BindAsync(checkedNote => drafts.Get(draftId, cancellationToken)
-            .BindAsync(stored => scriptorium.GetPlacements(cancellationToken)
-                .BindAsync(placements => stored.Filter(draft => draft.State == DraftState.Burned).Match(
+            .BindAsync(stored => Restored(draftId, scribesPlace, scribe, cancellationToken)
+                .BindAsync(restored => stored.Filter(draft => draft.State == DraftState.Burned).Match(
                     Some: draft => scriptorium
                         .ChangeState(draftId, DraftState.Burned, DraftState.Waiting,
                             Decision(draft, ScribeAction.Restore, checkedNote, None),
-                            WithoutDraft(placements, draftId),
-                            AuditEntries.Of(time, scribe, AuditAction.Restore, draft, None),
+                            restored.Placements,
+                            AuditEntries.Of(time, scribe, AuditAction.Restore, draft, restored.Place.Map(place => $"to #{place}")),
                             cancellationToken)
                         .MapAsync(_ => Task.FromResult(unit)),
                     None: () => Task.FromResult(Left<Error, Unit>(ScriptoriumRepository.ChangedMeanwhile))))));
@@ -143,8 +153,6 @@ public sealed class Scribes
         => scriptorium.GetPlacements(cancellationToken)
             .BindAsync(placements => scriptorium.SavePlacements(placements with { Order = [] }, None, [],
                 AuditEntries.Of(time, scribe, AuditAction.LetTheAuguryDecide, None, None), cancellationToken));
-
-    private DateOnly Today => DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime);
 
     private Task<Either<Error, Unit>> Reorder(
         Guid draftId, ScribeAction action, string note, string scribe, Func<List<Guid>, int, Option<List<Guid>>> reorder,
@@ -186,6 +194,30 @@ public sealed class Scribes
 
     private static Option<string> Placer(Placements placements, Guid draftId)
         => placements.PlacedBy.TryGetValue(draftId, out var placer) ? Some(placer) : None;
+
+    // The Scribes' order once the draft is restored, if it changes, and the draft's place in it. Without a place to go
+    // back to, the draft starts again in the Augury's order; the calendar is read only to find the place.
+    private Task<Either<Error, (Option<Placements> Placements, Option<int> Place)>> Restored(
+        Guid draftId, Option<int> scribesPlace, string scribe, CancellationToken cancellationToken)
+        => scribesPlace.Match(
+            Some: place => Calendar(cancellationToken).MapAsync(calendar =>
+            {
+                var (placements, placed) = BackInPlace(calendar, draftId, place, scribe);
+                return Task.FromResult((Some(placements), Some(placed)));
+            }),
+            None: () => scriptorium.GetPlacements(cancellationToken)
+                .MapAsync(placements => Task.FromResult((WithoutDraft(placements, draftId), Option<int>.None))));
+
+    // Back in its place among the drafts the Scribes placed, or last when fewer are placed now. It keeps the Scribe who
+    // placed it, when the order still remembers (a burn leaves who placed it); else it's the restoring Scribe's.
+    private static (Placements Placements, int Place) BackInPlace(CalendarState calendar, Guid draftId, int place, string scribe)
+    {
+        var placed = calendar.Ordered.Select(draft => draft.Id).Where(calendar.Placements.Order.Contains).ToList();
+        var index = Math.Clamp(place - 1, 0, placed.Count);
+        var placedBy = calendar.Placements.PlacedBy.ToDictionary();
+        placedBy.TryAdd(draftId, scribe);
+        return (calendar.Placements with { Order = [.. placed[..index], draftId, .. placed[index..]], PlacedBy = placedBy }, index + 1);
+    }
 
     // A burned or restored draft leaves the Scribes' order: a restored one starts again in the Augury's.
     private static Option<Placements> WithoutDraft(Placements placements, Guid draftId)

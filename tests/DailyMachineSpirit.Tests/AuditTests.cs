@@ -33,7 +33,7 @@ public sealed class AuditTests : IAsyncLifetime
         testbed.Time.Advance(TimeSpan.FromMinutes(1));
         Ok(await scribes.Burn(fair.Id, "", Tester, CancellationToken.None));
         testbed.Time.Advance(TimeSpan.FromMinutes(1));
-        Ok(await scribes.Restore(fair.Id, "", Tester, CancellationToken.None));
+        Ok(await scribes.Restore(fair.Id, "", Tester, None, CancellationToken.None));
         testbed.Time.Advance(TimeSpan.FromMinutes(1));
         Ok(await scribes.LetTheAuguryDecide(Tester, CancellationToken.None));
 

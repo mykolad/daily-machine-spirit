@@ -308,8 +308,10 @@ observability/                    — the Grafana dashboards (technical, activit
   - **The Scribes' order** (the `placements` document) comes first; the Augury orders the rest. Moving a draft places
     everything above it too, so the order stays what the Scribes saw. The order keeps who placed each draft (`placedBy`, by Access
     id): the Scribe who moved it, or who placed it by moving another; one already placed keeps its Scribe unless it's
-    the one moved. On the calendar, a rite the Scribes placed wears a brass frame and says "Placed by <name>"
-    (`ScribeNames`), or "Placed by the Scribes" when its order was saved before it kept who.
+    the one moved. On the calendar, the rites the Scribes placed are a group of their own, above the Augury's, each
+    card saying who placed it (`ScribeNames`) when the order knows. Undo, straight after a burn, restores a rite the
+    Scribes placed to its place in their order (`Scribes.Restore` with its place); the Ashes' Restore puts it in the
+    Augury's.
   - **Every action is a lesson:** it saves a `ScribeDecision` with the draft as it was, the Augury's place and quality
     for it, and the Scribe's optional note, in the same batch as the change. The Precepts are learned from them.
   - **The Precepts** (`/scriptorium/precepts`, #12): rules for writing and choosing rites, learned from the Scribes'
@@ -396,9 +398,19 @@ observability/                    — the Grafana dashboards (technical, activit
     does in its `title`, the browser's own tooltip on hover: a reminder for the Scribes, chosen over a custom tooltip
     for being simple (the labels themselves stay the rite's names). Each draft's tags show as chips under its title,
     to match against the calendar's subjects.
+  - **The Calendar** (`ScriptoriumPage.Calendar`, the redesign's step 1, `design_handoff_scriptorium_calendar` outside
+    the repo; the Ashes, Precepts and Record follow with the same header and tabs): two groups, the Scribes' order and
+    the Augury's, each rite a row (place, day, title, tags, the Augury's score, Exalt and Humble) that opens into its
+    card; the next to publish is open, with when it goes out. The header says who's signed in. **Subject chips**
+    narrow the calendar to one subject (`?subject=<key>`, links, so it works without the script), each rite keeping
+    its place; the forms carry the subject, so an action comes back narrowed. `?open=all` opens every card. Recent
+    judgments are the last five, with a link to the Record. **Burning asks why** (the script's panel): "Too specific"
+    and "Duplicate" (the Record's most common burn notes), "The joke falls flat" and "The truth is wrong" (the rubric's
+    measures), or the Scribe's own words, sent as the note; none is needed. Without the script, every card is open and
+    a burn takes the note, as before.
   - **Tabs** (`TabCounting`): the Calendar (`/scriptorium`), the Ashes (`/scriptorium/ashes`), the Precepts and the
-    Record each start with the tab bar, every tab saying what its page holds: the waiting rites the Scribes placed and
-    those the Augury places, the burned ones, the precepts, the Record's entries. They're counted on every load, a few
+    Record each start with the tab bar, every tab saying what its page holds: the waiting rites, the burned ones, the
+    precepts, the Record's entries. They're counted on every load, a few
     small queries; when a count fails, the tabs show without counts. The Ashes shows the newest burned
     (`ScriptoriumPages:AshesShown`) and says how many there are in all. Amending a rite and choosing a name are pages
     under a tab, without the bar: they lead back where they came from.
@@ -407,7 +419,10 @@ observability/                    — the Grafana dashboards (technical, activit
     what changed (an Exalt can reorder the rites the Augury places, too). The status message stays the same element,
     so it's announced, and the tab bar is swapped for the new page's, with its new counts; focus returns to the same button (after a burn, to the rite now in its place in the calendar,
     which the Augury may have reordered, without scrolling away). Anything unexpected (an error, Cloudflare Access wanting a new sign-in) loads `/scriptorium`
-    afresh. Reduced motion: no slide, only the mark.
+    afresh. Reduced motion: no slide, only the mark. The cards a Scribe opened (kept for the session in
+    `sessionStorage`) and the notes being written on other rites survive the swap. A subject's chip loads the narrowed
+    calendar the same way. After a burn, a toast offers Undo for seven seconds (longer while the pointer or focus is on
+    it), and the status drops the words it says.
   - **Access:** who counts as a Scribe is an `IScribeSignIn`
     (`Scriptorium/SignIn/`), chosen to fail closed (`AddScribeSignIn`):
     - **Cloudflare Access** (`CloudflareAccess:TeamDomain` and `:Audience` set, production): every request must carry
