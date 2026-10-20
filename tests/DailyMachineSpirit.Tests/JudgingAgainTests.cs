@@ -48,7 +48,7 @@ public sealed class JudgingAgainTests : IAsyncLifetime
         else
         {
             // Each judging asks for its scores at once: two judgings.
-            testbed.Models.Fails(BacklogTestbed.QualityJudge, 2 * Settings.QualityJudging.ScoresPerDraft);
+            testbed.QualityJudgesFail(2 * Settings.QualityJudging.ScoresPerDraft);
         }
 
         Assert.Equal(0, Ok(await testbed.JudgingAgain().JudgeTheUnjudged(CancellationToken.None)));
@@ -89,7 +89,7 @@ public sealed class JudgingAgainTests : IAsyncLifetime
     {
         var unjudged = await testbed.AddUnjudgedDraft("Litany of the Cold Cache");
         var read = await ETag(unjudged);
-        testbed.Models.Fails(BacklogTestbed.QualityJudge, Settings.QualityJudging.ScoresPerDraft);
+        testbed.QualityJudgesFail(Settings.QualityJudging.ScoresPerDraft);
         var amendable = Ok(await testbed.Amendments().FindWaiting(unjudged.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Not amendable."));
         Ok(await testbed.Amendments().SaveAndJudgeAgain(unjudged.Id, amendable.ETag,
             new("Litany of the Warm Cache", "O Machine Spirit, warm thy cache.", "A warm cache was read before."), "", Tester, CancellationToken.None));
@@ -128,6 +128,25 @@ public sealed class JudgingAgainTests : IAsyncLifetime
         var judged = Ok(await testbed.Drafts.Get(older.Id, CancellationToken.None)).Bind(draft => draft.Augury);
         Assert.Equal(Some(RubricJudge.Version), judged.Map(augury => augury.JudgedBy));
         Assert.Equal(Some(7f / 9), judged.Map(augury => augury.Quality));
+    }
+
+    // Judged while Jev was off, a draft has its quality but no scores or tags. Once Jev is on again, it's judged again
+    // for them, so it isn't published without them.
+    [Fact]
+    public async Task ADraftJudgedWhileJevWasOff_IsJudgedAgain_OnceJevIsOn()
+    {
+        var unjudged = await testbed.AddUnjudgedDraft("Litany of the Cold Cache");
+        testbed.JevApiKey = "";
+        Assert.Equal(1, Ok(await testbed.JudgingAgain().JudgeTheUnjudged(CancellationToken.None)));
+        Assert.True(Ok(await testbed.Drafts.Get(unjudged.Id, CancellationToken.None)).Bind(draft => draft.Similarity).IsNone);
+
+        testbed.JevApiKey = FakeJev.ApiKey;
+        Assert.Equal(1, Ok(await testbed.JudgingAgain().JudgeTheUnjudged(CancellationToken.None)));
+
+        var judged = Ok(await testbed.Drafts.Get(unjudged.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Gone."));
+        Assert.True(judged.Similarity.IsSome);
+        Assert.Equal(Some(new[] { "builds" }), judged.Tags);
+        Assert.Equal(0, Ok(await testbed.JudgingAgain().JudgeTheUnjudged(CancellationToken.None)));
     }
 
     private async Task<string> ETag(Draft draft)

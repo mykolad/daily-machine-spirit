@@ -14,10 +14,10 @@ namespace DailyMachineSpirit.Functions.Generation.Judging;
 public interface IRiteJudge
 {
     /// <summary>
-    /// What its qualities' <see cref="Augury.JudgedBy"/> says: a draft whose quality another judge gave is judged again
-    /// (<see cref="JudgingAgain"/>), since the Augury only compares qualities from the same judge.
+    /// Whether the draft has everything this judge gives now: else it's judged again (<see cref="JudgingAgain"/>). A
+    /// quality another judge gave doesn't count, since the Augury only compares qualities from the same judge.
     /// </summary>
-    string QualityJudge { get; }
+    bool HasJudged(Draft draft);
 
     /// <summary>
     /// The draft with its scores, tags and quality; an error when any part couldn't be judged, so the draft waits to be

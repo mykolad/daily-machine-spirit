@@ -20,7 +20,9 @@ public sealed class RiteJudge : IRiteJudge
         this.rubric = rubric;
     }
 
-    public string QualityJudge => RubricJudge.Version;
+    // Judged while Jev was off, a draft has its quality but no scores: once Jev is on, it's judged again for them.
+    public bool HasJudged(Draft draft)
+        => draft.Augury.Exists(augury => augury.JudgedBy == RubricJudge.Version) && (!jev.Enabled || draft.Similarity.IsSome);
 
     public async Task<Either<Error, Draft>> Judge(Draft draft, CancellationToken cancellationToken)
     {

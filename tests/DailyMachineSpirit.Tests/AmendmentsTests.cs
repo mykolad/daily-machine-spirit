@@ -84,7 +84,7 @@ public sealed class AmendmentsTests : IAsyncLifetime
     public async Task Save_WhenItCantBeJudged_SaysTheDraftWaitsUnjudged()
     {
         var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
-        testbed.Models.Fails(BacklogTestbed.QualityJudge, Settings.QualityJudging.ScoresPerDraft);
+        testbed.QualityJudgesFail(Settings.QualityJudging.ScoresPerDraft);
         var amendable = Ok(await testbed.Amendments().FindWaiting(draft.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Not amendable."));
 
         var judged = Ok(await testbed.Amendments().SaveAndJudgeAgain(draft.Id, amendable.ETag, Sharper, "", Tester, CancellationToken.None));

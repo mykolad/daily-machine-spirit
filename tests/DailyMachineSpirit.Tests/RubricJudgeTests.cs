@@ -33,6 +33,19 @@ public sealed class RubricJudgeTests : IDisposable
         Assert.Equal(BacklogTestbed.QualityJudging.ScoresPerDraft, models.Requests.Count);
     }
 
+    // A rewrite keeps the first writer's name, and a Scribe's words are nobody's: an amended draft is scored by every judge
+    // in turn, so no model's taste for its own writing decides it.
+    [Fact]
+    public async Task AnAmendedDraft_IsScoredByEveryJudgeInTurn()
+    {
+        var models = new FakeChatClients().Otherwise(Judge, Score(8)).Otherwise(OtherJudge, Score(8));
+        var amended = Draft(Judge) with { Writing = Draft(Judge).Writing with { Edited = true } };
+
+        Ok(await Rubric(models).Judge(amended, CancellationToken.None));
+
+        Assert.Equal([Judge, Judge, OtherJudge], models.Requests.Select(request => request.Model).Order());
+    }
+
     // From 0 (a score of 1) to 1 (a 10): the average of the scores, which vary from one ask to the next.
     [Fact]
     public async Task TheQuality_IsTheScoresAverage_OnAScaleFromZeroToOne()
@@ -57,12 +70,15 @@ public sealed class RubricJudgeTests : IDisposable
         Assert.Equal(1f, augury.Quality);
     }
 
+    // Without a score, the error says why: for the logs.
     [Fact]
-    public async Task NoScore_IsAnError()
+    public async Task NoScore_IsAnError_ThatSaysWhy()
     {
         var models = new FakeChatClients().Fails(Judge, BacklogTestbed.QualityJudging.ScoresPerDraft);
 
-        Failed(await Rubric(models).Judge(Draft("gpt-6-sol"), CancellationToken.None));
+        var error = Failed(await Rubric(models).Judge(Draft("gpt-6-sol"), CancellationToken.None));
+
+        Assert.Contains("overloaded", error.Message);
     }
 
     // Jev's scores and tags, and the rubric's quality, together; either failing, the draft is judged again later, whole.

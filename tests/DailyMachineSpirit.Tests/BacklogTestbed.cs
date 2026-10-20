@@ -122,6 +122,13 @@ public sealed class BacklogTestbed : IAsyncLifetime
     /// <summary>Jev for the scores and tags, and the quality judges' fake models for the quality, as the app wires them.</summary>
     public RiteJudge Judge() => new(Jev.NewJudge(Time, JevApiKey), new RubricJudge(Models, Options.Create(QualityJudging), Time, Probe.Metrics));
 
+    /// <summary>Both quality judges fail this many times each: no draft, amended or not, gets a score.</summary>
+    public void QualityJudgesFail(int times)
+    {
+        Models.Fails(QualityJudge, times);
+        Models.Fails(SecondQualityJudge, times);
+    }
+
     public static QualityJudgingOptions QualityJudging => Settings.QualityJudging with { Models = [QualityJudge, SecondQualityJudge] };
 
     public PreceptKeeping PreceptKeeping() => new(Precepts, PreceptCheck(), Time, NullLogger<PreceptKeeping>.Instance);
@@ -192,6 +199,12 @@ public sealed class BacklogTestbed : IAsyncLifetime
             },
             Tags = tags,
             Augury = new Augury { Quality = quality, JudgedBy = RubricJudge.Version },
+        };
+        // Scored, as Jev would have, so it counts as judged; each by a generator of its own, so no two test drafts look
+        // alike to the Augury.
+        draft = draft with
+        {
+            Similarity = new RiteSimilarity { ScoresGeneratorVersion = $"test-{draft.Id:N}", Scores = [1f], CreatedAtUtc = draft.Writing.GeneratedAtUtc },
         };
         return Expect.Ok(await Drafts.Add(draft, CancellationToken.None));
     }

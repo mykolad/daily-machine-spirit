@@ -73,7 +73,7 @@ public sealed class JudgingAgain
                 return Task.FromResult(Right<Error, Option<Augury>>(None));
             });
 
-    private bool NotJudgedByTheCurrentJudge(Draft draft) => draft.Augury.ForAll(augury => augury.JudgedBy != judge.QualityJudge);
+    private bool NotJudgedByTheCurrentJudge(Draft draft) => !judge.HasJudged(draft);
 
     // Amended, burned, published or judged since the refill listed it: no failure, just nothing left to judge.
     private void LogUnlessChangedMeanwhile(Draft draft, Error error)

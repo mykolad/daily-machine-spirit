@@ -270,14 +270,15 @@ observability/                    — the Grafana dashboards (technical, activit
   - **Judging:** an `IRiteJudge` judges each draft (`RiteJudge`, swappable like the models), asking two judges at once:
     - **Jev** (`JevJudge`): its similarity scores for "More rites", and the tags. Off, a draft has neither.
     - **The rubric judge** (`RubricJudge`, #10): the Augury's quality. The model that didn't write the draft
-      (`QualityJudging:Models`) scores it from 1 to 10 against a short rubric (funny, an accurate Heretical Truth,
+      (`QualityJudging:Models`) scores it (an amended draft, whose words may be a Scribe's or the other
+      model's rewrite under the first writer's name, by every judge model in turn) from 1 to 10 against a short rubric (funny, an accurate Heretical Truth,
       original, within the rules), three times at once since its score for one draft varies by a point or two, and
       the quality is the average, from 0 to 1. A blind test against the owner's picks on staging's drafts found it
       better than Jev's own quality question, which barely told drafts apart (`experiments/blind-judges`). Its version
       (`RubricJudge.Version`) is the `JudgedBy` the Augury compares.
 
     A draft that can't be judged (either failing) still joins the backlog, without scores. It's judged again
-    (`JudgingAgain`), as is one an older judge scored: by each refill, before it writes, so an outage or a new judge
+    (`JudgingAgain`), as is one an older judge scored, or one judged while Jev was off once it's on (`IRiteJudge.HasJudged`): by each refill, before it writes, so an outage or a new judge
     heals on its own, or at once by a Scribe's **Judge Again** (offered only on an unjudged draft). The judgment is
     saved only if the draft is still the version judged (its ETag), and recorded (#9), but it's no lesson for the
     Augury: it says nothing of the Scribes' taste. "Scores" are always the similarity scores, never the quality.

@@ -86,6 +86,9 @@ public sealed class JevJudge
         }
     }
 
+    /// <summary>Whether Jev is asked at all: without its key, drafts go without scores and tags.</summary>
+    public bool Enabled => options.Value.Enabled;
+
     public Option<string[]> TagsFrom(RiteSimilarity similarity) => JevTags.From(similarity, options.Value);
 
     private static object Question(string instructions, IReadOnlyList<KeyValuePair<string, string>> options)
