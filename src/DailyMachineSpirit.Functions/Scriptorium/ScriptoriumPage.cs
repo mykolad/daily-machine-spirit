@@ -65,7 +65,7 @@ public static partial class ScriptoriumPage
         .suggest-others .button-link { border-style: dashed; }
         .rite { background: #1a1612; border: 1px solid rgba(237,227,207,.1); border-radius: 20px; padding: 20px clamp(16px, 3vw, 24px); scroll-margin-top: 16px; }
         .ash { opacity: .92; }
-        .acted { border-color: #f0b45a; animation: acted 1.4s ease-out; }
+        .acted, .row.arrived { border-color: #f0b45a; animation: acted 1.4s ease-out; }
         @keyframes acted { from { box-shadow: 0 0 0 4px rgba(240, 180, 90, .45); } to { box-shadow: 0 0 0 4px rgba(240, 180, 90, 0); } }
         .subjects { display: flex; flex-wrap: wrap; gap: 6px; margin: 18px 0 0; }
         .chip { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; min-height: 34px; padding: 5px 12px; border-radius: 999px; border: 1px solid rgba(201,162,90,.45); font: 600 14px/1.4 Figtree, sans-serif; color: #d9b874; text-decoration: none; }
@@ -425,7 +425,7 @@ public static partial class ScriptoriumPage
     // who acts once a month needn't remember what "Let the Augury Decide" means. Each place in the calendar is a day.
     private static string About(string action) => action switch
     {
-        "summon" => "Writes new drafts in the background until the calendar is full again. Look again in a few minutes.",
+        "summon" => "Writes new drafts in the background until the calendar is full again; each appears as it's written.",
         "augury" => "Forgets the Scribes' order: the Augury orders every waiting rite again, by quality and variety.",
         "anoint" => "Makes this rite the next one published. It and every rite it passed then keep the Scribes' order.",
         "burn" => "Takes this rite out of the calendar, into the Ashes. Nothing is deleted: it can be restored.",
@@ -521,6 +521,18 @@ public static partial class ScriptoriumPage
 
     // What the last action did, as HTML. It names the rite and where it went when the rite is still on the page (it may
     // have been published or moved again since), and links a burned rite to its place in the Ashes, to restore it.
+    // A refill writes only what's missing, so a full calendar summons nothing.
+    private static string Summoning(ScriptoriumView view)
+    {
+        var missing = view.FullAt - view.Calendar.Count;
+        return missing switch
+        {
+            <= 0 => $"The calendar is full: {view.FullAt} rites wait, so there's nothing to summon.",
+            1 => "Summoning 1 new rite: it's written over the next few minutes.",
+            _ => $"Summoning {missing} new rites: they're written over the next few minutes.",
+        };
+    }
+
     private static Option<string> Status(string outcome, ScriptoriumView view, Option<Guid> rite, Option<Draft> burned)
     {
         var entry = rite.Bind(id => view.Calendar.Where(waiting => waiting.Draft.Id == id).HeadOrNone());
@@ -537,9 +549,9 @@ public static partial class ScriptoriumPage
             "exalt" => $"{Named("Exalted")}{date.Map(day => $" to {day}").IfNone(string.Empty)}.",
             "humble" => $"{Named("Humbled")}{date.Map(day => $" to {day}").IfNone(string.Empty)}.",
             "burn" => $"""<span data-undoable>{Named("Consigned")} to the flames.</span>{restore}""",
-            "burn-last" => $"""<span data-undoable>{Named("Consigned")} to the flames.</span> No rite waits now, so new ones are being summoned: look again in a few minutes.{restore}""",
+            "burn-last" => $"""<span data-undoable>{Named("Consigned")} to the flames.</span> No rite waits now, so new ones are being summoned: they're written over the next few minutes.{restore}""",
             "restore" => $"{Named("Restored")} from the ashes{date.Map(day => $": it waits for {day}").IfNone(string.Empty)}.",
-            "summon" => "New rites are being summoned: look again in a few minutes.",
+            "summon" => Summoning(view),
             "amend" => $"{Named("Amended")}: judged again, it waits{date.Map(day => $" for {day}").IfNone(string.Empty)}.",
             "amend-unjudged" => $"{Named("Amended")}, but it couldn't be judged again, so it waits unjudged{date.Map(day => $" for {day}").IfNone(string.Empty)}.",
             "judged" => $"{Named("Judged")} again{augury}: the Augury places it{date.Map(day => $" for {day}").IfNone(string.Empty)}.",

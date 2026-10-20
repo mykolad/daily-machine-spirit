@@ -112,8 +112,26 @@ public static class ScriptoriumScript
             }
           };
 
-          // Loads the calendar from the address (an action's answer, or a subject's) in place of the one shown.
-          const load = async (url, init, { pressed, card, burning }) => {
+          // Where focus was, found again in a new calendar: the same control of the same rite, or the same chip.
+          const focusAgain = () => {
+            const now = document.activeElement;
+            if (!(now instanceof Element) || !main.contains(now)) return null;
+            const rite = now.closest('article.row')?.id;
+            const action = now.matches('button') ? actionOf(now) : null;
+            const href = now.getAttribute('href');
+            const expand = now.matches('.expand');
+            return () => {
+              const scope = rite ? document.getElementById(rite) : main;
+              if (!scope) return null;
+              if (expand) return scope.querySelector('.expand');
+              if (action) return [...scope.querySelectorAll('button')].find((other) => actionOf(other) === action) ?? null;
+              return href ? scope.querySelector(`a[href="${CSS.escape(href)}"]`) : null;
+            };
+          };
+
+          // Loads the calendar from the address (an action's answer, or a subject's) in place of the one shown. Rites
+          // arriving from a summon come in without moving focus or the page.
+          const load = async (url, init, { pressed, card, burning, arriving }) => {
             busy = true;
             main.setAttribute('aria-busy', 'true');
             const before = positions();
@@ -129,6 +147,9 @@ public static class ScriptoriumScript
               if (!response.ok || !freshStatus || !status) throw new Error(String(response.status));
               // Kept now, not before the request: the fields stay editable while it's under way.
               keepNotes(card);
+              const refocus = arriving ? focusAgain() : null;
+              const came = Number(fresh.dataset.waiting) - Number(main.dataset.waiting);
+              main.dataset.waiting = fresh.dataset.waiting ?? '';
 
               // Everything but the status message is replaced; the message stays the same element, given the new text,
               // so a screen reader announces it as it would after a reload.
@@ -163,9 +184,11 @@ public static class ScriptoriumScript
                 showToast(burning);
               }
 
+              if (fresh.dataset.summoning) watchForRites(Number(fresh.dataset.summoning));
+
               // Each rite that moved starts where it was and slides to its new place (First, Last, Invert, Play).
               let arrived = Promise.resolve();
-              if (pressed && !reduced.matches) {
+              if ((pressed || arriving) && !reduced.matches) {
                 for (const [id, top] of positions()) {
                   const was = before.get(id);
                   if (was === undefined || Math.abs(was - top) < 1) continue;
@@ -174,6 +197,17 @@ public static class ScriptoriumScript
                     { duration: 500, easing: 'cubic-bezier(.2,.8,.2,1)' });
                   if (id === acted?.id) arrived = slide.finished.catch(() => {});
                 }
+              }
+
+              if (arriving) {
+                // Marked like a rite acted on, and said; focus stays on what the Scribe was on, the status otherwise.
+                cards().filter((row) => !before.has(row.id)).forEach((row) => row.classList.add('arrived'));
+                status.textContent = came === 1 ? '1 new rite arrived.' : `${came} new rites arrived.`;
+                if (refocus) {
+                  status.tabIndex = -1;
+                  (refocus() ?? status).focus({ preventScroll: true });
+                }
+                return;
               }
 
               // Focus stays where the Scribe is working: the same button on the rite, else its first one. After a burn,
@@ -200,13 +234,44 @@ public static class ScriptoriumScript
               }
             } catch {
               // Whether the action happened isn't known (Cloudflare Access may want a new sign-in, or the network
-              // failed): the page as it is now says.
-              location.assign(pressed ? '/scriptorium' : url);
+              // failed): the page as it is now says. Rites that failed to arrive only wait for the next look.
+              if (!arriving) location.assign(pressed ? '/scriptorium' : url);
             } finally {
               main.removeAttribute('aria-busy');
               busy = false;
             }
           };
+
+          // Summoned rites are written one at a time over minutes: the calendar looks for them every 15 seconds and shows
+          // each as it arrives, until it's full or five minutes pass without one. Not while the Scribe is typing, about
+          // to burn or acting: the next look shows what came meanwhile.
+          let watching = 0;
+          function watchForRites(fullAt) {
+            clearTimeout(watching);
+            let lastArrival = Date.now();
+            const look = async () => {
+              if (Number(main.dataset.waiting) >= fullAt || Date.now() - lastArrival > 5 * 60_000) return;
+              const typing = document.activeElement instanceof Element && document.activeElement.matches('textarea, input');
+              if (!busy && !typing && !main.querySelector('.burn-panel:not([hidden])')) {
+                const url = new URL(location.href);
+                url.searchParams.delete('done');
+                url.searchParams.delete('rite');
+                url.hash = '';
+                try {
+                  const response = await fetch(url);
+                  const page = new DOMParser().parseFromString(await response.text(), 'text/html');
+                  const waiting = Number(page.getElementById('main')?.dataset.waiting);
+                  if (response.ok && waiting > Number(main.dataset.waiting) && !busy) {
+                    lastArrival = Date.now();
+                    await load(url.href, {}, { pressed: null, card: null, burning: null, arriving: true });
+                  }
+                } catch { /* the next look tries again */ }
+              }
+              watching = setTimeout(look, 15_000);
+            };
+            watching = setTimeout(look, 15_000);
+          }
+          if (main.dataset.summoning) watchForRites(Number(main.dataset.summoning));
 
           document.addEventListener('submit', (event) => {
             const form = event.target;

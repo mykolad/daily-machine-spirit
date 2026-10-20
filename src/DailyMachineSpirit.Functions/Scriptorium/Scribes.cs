@@ -16,9 +16,9 @@ public sealed record CalendarEntry(Draft Draft, DateOnly PublishesOnUtc, bool Pl
 
 /// <summary>
 /// <see cref="NowUtc"/> tells whether the first entry goes out at the coming midnight, or is already due, and how long
-/// until it does.
+/// until it does. The calendar is full at <see cref="FullAt"/> rites, as many as a refill keeps waiting.
 /// </summary>
-public sealed record ScriptoriumView(List<CalendarEntry> Calendar, List<ScribeDecision> Decisions, DateTime NowUtc)
+public sealed record ScriptoriumView(List<CalendarEntry> Calendar, List<ScribeDecision> Decisions, DateTime NowUtc, int FullAt)
 {
     public DateOnly Today => DateOnly.FromDateTime(NowUtc);
 }
@@ -40,6 +40,7 @@ public sealed class Scribes
     private readonly IScriptoriumRepository scriptorium;
     private readonly IOptions<AuguryOptions> augury;
     private readonly IOptions<ScriptoriumPagesOptions> pages;
+    private readonly IOptions<BacklogOptions> backlog;
     private readonly TimeProvider time;
 
     public Scribes(
@@ -48,6 +49,7 @@ public sealed class Scribes
         IScriptoriumRepository scriptorium,
         IOptions<AuguryOptions> augury,
         IOptions<ScriptoriumPagesOptions> pages,
+        IOptions<BacklogOptions> backlog,
         TimeProvider time)
     {
         this.drafts = drafts;
@@ -55,6 +57,7 @@ public sealed class Scribes
         this.scriptorium = scriptorium;
         this.augury = augury;
         this.pages = pages;
+        this.backlog = backlog;
         this.time = time;
     }
 
@@ -75,7 +78,7 @@ public sealed class Scribes
                                 draft, first.AddDays(place), placed.Contains(draft.Id), Placer(calendar.Placements, draft.Id),
                                 calendar.AuguryPlace(draft)))
                             .ToList();
-                        return Task.FromResult(new ScriptoriumView(entries, decisions, now));
+                        return Task.FromResult(new ScriptoriumView(entries, decisions, now, backlog.Value.DraftsWaiting));
                     })));
     }
 

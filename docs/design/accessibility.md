@@ -170,6 +170,11 @@ month, with Today's masthead, margins and altar, and search as the Archive filte
   border, which isn't motion.
 - **One action at a time:** while one is under way, `aria-busy` marks the page, and a second click is ignored until
   the first is done.
+- **Summoned rites arrive without taking the Scribe away:** each one the script brings in is announced in the status
+  message ("1 new rite arrived.") and marked like a rite acted on, while focus stays on the control it was on (found
+  again by its rite and action) and the page doesn't scroll. It waits while the Scribe is typing or about to burn, so
+  a field never loses its focus or its words under them. A full calendar's Summon is disabled, its `title` saying why,
+  like Exalt and Humble at the ends.
 
 ## The wide screen
 

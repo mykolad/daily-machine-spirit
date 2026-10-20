@@ -413,7 +413,10 @@ observability/                    — the Grafana dashboards (technical, activit
   - **Concurrency:** each change uses an ETag, so two Scribes can't overwrite each other: the later one is told to look
     again.
   - **Refills:** burning the last waiting draft asks for a refill at once (the `backlog-refills` queue), as does
-    Summon.
+    Summon, which is greyed out while the calendar is full (a refill writes only what's missing; its `title` says so).
+    The message says how many are coming, and the script looks for them every 15 seconds and brings each in as it
+    arrives, marked and announced ("1 new rite arrived."), without moving focus or the page, until the calendar is
+    full or five minutes pass without one; not while the Scribe is typing, burning or acting.
   - **The page:** plain HTML forms, which work without a script. Each action posts and redirects back to the rite it
     acted on (`#rite-{id}`, marked `acted`, which glows), with a message that names it and where it went; after a burn,
     the message links to the rite in the Ashes, to restore it. It's never cached or indexed, and forms posted from

@@ -33,7 +33,13 @@ public static partial class ScriptoriumPage
         var status = outcome.Bind(done => Status(done, view, rite, burned));
         var html = new StringBuilder();
         Head(html, "The Scriptorium", TabBar(ScriptoriumTab.Calendar, counts), Identity(name));
-        html.Append($"""<main id="main"{(shown.OpenAll ? " data-open-all" : string.Empty)}>""");
+        // Rites being summoned arrive one at a time over minutes: the script shows each as it comes, until the calendar is
+        // full (data-summoning), by how many wait now (data-waiting).
+        var full = view.Calendar.Count >= view.FullAt;
+        var summoning = outcome.Exists(done => done is "summon" or "burn-last") && !full
+            ? $" data-summoning=\"{view.FullAt}\""
+            : string.Empty;
+        html.Append($"""<main id="main" data-waiting="{view.Calendar.Count}"{summoning}{(shown.OpenAll ? " data-open-all" : string.Empty)}>""");
         Heading(html, "The Scriptorium",
             "Unconsecrated rites await the judgment of the Scribes. Your notes teach the Augury what to choose when no Scribe is watching.");
         html.Append($"""<p class="status" role="status">{status.IfNone(string.Empty)}</p>""");
@@ -43,7 +49,7 @@ public static partial class ScriptoriumPage
             <div class="section-head">
             <h2 id="calendar-heading">The Liturgical Calendar</h2>
             <div class="actions">
-            <form method="post" action="/scriptorium/summon">{SubjectField(shown.Subject)}<button title="{Encode(About("summon"))}" class="primary">{ScriptoriumIcons.Summon}Summon New Rites</button></form>
+            <form method="post" action="/scriptorium/summon">{SubjectField(shown.Subject)}{SummonButton(view, full)}</form>
             """);
         if (view.Calendar.Any(entry => entry.PlacedByScribes))
         {
@@ -120,6 +126,12 @@ public static partial class ScriptoriumPage
 
     private static string Chip(string href, string label, int count, bool current)
         => $"""<a class="chip" href="{href}"{(current ? " aria-current=\"true\"" : string.Empty)}>{Encode(label)}<span class="chip-count">{count}</span></a>""";
+
+    // A refill writes only what's missing, so a full calendar has nothing to summon, and says why where the pointer rests.
+    private static string SummonButton(ScriptoriumView view, bool full)
+        => full
+            ? $"""<button title="The calendar is full: {view.FullAt} rites wait. More are written as rites are published or burned." class="primary" disabled>{ScriptoriumIcons.Summon}Summon New Rites</button>"""
+            : $"""<button title="{Encode(About("summon"))}" class="primary">{ScriptoriumIcons.Summon}Summon New Rites</button>""";
 
     // Each of the calendar's forms carries the subject it's narrowed to, so the calendar comes back narrowed.
     private static string SubjectField(Option<Tag> subject)

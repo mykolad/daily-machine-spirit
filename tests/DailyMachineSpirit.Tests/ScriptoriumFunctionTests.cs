@@ -291,7 +291,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     [InlineData("humble", "Humbled.")]
     [InlineData("restore", "Restored from the ashes.")]
     [InlineData("burn-last", "<span data-undoable>Consigned to the flames.</span> No rite waits now")]
-    [InlineData("summon", "New rites are being summoned")]
+    [InlineData("summon", "Summoning 3 new rites: they're written over the next few minutes.")]
     [InlineData("augury", "The Augury orders every draft again.")]
     [InlineData("changed", "Another Scribe changed the calendar meanwhile.")]
     [InlineData("unmoved", "It was already there, so nothing moved.")]
@@ -301,6 +301,25 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var html = Html(await Function().Page(Get($"?done={done}&rite={Guid.NewGuid():D}"), CancellationToken.None), 200);
 
         Assert.Contains($"""<p class="status" role="status">{message}""", html);
+    }
+
+    // A refill writes only what's missing: a full calendar can't summon, and says why; otherwise the page says how many
+    // are coming, and tells the script to look for them (data-summoning) by how many wait (data-waiting).
+    [Fact]
+    public async Task Summon_SaysHowManyAreComing_AndCantBePressedWhenTheCalendarIsFull()
+    {
+        await testbed.AddDraft("First", 0.9f);
+        var summoned = Html(await Function().Page(Get("?done=summon"), CancellationToken.None), 200);
+        await testbed.AddDraft("Second", 0.8f);
+        await testbed.AddDraft("Third", 0.7f);
+
+        var full = Html(await Function().Page(Get("?done=summon"), CancellationToken.None), 200);
+
+        Assert.Contains("Summoning 2 new rites", summoned);
+        Assert.Contains("""<main id="main" data-waiting="1" data-summoning="3">""", summoned);
+        Assert.Contains("The calendar is full: 3 rites wait, so there's nothing to summon.", full);
+        Assert.Contains("""<main id="main" data-waiting="3">""", full);
+        Assert.Contains("""<button title="The calendar is full: 3 rites wait. More are written as rites are published or burned." class="primary" disabled>""", full);
     }
 
     [Fact]
@@ -600,7 +619,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var burned = await testbed.AddDraft("Burned", 0.5f);
         await testbed.AddDraft("Still waiting", 0.5f);
-        var scribes = new Scribes(new DraftsFailingAfterFirstRead(testbed.Drafts), testbed.Rites, testbed.Scriptorium, Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages), testbed.Time);
+        var scribes = new Scribes(new DraftsFailingAfterFirstRead(testbed.Drafts), testbed.Rites, testbed.Scriptorium, Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages), Options.Create(Settings.Backlog), testbed.Time);
         var function = new ScriptoriumFunction(scribes, testbed.Amendments(), testbed.DraftJudging(), testbed.Audit, testbed.ScribeNaming(), testbed.Tabs(), Options.Create(Settings.ScriptoriumPages), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
         var response = await function.Decide(Post(""), burned.Id, "burn", CancellationToken.None);
