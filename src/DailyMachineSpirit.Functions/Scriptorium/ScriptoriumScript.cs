@@ -123,12 +123,19 @@ public static class ScriptoriumScript
             const action = now.matches('button') ? actionOf(now) : null;
             const href = now.getAttribute('href');
             const expand = now.matches('.expand');
+            const every = now.getAttribute('data-fold');
+            // Anything else (a note's fold): the same control by its place among its rite's, which a new rite arriving
+            // doesn't change.
+            const controls = (scope) => [...scope.querySelectorAll('button, a[href], summary, input, textarea, select')];
+            const at = controls(rite ? now.closest('article.row') : main).indexOf(now);
             return () => {
               const scope = rite ? document.getElementById(rite) : main;
               if (!scope) return null;
               if (expand) return scope.querySelector('.expand');
+              if (every) return main.querySelector(`[data-fold="${every}"]`);
               if (action) return [...scope.querySelectorAll('button')].find((other) => actionOf(other) === action) ?? null;
-              return href ? scope.querySelector(`a[href="${CSS.escape(href)}"]`) : null;
+              if (href) return scope.querySelector(`a[href="${CSS.escape(href)}"]`);
+              return at >= 0 ? controls(scope)[at] ?? null : null;
             };
           };
 
