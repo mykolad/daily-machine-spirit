@@ -80,10 +80,8 @@ public static partial class ScriptoriumPage
     private static void Calendar(StringBuilder html, ScriptoriumView view, Option<Tag> subject, Option<Guid> acted, IReadOnlyList<ScribeName> names)
     {
         var calendar = view.Calendar;
-        html.Append(calendar.Count == 1
-            ? $"""<p class="summary">1 unconsecrated rite waits, enough for {Date(calendar[0].PublishesOnUtc)}.</p>"""
-            : $"""<p class="summary">{calendar.Count} unconsecrated rites wait, enough for every day to {Date(calendar[^1].PublishesOnUtc)}.</p>""");
-        html.Append("""<p class="help">Anoint moves a rite to the front. Exalt and Humble move it one day. The Scribes’ order publishes first; the Augury orders the rest.</p>""");
+        // No summary or help above the rites: the tab counts them, each row says its day, and each button says what it
+        // does where the pointer rests.
         Subjects(html, calendar, subject);
 
         var rows = calendar.Select((entry, index) => new CalendarRow(entry, index + 1, index == calendar.Count - 1)).ToList();

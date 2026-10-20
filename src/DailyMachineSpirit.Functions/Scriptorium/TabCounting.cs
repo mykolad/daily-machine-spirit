@@ -32,19 +32,22 @@ public sealed class TabCounting
     {
         // Asked all at once, then gathered.
         var reads = (
+            Placements: scriptorium.GetPlacements(cancellationToken),
             Waiting: drafts.GetWaiting(cancellationToken),
             Burned: scriptorium.CountBurned(cancellationToken),
             Precepts: precepts.Get(cancellationToken),
             Entries: audit.Count(cancellationToken));
-        var (waiting, burned, book, entries) =
-            (await reads.Waiting, await reads.Burned, await reads.Precepts, await reads.Entries);
+        var (placements, waiting, burned, book, entries) =
+            (await reads.Placements, await reads.Waiting, await reads.Burned, await reads.Precepts, await reads.Entries);
 
         var counts =
+            from order in placements
             from rites in waiting
             from ashes in burned
             from stored in book
             from recorded in entries
-            select new TabCounts(rites.Count, ashes, stored.Book.Precepts.Count, recorded);
+            let placed = rites.Count(draft => order.Order.Contains(draft.Id))
+            select new TabCounts(placed, rites.Count - placed, ashes, stored.Book.Precepts.Count, recorded);
         return counts.Match(
             Right: Some,
             Left: error =>

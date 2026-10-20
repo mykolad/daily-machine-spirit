@@ -401,7 +401,8 @@ observability/                    — the Grafana dashboards (technical, activit
   - **The Calendar** (`ScriptoriumPage.Calendar`, the redesign's step 1, `design_handoff_scriptorium_calendar` outside
     the repo; the Ashes, Precepts and Record follow with the same header and tabs): two groups, the Scribes' order and
     the Augury's, each rite a row (place, day, title, tags, the Augury's score, Exalt and Humble) that opens into its
-    card; the next to publish is open, with when it goes out. The header says who's signed in. **Subject chips**
+    card; the next to publish is open, with when it goes out. The header says who's signed in. No summary or help
+    text above the rites: the tab counts them, each row says its day, and each button its action, in its `title`. **Subject chips**
     narrow the calendar to one subject (`?subject=<key>`, links, so it works without the script), each rite keeping
     its place; the forms carry the subject, so an action comes back narrowed. `?open=all` opens every card. Recent
     judgments are the last five, with a link to the Record. **Burning asks why** (the script's panel): "Too specific"
@@ -409,7 +410,8 @@ observability/                    — the Grafana dashboards (technical, activit
     measures), or the Scribe's own words, sent as the note; none is needed. Without the script, every card is open and
     a burn takes the note, as before.
   - **Tabs** (`TabCounting`): the Calendar (`/scriptorium`), the Ashes (`/scriptorium/ashes`), the Precepts and the
-    Record each start with the tab bar, every tab saying what its page holds: the waiting rites, the burned ones, the
+    Record each start with the tab bar, every tab saying what its page holds: the waiting rites the Scribes placed and those the Augury places ("4/16", said in words to a screen
+    reader), the burned ones, the
     precepts, the Record's entries. They're counted on every load, a few
     small queries; when a count fails, the tabs show without counts. The Ashes shows the newest burned
     (`ScriptoriumPages:AshesShown`) and says how many there are in all. Amending a rite and choosing a name are pages

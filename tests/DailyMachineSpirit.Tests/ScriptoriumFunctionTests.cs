@@ -186,7 +186,8 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
 
         Assert.All(pages, page =>
         {
-            Assert.Contains("""The Calendar<span class="count">3</span>""", page.Value);
+            // Excellent and Good in the Scribes’ order, Fair in the Augury’s.
+            Assert.Contains("""The Calendar<span class="count"><span aria-hidden="true" title="In the Scribes’ order / in the Augury’s">2/1</span><span class="visually-hidden">: 2 in the Scribes’ order, 1 in the Augury’s</span></span>""", page.Value);
             Assert.Contains("""The Ashes<span class="count">1</span>""", page.Value);
             Assert.Contains("""The Precepts<span class="count">1</span>""", page.Value);
             // Four drafts written, one anointed, one burned, and a precept added.

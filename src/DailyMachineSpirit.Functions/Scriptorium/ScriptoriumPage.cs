@@ -67,8 +67,6 @@ public static partial class ScriptoriumPage
         .ash { opacity: .92; }
         .acted { border-color: #f0b45a; animation: acted 1.4s ease-out; }
         @keyframes acted { from { box-shadow: 0 0 0 4px rgba(240, 180, 90, .45); } to { box-shadow: 0 0 0 4px rgba(240, 180, 90, 0); } }
-        .summary { margin: 12px 0 0; }
-        .help { margin: 4px 0 0; font-size: 15px; color: #b6a98f; }
         .subjects { display: flex; flex-wrap: wrap; gap: 6px; margin: 18px 0 0; }
         .chip { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; min-height: 34px; padding: 5px 12px; border-radius: 999px; border: 1px solid rgba(201,162,90,.45); font: 600 14px/1.4 Figtree, sans-serif; color: #d9b874; text-decoration: none; }
         .chip:hover { border-color: #c9a25a; color: #f0d59a; }
@@ -497,7 +495,7 @@ public static partial class ScriptoriumPage
             => $"""<li><a href="{path}"{(tab == current ? " aria-current=\"page\"" : string.Empty)}>{name}{counts.Map(counted => $"""<span class="count">{count(counted)}</span>""").IfNone(string.Empty)}</a></li>""";
         return $"""
             <nav class="tabs" aria-label="The Scriptorium"><ul>
-            {Tab(ScriptoriumTab.Calendar, "/scriptorium", "The Calendar", counted => Number(counted.Waiting))}
+            {Tab(ScriptoriumTab.Calendar, "/scriptorium", "The Calendar", CalendarCount)}
             {Tab(ScriptoriumTab.Ashes, "/scriptorium/ashes", "The Ashes", counted => Number(counted.Ashes))}
             {Tab(ScriptoriumTab.Precepts, "/scriptorium/precepts", "The Precepts", counted => Number(counted.Precepts))}
             {Tab(ScriptoriumTab.Record, "/scriptorium/record", "The Record", counted => Number(counted.RecordEntries))}
@@ -506,6 +504,14 @@ public static partial class ScriptoriumPage
     }
 
     private static string Number(int count) => count.ToString("N0", CultureInfo.InvariantCulture);
+
+    // The calendar's two orders, as its groups show them: short to the eye, said in words to a screen reader, which
+    // would read the slash as one.
+    private static string CalendarCount(TabCounts counted)
+    {
+        var (scribes, augury) = (Number(counted.PlacedByScribes), Number(counted.PlacedByAugury));
+        return $"""<span aria-hidden="true" title="In the Scribes’ order / in the Augury’s">{scribes}/{augury}</span><span class="visually-hidden">: {scribes} in the Scribes’ order, {augury} in the Augury’s</span>""";
+    }
 
     private static string Acted(Draft draft, Option<Guid> acted) => acted.Exists(id => id == draft.Id) ? " acted" : string.Empty;
 
