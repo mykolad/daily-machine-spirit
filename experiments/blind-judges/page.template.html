@@ -85,7 +85,13 @@
   // owner's machine until the tally.
   const PAIRS = /*PAIRS*/[];
 
+  // What the page shows: each pair's saved pick, or the one being saved.
   const picks = {};
+  // What the database holds, which the tally reads: only these count as judged.
+  const saved = {};
+  // Each pair's newest pick under way, so an older save's answer can't undo a newer pick.
+  const saving = {};
+  let tickets = 0;
   let at = 0;
   let db = null;
 
@@ -104,7 +110,7 @@
   }
 
   function render() {
-    const done = PAIRS.filter((p) => picks[p.id]).length;
+    const done = PAIRS.filter((p) => saved[p.id]).length;
     $("count").textContent = `${done} of ${PAIRS.length} judged`;
     $("bar").style.width = `${PAIRS.length ? (100 * done) / PAIRS.length : 0}%`;
     const pair = PAIRS[at];
@@ -118,7 +124,7 @@
       $(id).setAttribute("aria-pressed", String(pick === id));
     }
     $("chips").innerHTML = PAIRS.map((p, i) =>
-      `<li><button data-at="${i}" class="${picks[p.id] ? "done" : ""}${i === at ? " current" : ""}" aria-current="${i === at}" aria-label="Pair ${i + 1}${picks[p.id] ? ", judged" : ""}">${i + 1}</button></li>`).join("");
+      `<li><button data-at="${i}" class="${saved[p.id] ? "done" : ""}${i === at ? " current" : ""}" aria-current="${i === at}" aria-label="Pair ${i + 1}${saved[p.id] ? ", judged" : ""}">${i + 1}</button></li>`).join("");
     if (done === PAIRS.length && PAIRS.length) {
       $("status").textContent = "Every pair is judged. Tell Claude in the terminal; you can still change any pick.";
     }
@@ -133,15 +139,28 @@
       $("status").textContent = "Your pick can't be saved: this page has no storage here. Open it on claude.ai, signed in.";
       return;
     }
+    const ticket = ++tickets;
+    saving[pair.id] = ticket;
     picks[pair.id] = verdict;
     render();
     try {
       await db.collection("picks").doc(pair.id).set({ pick: verdict, at: new Date().toISOString() });
-      $("status").textContent = "";
     } catch (error) {
-      $("status").textContent = `That pick wasn't saved (${error?.code ?? "error"}). Pick again in a moment.`;
+      // The pair shows the pick the database still holds (or none), unless a newer pick is under way.
+      if (saving[pair.id] === ticket) {
+        delete saving[pair.id];
+        picks[pair.id] = saved[pair.id];
+        render();
+        $("status").textContent = `That pick wasn't saved (${error?.code ?? "error"}). Pick again in a moment.`;
+      }
       return;
     }
+    if (saving[pair.id] !== ticket) {
+      return;
+    }
+    delete saving[pair.id];
+    saved[pair.id] = verdict;
+    $("status").textContent = "";
     // On to the next pair still to judge, if any.
     const next = PAIRS.findIndex((p, i) => i > at && !picks[p.id]);
     const first = PAIRS.findIndex((p) => !picks[p.id]);
@@ -181,7 +200,10 @@
     let resumed = false;
     db.collection("picks").onSnapshot((snapshot) => {
       for (const doc of snapshot.docs) {
-        picks[doc.id] = doc.data()?.pick;
+        saved[doc.id] = doc.data()?.pick;
+        if (!saving[doc.id]) {
+          picks[doc.id] = saved[doc.id];
+        }
       }
       if (!resumed) {
         resumed = true;
