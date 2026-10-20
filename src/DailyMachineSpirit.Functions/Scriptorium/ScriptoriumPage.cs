@@ -90,7 +90,7 @@ public static partial class ScriptoriumPage
         .row form { margin: 0; }
         .next-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; margin: 0; padding: 10px 20px; background: #241c12; border-bottom: 1px solid rgba(201,162,90,.25); }
         .next-label { font: 700 12px Cinzel, serif; letter-spacing: .2em; text-transform: uppercase; color: #c9a25a; }
-        .next-when { font: 500 13px "JetBrains Mono", monospace; color: #8cc4ae; white-space: nowrap; }
+        .next-when { font: 500 13px "JetBrains Mono", monospace; color: #8cc4ae; }
         .row-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 12px 12px 12px 20px; }
         [data-folding] .row-head { cursor: pointer; }
         [data-folding] .row-head:hover { background: rgba(237,227,207,.03); }
