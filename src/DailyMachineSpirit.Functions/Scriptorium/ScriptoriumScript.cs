@@ -111,6 +111,10 @@ public static class ScriptoriumScript
             }
           };
 
+          // The Scribe is midway through something a new calendar would undo: typing, or about to burn.
+          const midway = () => (document.activeElement instanceof Element && document.activeElement.matches('textarea, input'))
+            || main.querySelector('.burn-panel:not([hidden])') !== null;
+
           // Where focus was, found again in a new calendar: the same control of the same rite, the same chip, or the same
           // tab (the tab bar is replaced too).
           const focusAgain = () => {
@@ -155,6 +159,9 @@ public static class ScriptoriumScript
               const freshStatus = fresh?.querySelector('.status');
               const status = main.querySelector('.status');
               if (!response.ok || !freshStatus || !status) throw new Error(String(response.status));
+              // Arriving rites wait for the next look while the Scribe is typing or about to burn, as checked again now:
+              // either may have begun while the request was under way.
+              if (arriving && midway()) return;
               // Kept now, not before the request: the fields stay editable while it's under way.
               keepNotes(card);
               const refocus = arriving ? focusAgain() : null;
@@ -284,8 +291,7 @@ public static class ScriptoriumScript
                 summonWaits();
                 return;
               }
-              const typing = document.activeElement instanceof Element && document.activeElement.matches('textarea, input');
-              if (!busy && !typing && !main.querySelector('.burn-panel:not([hidden])')) {
+              if (!busy && !midway()) {
                 const url = new URL(location.href);
                 url.searchParams.delete('done');
                 url.searchParams.delete('rite');
