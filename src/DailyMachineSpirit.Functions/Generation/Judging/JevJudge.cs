@@ -86,8 +86,11 @@ public sealed class JevJudge : ISimilarityJudge
         }
     }
 
-    // Without its key Jev isn't asked at all, and drafts go without scores and tags.
-    public bool HasJudged(Draft draft) => !options.Value.Enabled || draft.Similarity.IsSome;
+    // Without its key Jev isn't asked at all, and drafts go without scores and tags. Scores from another model or
+    // question set can't be compared with its own (the Augury and More rites compare only the same version).
+    public bool NeedsJudging(Draft draft)
+        => options.Value.Enabled
+            && !draft.Similarity.Exists(scores => scores.ScoresGeneratorVersion == JevQuestions.Version(options.Value.Model));
 
     public Option<string[]> TagsFrom(RiteSimilarity similarity) => JevTags.From(similarity, options.Value);
 

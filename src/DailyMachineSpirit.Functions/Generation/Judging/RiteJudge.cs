@@ -20,8 +20,7 @@ public sealed class RiteJudge : IRiteJudge
         this.quality = quality;
     }
 
-    // Judged while the similarity judge was off, a draft has its quality but no scores: once it's on, that's not all.
-    public bool HasJudged(Draft draft) => draft.Augury.Exists(quality.HasJudged) && similarity.HasJudged(draft);
+    public bool NeedsJudging(Draft draft) => similarity.NeedsJudging(draft) || quality.NeedsJudging(draft);
 
     public async Task<Either<Error, Draft>> Judge(Draft draft, CancellationToken cancellationToken)
     {

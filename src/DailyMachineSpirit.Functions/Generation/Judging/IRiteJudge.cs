@@ -13,11 +13,7 @@ namespace DailyMachineSpirit.Functions.Generation.Judging;
 /// </summary>
 public interface IRiteJudge
 {
-    /// <summary>
-    /// Whether the draft has everything this judge gives now. A quality another judge gave doesn't count, since the
-    /// Augury only compares qualities from the same judge.
-    /// </summary>
-    bool HasJudged(Draft draft);
+    bool NeedsJudging(Draft draft);
 
     /// <summary>
     /// The draft with its scores, tags and quality; an error when any part couldn't be judged, so no draft is judged in

@@ -130,7 +130,7 @@ public sealed class BacklogRefiller
             logger.LogWarning(error.ToException(), "Unjudged drafts couldn't be listed: {Reason}", error.Message);
             return new List<Draft>();
         });
-        foreach (var draft in waiting.Where(draft => !judge.HasJudged(draft)))
+        foreach (var draft in waiting.Where(judge.NeedsJudging))
         {
             (await judging.Judge(draft.Id, AuditEntry.MachineSpirit, cancellationToken))
                 .IfLeft(error => LogUnlessChangedMeanwhile(draft, error));

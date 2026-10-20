@@ -55,7 +55,8 @@ public sealed class RubricJudge : IQualityJudge
         this.metrics = metrics;
     }
 
-    public bool HasJudged(Augury augury) => augury.JudgedBy == Version;
+    // A quality from another judge, or another version of this rubric, can't be compared with its own.
+    public bool NeedsJudging(Draft draft) => !draft.Augury.Exists(augury => augury.JudgedBy == Version);
 
     /// <summary>The draft's quality, averaged over the scores that came back; the first failure's error when none did.</summary>
     public async Task<Either<Error, Augury>> Judge(Draft draft, CancellationToken cancellationToken)

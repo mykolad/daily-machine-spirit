@@ -51,7 +51,11 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public static readonly DateOnly Today = new(2026, 10, 7);
 
+    // More than any test adds drafts.
+    private const int ScoredPlaces = 64;
+
     private readonly CosmosTestContainer cosmos = new();
+    private int draftsScored;
 
     public FakeTimeProvider Time { get; } = new(new DateTimeOffset(2026, 10, 7, 0, 0, 5, TimeSpan.Zero));
 
@@ -200,11 +204,16 @@ public sealed class BacklogTestbed : IAsyncLifetime
             Tags = tags,
             Augury = new Augury { Quality = quality, JudgedBy = RubricJudge.Version },
         };
-        // Scored, as Jev would have, so it counts as judged; each by a generator of its own, so no two test drafts look
-        // alike to the Augury.
+        // Scored by the current Jev, so it counts as judged; each on a subject of its own (a score on a place no other
+        // draft has), so no two test drafts look alike to the Augury.
+        var scores = new float[ScoredPlaces];
+        scores[draftsScored++ % ScoredPlaces] = 1f;
         draft = draft with
         {
-            Similarity = new RiteSimilarity { ScoresGeneratorVersion = $"test-{draft.Id:N}", Scores = [1f], CreatedAtUtc = draft.Writing.GeneratedAtUtc },
+            Similarity = new RiteSimilarity
+            {
+                ScoresGeneratorVersion = JevQuestions.Version(Settings.Jev.Model), Scores = scores, CreatedAtUtc = draft.Writing.GeneratedAtUtc,
+            },
         };
         return Expect.Ok(await Drafts.Add(draft, CancellationToken.None));
     }

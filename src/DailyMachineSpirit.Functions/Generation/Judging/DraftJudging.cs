@@ -40,7 +40,7 @@ public sealed class DraftJudging
     public Task<Either<Error, Option<Augury>>> Judge(Guid draftId, string actor, CancellationToken cancellationToken)
         => drafts.GetWithETag(draftId, cancellationToken)
             .BindAsync(found => found
-                .Filter(stored => stored.Draft.State == DraftState.Waiting && !judge.HasJudged(stored.Draft))
+                .Filter(stored => stored.Draft.State == DraftState.Waiting && judge.NeedsJudging(stored.Draft))
                 .Match(
                     Some: stored => Judged(stored.Draft, stored.ETag, actor, cancellationToken),
                     None: () => Task.FromResult(Left<Error, Option<Augury>>(NothingToJudge))));

@@ -14,8 +14,7 @@ public interface ISimilarityJudge
     /// <summary>The draft with its scores and tags; the draft as it was while the judge is off.</summary>
     Task<Either<Error, Draft>> Judge(Draft draft, CancellationToken cancellationToken);
 
-    /// <summary>Whether the draft has the scores this judge gives now: true for every draft while it's off.</summary>
-    bool HasJudged(Draft draft);
+    bool NeedsJudging(Draft draft);
 
     /// <summary>The tags for scores this judge gave; None for scores it can't read (another judge's).</summary>
     Option<string[]> TagsFrom(RiteSimilarity similarity);

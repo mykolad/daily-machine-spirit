@@ -120,6 +120,21 @@ public sealed class DraftJudgingTests : IAsyncLifetime
         Assert.Equal(Some(7f / 9), judged.Map(augury => augury.Quality));
     }
 
+    // Scores from another Jev model can't be compared with the current one's, so "More rites" and the Augury would treat
+    // the draft as like nothing else. It's judged again for new ones.
+    [Fact]
+    public async Task ADraftAnOlderJevScored_IsJudgedAgain()
+    {
+        var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.9f);
+        var older = draft.Similarity.Map(scores => scores with { ScoresGeneratorVersion = JevQuestions.Version("jev-1.12.0") });
+        Ok(await testbed.Drafts.SaveJudgmentIfUnchanged(draft with { Similarity = older }, await ETag(draft), Entry(draft), CancellationToken.None));
+
+        Assert.True(Ok(await testbed.DraftJudging().Judge(draft.Id, AuditEntry.MachineSpirit, CancellationToken.None)).IsSome);
+
+        var judged = Ok(await testbed.Drafts.Get(draft.Id, CancellationToken.None)).Bind(found => found.Similarity);
+        Assert.Equal(Some(JevQuestions.Version(Settings.Jev.Model)), judged.Map(scores => scores.ScoresGeneratorVersion));
+    }
+
     // Judged while Jev was off, a draft has its quality but no scores or tags. Once Jev is on again, it's judged again
     // for them, so it isn't published without them.
     [Fact]

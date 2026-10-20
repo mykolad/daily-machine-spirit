@@ -278,7 +278,7 @@ observability/                    — the Grafana dashboards (technical, activit
       (`RubricJudge.Version`) is the `JudgedBy` the Augury compares.
 
     A draft that can't be judged (either failing) still joins the backlog, without scores. It's judged later, as is
-    one an older judge scored, or one judged while Jev was off once it's on (`IRiteJudge.HasJudged`): by each refill,
+    one an older judge or Jev model scored, or one judged while Jev was off once it's on (`IRiteJudge.NeedsJudging`): by each refill,
     before it writes, one draft at a time, so an outage or a new judge heals on its own, or at once by a Scribe's
     **Judge Again** (offered only on an unjudged draft). Both go through `DraftJudging`, which reads the draft again
     and saves the judgment only if it's still the version judged (its ETag), so two at once judge a draft twice at
