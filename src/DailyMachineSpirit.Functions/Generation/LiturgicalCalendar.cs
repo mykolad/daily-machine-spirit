@@ -6,7 +6,7 @@ namespace DailyMachineSpirit.Functions.Generation;
 /// <summary>
 /// The order the waiting drafts are published in, first next. The drafts the Scribes placed come first, in their order.
 /// The Augury orders the rest: better drafts first, but a draft much like the rites just before it waits, and prayers
-/// and rituals take turns where the qualities allow, so the days vary. Drafts without a quality (Jev off or failing)
+/// and rituals take turns where the qualities allow, so the days vary. Drafts without a quality (judging failing)
 /// follow, oldest first, and so do drafts judged by an older judge: a quality is only comparable with the same judge's.
 /// </summary>
 public static class LiturgicalCalendar

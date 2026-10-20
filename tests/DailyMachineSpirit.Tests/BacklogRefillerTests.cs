@@ -2,6 +2,7 @@ using System.Net;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Functions;
 using DailyMachineSpirit.Functions.Generation;
+using DailyMachineSpirit.Functions.Generation.Judging;
 using DailyMachineSpirit.Functions.Scriptorium;
 using DailyMachineSpirit.Functions.Scriptorium.SignIn;
 using LanguageExt;
@@ -114,7 +115,7 @@ public sealed class BacklogRefillerTests : IAsyncLifetime
 
         var saved = Assert.Single(await testbed.Waiting());
         Assert.Equal(("Restart III", Some("The Sacred Restart")), (saved.Writing.Title, saved.Resembles));
-        var html = Html(await new ScriptoriumFunction(testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), testbed.Tabs(), Options.Create(Settings.ScriptoriumPages), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance)
+        var html = Html(await new ScriptoriumFunction(testbed.Scribes(), testbed.Amendments(), testbed.DraftJudging(), testbed.Audit, testbed.ScribeNaming(), testbed.Tabs(), Options.Create(Settings.ScriptoriumPages), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance)
             .Page(Get(""), CancellationToken.None), 200);
         Assert.Contains("""<p class="resembles">Much like “The Sacred Restart”, already written.</p>""", html);
     }
@@ -216,8 +217,9 @@ public sealed class BacklogRefillerTests : IAsyncLifetime
         Assert.Equal(["outcome=failed"], MetricsProbe.Tags(judging, "outcome"));
     }
 
+    // Jev off, a draft has no similarity scores or tags, but still its quality: the models judge that.
     [Fact]
-    public async Task Refill_WithJudgingOff_AddsTheDrafts_WithoutScores()
+    public async Task Refill_WithJevOff_AddsTheDrafts_WithAQuality_ButWithoutScores()
     {
         testbed.BacklogSize = 1;
         testbed.JevApiKey = string.Empty;
@@ -226,7 +228,9 @@ public sealed class BacklogRefillerTests : IAsyncLifetime
 
         Ok(await testbed.Refiller().Refill(CancellationToken.None));
 
-        Assert.True(Assert.Single(await testbed.Waiting()).Augury.IsNone);
+        var waiting = Assert.Single(await testbed.Waiting());
+        Assert.True(waiting.Similarity.IsNone);
+        Assert.Equal(Some(RubricJudge.Version), waiting.Augury.Map(augury => augury.JudgedBy));
         Assert.Equal(["outcome=off"], MetricsProbe.Tags(judging, "outcome"));
     }
 

@@ -51,19 +51,16 @@ public class JevJudgeTests
         Assert.Equal(Some(new[] { "builds" }), judged.Tags);
     }
 
+    // The Augury's quality is the rubric judge's (#10): Jev isn't asked for one.
     [Fact]
-    public async Task Judge_JudgesTheQuality_AsTheProbabilitiesWeightedAverage()
+    public async Task Judge_GivesNoQuality()
     {
         var jev = FakeJev.AnsweringBuildsAndRepetition();
 
         var judged = Ok(await jev.NewJudge(time, FakeJev.ApiKey).Judge(Draft, CancellationToken.None));
 
-        var augury = judged.Augury.IfNone(() => throw new Xunit.Sdk.XunitException("Expected a quality."));
-        // Half "excellent" (1) and half "good" (2/3).
-        Assert.Equal(5f / 6, augury.Quality, 0.0001f);
-        Assert.Equal("jev-1.13.0/quality-q1", augury.JudgedBy);
-        Assert.Equal(time.GetUtcNow().UtcDateTime, augury.JudgedAtUtc);
-        Assert.Equal(Draft.Writing.Title, judged.Writing.Title);
+        Assert.True(judged.Augury.IsNone);
+        Assert.Null(Assert.Single(jev.Requests).Body["questions"]?["quality"]);
     }
 
     [Fact]
@@ -81,7 +78,6 @@ public class JevJudgeTests
         Assert.Contains(Draft.Writing.Text, state);
         Assert.Contains(Draft.Writing.HereticalTruth, state);
         Assert.Equal(JevQuestions.Topics.Count, body["questions"]?["topic"]?["criteria"]?.AsObject().Count);
-        Assert.Equal(JevQuestions.Qualities.Count, body["questions"]?["quality"]?["criteria"]?.AsObject().Count);
     }
 
     [Fact]

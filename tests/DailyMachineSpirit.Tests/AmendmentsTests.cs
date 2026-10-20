@@ -79,12 +79,12 @@ public sealed class AmendmentsTests : IAsyncLifetime
         Assert.Equal((Some(1), Some(2)), (amend.CalendarPlace, amend.AuguryPlace));
     }
 
-    // With Jev off the judge answers the draft as it was, without a quality: it isn't "judged again".
+    // The quality's models failing, the draft can't be judged: it waits, unjudged, for the next refill.
     [Fact]
-    public async Task Save_WithTheJudgeOff_SaysTheDraftWaitsUnjudged()
+    public async Task Save_WhenItCantBeJudged_SaysTheDraftWaitsUnjudged()
     {
         var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
-        testbed.JevApiKey = "";
+        testbed.QualityJudgesFail(Settings.QualityJudging.ScoresPerDraft);
         var amendable = Ok(await testbed.Amendments().FindWaiting(draft.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Not amendable."));
 
         var judged = Ok(await testbed.Amendments().SaveAndJudgeAgain(draft.Id, amendable.ETag, Sharper, "", Tester, CancellationToken.None));
