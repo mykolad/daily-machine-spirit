@@ -13,7 +13,7 @@ namespace DailyMachineSpirit.Functions.Generation.Judging;
 /// draft's own text goes there, never anything about visitors. The key is a header, never logged. The Augury's quality
 /// is the <see cref="RubricJudge"/>'s: Jev's own quality question barely told drafts apart (#10).
 /// </summary>
-public sealed class JevJudge
+public sealed class JevJudge : ISimilarityJudge
 {
     private readonly HttpClient http;
     private readonly IOptions<JevOptions> options;
@@ -86,8 +86,8 @@ public sealed class JevJudge
         }
     }
 
-    /// <summary>Whether Jev is asked at all: without its key, drafts go without scores and tags.</summary>
-    public bool Enabled => options.Value.Enabled;
+    // Without its key Jev isn't asked at all, and drafts go without scores and tags.
+    public bool HasJudged(Draft draft) => !options.Value.Enabled || draft.Similarity.IsSome;
 
     public Option<string[]> TagsFrom(RiteSimilarity similarity) => JevTags.From(similarity, options.Value);
 

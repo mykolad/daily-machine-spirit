@@ -267,9 +267,9 @@ observability/                    — the Grafana dashboards (technical, activit
     too). The prompt asks for plain words over code: at most one widely known command or file name, without flags. Its
     rules (`RiteRules`) also forbid anything abusive, hateful or discriminating; the Precepts are checked against them.
     Every draft and rewrite follows the Precepts (below); if they can't be read, the rite is written without them.
-  - **Judging:** an `IRiteJudge` judges each draft (`RiteJudge`, swappable like the models), asking two judges at once:
-    - **Jev** (`JevJudge`): its similarity scores for "More rites", and the tags. Off, a draft has neither.
-    - **The rubric judge** (`RubricJudge`, #10): the Augury's quality. The model that didn't write the draft
+  - **Judging:** an `IRiteJudge` judges each draft (`RiteJudge`, swappable like the models), asking two judges at once, each behind its own interface, so either can be swapped alone:
+    - **Jev** (`JevJudge`, an `ISimilarityJudge`): its similarity scores for "More rites", and the tags. Off, a draft has neither.
+    - **The rubric judge** (`RubricJudge`, an `IQualityJudge`, #10): the Augury's quality. The model that didn't write the draft
       (`QualityJudging:Models`) scores it (an amended draft, whose words may be a Scribe's or the other
       model's rewrite under the first writer's name, by every judge model in turn) from 1 to 10 against a short rubric (funny, an accurate Heretical Truth,
       original, within the rules), three times at once since its score for one draft varies by a point or two, and

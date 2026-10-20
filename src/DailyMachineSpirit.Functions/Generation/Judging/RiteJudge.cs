@@ -6,33 +6,32 @@ using static LanguageExt.Prelude;
 namespace DailyMachineSpirit.Functions.Generation.Judging;
 
 /// <summary>
-/// Jev's similarity scores and tags, and the <see cref="RubricJudge"/>'s quality, asked at once. While Jev is off, the
-/// draft gets its quality alone; when either fails, the draft waits to be judged again whole.
+/// The similarity judge's scores and tags, and the quality judge's quality, asked at once. While the similarity judge is
+/// off, the draft gets its quality alone; when either fails, the draft waits to be judged again whole.
 /// </summary>
 public sealed class RiteJudge : IRiteJudge
 {
-    private readonly JevJudge jev;
-    private readonly RubricJudge rubric;
+    private readonly ISimilarityJudge similarity;
+    private readonly IQualityJudge quality;
 
-    public RiteJudge(JevJudge jev, RubricJudge rubric)
+    public RiteJudge(ISimilarityJudge similarity, IQualityJudge quality)
     {
-        this.jev = jev;
-        this.rubric = rubric;
+        this.similarity = similarity;
+        this.quality = quality;
     }
 
-    // Judged while Jev was off, a draft has its quality but no scores: once Jev is on, it's judged again for them.
-    public bool HasJudged(Draft draft)
-        => draft.Augury.Exists(augury => augury.JudgedBy == RubricJudge.Version) && (!jev.Enabled || draft.Similarity.IsSome);
+    // Judged while the similarity judge was off, a draft has its quality but no scores: once it's on, it's judged again.
+    public bool HasJudged(Draft draft) => draft.Augury.Exists(quality.HasJudged) && similarity.HasJudged(draft);
 
     public async Task<Either<Error, Draft>> Judge(Draft draft, CancellationToken cancellationToken)
     {
-        var scored = jev.Judge(draft, cancellationToken);
-        var quality = rubric.Judge(draft, cancellationToken);
-        var (withScores, augury) = (await scored, await quality);
+        var scored = similarity.Judge(draft, cancellationToken);
+        var judgedQuality = quality.Judge(draft, cancellationToken);
+        var (withScores, augury) = (await scored, await judgedQuality);
         return from judged in withScores
                from judgment in augury
                select judged with { Augury = Some(judgment) };
     }
 
-    public Option<string[]> TagsFrom(RiteSimilarity similarity) => jev.TagsFrom(similarity);
+    public Option<string[]> TagsFrom(RiteSimilarity scores) => similarity.TagsFrom(scores);
 }

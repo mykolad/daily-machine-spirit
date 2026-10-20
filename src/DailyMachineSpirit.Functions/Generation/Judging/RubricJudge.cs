@@ -15,7 +15,7 @@ namespace DailyMachineSpirit.Functions.Generation.Judging;
 /// at once, and the quality is their average, from 0 (a score of 1) to 1 (a 10). In a blind test against the owner's
 /// picks it beat Jev's quality question, which barely told drafts apart (experiments/blind-judges).
 /// </summary>
-public sealed class RubricJudge
+public sealed class RubricJudge : IQualityJudge
 {
     /// <summary>The rubric's version: qualities from another judge or rubric aren't comparable (<see cref="Augury.JudgedBy"/>).</summary>
     public const string Version = "rubric-1";
@@ -54,6 +54,8 @@ public sealed class RubricJudge
         this.time = time;
         this.metrics = metrics;
     }
+
+    public bool HasJudged(Augury augury) => augury.JudgedBy == Version;
 
     /// <summary>The draft's quality, averaged over the scores that came back; the first failure's error when none did.</summary>
     public async Task<Either<Error, Augury>> Judge(Draft draft, CancellationToken cancellationToken)
