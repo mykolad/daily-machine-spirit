@@ -65,7 +65,19 @@ observability/                    — the Grafana dashboards (technical, activit
 - **One type per file**, so options, an interface and its implementation are separate files. Related files share a
   folder (`Generation/Judging/`), and the namespace follows the folder.
 - **Swappable services sit behind an interface** (`IChatClients`, `IRiteJudge`): the rest of the code never names the
-  vendor, and the vendor's settings (`JevOptions`) belong to its implementation.
+  vendor, and the vendor's settings (`JevOptions`) belong to its implementation. A service made of several vendors' parts
+  takes each part by its own interface, even before a second implementation exists, and asks each part about its own
+  data, so it knows no vendor's details.
+- **Deciding apart from storing:** what decides (the Augury's order, a judge) only computes, and stores nothing.
+  Reading the stored state, saving the change under its ETag and recording it (#9) belong to a service the callers share
+  (`Scribes` over `LiturgicalCalendar`), so every caller saves the same way and the deciding part stays swappable.
+- **ETags, not locks:** work that two instances (or a Scribe and a timer) may do at once is guarded by the ETag it read,
+  so only one saves and the other is told it changed meanwhile. Doing the work twice now and then costs less than a
+  distributed lock, its expiry and its stuck cases.
+- **Names say what the code does,** not what one caller uses it for: a service several callers share isn't named after
+  one of them, nor after a button's label.
+- **Comments answer why**, where it isn't obvious (a constraint, a trade-off, an incident); a better name beats a
+  comment that restates it. A member's comment says what it does or answers, never what its callers do with the result.
 - **Member order:** constants and fields, constructor, then public members (in a test class: setup and teardown, then
   the tests), and private helpers last.
 - **One blank line between properties** (and between methods), never two in a row. Constants or fields that share one
@@ -486,6 +498,9 @@ repository tests. For a deployment it also packages the app (the `app` artifact,
   and that package is deployed to staging, then, only if staging passed its smoke tests, to production. No approval:
   staging is the gate, and only `master` may deploy to the `production` environment.
 - **Deploy Branch to Staging** (`deploy-branch-to-staging.yml`): run by hand with a branch name, to try a PR on staging.
+  The branch stays there until the next deployment of staging: a merge to `master` while it deploys, or after, puts
+  `master` back (Deploy Master waits for the lock, then deploys), so deploy the branch again once Deploy Master's
+  staging job is done.
 - Both call `deploy.yml`, which deploys the package as the GitHub environment's identity (OIDC: the environment's
   `AZURE_*` variables hold ids, not secrets), one deployment per environment at a time. Then:
   - **Smoke tests** (`tests/DailyMachineSpirit.SmokeTests`, published into the package, so a package is always checked
