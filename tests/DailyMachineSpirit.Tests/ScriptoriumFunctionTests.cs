@@ -130,6 +130,25 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Equal("/scriptorium?done=augury&subject=caches", Assert.IsType<RedirectResult>(augury).Url);
     }
 
+    // Amending from a narrowed calendar comes back to it: the link, the page's form and its way back carry the subject.
+    [Fact]
+    public async Task AmendingFromANarrowedCalendar_ComesBackNarrowed()
+    {
+        var cold = await testbed.AddDraft("The Litany of the Cold Cache", 0.7f, RiteKind.Prayer, new[] { "caches" });
+        var function = Function();
+
+        var calendar = Html(await function.Page(Get("?subject=caches"), CancellationToken.None), 200);
+        var page = Html(await function.AmendPage(Get("?subject=caches"), cold.Id, CancellationToken.None), 200);
+        var saved = await function.Decide(Post("application/x-www-form-urlencoded",
+            $"etag={Uri.EscapeDataString(await ETag(cold))}&title=Warm&text=O%20Machine%20Spirit&truth=A%20warm%20cache&note=&subject=caches"),
+            cold.Id, "amend", CancellationToken.None);
+
+        Assert.Contains($"""href="/scriptorium/drafts/{cold.Id:D}/amend?subject=caches">""", calendar);
+        Assert.Contains("""<input type="hidden" name="subject" value="caches">""", page);
+        Assert.Contains($"""href="/scriptorium?subject=caches#rite-{cold.Id:D}">Leave It as It Was""", page);
+        Assert.Equal($"/scriptorium?done=amend&rite={cold.Id:D}&subject=caches#rite-{cold.Id:D}", Assert.IsType<RedirectResult>(saved.Result).Url);
+    }
+
     // Straight after a burn, the calendar's Undo restores the rite, a Scribes' one too, into the Augury's order.
     [Fact]
     public async Task Undo_PutsABurnedRiteBackInTheAugurysOrder()

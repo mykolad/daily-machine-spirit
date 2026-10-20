@@ -111,10 +111,14 @@ public static class ScriptoriumScript
             }
           };
 
-          // Where focus was, found again in a new calendar: the same control of the same rite, or the same chip.
+          // Where focus was, found again in a new calendar: the same control of the same rite, the same chip, or the same
+          // tab (the tab bar is replaced too).
           const focusAgain = () => {
             const now = document.activeElement;
-            if (!(now instanceof Element) || !main.contains(now)) return null;
+            if (!(now instanceof Element)) return null;
+            const tab = now.closest('nav.tabs a')?.getAttribute('href');
+            if (tab) return () => document.querySelector(`nav.tabs a[href="${CSS.escape(tab)}"]`);
+            if (!main.contains(now)) return null;
             const rite = now.closest('article.row')?.id;
             const action = now.matches('button') ? actionOf(now) : null;
             const href = now.getAttribute('href');
@@ -212,12 +216,13 @@ public static class ScriptoriumScript
 
               // Focus stays where the Scribe is working: the same button on the rite, else its first one. After a burn,
               // the rite now in the burned one's place (the last, when it was the last), so the page doesn't jump away
-              // from it. A subject's chip keeps it on the chips.
+              // from it. A subject's chip keeps it on the chips. Never a button the new calendar disabled (Summon, while
+              // its rites are written): focus there would be lost, so the status takes it.
               const rows = cards();
               const neighbour = burned && place >= 0 ? rows[place] ?? rows.at(-1) ?? null : null;
               const again = !pressed ? main.querySelector('.subjects [aria-current]')
                 : burned ? firstButton(neighbour)
-                : [...main.querySelectorAll('button')].find((other) => actionOf(other) === pressed) ?? firstButton(acted);
+                : [...main.querySelectorAll('button:not(:disabled)')].find((other) => actionOf(other) === pressed) ?? firstButton(acted);
               status.tabIndex = -1;
               (again ?? status).focus({ preventScroll: true });
               // Once the rite has arrived, it's brought into view. Not awaited: a hidden tab pauses the slide, and the
@@ -282,7 +287,9 @@ public static class ScriptoriumScript
                   const response = await fetch(url);
                   const page = new DOMParser().parseFromString(await response.text(), 'text/html');
                   const waiting = Number(page.getElementById('main')?.dataset.waiting);
-                  if (response.ok && waiting > Number(main.dataset.waiting) && !busy) {
+                  // A subject chosen while the look was under way is the calendar to keep: this look is dropped.
+                  const sameSubject = new URL(location.href).searchParams.get('subject') === url.searchParams.get('subject');
+                  if (response.ok && waiting > Number(main.dataset.waiting) && !busy && sameSubject) {
                     lastArrival = Date.now();
                     await load(url.href, {}, { pressed: null, card: null, burning: null, arriving: true });
                   }

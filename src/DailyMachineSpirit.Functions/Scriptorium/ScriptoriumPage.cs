@@ -283,7 +283,9 @@ public static partial class ScriptoriumPage
     /// <param name="message">Why it came back: a rule the words break, or that the Machine Spirit rewrote them.</param>
     /// <param name="rewrittenFrom">The words a rewrite started from, when <paramref name="words"/> are one: the fields it
     /// changed say so, and the first is focused.</param>
-    public static string RenderAmend(AmendableDraft amendable, RiteContent words, string note, Option<string> message, Option<RiteContent> rewrittenFrom)
+    /// <param name="subject">The subject the calendar was narrowed to, which the page carries back to it.</param>
+    public static string RenderAmend(
+        AmendableDraft amendable, RiteContent words, string note, Option<string> message, Option<RiteContent> rewrittenFrom, Option<Tag> subject)
     {
         var draft = amendable.Draft;
         var id = draft.Id.ToString("D");
@@ -301,7 +303,7 @@ public static partial class ScriptoriumPage
         html.Append($"""
             <p class="status" role="status">{message.Map(Encode).IfNone(string.Empty)}</p>
             <form method="post" class="amend" action="/scriptorium/drafts/{id}/amend">
-            <input type="hidden" name="etag" value="{Encode(amendable.ETag)}">
+            <input type="hidden" name="etag" value="{Encode(amendable.ETag)}">{SubjectField(subject)}
             <p class="kicker">{Kind(draft.Writing.Kind)} · written by {Encode(draft.Writing.GeneratedByModel)}</p>
             {Label("title", "Title")}
             <input type="text" id="amend-title" name="title" value="{Encode(words.Title)}" maxlength="{RiteWriting.MaxTitleLength}"{Marked("title")} required>
@@ -316,7 +318,7 @@ public static partial class ScriptoriumPage
             <div class="buttons">
             <button class="primary">{ScriptoriumIcons.Save}Save the Amendment</button>
             <button class="secondary" formaction="/scriptorium/drafts/{id}/rewrite" data-needs-note data-in-place data-slow="{Encode(Rewriting)}" data-busy-label="Rewriting…">{ScriptoriumIcons.Summon}Ask the Machine Spirit to Rewrite</button>
-            <a class="button-link" href="/scriptorium#rite-{id}">Leave It as It Was</a>
+            <a class="button-link" href="/scriptorium{subject.Map(tag => $"?subject={tag.Key}").IfNone(string.Empty)}#rite-{id}">Leave It as It Was</a>
             </div>
             </form>
             </main>
@@ -420,8 +422,8 @@ public static partial class ScriptoriumPage
         => $"""<button title="{Encode(About(action))}" class="{style}" formaction="/scriptorium/drafts/{id}/{action}">{icon}{label}<span class="visually-hidden">: {Encode(title)}</span></button>""";
 
     // A link, not a button: it opens the amending page, and nothing changes until that page's form is saved.
-    private static string AmendLink(string id, string title)
-        => $"""<a class="button-link" title="{Encode(About("amend"))}" href="/scriptorium/drafts/{id}/amend">{ScriptoriumIcons.Note}Amend<span class="visually-hidden">: {Encode(title)}</span></a>""";
+    private static string AmendLink(string id, string title, Option<Tag> subject)
+        => $"""<a class="button-link" title="{Encode(About("amend"))}" href="/scriptorium/drafts/{id}/amend{subject.Map(tag => $"?subject={tag.Key}").IfNone(string.Empty)}">{ScriptoriumIcons.Note}Amend<span class="visually-hidden">: {Encode(title)}</span></a>""";
 
     // What an action does, shown when the pointer rests on its button: the names are the rite's own words, and a Scribe
     // who acts once a month needn't remember what "Let the Augury Decide" means. Each place in the calendar is a day.

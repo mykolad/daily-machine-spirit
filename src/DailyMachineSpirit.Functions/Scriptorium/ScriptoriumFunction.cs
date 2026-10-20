@@ -131,11 +131,12 @@ public sealed class ScriptoriumFunction
             return refused;
         }
 
+        var subject = Subject(request.Query["subject"].ToString());
         return (await amendments.FindWaiting(draftId, cancellationToken)).Match(
             Right: found => found.Match(
-                Some: amendable => Html(request, ScriptoriumPage.RenderAmend(amendable, Words(amendable.Draft), string.Empty, None, None), StatusCodes.Status200OK),
+                Some: amendable => Html(request, ScriptoriumPage.RenderAmend(amendable, Words(amendable.Draft), string.Empty, None, None, subject), StatusCodes.Status200OK),
                 // Burned or published since the calendar was shown: the page says to look again.
-                None: () => Back("changed", draftId, None)),
+                None: () => Back("changed", draftId, subject)),
             Left: error => Failed(request, error));
     }
 
@@ -208,8 +209,8 @@ public sealed class ScriptoriumFunction
         var subject = Subject(fields["subject"].ToString());
         return action switch
         {
-            "amend" => await Amend(request, draftId, fields, scribe, cancellationToken),
-            "rewrite" => await Rewrite(request, draftId, fields, cancellationToken),
+            "amend" => await Amend(request, draftId, fields, scribe, subject, cancellationToken),
+            "rewrite" => await Rewrite(request, draftId, fields, subject, cancellationToken),
             "anoint" => Answer(request, action, draftId, subject, await scribes.Anoint(draftId, note, scribe, cancellationToken)),
             "exalt" => Answer(request, action, draftId, subject, await scribes.Exalt(draftId, note, scribe, cancellationToken)),
             "humble" => Answer(request, action, draftId, subject, await scribes.Humble(draftId, note, scribe, cancellationToken)),
@@ -234,7 +235,7 @@ public sealed class ScriptoriumFunction
 
     // Saved and judged again, back to the calendar; refused, the same page again with the Scribe's words and why.
     private async Task<ScriptoriumResponse> Amend(
-        HttpRequest request, Guid draftId, IFormCollection fields, string scribe, CancellationToken cancellationToken)
+        HttpRequest request, Guid draftId, IFormCollection fields, string scribe, Option<Tag> subject, CancellationToken cancellationToken)
     {
         var words = Words(fields);
         var note = fields["note"].ToString();
@@ -243,15 +244,16 @@ public sealed class ScriptoriumFunction
             Right: saved =>
             {
                 logger.CountScribeAction("amend");
-                return Task.FromResult(new ScriptoriumResponse { Result = Back(saved.JudgedAgain ? "amend" : "amend-unjudged", draftId, None) });
+                return Task.FromResult(new ScriptoriumResponse { Result = Back(saved.JudgedAgain ? "amend" : "amend-unjudged", draftId, subject) });
             },
             Left: error => IsTheScribes(error)
-                ? AmendAgain(request, draftId, etag, words, None, note, error.Message, StatusCodes.Status422UnprocessableEntity, cancellationToken)
-                : Task.FromResult(Failure(request, error, draftId, None)));
+                ? AmendAgain(request, draftId, etag, words, None, note, error.Message, StatusCodes.Status422UnprocessableEntity, subject, cancellationToken)
+                : Task.FromResult(Failure(request, error, draftId, subject)));
     }
 
     // The rewrite goes into the form, unsaved: the Scribe reads it before saving it.
-    private async Task<ScriptoriumResponse> Rewrite(HttpRequest request, Guid draftId, IFormCollection fields, CancellationToken cancellationToken)
+    private async Task<ScriptoriumResponse> Rewrite(
+        HttpRequest request, Guid draftId, IFormCollection fields, Option<Tag> subject, CancellationToken cancellationToken)
     {
         var words = Words(fields);
         var note = fields["note"].ToString();
@@ -262,23 +264,23 @@ public sealed class ScriptoriumFunction
                 logger.CountScribeAction("rewrite");
                 return AmendAgain(request, draftId, etag, rewritten, Some(words), note,
                     "The Machine Spirit rewrote it as your note asks. Read it over, then save it, ask again, or leave it as it was.",
-                    StatusCodes.Status200OK, cancellationToken);
+                    StatusCodes.Status200OK, subject, cancellationToken);
             },
             Left: error =>
             {
                 if (error == ScriptoriumRepository.ChangedMeanwhile)
                 {
-                    return Task.FromResult(new ScriptoriumResponse { Result = Back("changed", draftId, None) });
+                    return Task.FromResult(new ScriptoriumResponse { Result = Back("changed", draftId, subject) });
                 }
                 if (IsTheScribes(error))
                 {
-                    return AmendAgain(request, draftId, etag, words, None, note, error.Message, StatusCodes.Status422UnprocessableEntity, cancellationToken);
+                    return AmendAgain(request, draftId, etag, words, None, note, error.Message, StatusCodes.Status422UnprocessableEntity, subject, cancellationToken);
                 }
 
                 logger.LogError(error.ToException(), "The draft {DraftId} couldn't be rewritten: {Reason}", draftId, error.Message);
                 return AmendAgain(request, draftId, etag, words, None, note,
                     "The Machine Spirit couldn't rewrite it just now. Try again in a moment, or amend it by hand.",
-                    StatusCodes.Status503ServiceUnavailable, cancellationToken);
+                    StatusCodes.Status503ServiceUnavailable, subject, cancellationToken);
             });
     }
 
@@ -286,15 +288,15 @@ public sealed class ScriptoriumFunction
     // save; gone from the calendar since, back to it to look again.
     private async Task<ScriptoriumResponse> AmendAgain(
         HttpRequest request, Guid draftId, string etag, RiteContent words, Option<RiteContent> rewrittenFrom, string note, string message, int status,
-        CancellationToken cancellationToken)
+        Option<Tag> subject, CancellationToken cancellationToken)
         => (await amendments.FindWaiting(draftId, cancellationToken)).Match(
             Right: found => found.Match(
                 Some: amendable => new ScriptoriumResponse
                 {
-                    Result = Html(request, ScriptoriumPage.RenderAmend(amendable with { ETag = etag }, words, note, Some(message), rewrittenFrom), status),
+                    Result = Html(request, ScriptoriumPage.RenderAmend(amendable with { ETag = etag }, words, note, Some(message), rewrittenFrom, subject), status),
                 },
-                None: () => new ScriptoriumResponse { Result = Back("changed", draftId, None) }),
-            Left: error => Failure(request, error, draftId, None));
+                None: () => new ScriptoriumResponse { Result = Back("changed", draftId, subject) }),
+            Left: error => Failure(request, error, draftId, subject));
 
     // The Scribe's to fix on the page: words breaking a rule, a note too long, or no note to rewrite by.
     private static bool IsTheScribes(Error error) => error is AmendmentRefused || error == Scribes.NoteTooLong;

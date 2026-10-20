@@ -220,7 +220,7 @@ public static partial class ScriptoriumPage
         html.Append($"""<div class="buttons">{string.Concat(
             // Anointing the first is useful too: it keeps it first, ahead of a better draft a refill may bring.
             Button(id, title, "anoint", ScriptoriumIcons.Anoint, "Anoint", "primary"),
-            AmendLink(id, title),
+            AmendLink(id, title, subject),
             // Only where judging couldn't score it: judging a judged draft again would change nothing its words did.
             draft.Augury.IsSome ? string.Empty : Button(id, title, "judge", ScriptoriumIcons.Augury, "Judge Again", "secondary"),
             Button(id, title, "burn", ScriptoriumIcons.Burn, "Consign to the Flames", "danger burn"))}</div>""");
