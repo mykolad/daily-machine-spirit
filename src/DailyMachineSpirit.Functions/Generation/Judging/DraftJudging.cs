@@ -8,21 +8,22 @@ using static LanguageExt.Prelude;
 namespace DailyMachineSpirit.Functions.Generation.Judging;
 
 /// <summary>
-/// Judges again the waiting drafts judging couldn't score (Jev failed, or was off): each refill does, before it writes,
-/// so an outage heals on its own, and a Scribe can ask for one in the Scriptorium. A judgment says nothing about the
-/// Scribes' taste, so it's recorded (#9) but no lesson for the Augury.
+/// Judges a waiting draft the current judge hasn't judged (judging failed, or was off, or an older judge scored it) and
+/// saves the judgment, recorded (#9), if the draft is still the version judged. Each refill hands it the drafts it finds
+/// (<see cref="BacklogRefiller"/>), so an outage or a new judge heals on its own; a Scribe's Judge Again hands it one. A
+/// judgment says nothing about the Scribes' taste, so it's no lesson for the Augury.
 /// </summary>
-public sealed class JudgingAgain
+public sealed class DraftJudging
 {
-    /// <summary>Not waiting, or judged already: there's nothing to judge again.</summary>
+    /// <summary>Not waiting, or judged already by the current judge: there's nothing to judge.</summary>
     public static readonly Error NothingToJudge = Error.New("That rite is judged already, or no longer waits.");
 
     private readonly IDraftRepository drafts;
     private readonly IRiteJudge judge;
     private readonly TimeProvider time;
-    private readonly ILogger<JudgingAgain> logger;
+    private readonly ILogger<DraftJudging> logger;
 
-    public JudgingAgain(IDraftRepository drafts, IRiteJudge judge, TimeProvider time, ILogger<JudgingAgain> logger)
+    public DraftJudging(IDraftRepository drafts, IRiteJudge judge, TimeProvider time, ILogger<DraftJudging> logger)
     {
         this.drafts = drafts;
         this.judge = judge;
@@ -30,34 +31,20 @@ public sealed class JudgingAgain
         this.logger = logger;
     }
 
+    /// <summary>
+    /// The draft is read again, with its version, so a judgment never lands on words amended or judged meanwhile. None
+    /// when it still has no quality (the judge failed, is off, or answered with nothing to save): nothing is saved or
+    /// recorded.
+    /// </summary>
     /// <param name="actor">Who asked, for the record: a Scribe's id, or the Machine Spirit.</param>
-    public Task<Either<Error, Option<Augury>>> JudgeAgain(Guid draftId, string actor, CancellationToken cancellationToken)
+    public Task<Either<Error, Option<Augury>>> Judge(Guid draftId, string actor, CancellationToken cancellationToken)
         => drafts.GetWithETag(draftId, cancellationToken)
             .BindAsync(found => found
-                .Filter(stored => stored.Draft.State == DraftState.Waiting && stored.Draft.Augury.IsNone)
+                .Filter(stored => stored.Draft.State == DraftState.Waiting && judge.NeedsJudging(stored.Draft))
                 .Match(
                     Some: stored => Judged(stored.Draft, stored.ETag, actor, cancellationToken),
                     None: () => Task.FromResult(Left<Error, Option<Augury>>(NothingToJudge))));
 
-    // As the Machine Spirit: how many it judged now.
-    public Task<Either<Error, int>> JudgeTheUnjudged(CancellationToken cancellationToken)
-        => drafts.GetWaiting(cancellationToken)
-            .BindAsync(async waiting =>
-            {
-                var judged = 0;
-                foreach (var draft in waiting.Where(draft => draft.Augury.IsNone))
-                {
-                    var result = await JudgeAgain(draft.Id, AuditEntry.MachineSpirit, cancellationToken);
-                    if (result.Exists(augury => augury.IsSome))
-                    {
-                        judged++;
-                    }
-                    result.IfLeft(error => LogUnlessChangedMeanwhile(draft, error));
-                }
-                return Right<Error, int>(judged);
-            });
-
-    // Still without a quality (the judge is off, or answered with nothing to save), nothing is saved and nothing recorded.
     private async Task<Either<Error, Option<Augury>>> Judged(
         Draft draft, string etag, string actor, CancellationToken cancellationToken)
         => await (await judge.Judge(draft, cancellationToken)).Match(
@@ -71,16 +58,6 @@ public sealed class JudgingAgain
                     draft.Writing.Title, error.Message);
                 return Task.FromResult(Right<Error, Option<Augury>>(None));
             });
-
-    // Amended, burned, published or judged since the refill listed it: no failure, just nothing left to judge.
-    private void LogUnlessChangedMeanwhile(Draft draft, Error error)
-    {
-        if (error != ScriptoriumRepository.ChangedMeanwhile && error != NothingToJudge)
-        {
-            logger.LogWarning(error.ToException(), "Draft {Title} couldn't be judged again: {Reason}",
-                draft.Writing.Title, error.Message);
-        }
-    }
 
     private AuditEntry Audit(string actor, Draft judged, Augury augury) => new()
     {

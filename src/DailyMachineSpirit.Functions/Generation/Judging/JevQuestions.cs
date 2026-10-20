@@ -3,15 +3,12 @@ namespace DailyMachineSpirit.Functions.Generation.Judging;
 /// <summary>
 /// The questions Jev answers about each draft. Which software habit it's about, and what it asks its believers to do,
 /// make its similarity scores: each answer is a probability for every option, so two rites are close when their
-/// probabilities are. How good it is makes its quality, for the Augury.
+/// probabilities are.
 /// </summary>
 public static class JevQuestions
 {
     /// <summary>Changes whenever a topic or act option changes: older scores then aren't comparable any more.</summary>
     public const string QuestionSet = "q1";
-
-    /// <summary>Like <see cref="QuestionSet"/>, for the quality question alone, so changing it keeps the similarity scores.</summary>
-    public const string QualityQuestion = "quality-q1";
 
     // Every Jev model's name starts with it (jev-1.13.0), so another judge's version can't pass for Jev's.
     private const string ModelPrefix = "jev-";
@@ -47,21 +44,10 @@ public static class JevQuestions
         new("other", "none of the above"),
     ];
 
-    /// <summary>Each option and the quality it stands for: a draft's quality is their average, weighted by Jev's probabilities.</summary>
-    public static readonly IReadOnlyList<(string Key, string Description, float Quality)> Qualities =
-    [
-        ("excellent", "very funny, a fresh subject, and an accurate, useful explanation", 1f),
-        ("good", "funny and accurate, though not surprising", 2f / 3),
-        ("fair", "mildly amusing, or the explanation is vague", 1f / 3),
-        ("poor", "not funny, confusing, or the explanation is wrong", 0f),
-    ];
-
     public static string Version(string model) => $"{model}/{QuestionSet}";
 
     /// <summary>Whether scores of this version are Jev's answers to these questions, whichever Jev model gave them.</summary>
     public static bool IsVersion(string scoresGeneratorVersion)
         => scoresGeneratorVersion.StartsWith(ModelPrefix, StringComparison.Ordinal)
             && scoresGeneratorVersion.EndsWith($"/{QuestionSet}", StringComparison.Ordinal);
-
-    public static string QualityVersion(string model) => $"{model}/{QualityQuestion}";
 }

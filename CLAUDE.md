@@ -24,7 +24,7 @@ chatbots, and they're about habits any developer knows, not one tool's commands 
 
 ```
 src/DailyMachineSpirit.Functions  — the Functions app (HTTP, timer and queue functions)
-  Generation/                     — the backlog and the daily rite: Writing/, Chat/ (models), Judging/ (Jev), Precepts/
+  Generation/                     — the backlog and the daily rite: Writing/, Chat/ (models), Judging/ (Jev, the rubric), Precepts/
   Pages/                          — the public pages, rendered on the server (Today, the archive, a rite's page)
   Tags/                           — the tags' vocabulary, and tagging the rites judged before tags existed
 src/DailyMachineSpirit.Data       — Cosmos DB: entities, documents, repositories
@@ -65,7 +65,19 @@ observability/                    — the Grafana dashboards (technical, activit
 - **One type per file**, so options, an interface and its implementation are separate files. Related files share a
   folder (`Generation/Judging/`), and the namespace follows the folder.
 - **Swappable services sit behind an interface** (`IChatClients`, `IRiteJudge`): the rest of the code never names the
-  vendor, and the vendor's settings (`JevOptions`) belong to its implementation.
+  vendor, and the vendor's settings (`JevOptions`) belong to its implementation. A service made of several vendors' parts
+  takes each part by its own interface, even before a second implementation exists, and asks each part about its own
+  data, so it knows no vendor's details.
+- **Deciding apart from storing:** what decides (the Augury's order, a judge) only computes, and stores nothing.
+  Reading the stored state, saving the change under its ETag and recording it (#9) belong to a service the callers share
+  (`Scribes` over `LiturgicalCalendar`), so every caller saves the same way and the deciding part stays swappable.
+- **ETags, not locks:** work that two instances (or a Scribe and a timer) may do at once is guarded by the ETag it read,
+  so only one saves and the other is told it changed meanwhile. Doing the work twice now and then costs less than a
+  distributed lock, its expiry and its stuck cases.
+- **Names say what the code does,** not what one caller uses it for: a service several callers share isn't named after
+  one of them, nor after a button's label.
+- **Comments answer why**, where it isn't obvious (a constraint, a trade-off, an incident); a better name beats a
+  comment that restates it. A member's comment says what it does or answers, never what its callers do with the result.
 - **Member order:** constants and fields, constructor, then public members (in a test class: setup and teardown, then
   the tests), and private helpers last.
 - **One blank line between properties** (and between methods), never two in a row. Constants or fields that share one
@@ -237,10 +249,10 @@ observability/                    — the Grafana dashboards (technical, activit
     draft's ETag, so a draft is never published twice. An empty backlog never skips a day: a draft is written on the
     spot.
   - **The Augury** (`LiturgicalCalendar`) orders the waiting drafts:
-    - Better drafts go first. The quality comes from Jev's quality question, a first pick that #10 tests blind.
+    - Better drafts go first, by the rubric judge's quality (below).
     - A draft much like the week's rites before it waits.
     - Prayers and rituals take turns when their qualities are close.
-    - Drafts without a quality (Jev off or failing) go last.
+    - Drafts without a quality (judging failing), or with an older judge's, go last.
   - **No rite twice:** the writer's prompt lists the 30 newest rites, the waiting drafts and the recently burned ones,
     each a title and its Heretical Truth (`TakenRite`): the truth says the habit and the lesson, and a new title on an
     old lesson is the same rite. Then `DuplicateCheck` asks `gpt-6-luna` whether the draft repeats any of those or any
@@ -267,17 +279,29 @@ observability/                    — the Grafana dashboards (technical, activit
     too). The prompt asks for plain words over code: at most one widely known command or file name, without flags. Its
     rules (`RiteRules`) also forbid anything abusive, hateful or discriminating; the Precepts are checked against them.
     Every draft and rewrite follows the Precepts (below); if they can't be read, the rite is written without them.
-  - **Judging:** an `IRiteJudge` judges each draft (`JevJudge` for now, swappable like the models): its similarity
-    scores for "More rites" and its quality for the Augury, in one request. A draft that can't be judged still joins
-    the backlog, without scores. It's judged again (`JudgingAgain`): by each refill, before it writes, so an outage
-    heals on its own, or at once by a Scribe's **Judge Again** (offered only on an unjudged draft). The judgment is
-    saved only if the draft is still the version judged (its ETag), and recorded (#9), but it's no lesson for the
-    Augury: it says nothing of the Scribes' taste. "Scores" are always the similarity scores, never the quality.
+  - **Judging:** an `IRiteJudge` judges each draft (`RiteJudge`, swappable like the models), asking two judges at once, each behind its own interface, so either can be swapped alone:
+    - **Jev** (`JevJudge`, an `ISimilarityJudge`): its similarity scores for "More rites", and the tags. Off, a draft has neither.
+    - **The rubric judge** (`RubricJudge`, an `IQualityJudge`, #10): the Augury's quality. The model that didn't write the draft
+      (`QualityJudging:Models`) scores it (an amended draft, whose words may be a Scribe's or the other
+      model's rewrite under the first writer's name, by every judge model in turn) from 1 to 10 against a short rubric (funny, an accurate Heretical Truth,
+      original, within the rules), three times at once since its score for one draft varies by a point or two, and
+      the quality is the average, from 0 to 1. A blind test against the owner's picks on staging's drafts found it
+      better than Jev's own quality question, which barely told drafts apart (`experiments/blind-judges`). Its version
+      (`RubricJudge.Version`) is the `JudgedBy` the Augury compares.
+
+    A draft that can't be judged (either failing) still joins the backlog, without scores. It's judged later, as is
+    one an older judge or Jev model scored, or one judged while Jev was off once it's on (`IRiteJudge.NeedsJudging`): by each refill,
+    before it writes, one draft at a time, so an outage or a new judge heals on its own, or at once by a Scribe's
+    **Judge Again** (offered only on an unjudged draft). Both go through `DraftJudging`, which reads the draft again
+    and saves the judgment only if it's still the version judged (its ETag), so two at once judge a draft twice at
+    worst, and save it once; no lock. It's recorded (#9), but it's no lesson for the Augury: it says nothing of the
+    Scribes' taste. The judge itself (`IRiteJudge`) only judges, and saves nothing. "Scores" are always the similarity
+    scores, never the quality.
   - **Settings:** `AzureOpenAI:Endpoint` (the models are reached as the managed identity), `Jev:ApiKey` (a Key Vault
     reference in Azure; empty turns Jev off).
   - **Tuning: `machine-spirit.jsonc`** (in the Functions project, copied with the app): every value worth tuning, in one
     file with a section per thing it tunes (`RiteWriting`, `Backlog`, `DuplicateRiteCheck`, `PreceptDistilling`,
-    `PreceptCheck`, `ScribeNameSuggestions`, `Augury`, `Jev`, `PagePurging`, `PublicPages`, `ScriptoriumPages`), each
+    `PreceptCheck`, `ScribeNameSuggestions`, `Augury`, `QualityJudging`, `Jev`, `PagePurging`, `PublicPages`, `ScriptoriumPages`), each
     bound to an options class next to its code. Both environments use it as it is; an app setting of the same name
     would override a value, but none needs to, so infra/ keeps only what differs between them. Each model call has a
     **`Patience`**: tries per model, the pause between them, and how long a try or all of them may take. A key the
@@ -337,7 +361,7 @@ observability/                    — the Grafana dashboards (technical, activit
       reason), a Scribe's precept comes back the same way, to try again, and a distillation leaves the Precepts as they
       were (the weekly run fails, and next week's tries again). The writer would follow an unchecked precept in every
       rite, and nothing checks it later. No word list for precepts: one may name a forbidden thing to forbid it.
-    - **Not yet the judge's:** the Augury still orders by Jev's quality; #10 tests a model judge with the Precepts.
+    - **Not yet the judge's:** the rubric judge doesn't read the Precepts; #103 tries it on production's decisions.
     - **Do the Scribes agree with the Augury?** (`AgreementTrend`, on the Precepts' page): for each of the last six
       months, how many of the Augury's top three picks were burned, and how many places, on average, an anoint, exalt
       or humble moved a draft from the Augury's place for it (its place after the move follows from the action). Only
@@ -491,6 +515,9 @@ repository tests. For a deployment it also packages the app (the `app` artifact,
   and that package is deployed to staging, then, only if staging passed its smoke tests, to production. No approval:
   staging is the gate, and only `master` may deploy to the `production` environment.
 - **Deploy Branch to Staging** (`deploy-branch-to-staging.yml`): run by hand with a branch name, to try a PR on staging.
+  The branch stays there until the next deployment of staging: a merge to `master` while it deploys, or after, puts
+  `master` back (Deploy Master waits for the lock, then deploys), so deploy the branch again once Deploy Master's
+  staging job is done.
 - Both call `deploy.yml`, which deploys the package as the GitHub environment's identity (OIDC: the environment's
   `AZURE_*` variables hold ids, not secrets), one deployment per environment at a time. Then:
   - **Smoke tests** (`tests/DailyMachineSpirit.SmokeTests`, published into the package, so a package is always checked

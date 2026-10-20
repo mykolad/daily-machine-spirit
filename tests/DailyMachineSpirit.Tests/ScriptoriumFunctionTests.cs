@@ -202,7 +202,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     public async Task Tabs_WhenTheyCantBeCounted_StillShow_WithoutCounts()
     {
         var function = new ScriptoriumFunction(
-            testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), testbed.TabsWithoutCosmos(), Options.Create(Settings.ScriptoriumPages), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+            testbed.Scribes(), testbed.Amendments(), testbed.DraftJudging(), testbed.Audit, testbed.ScribeNaming(), testbed.TabsWithoutCosmos(), Options.Create(Settings.ScriptoriumPages), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
         var html = Html(await function.Page(Get(""), CancellationToken.None), 200);
 
@@ -545,7 +545,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     public async Task Page_WhenCosmosFails_SaysTheScriptoriumIsSilent()
     {
         var function = new ScriptoriumFunction(
-            testbed.ScribesWithoutCosmos(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), testbed.Tabs(), Options.Create(Settings.ScriptoriumPages), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+            testbed.ScribesWithoutCosmos(), testbed.Amendments(), testbed.DraftJudging(), testbed.Audit, testbed.ScribeNaming(), testbed.Tabs(), Options.Create(Settings.ScriptoriumPages), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
         var html = Html(await function.Page(Get(""), CancellationToken.None), 500);
 
@@ -601,7 +601,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var burned = await testbed.AddDraft("Burned", 0.5f);
         await testbed.AddDraft("Still waiting", 0.5f);
         var scribes = new Scribes(new DraftsFailingAfterFirstRead(testbed.Drafts), testbed.Rites, testbed.Scriptorium, Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages), testbed.Time);
-        var function = new ScriptoriumFunction(scribes, testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), testbed.Tabs(), Options.Create(Settings.ScriptoriumPages), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+        var function = new ScriptoriumFunction(scribes, testbed.Amendments(), testbed.DraftJudging(), testbed.Audit, testbed.ScribeNaming(), testbed.Tabs(), Options.Create(Settings.ScriptoriumPages), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
         var response = await function.Decide(Post(""), burned.Id, "burn", CancellationToken.None);
 
@@ -729,7 +729,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var draft = await testbed.AddDraft("Kept", 0.5f);
         var function = new ScriptoriumFunction(
-            testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), testbed.Tabs(), Options.Create(Settings.ScriptoriumPages), new NobodyIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+            testbed.Scribes(), testbed.Amendments(), testbed.DraftJudging(), testbed.Audit, testbed.ScribeNaming(), testbed.Tabs(), Options.Create(Settings.ScriptoriumPages), new NobodyIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
         var page = await function.Page(Get(""), CancellationToken.None);
         var decision = await function.Decide(Post(""), draft.Id, "burn", CancellationToken.None);
@@ -830,7 +830,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var unjudged = await testbed.AddUnjudgedDraft("Litany of the Cold Cache");
         var judged = await testbed.AddDraft("Already judged", 0.9f);
-        testbed.JevApiKey = "";
+        testbed.QualityJudgesFail(Settings.QualityJudging.ScoresPerDraft);
 
         var still = await Function().Decide(Post(""), unjudged.Id, "judge", CancellationToken.None);
         var nothing = await Function().Decide(Post(""), judged.Id, "judge", CancellationToken.None);
@@ -890,7 +890,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         await testbed.AddDraft("Best", 0.9f);
         var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
         Ok(await testbed.Scribes().Anoint(draft.Id, "", BacklogTestbed.Tester, CancellationToken.None));
-        testbed.JevApiKey = "";
+        testbed.QualityJudgesFail(Settings.QualityJudging.ScoresPerDraft);
 
         var response = await Function().Decide(
             Amending(await ETag(draft), "The Litany of the Warm Cache", "Sharper."), draft.Id, "amend", CancellationToken.None);
@@ -997,13 +997,13 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     [Fact]
     public async Task TheRecord_IsTheScribesAlone()
     {
-        var notAScribe = new ScriptoriumFunction(testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), testbed.Tabs(), Options.Create(Settings.ScriptoriumPages), new NobodyIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+        var notAScribe = new ScriptoriumFunction(testbed.Scribes(), testbed.Amendments(), testbed.DraftJudging(), testbed.Audit, testbed.ScribeNaming(), testbed.Tabs(), Options.Create(Settings.ScriptoriumPages), new NobodyIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
         Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<StatusCodeResult>(await notAScribe.Record(Get(""), CancellationToken.None)).StatusCode);
     }
 
     private ScriptoriumFunction Function()
-        => new(testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), testbed.Tabs(), Options.Create(Settings.ScriptoriumPages), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
+        => new(testbed.Scribes(), testbed.Amendments(), testbed.DraftJudging(), testbed.Audit, testbed.ScribeNaming(), testbed.Tabs(), Options.Create(Settings.ScriptoriumPages), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
     private static HttpRequest Get(string query)
     {

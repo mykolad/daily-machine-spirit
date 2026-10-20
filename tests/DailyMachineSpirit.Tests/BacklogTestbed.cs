@@ -33,6 +33,16 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public const string SecondChecker = "precept-checker-2";
 
+    /// <summary>
+    /// The quality judges' own models, so a judgment never takes another model's answer. Unless a test lines up another
+    /// answer, each scores 8 of 10.
+    /// </summary>
+    public const string QualityJudge = "quality-judge";
+
+    public const string SecondQualityJudge = "quality-judge-2";
+
+    public const string EightOfTen = """{"score": 8, "reason": "A sharp, familiar habit with a useful truth."}""";
+
     /// <summary>The name suggester's own model, so a test that leaves it unanswered never takes another model's answer.</summary>
     public const string Namer = "scribe-namer";
 
@@ -41,11 +51,18 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public static readonly DateOnly Today = new(2026, 10, 7);
 
+    // More than any test adds drafts.
+    private const int ScoredPlaces = 64;
+
     private readonly CosmosTestContainer cosmos = new();
+    private int draftsScored;
 
     public FakeTimeProvider Time { get; } = new(new DateTimeOffset(2026, 10, 7, 0, 0, 5, TimeSpan.Zero));
 
-    public FakeChatClients Models { get; } = new FakeChatClients().Otherwise(Checker, """{"breaking": []}""");
+    public FakeChatClients Models { get; } = new FakeChatClients()
+        .Otherwise(Checker, """{"breaking": []}""")
+        .Otherwise(QualityJudge, EightOfTen)
+        .Otherwise(SecondQualityJudge, EightOfTen);
 
     public FakeJev Jev { get; set; } = FakeJev.AnsweringBuildsAndRepetition();
 
@@ -91,8 +108,8 @@ public sealed class BacklogTestbed : IAsyncLifetime
             Scriptorium,
             Writer(),
             new DuplicateCheck(Models, Options.Create(Settings.DuplicateRiteCheck), Time, Probe.Metrics),
-            JudgingAgain(),
-            Jev.NewJudge(Time, JevApiKey),
+            DraftJudging(),
+            Judge(),
             Options.Create(Settings.Backlog with { DraftsWaiting = BacklogSize }),
             Probe.Metrics,
             NullLogger<BacklogRefiller>.Instance);
@@ -104,7 +121,19 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public TabCounting Tabs() => new(Drafts, Scriptorium, Precepts, Audit, NullLogger<TabCounting>.Instance);
 
-    public JudgingAgain JudgingAgain() => new(Drafts, Jev.NewJudge(Time, JevApiKey), Time, NullLogger<JudgingAgain>.Instance);
+    public DraftJudging DraftJudging() => new(Drafts, Judge(), Time, NullLogger<DraftJudging>.Instance);
+
+    /// <summary>Jev for the scores and tags, and the quality judges' fake models for the quality, as the app wires them.</summary>
+    public RiteJudge Judge() => new(Jev.NewJudge(Time, JevApiKey), new RubricJudge(Models, Options.Create(QualityJudging), Time, Probe.Metrics));
+
+    /// <summary>Both quality judges fail this many times each: no draft, amended or not, gets a score.</summary>
+    public void QualityJudgesFail(int times)
+    {
+        Models.Fails(QualityJudge, times);
+        Models.Fails(SecondQualityJudge, times);
+    }
+
+    public static QualityJudgingOptions QualityJudging => Settings.QualityJudging with { Models = [QualityJudge, SecondQualityJudge] };
 
     public PreceptKeeping PreceptKeeping() => new(Precepts, PreceptCheck(), Time, NullLogger<PreceptKeeping>.Instance);
 
@@ -133,7 +162,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
     public PreceptCheck PreceptCheck() => new(Models, Options.Create(Settings.PreceptCheck with { Models = [Checker, SecondChecker] }), Time, Probe.Metrics);
 
     public Amendments Amendments()
-        => new(Drafts, Scriptorium, Scribes(), Jev.NewJudge(Time, JevApiKey), Writer(), Time, NullLogger<Amendments>.Instance);
+        => new(Drafts, Scriptorium, Scribes(), Judge(), Writer(), Time, NullLogger<Amendments>.Instance);
 
     /// <summary>Scribes whose every read fails, as when Cosmos is down: the container doesn't exist.</summary>
     public TabCounting TabsWithoutCosmos()
@@ -173,7 +202,18 @@ public sealed class BacklogTestbed : IAsyncLifetime
                 GeneratedAtUtc = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc),
             },
             Tags = tags,
-            Augury = new Augury { Quality = quality, JudgedBy = "jev-1.13.0/quality-q1" },
+            Augury = new Augury { Quality = quality, JudgedBy = RubricJudge.Version },
+        };
+        // Scored by the current Jev, so it counts as judged; each on a subject of its own (a score on a place no other
+        // draft has), so no two test drafts look alike to the Augury.
+        var scores = new float[ScoredPlaces];
+        scores[draftsScored++ % ScoredPlaces] = 1f;
+        draft = draft with
+        {
+            Similarity = new RiteSimilarity
+            {
+                ScoresGeneratorVersion = JevQuestions.Version(Settings.Jev.Model), Scores = scores, CreatedAtUtc = draft.Writing.GeneratedAtUtc,
+            },
         };
         return Expect.Ok(await Drafts.Add(draft, CancellationToken.None));
     }

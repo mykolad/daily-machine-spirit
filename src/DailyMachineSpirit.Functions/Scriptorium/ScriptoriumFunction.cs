@@ -42,7 +42,7 @@ public sealed class ScriptoriumFunction
 
     private readonly Scribes scribes;
     private readonly Amendments amendments;
-    private readonly JudgingAgain judgingAgain;
+    private readonly DraftJudging judging;
     private readonly IAuditRepository audit;
     private readonly ScribeNaming naming;
     private readonly TabCounting tabs;
@@ -54,7 +54,7 @@ public sealed class ScriptoriumFunction
     public ScriptoriumFunction(
         Scribes scribes,
         Amendments amendments,
-        JudgingAgain judgingAgain,
+        DraftJudging judging,
         IAuditRepository audit,
         ScribeNaming naming,
         TabCounting tabs,
@@ -65,7 +65,7 @@ public sealed class ScriptoriumFunction
     {
         this.scribes = scribes;
         this.amendments = amendments;
-        this.judgingAgain = judgingAgain;
+        this.judging = judging;
         this.audit = audit;
         this.naming = naming;
         this.tabs = tabs;
@@ -215,7 +215,7 @@ public sealed class ScriptoriumFunction
             "exalt" => Answer(request, action, draftId, subject, await scribes.Exalt(draftId, note, scribe, cancellationToken)),
             "humble" => Answer(request, action, draftId, subject, await scribes.Humble(draftId, note, scribe, cancellationToken)),
             "restore" => Answer(request, action, draftId, subject, await scribes.Restore(draftId, note, scribe, Place(fields), cancellationToken)),
-            "judge" => JudgedAgain(request, draftId, subject, await judgingAgain.JudgeAgain(draftId, scribe, cancellationToken)),
+            "judge" => JudgedAgain(request, draftId, subject, await judging.Judge(draftId, scribe, cancellationToken)),
             "burn" => (await scribes.Burn(draftId, note, scribe, cancellationToken)).Match(
                 // Nothing waits any more, or it can't be told: refill now rather than at the next daily run. A refill
                 // only writes what's missing, so an unneeded one costs a read.
@@ -317,7 +317,7 @@ public sealed class ScriptoriumFunction
                 logger.CountScribeAction("judge");
                 return new ScriptoriumResponse { Result = Back(augury.IsSome ? "judged" : "still-unjudged", draftId, subject) };
             },
-            Left: error => error == JudgingAgain.NothingToJudge
+            Left: error => error == DraftJudging.NothingToJudge
                 ? new ScriptoriumResponse { Result = Back("changed", draftId, subject) }
                 : Failure(request, error, draftId, subject));
 
