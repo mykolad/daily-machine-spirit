@@ -578,7 +578,8 @@ public static partial class ScriptoriumPage
         ScribeAction.Humble => "Humbled",
         ScribeAction.Burn => "Consigned to the flames",
         ScribeAction.Amend => "Amended",
-        _ => "Restored from the ashes",
+        ScribeAction.Restore => "Restored from the ashes",
+        _ => "Released to the Augury",
     };
 
     // What an entry records, after who: the rite (or precept) named by its words then, a rite linking to its own record.

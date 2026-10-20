@@ -726,6 +726,21 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.DoesNotContain(Ok(await testbed.Scribes().View(CancellationToken.None)).Decisions, decision => decision.Action == ScribeAction.Exalt);
     }
 
+    // A release is a judgment of its own in Recent judgments, said and drawn as one, not as a restore.
+    [Fact]
+    public async Task RecentJudgments_ShowARelease_AsARelease()
+    {
+        await testbed.AddDraft("Excellent", 0.95f);
+        var fair = await testbed.AddDraft("Fair", 0.4f);
+        await AnointAll(fair);
+        Ok(await testbed.Scribes().Release(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+
+        var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
+
+        Assert.Contains("""<span class="verb">Released to the Augury:</span> <cite>Fair</cite>""", html);
+        Assert.Contains($"""<span class="judgment-icon">{ScriptoriumIcons.Release}</span>""", html);
+    }
+
     // Exalting a rite the Augury orders comes from a page shown before it was released: the calendar changed.
     [Fact]
     public async Task ExaltingARiteTheAuguryOrders_SaysTheCalendarChanged()

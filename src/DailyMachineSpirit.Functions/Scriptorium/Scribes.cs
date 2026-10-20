@@ -183,7 +183,8 @@ public sealed class Scribes
                 {
                     var anointed = calendar.Anointed();
                     return reorder(anointed, anointed.IndexOf(draftId)).Match(
-                        // Every anointed draft must still wait: it was read waiting, and the new order places it.
+                        // Every anointed draft must still wait (it was read waiting, and the new order places it), and so
+                        // must the one acted on, a released one too: published meanwhile, there's nothing to release.
                         Right: order =>
                         {
                             var after = order.IndexOf(draftId) + 1;
@@ -191,7 +192,7 @@ public sealed class Scribes
                             return scriptorium.SavePlacements(
                                 Placed(calendar.Placements, order, draftId, scribe),
                                 Decision(found.Draft, action, checkedNote, Some(calendar.PlacesOf(found))) with { CalendarPlaceAfter = placeAfter },
-                                order,
+                                [.. order, draftId],
                                 AuditEntries.Of(time, scribe, Audited(action), found.Draft,
                                     $"from #{found.Place} to {placeAfter.Map(place => $"#{place}").IfNone("the Augury's order")}"),
                                 cancellationToken);

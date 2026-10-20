@@ -167,6 +167,23 @@ public sealed class ScribesTests : IAsyncLifetime
         Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Failed(await testbed.Scribes().Anoint(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None)));
     }
 
+    // Published by the midnight run between reading the calendar and saving, a draft has nothing left to release: its
+    // own state tells, since publishing leaves the order's ETag as it was.
+    [Fact]
+    public async Task Releasing_ADraftPublishedWhileTheRequestRuns_IsChangedMeanwhile_AndRecordsNothing()
+    {
+        await testbed.AddDraft("Excellent", 0.95f);
+        var fair = await testbed.AddDraft("Fair", 0.4f);
+        Ok(await testbed.Scribes().Anoint(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        var drafts = new InterruptedDrafts(testbed.Drafts, async () => Ok(await testbed.Publisher().PublishToday(CancellationToken.None)));
+        var scribes = new Scribes(drafts, testbed.Rites, testbed.Scriptorium, Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages), Options.Create(Settings.Backlog), testbed.Time);
+
+        var result = await scribes.Release(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None);
+
+        Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Failed(result));
+        Assert.DoesNotContain(Ok(await testbed.Scribes().View(CancellationToken.None)).Decisions, decision => decision.Action == ScribeAction.Release);
+    }
+
     // Released, an anointed draft is the Augury's again, which orders it with the rest; the decision is kept, with no
     // place after (the Augury's order decides it).
     [Fact]

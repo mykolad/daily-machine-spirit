@@ -355,7 +355,8 @@ public static partial class ScriptoriumPage
         ScribeAction.Exalt => $"""<span class="judgment-icon">{ScriptoriumIcons.Exalt}</span>""",
         ScribeAction.Humble => $"""<span class="judgment-icon">{ScriptoriumIcons.Humble}</span>""",
         ScribeAction.Amend => $"""<span class="judgment-icon">{ScriptoriumIcons.Note}</span>""",
-        _ => $"""<span class="judgment-icon">{ScriptoriumIcons.Restore}</span>""",
+        ScribeAction.Restore => $"""<span class="judgment-icon">{ScriptoriumIcons.Restore}</span>""",
+        _ => $"""<span class="judgment-icon">{ScriptoriumIcons.Release}</span>""",
     };
 
     // After a burn, the script offers to undo it for a few seconds: the rite goes back where it was. Filled from the
