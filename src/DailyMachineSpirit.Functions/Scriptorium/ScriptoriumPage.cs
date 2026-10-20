@@ -174,10 +174,10 @@ public static partial class ScriptoriumPage
         .changed-mark { font-weight: 400; color: #f0b45a; }
         .amend .buttons { margin-top: 20px; }
         .amend input[type=text], textarea { width: 100%; background: #100e0b; color: #ede3cf; border: 1px solid #b6a98f; border-radius: 12px; padding: 8px 12px; font: 16px/1.4 Figtree, sans-serif; margin-bottom: 8px; }
-        button { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; min-height: 46px; padding: 10px 18px 10px 14px; border-radius: 999px; font: 600 16px/1.2 Figtree, sans-serif; cursor: pointer; border: 1px solid transparent; }
+        button { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 10px 18px 10px 14px; border-radius: 999px; font: 600 16px/1.2 Figtree, sans-serif; cursor: pointer; border: 1px solid transparent; }
         .icon { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
         .primary { background: #c9a25a; color: #100e0b; }
-        .button-link { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; min-height: 46px; padding: 10px 18px 10px 14px; border-radius: 999px; border: 1px solid rgba(237,227,207,.22); font: 600 16px/1.2 Figtree, sans-serif; color: #ede3cf; text-decoration: none; }
+        .button-link { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 10px 18px 10px 14px; border-radius: 999px; border: 1px solid rgba(237,227,207,.22); font: 600 16px/1.2 Figtree, sans-serif; color: #ede3cf; text-decoration: none; }
         .button-link:hover { background: rgba(237,227,207,.08); border-color: rgba(237,227,207,.4); color: #ede3cf; }
         .primary:hover { background: #d6b170; }
         .outline, .secondary { background: transparent; color: #ede3cf; border-color: rgba(237,227,207,.22); }

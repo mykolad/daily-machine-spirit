@@ -111,9 +111,10 @@ public static class ScriptoriumScript
             }
           };
 
-          // The Scribe is midway through something a new calendar would undo: typing, or about to burn.
+          // The Scribe is midway through something a new calendar would undo: typing, or about to burn. A burn panel left
+          // open in a card since folded is out of sight, and counts no more.
           const midway = () => (document.activeElement instanceof Element && document.activeElement.matches('textarea, input'))
-            || main.querySelector('.burn-panel:not([hidden])') !== null;
+            || [...main.querySelectorAll('.burn-panel:not([hidden])')].some((panel) => !panel.parentElement?.closest('[hidden]'));
 
           // Where focus was, found again in a new calendar: the same control of the same rite, the same chip, or the same
           // tab (the tab bar is replaced too).
@@ -359,6 +360,8 @@ public static class ScriptoriumScript
             // request can take seconds). The new calendar brings its own buttons.
             button?.setAttribute('disabled', '');
             form.setAttribute('data-busy', '');
+            // Its rite's note went with the request: written on meanwhile, it would be lost with the old calendar.
+            card?.querySelectorAll('textarea').forEach((field) => { field.readOnly = true; });
             hideToast();
             // Not the button's formAction: without the attribute, that's the page's own address (Summon's and the
             // Augury's buttons have none).
