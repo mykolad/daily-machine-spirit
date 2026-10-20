@@ -293,9 +293,9 @@ public sealed class ExpurgationTests : IAsyncLifetime
     private sealed class VotingMeanwhile : IExpurgationRepository
     {
         private readonly IExpurgationRepository inner;
-        private readonly Func<Task<Either<Error, Option<ReactionCounts>>>> vote;
+        private readonly Func<Task<Either<Error, Option<SavedVote>>>> vote;
 
-        public VotingMeanwhile(IExpurgationRepository inner, Func<Task<Either<Error, Option<ReactionCounts>>>> vote)
+        public VotingMeanwhile(IExpurgationRepository inner, Func<Task<Either<Error, Option<SavedVote>>>> vote)
         {
             this.inner = inner;
             this.vote = vote;
