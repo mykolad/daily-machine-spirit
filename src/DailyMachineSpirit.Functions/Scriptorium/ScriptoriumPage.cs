@@ -429,7 +429,7 @@ public static partial class ScriptoriumPage
     {
         "summon" => "Writes new drafts in the background until the calendar is full again; each appears as it's written.",
         "augury" => "Forgets the Scribes' order: the Augury orders every waiting rite again, by quality and variety.",
-        "anoint" => "Makes this rite the next one published. It and every rite it passed then keep the Scribes' order.",
+        "anoint" => "Makes this rite the next one published. Only it joins the Scribes' order: the rites it passed stay where they were.",
         "burn" => "Takes this rite out of the calendar, into the Ashes. Nothing is deleted: it can be restored.",
         "amend" => "Changes its words by hand, or asks the Machine Spirit to rewrite them as your note says. It's judged again when saved.",
         "judge" => "Asks the Augury to judge this rite now, as the next refill would: judging it failed, or was off, when it was written.",

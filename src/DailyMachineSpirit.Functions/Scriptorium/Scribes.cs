@@ -91,9 +91,13 @@ public sealed class Scribes
         => drafts.Get(draftId, cancellationToken)
             .MapAsync(found => Task.FromResult(found.Filter(draft => draft.State == DraftState.Burned)));
 
-    /// <summary>Makes the draft the next to be published; for the first, it keeps it there, ahead of the Augury's later picks.</summary>
+    /// <summary>
+    /// Makes the draft the next to be published, placing it alone: the drafts above it stay where they were, the Scribes'
+    /// in their order after it and the rest the Augury's, so a better draft written later can still go ahead of them.
+    /// For the first, it keeps it there, ahead of the Augury's later picks.
+    /// </summary>
     public Task<Either<Error, Unit>> Anoint(Guid draftId, string note, string scribe, CancellationToken cancellationToken)
-        => Reorder(draftId, ScribeAction.Anoint, note, scribe, (order, index) => Some<List<Guid>>([order[index], .. order[..index]]), cancellationToken);
+        => Reorder(draftId, ScribeAction.Anoint, note, scribe, (order, index) => Some<List<Guid>>([order[index]]), cancellationToken);
 
     /// <summary>Moves the draft up one place; everything above it is now in the Scribes' order.</summary>
     public Task<Either<Error, Unit>> Exalt(Guid draftId, string note, string scribe, CancellationToken cancellationToken)

@@ -329,8 +329,9 @@ observability/                    — the Grafana dashboards (technical, activit
     focused (`autofocus`, so it works without the script too). After a distillation, the new precepts are marked. A
     rewrite request that fails outright (the network, or Cloudflare Access wanting a new sign-in, which a background
     request can't give) keeps the words and offers the page in a new tab, to sign in there and try again here.
-  - **The Scribes' order** (the `placements` document) comes first; the Augury orders the rest. Moving a draft places
-    everything above it too, so the order stays what the Scribes saw. The order keeps who placed each draft (`placedBy`, by Access
+  - **The Scribes' order** (the `placements` document) comes first; the Augury orders the rest. Exalting or humbling a draft
+    places everything above it too, so the order stays what the Scribes saw. Anointing places the draft alone, first:
+    the drafts it passed stay where they were, so a better draft summoned later can still go ahead of the Augury's. The order keeps who placed each draft (`placedBy`, by Access
     id): the Scribe who moved it, or who placed it by moving another; one already placed keeps its Scribe unless it's
     the one moved. On the calendar, the rites the Scribes placed are a group of their own, above the Augury's, each
     card saying who placed it (`ScribeNames`) when the order knows. Undo, straight after a burn, restores a rite the

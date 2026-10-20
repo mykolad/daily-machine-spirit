@@ -98,7 +98,7 @@ public static partial class ScriptoriumPage
             "scribes", ScriptoriumIcons.Anoint, "Placed by the Scribes", "Published in this order.",
             "The Scribes have placed nothing yet.", "in the Scribes’ order"));
         Group(html, rows.Where(row => !row.Entry.PlacedByScribes).ToList(), subject, view.NowUtc, acted, names, new(
-            "augury", ScriptoriumIcons.Augury, "The Augury’s order", "Move one and it joins the Scribes’ order, with every rite above it.",
+            "augury", ScriptoriumIcons.Augury, "The Augury’s order", "Exalt or Humble one and it joins the Scribes’ order, with every rite above it.",
             "Every rite has a Scribe’s place.", "in the Augury’s order"));
     }
 

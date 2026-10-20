@@ -167,8 +167,8 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var good = await testbed.AddDraft("Good", 0.7f);
         await testbed.AddDraft("Fair", 0.4f);
         var burned = await testbed.AddDraft("Burned", 0.3f);
-        // Anointing the second places it and the one above it.
-        Ok(await testbed.Scribes().Anoint(good.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        // Exalting the second places it and the one above it.
+        Ok(await testbed.Scribes().Exalt(good.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         Ok(await testbed.Scribes().Burn(burned.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         Ok(await testbed.PreceptKeeping().AddPinned("Name the command.", BacklogTestbed.Tester, CancellationToken.None));
         var function = Function();
@@ -190,7 +190,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
             Assert.Contains("""The Calendar<span class="count"><span aria-hidden="true" title="In the Scribes’ order / in the Augury’s">2/1</span><span class="visually-hidden">: 2 in the Scribes’ order, 1 in the Augury’s</span></span>""", page.Value);
             Assert.Contains("""The Ashes<span class="count">1</span>""", page.Value);
             Assert.Contains("""The Precepts<span class="count">1</span>""", page.Value);
-            // Four drafts written, one anointed, one burned, and a precept added.
+            // Four drafts written, one exalted, one burned, and a precept added.
             Assert.Contains("""The Record<span class="count">7</span>""", page.Value);
             Assert.Contains($"""<a href="{page.Key}" aria-current="page">""", page.Value);
             Assert.Single(page.Value.Split("aria-current=\"page\"").Skip(1));
@@ -485,9 +485,10 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
         Assert.Contains($"""<article class="rite row scribes next" id="rite-{good.Id:D}" """, html);
-        Assert.Contains("""Placed by the Scribes<span class="group-count">2</span>""", html);
-        Assert.Contains("Every rite has a Scribe’s place.", html);
-        Assert.Equal(2, html.Split("placed by Magos Ferrum ·").Length - 1);
+        // Anointing places it alone: the rite it passed stays the Augury's.
+        Assert.Contains("""Placed by the Scribes<span class="group-count">1</span>""", html);
+        Assert.Contains("""The Augury’s order<span class="group-count">1</span>""", html);
+        Assert.Single(html.Split("placed by Magos Ferrum ·").Skip(1));
     }
 
     // Orders saved before they kept who placed each draft still group their drafts as the Scribes'.
@@ -515,7 +516,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var second = await testbed.AddDraft("Second", 0.8f);
         var third = await testbed.AddDraft("Third", 0.7f);
         var augurys = Html(await Function().Page(Get(""), CancellationToken.None), 200);
-        Ok(await testbed.Scribes().Anoint(second.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        Ok(await testbed.Scribes().Exalt(second.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
         var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
