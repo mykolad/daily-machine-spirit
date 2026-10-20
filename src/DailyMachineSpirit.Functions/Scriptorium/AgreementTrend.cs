@@ -61,12 +61,12 @@ public sealed class AgreementTrend
     private static bool WasATopPick(ScribeDecision decision)
         => decision.AuguryRankedByQuality && decision.AuguryPlace.Exists(place => place <= TopPickPlaces);
 
-    // How far a move took the draft from the Augury's place for it. Its new place follows from the action and the place
-    // before. A draft the Augury didn't rank by quality has a place too, but only by age: moving it says nothing about
-    // the Augury's judgment.
+    // How far a move took the draft from the Augury's place for it. Its new place is kept with the decision; one saved
+    // before it was has it follow from the action and the place before (an anointing made a draft next then). A draft the
+    // Augury didn't rank by quality has a place too, but only by age: moving it says nothing about the Augury's judgment.
     private static Option<double> Distance(ScribeDecision decision)
         => (decision.AuguryRankedByQuality ? decision.CalendarPlace : None)
-            .Bind(before => NewPlace(decision.Action, before))
+            .Bind(before => decision.CalendarPlaceAfter.Match(Some: after => Some(after), None: () => NewPlace(decision.Action, before)))
             .Bind(after => decision.AuguryPlace.Map(augury => (double)Math.Abs(after - augury)));
 
     private static Option<int> NewPlace(ScribeAction action, int before) => action switch

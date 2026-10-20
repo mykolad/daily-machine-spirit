@@ -16,6 +16,10 @@ public static class ScriptoriumIcons
     public const string Anoint =
         $"""{Open}<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg>""";
 
+    // Anoint's oil struck out (Lucide's droplet-off): releasing a rite from the anointed.
+    public const string Release =
+        $"""{Open}<path d="M18.715 13.186C18.29 11.858 17.384 10.607 16 9.5c-2-1.6-3.5-4-4-6.5a10.7 10.7 0 0 1-.884 2.586"/><path d="m2 2 20 20"/><path d="M8.795 8.797A11 11 0 0 1 8 9.5C6 11.1 5 13 5 15a7 7 0 0 0 13.222 3.208"/></svg>""";
+
     public const string Exalt = $"""{Open}<path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>""";
 
     public const string Humble = $"""{Open}<path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></svg>""";

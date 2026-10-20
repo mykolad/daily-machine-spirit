@@ -32,8 +32,8 @@ public sealed class Scribes
 {
     public static readonly Error NoteTooLong = Error.New($"A note can be at most {ScribeDecision.MaxNoteLength} characters.");
 
-    /// <summary>Exalting the first draft or humbling the last: a page shown before another Scribe moved it.</summary>
-    public static readonly Error NothingToMove = Error.New("The draft is already at that end of the calendar.");
+    /// <summary>Exalting the first anointed draft or humbling the last: a page shown before another Scribe moved it.</summary>
+    public static readonly Error NothingToMove = Error.New("The draft is already at that end of the anointed.");
 
     private readonly IDraftRepository drafts;
     private readonly IRiteRepository rites;
@@ -92,24 +92,37 @@ public sealed class Scribes
             .MapAsync(found => Task.FromResult(found.Filter(draft => draft.State == DraftState.Burned)));
 
     /// <summary>
-    /// Makes the draft the next to be published, placing it alone: the drafts above it stay where they were, the Scribes'
-    /// in their order after it and the rest the Augury's, so a better draft written later can still go ahead of them.
-    /// For the first, it keeps it there, ahead of the Augury's later picks.
+    /// Anoints the draft: it joins the Scribes' order after the drafts anointed before it (first, when none are), so it's
+    /// published ahead of every draft the Augury orders, which keeps ordering the rest.
     /// </summary>
     public Task<Either<Error, Unit>> Anoint(Guid draftId, string note, string scribe, CancellationToken cancellationToken)
-        => Reorder(draftId, ScribeAction.Anoint, note, scribe, (order, index) => Some<List<Guid>>([order[index]]), cancellationToken);
+        => Reorder(draftId, ScribeAction.Anoint, note, scribe, (anointed, index) => index >= 0
+            ? ScriptoriumRepository.ChangedMeanwhile
+            : Right<Error, List<Guid>>([.. anointed, draftId]), cancellationToken);
 
-    /// <summary>Moves the draft up one place; everything above it is now in the Scribes' order.</summary>
+    /// <summary>Moves an anointed draft up one place among the anointed.</summary>
     public Task<Either<Error, Unit>> Exalt(Guid draftId, string note, string scribe, CancellationToken cancellationToken)
-        => Reorder(draftId, ScribeAction.Exalt, note, scribe, (order, index) => index == 0
-            ? None
-            : Some<List<Guid>>([.. order[..(index - 1)], order[index], order[index - 1]]), cancellationToken);
+        => Reorder(draftId, ScribeAction.Exalt, note, scribe, (anointed, index) => index switch
+        {
+            < 0 => ScriptoriumRepository.ChangedMeanwhile,
+            0 => NothingToMove,
+            _ => Right<Error, List<Guid>>([.. anointed[..(index - 1)], anointed[index], anointed[index - 1], .. anointed[(index + 1)..]]),
+        }, cancellationToken);
 
-    /// <summary>Moves the draft down one place; the one it swaps with is now in the Scribes' order too.</summary>
+    /// <summary>Moves an anointed draft down one place among the anointed.</summary>
     public Task<Either<Error, Unit>> Humble(Guid draftId, string note, string scribe, CancellationToken cancellationToken)
-        => Reorder(draftId, ScribeAction.Humble, note, scribe, (order, index) => index == order.Count - 1
-            ? None
-            : Some<List<Guid>>([.. order[..index], order[index + 1], order[index]]), cancellationToken);
+        => Reorder(draftId, ScribeAction.Humble, note, scribe, (anointed, index) => index switch
+        {
+            < 0 => ScriptoriumRepository.ChangedMeanwhile,
+            _ when index == anointed.Count - 1 => NothingToMove,
+            _ => Right<Error, List<Guid>>([.. anointed[..index], anointed[index + 1], anointed[index], .. anointed[(index + 2)..]]),
+        }, cancellationToken);
+
+    /// <summary>Releases an anointed draft from the Scribes' order: the Augury orders it with the rest.</summary>
+    public Task<Either<Error, Unit>> Release(Guid draftId, string note, string scribe, CancellationToken cancellationToken)
+        => Reorder(draftId, ScribeAction.Release, note, scribe, (anointed, index) => index < 0
+            ? ScriptoriumRepository.ChangedMeanwhile
+            : Right<Error, List<Guid>>(anointed.Where(id => id != draftId).ToList()), cancellationToken);
 
     /// <summary>
     /// Burns the draft (it's kept, hidden, and can be restored) and takes it out of the Scribes' order; returns how many
@@ -158,31 +171,34 @@ public sealed class Scribes
             .BindAsync(placements => scriptorium.SavePlacements(placements with { Order = [] }, None, [],
                 AuditEntries.Of(time, scribe, AuditAction.LetTheAuguryDecide, None, None), cancellationToken));
 
+    // The new Scribes' order, from the anointed drafts still waiting (the calendar's first places, in their order) and
+    // where the draft is among them (-1 when it isn't). Refused (already at an end, or not anointed), nothing changes,
+    // so there's nothing to learn, and the page says why.
     private Task<Either<Error, Unit>> Reorder(
-        Guid draftId, ScribeAction action, string note, string scribe, Func<List<Guid>, int, Option<List<Guid>>> reorder,
+        Guid draftId, ScribeAction action, string note, string scribe, Func<List<Guid>, int, Either<Error, List<Guid>>> reorder,
         CancellationToken cancellationToken)
         => Note(note).BindAsync(checkedNote => Calendar(cancellationToken)
             .BindAsync(calendar => calendar.Find(draftId).Match(
-                Some: found => reorder(calendar.Ordered.Select(draft => draft.Id).ToList(), found.Place - 1).Match(
-                    // Every draft in the moved stretch must still wait: it was read waiting, and the new order places it.
-                    Some: moved => scriptorium.SavePlacements(
-                        Placed(calendar.Placements, KeepingTheRest(moved, calendar), draftId, scribe),
-                        Decision(found.Draft, action, checkedNote, Some(calendar.PlacesOf(found))),
-                        moved,
-                        AuditEntries.Of(time, scribe, Audited(action), found.Draft, $"from #{found.Place} to #{moved.IndexOf(draftId) + 1}"),
-                        cancellationToken),
-                    // Already at the top (or bottom): nothing changes, so there's nothing to learn, and the page says so.
-                    None: () => Task.FromResult(Left<Error, Unit>(NothingToMove))),
+                Some: found =>
+                {
+                    var anointed = calendar.Anointed();
+                    return reorder(anointed, anointed.IndexOf(draftId)).Match(
+                        // Every anointed draft must still wait: it was read waiting, and the new order places it.
+                        Right: order =>
+                        {
+                            var after = order.IndexOf(draftId) + 1;
+                            var placeAfter = after > 0 ? Some(after) : None;
+                            return scriptorium.SavePlacements(
+                                Placed(calendar.Placements, order, draftId, scribe),
+                                Decision(found.Draft, action, checkedNote, Some(calendar.PlacesOf(found))) with { CalendarPlaceAfter = placeAfter },
+                                order,
+                                AuditEntries.Of(time, scribe, Audited(action), found.Draft,
+                                    $"from #{found.Place} to {placeAfter.Map(place => $"#{place}").IfNone("the Augury's order")}"),
+                                cancellationToken);
+                        },
+                        Left: refused => Task.FromResult(Left<Error, Unit>(refused)));
+                },
                 None: () => Task.FromResult(Left<Error, Unit>(ScriptoriumRepository.ChangedMeanwhile)))));
-
-    // The reordered top of the calendar, then the drafts the Scribes placed below it, still in their order: moving one
-    // draft never undoes an earlier decision about another.
-    private static List<Guid> KeepingTheRest(List<Guid> moved, CalendarState calendar)
-    {
-        var placedBelow = calendar.Ordered.Select(draft => draft.Id)
-            .Where(id => calendar.Placements.Order.Contains(id) && !moved.Contains(id));
-        return [.. moved, .. placedBelow];
-    }
 
     // The new order, and who placed each draft in it: the Scribe who moved it, or who placed it by moving another. One
     // already placed keeps the Scribe who placed it, unless it's the one moved.
@@ -238,7 +254,8 @@ public sealed class Scribes
     {
         ScribeAction.Anoint => AuditAction.Anoint,
         ScribeAction.Exalt => AuditAction.Exalt,
-        _ => AuditAction.Humble,
+        ScribeAction.Humble => AuditAction.Humble,
+        _ => AuditAction.Release,
     };
 
     // An empty note is no note.
@@ -261,6 +278,9 @@ public sealed class Scribes
             var index = Ordered.FindIndex(draft => draft.Id == draftId);
             return index < 0 ? None : Some((Ordered[index], index + 1));
         }
+
+        /// <summary>The anointed drafts still waiting, in the Scribes' order: the calendar's first places.</summary>
+        public List<Guid> Anointed() => Ordered.Select(draft => draft.Id).Where(Placements.Order.Contains).ToList();
 
         public int AuguryPlace(Draft draft) => AuguryOrder.FindIndex(other => other.Id == draft.Id) + 1;
 

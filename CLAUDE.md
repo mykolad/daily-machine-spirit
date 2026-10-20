@@ -309,7 +309,8 @@ observability/                    — the Grafana dashboards (technical, activit
     Scribe waits for fits in Cloudflare's 100 seconds. Tests run with the file's values (`Settings`), changing only
     what they must. Limits that stored data or the pages depend on (lengths, a precept's size) stay in code.
 - **The Scriptorium** (`/scriptorium`, `Scriptorium/`): where the **Scribes** (moderators) shape the Liturgical Calendar.
-  - **Actions:** **Anoint** (next to be published), **Exalt** / **Humble** (up or down one), **Consign to the Flames**
+  - **Actions:** **Anoint** (into the Scribes' order, after the anointed), **Exalt** / **Humble** (an anointed draft up
+    or down one, among the anointed), **Release to the Augury** (out of the Scribes' order), **Consign to the Flames**
     (burn: the draft is hidden, never deleted), **Restore from the Ashes**, **Summon New Rites** (a refill), **Let
     the Augury Decide** (forget the Scribes' order), and **Amend** (#8, `Amendments`, its own page): change a waiting
     draft's words by hand, or ask the writer to rewrite them as the Scribe's note says (`RiteWriter.Rewrite`; the
@@ -329,13 +330,16 @@ observability/                    — the Grafana dashboards (technical, activit
     focused (`autofocus`, so it works without the script too). After a distillation, the new precepts are marked. A
     rewrite request that fails outright (the network, or Cloudflare Access wanting a new sign-in, which a background
     request can't give) keeps the words and offers the page in a new tab, to sign in there and try again here.
-  - **The Scribes' order** (the `placements` document) comes first; the Augury orders the rest. Exalting or humbling a draft
-    places everything above it too, so the order stays what the Scribes saw. Anointing places the draft alone, first:
-    the drafts it passed stay where they were, so a better draft summoned later can still go ahead of the Augury's. The order keeps who placed each draft (`placedBy`, by Access
-    id): the Scribe who moved it, or who placed it by moving another; one already placed keeps its Scribe unless it's
-    the one moved. On the calendar, the rites the Scribes placed are a group of their own, above the Augury's, each
-    card saying who placed it (`ScribeNames`) when the order knows. Undo, straight after a burn, restores the rite into the
-    Augury's order, as the Ashes' Restore does, even one the Scribes had placed.
+  - **The Scribes' order** (the `placements` document): the **anointed** drafts, published first, in that order; the
+    Augury orders the rest, after them. Anointing a draft puts it at the end of the anointed (first, when there are
+    none), and it alone: the drafts it passed stay the Augury's, so a better draft summoned later can still go ahead
+    of them. Exalt and Humble move an anointed draft among the anointed, never into or out of them, so they're offered
+    on the anointed alone, and the Augury's order is the Augury's; Release to the Augury takes one out. A request on a
+    page shown before the draft was anointed or released is told the calendar changed. The order keeps who placed each
+    draft (`placedBy`, by Access id): the Scribe who anointed it, or who last moved it. On the calendar, the anointed are
+    a group of their own, above the Augury's, each card saying who anointed it (`ScribeNames`) when the order knows.
+    Undo, straight after a burn, restores the rite into the Augury's order, as the Ashes' Restore does, even one that
+    was anointed.
   - **Every action is a lesson:** it saves a `ScribeDecision` with the draft as it was, the Augury's place and quality
     for it, and the Scribe's optional note, in the same batch as the change. The Precepts are learned from them.
   - **The Precepts** (`/scriptorium/precepts`, #12): rules for writing and choosing rites, learned from the Scribes'
@@ -364,7 +368,9 @@ observability/                    — the Grafana dashboards (technical, activit
     - **Not yet the judge's:** the rubric judge doesn't read the Precepts; #103 tries it on production's decisions.
     - **Do the Scribes agree with the Augury?** (`AgreementTrend`, on the Precepts' page): for each of the last six
       months, how many of the Augury's top three picks were burned, and how many places, on average, an anoint, exalt
-      or humble moved a draft from the Augury's place for it (its place after the move follows from the action). Only
+      or humble moved a draft from the Augury's place for it (its place after the move, kept with the decision as
+      `CalendarPlaceAfter`; for a decision saved before that was kept, it follows from the action). A release, which
+      leaves the draft to the Augury, isn't a move. Only
       judged drafts count: without a quality, the Augury places a draft by age alone. When
       both stay low, the Augury can be left to choose on its own.
   - **The Record** (`/scriptorium/record`, #9): who changed what, newest first, the last 100; `?draft=` gives one
@@ -426,9 +432,10 @@ observability/                    — the Grafana dashboards (technical, activit
     for being simple (the labels themselves stay the rite's names). Each draft's tags show as chips under its title,
     to match against the calendar's subjects.
   - **The Calendar** (`ScriptoriumPage.Calendar`, the redesign's step 1, `design_handoff_scriptorium_calendar` outside
-    the repo; the Ashes, Precepts and Record follow with the same header and tabs): two groups, the Scribes' order and
-    the Augury's, each rite a row (place, day, title, tags, the Augury's score, Exalt and Humble) that opens into its
-    card; the next to publish is open, with when it goes out. The header says who's signed in. No summary or help
+    the repo; the Ashes, Precepts and Record follow with the same header and tabs): two groups, the anointed and
+    the Augury's order, each rite a row (place, day, title, tags, the Augury's score, and an anointed one's Exalt and
+    Humble) that opens into its card, where an anointed rite's Release to the Augury stands in Anoint's stead, before
+    the burn; the next to publish is open, with when it goes out. The header says who's signed in. No summary or help
     text above the rites: the tab counts them, each row says its day, and each button its action, in its `title`. **Subject chips**
     narrow the calendar to one subject (`?subject=<key>`, links, so it works without the script), each rite keeping
     its place; the forms carry the subject, so an action comes back narrowed. `?open=all` opens every card, and so does the pair of icons beside the chips (where the script runs), which also
@@ -438,7 +445,7 @@ observability/                    — the Grafana dashboards (technical, activit
     measures), or the Scribe's own words, sent as the note; none is needed. Without the script, every card is open and
     a burn takes the note, as before.
   - **Tabs** (`TabCounting`): the Calendar (`/scriptorium`), the Ashes (`/scriptorium/ashes`), the Precepts and the
-    Record each start with the tab bar, every tab saying what its page holds: the waiting rites the Scribes placed and those the Augury places ("4/16", said in words to a screen
+    Record each start with the tab bar, every tab saying what its page holds: the anointed rites and those in the Augury's order ("4/16", said in words to a screen
     reader), the burned ones, the
     precepts, the Record's entries. They're counted on every load, a few
     small queries; when a count fails, the tabs show without counts. The Ashes shows the newest burned

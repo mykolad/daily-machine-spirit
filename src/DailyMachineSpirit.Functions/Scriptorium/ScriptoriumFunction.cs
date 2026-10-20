@@ -214,6 +214,7 @@ public sealed class ScriptoriumFunction
             "anoint" => Answer(request, action, draftId, subject, await scribes.Anoint(draftId, note, scribe, cancellationToken)),
             "exalt" => Answer(request, action, draftId, subject, await scribes.Exalt(draftId, note, scribe, cancellationToken)),
             "humble" => Answer(request, action, draftId, subject, await scribes.Humble(draftId, note, scribe, cancellationToken)),
+            "release" => Answer(request, action, draftId, subject, await scribes.Release(draftId, note, scribe, cancellationToken)),
             "restore" => Answer(request, action, draftId, subject, await scribes.Restore(draftId, note, scribe, cancellationToken)),
             "judge" => JudgedAgain(request, draftId, subject, await judging.Judge(draftId, scribe, cancellationToken)),
             "burn" => (await scribes.Burn(draftId, note, scribe, cancellationToken)).Match(

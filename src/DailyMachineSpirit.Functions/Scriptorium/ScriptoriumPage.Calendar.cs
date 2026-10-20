@@ -93,13 +93,14 @@ public static partial class ScriptoriumPage
         html.Append(EveryRite());
         html.Append("</div>");
 
-        var rows = calendar.Select((entry, index) => new CalendarRow(entry, index + 1, index == calendar.Count - 1)).ToList();
+        var anointed = calendar.Count(entry => entry.PlacedByScribes);
+        var rows = calendar.Select((entry, index) => new CalendarRow(entry, index + 1, index + 1 == anointed)).ToList();
         Group(html, rows.Where(row => row.Entry.PlacedByScribes).ToList(), subject, view.NowUtc, acted, names, new(
-            "scribes", ScriptoriumIcons.Anoint, "Placed by the Scribes", "Published in this order.",
-            "The Scribes have placed nothing yet.", "in the Scribes’ order"));
+            "scribes", ScriptoriumIcons.Anoint, "Anointed", "Published in this order, before the Augury’s.",
+            "No rite is anointed yet.", "among the anointed"));
         Group(html, rows.Where(row => !row.Entry.PlacedByScribes).ToList(), subject, view.NowUtc, acted, names, new(
-            "augury", ScriptoriumIcons.Augury, "The Augury’s order", "Exalt or Humble one and it joins the Scribes’ order, with every rite above it.",
-            "Every rite has a Scribe’s place.", "in the Augury’s order"));
+            "augury", ScriptoriumIcons.Augury, "The Augury’s order", "Ordered by quality and variety. Anoint one to give it a place.",
+            "Every rite is anointed.", "in the Augury’s order"));
     }
 
     // What the waiting rites are about, by their tags, most first, so the Scribes see a calendar heavy on one subject;
@@ -173,13 +174,13 @@ public static partial class ScriptoriumPage
         html.Append("</div>");
     }
 
-    // A rite as a row: its place, day, title and tags, the Augury's score, and Exalt and Humble, then its card. The card
-    // shows without the script, which folds every card but the next to publish; the chevron opens it again. The rite
-    // the last action was on is marked, so the Scribe's eye finds where it went.
+    // A rite as a row: its place, day, title and tags, the Augury's score, and for an anointed one Exalt and Humble, then
+    // its card. The card shows without the script, which folds every card but the next to publish; the chevron opens it
+    // again. The rite the last action was on is marked, so the Scribe's eye finds where it went.
     private static void Row(
         StringBuilder html, CalendarRow row, Option<Tag> subject, DateTime nowUtc, Option<Guid> acted, IReadOnlyList<ScribeName> names)
     {
-        var (entry, place, isLast) = row;
+        var (entry, place, lastAnointed) = row;
         var draft = entry.Draft;
         var id = draft.Id.ToString("D");
         var title = draft.Writing.Title;
@@ -199,7 +200,7 @@ public static partial class ScriptoriumPage
             <div class="heading"><h4 id="title-{id}">{WithCode(title)}</h4>{Tags(draft)}</div>
             <div class="cluster">
             {Score(draft)}
-            <span class="pair" role="group" aria-label="Reorder">{Exalt(id, title, place, entry.PlacedByScribes)}{Humble(id, title, isLast, entry.PlacedByScribes)}</span>
+            {(entry.PlacedByScribes ? $"""<span class="pair" role="group" aria-label="Reorder">{Exalt(id, title, place)}{Humble(id, title, lastAnointed)}</span>""" : string.Empty)}
             <button type="button" class="expand" aria-expanded="true" aria-controls="body-{id}" aria-label="Collapse {Encode(title)}" title="Show or fold away the whole rite" hidden>{ScriptoriumIcons.Chevron}</button>
             </div>
             </div>
@@ -218,11 +219,12 @@ public static partial class ScriptoriumPage
             </details>
             """);
         html.Append($"""<div class="buttons">{string.Concat(
-            // Anointing the first is useful too: it keeps it first, ahead of a better draft a refill may bring.
-            Button(id, title, "anoint", ScriptoriumIcons.Anoint, "Anoint", "primary"),
+            // Anointing the Augury's first is useful too: it keeps it there, ahead of a better draft a refill may bring.
+            entry.PlacedByScribes ? string.Empty : Button(id, title, "anoint", ScriptoriumIcons.Anoint, "Anoint", "primary"),
             AmendLink(id, title, subject),
             // Only where judging couldn't score it: judging a judged draft again would change nothing its words did.
             draft.Augury.IsSome ? string.Empty : Button(id, title, "judge", ScriptoriumIcons.Augury, "Judge Again", "secondary"),
+            entry.PlacedByScribes ? Button(id, title, "release", ScriptoriumIcons.Release, "Release to the Augury", "secondary") : string.Empty,
             Button(id, title, "burn", ScriptoriumIcons.Burn, "Consign to the Flames", "danger burn"))}</div>""");
         BurnPanel(html, id, title);
         html.Append("</div></form></article></li>");
@@ -261,19 +263,17 @@ public static partial class ScriptoriumPage
             Some: judged => $"""<span class="score-value">{Percent(judged.Quality)}</span>""",
             None: () => """<span class="score-value" aria-hidden="true">—</span><span class="visually-hidden">not yet judged</span>""")}</span>""";
 
-    // Moving a rite in the Augury's order places it, and every rite above it, in the Scribes' (Scribes.Exalt, .Humble):
-    // the label says so. At the ends there's nowhere to go, so the button is there but can't be pressed.
-    private static string Exalt(string id, string title, int place, bool placedByScribes)
+    // Only the anointed are moved by hand (Scribes.Exalt, .Humble), among themselves: the Augury orders the rest. At the
+    // ends of the anointed there's nowhere to go, so the button is there but can't be pressed.
+    private static string Exalt(string id, string title, int place)
         => place == 1
             ? Step(ScriptoriumIcons.Exalt, "Exalt", title, "Already next to publish", None)
-            : Step(ScriptoriumIcons.Exalt, "Exalt", title,
-                placedByScribes ? "Exalt: one day earlier" : "Exalt: one day earlier, into the Scribes’ order", Some($"/scriptorium/drafts/{id}/exalt"));
+            : Step(ScriptoriumIcons.Exalt, "Exalt", title, "Exalt: one day earlier", Some($"/scriptorium/drafts/{id}/exalt"));
 
-    private static string Humble(string id, string title, bool isLast, bool placedByScribes)
-        => isLast
-            ? Step(ScriptoriumIcons.Humble, "Humble", title, "Already the last in the calendar", None)
-            : Step(ScriptoriumIcons.Humble, "Humble", title,
-                placedByScribes ? "Humble: one day later" : "Humble: one day later, into the Scribes’ order", Some($"/scriptorium/drafts/{id}/humble"));
+    private static string Humble(string id, string title, bool lastAnointed)
+        => lastAnointed
+            ? Step(ScriptoriumIcons.Humble, "Humble", title, "Already the last anointed: the Augury’s order follows", None)
+            : Step(ScriptoriumIcons.Humble, "Humble", title, "Humble: one day later", Some($"/scriptorium/drafts/{id}/humble"));
 
     // An arrow alone; its name, for screen readers, says which rite, since every row has the same two.
     private static string Step(string icon, string verb, string title, string does, Option<string> action)
@@ -295,7 +295,7 @@ public static partial class ScriptoriumPage
         }
         if (entry.PlacedByScribes)
         {
-            entry.PlacedBy.IfSome(scribe => parts.Add($"placed by {Encode(ScribeNames.Of(scribe, names))}"));
+            entry.PlacedBy.IfSome(scribe => parts.Add($"anointed by {Encode(ScribeNames.Of(scribe, names))}"));
         }
         parts.Add($"""written by <span class="nowrap">{Encode(draft.Writing.GeneratedByModel)}</span>{(draft.Writing.Edited ? ", amended by a Scribe" : string.Empty)}""");
         parts.Add($"""<a href="/scriptorium/record?draft={id}">its record</a>""");
@@ -368,7 +368,7 @@ public static partial class ScriptoriumPage
 
     private static string Percent(float quality) => quality.ToString("0%", CultureInfo.InvariantCulture);
 
-    private sealed record CalendarRow(CalendarEntry Entry, int Place, bool IsLast);
+    private sealed record CalendarRow(CalendarEntry Entry, int Place, bool LastAnointed);
 
     /// <param name="Where">Where the group's rites are, for "No Caches rites …" when none of the subject's are.</param>
     private sealed record CalendarGroup(string Kind, string Icon, string Title, string Hint, string Empty, string Where);
