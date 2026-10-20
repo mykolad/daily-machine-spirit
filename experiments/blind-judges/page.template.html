@@ -1,0 +1,218 @@
+<title>The Augury's Trial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Figtree:wght@400;600&display=swap">
+<style>
+  /* The site's own world, dark only as the site is: two rites on the altar, side by side, one verdict at a time. */
+  :root {
+    --ground: #100e0b;
+    --card: #1a1612;
+    --ink: #ede3cf;
+    --muted: #b6a98f;
+    --brass: #c9a25a;
+    --amber: #f0b45a;
+    --truth-ground: #141c1f;
+    --truth-ink: #dbe6e8;
+    --truth-label: #8cc4ae;
+    --line: rgba(237, 227, 207, .14);
+    --display: "Cinzel", Georgia, serif;
+    --body: "EB Garamond", Georgia, serif;
+    --ui: "Figtree", system-ui, sans-serif;
+    color-scheme: dark;
+  }
+  body { background: var(--ground); color: var(--ink); font: 16px/1.5 var(--ui); }
+  main { max-width: 1100px; margin: 0 auto; padding: 32px 16px 64px; display: grid; gap: 28px; }
+  header { display: grid; gap: 6px; }
+  h1 { margin: 0; font: 700 clamp(26px, 4vw, 38px)/1.15 var(--display); letter-spacing: .02em; text-wrap: balance; }
+  .lede { margin: 0; max-width: 65ch; font: italic 400 19px/1.45 var(--body); color: var(--muted); }
+  .progress { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-variant-numeric: tabular-nums; color: var(--muted); }
+  .bar { flex: 1 1 200px; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+  .bar span { display: block; height: 100%; background: var(--brass); transition: width .3s; }
+  .status { min-height: 1.5em; margin: 0; color: var(--amber); }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 20px; }
+  .rite { min-width: 0; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 20px clamp(16px, 3vw, 24px); display: grid; gap: 12px; align-content: start; }
+  .rite.chosen { border-color: var(--amber); box-shadow: 0 0 0 2px var(--amber) inset; }
+  .side { margin: 0; font: 600 13px var(--display); letter-spacing: .16em; text-transform: uppercase; color: var(--brass); }
+  .rite h2 { margin: 0; font: 700 22px/1.25 var(--display); text-wrap: balance; }
+  .text { margin: 0; font: 400 20px/1.55 var(--body); }
+  .truth { margin: 0; background: var(--truth-ground); color: var(--truth-ink); border: 1px solid #2e4248; border-radius: 14px; padding: 12px 14px; }
+  .truth b { display: block; font: 500 12px var(--ui); letter-spacing: .14em; text-transform: uppercase; color: var(--truth-label); }
+  code { font-family: ui-monospace, Consolas, monospace; font-size: .88em; background: #0b1214; color: #f0d58c; padding: 1px 5px; border-radius: 5px; }
+  .verdict { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+  button { font: 600 16px/1.2 var(--ui); min-height: 46px; padding: 10px 20px; border-radius: 999px; border: 1px solid rgba(237, 227, 207, .25); background: transparent; color: var(--ink); cursor: pointer; }
+  button:hover { background: rgba(237, 227, 207, .08); }
+  button.pick { background: var(--brass); color: var(--ground); border-color: var(--brass); }
+  button[aria-pressed="true"] { outline: 2px solid var(--amber); outline-offset: 2px; }
+  button:focus-visible, a:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+  kbd { font: 12px ui-monospace, monospace; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; margin-left: 6px; opacity: .75; }
+  .all { display: grid; gap: 8px; }
+  .all h2 { margin: 0; font: 600 15px var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0; margin: 0; list-style: none; }
+  .chips button { min-height: 36px; padding: 6px 12px; font-size: 14px; font-variant-numeric: tabular-nums; }
+  .chips button.done { border-color: var(--brass); color: var(--brass); }
+  .chips button.current { background: rgba(201, 162, 90, .18); }
+  .done-note { margin: 0; padding: 16px; border-radius: 14px; border: 1px solid var(--brass); color: var(--ink); }
+  @media (prefers-reduced-motion: reduce) { .bar span { transition: none; } }
+</style>
+
+<main>
+  <header>
+    <h1>The Augury's Trial</h1>
+    <p class="lede">Which rite would you rather publish? Each pair is two of staging's drafts that the judges ranked differently. You don't see who preferred which, nor their scores.</p>
+  </header>
+
+  <div class="progress" aria-live="polite"><span id="count">0 of 0 judged</span><div class="bar" aria-hidden="true"><span id="bar" style="width:0%"></span></div></div>
+  <p class="status" id="status" role="status"></p>
+
+  <section aria-labelledby="pair-title">
+    <h2 id="pair-title" class="visually-hidden" style="position:absolute;left:-9999px">Pair</h2>
+    <div class="pair" id="pair"></div>
+  </section>
+
+  <div class="verdict" role="group" aria-label="Your verdict">
+    <button id="left" class="pick">Left is better<kbd>←</kbd></button>
+    <button id="same">About the same<kbd>↓</kbd></button>
+    <button id="right" class="pick">Right is better<kbd>→</kbd></button>
+  </div>
+
+  <section class="all" aria-labelledby="all-title">
+    <h2 id="all-title">Every pair</h2>
+    <ul class="chips" id="chips"></ul>
+  </section>
+</main>
+
+<script>
+  // The pairs: two rites each, sides already shuffled. Which judge preferred which isn't here: it stays on the
+  // owner's machine until the tally.
+  const PAIRS = /*PAIRS*/[];
+
+  // What the page shows: each pair's saved pick, or the one being saved.
+  const picks = {};
+  // What the database holds, which the tally reads: only these count as judged.
+  const saved = {};
+  // Each pair's newest pick under way, so an older save's answer can't undo a newer pick.
+  const saving = {};
+  let tickets = 0;
+  let at = 0;
+  let db = null;
+
+  const $ = (id) => document.getElementById(id);
+  const escape = (text) => text.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  // The rites put commands and file names in `backticks`, as the site shows them.
+  const words = (text) => escape(text).replace(/`([^`]+)`/g, "<code>$1</code>");
+
+  function rite(side, r, chosen) {
+    return `<article class="rite${chosen ? " chosen" : ""}" aria-label="${side} rite">
+      <p class="side">${side} · ${r.kind === "prayer" ? "A prayer" : "A ritual"}</p>
+      <h2>${words(r.title)}</h2>
+      <p class="text">${words(r.text)}</p>
+      <p class="truth"><b>Heretical Truth</b>${words(r.hereticalTruth)}</p>
+    </article>`;
+  }
+
+  function render() {
+    const done = PAIRS.filter((p) => saved[p.id]).length;
+    $("count").textContent = `${done} of ${PAIRS.length} judged`;
+    $("bar").style.width = `${PAIRS.length ? (100 * done) / PAIRS.length : 0}%`;
+    const pair = PAIRS[at];
+    if (!pair) {
+      $("pair").innerHTML = "";
+      return;
+    }
+    const pick = picks[pair.id];
+    $("pair").innerHTML = rite("Left", pair.left, pick === "left") + rite("Right", pair.right, pick === "right");
+    for (const id of ["left", "same", "right"]) {
+      $(id).setAttribute("aria-pressed", String(pick === id));
+    }
+    $("chips").innerHTML = PAIRS.map((p, i) =>
+      `<li><button data-at="${i}" class="${saved[p.id] ? "done" : ""}${i === at ? " current" : ""}" aria-current="${i === at}" aria-label="Pair ${i + 1}${saved[p.id] ? ", judged" : ""}">${i + 1}</button></li>`).join("");
+    if (done === PAIRS.length && PAIRS.length) {
+      $("status").textContent = "Every pair is judged. Tell Claude in the terminal; you can still change any pick.";
+    }
+  }
+
+  async function choose(verdict) {
+    const pair = PAIRS[at];
+    if (!pair) {
+      return;
+    }
+    if (!db) {
+      $("status").textContent = "Your pick can't be saved: this page has no storage here. Open it on claude.ai, signed in.";
+      return;
+    }
+    const ticket = ++tickets;
+    saving[pair.id] = ticket;
+    picks[pair.id] = verdict;
+    render();
+    try {
+      await db.collection("picks").doc(pair.id).set({ pick: verdict, at: new Date().toISOString() });
+    } catch (error) {
+      // The pair shows the pick the database still holds (or none), unless a newer pick is under way.
+      if (saving[pair.id] === ticket) {
+        delete saving[pair.id];
+        picks[pair.id] = saved[pair.id];
+        render();
+        $("status").textContent = `That pick wasn't saved (${error?.code ?? "error"}). Pick again in a moment.`;
+      }
+      return;
+    }
+    if (saving[pair.id] !== ticket) {
+      return;
+    }
+    delete saving[pair.id];
+    saved[pair.id] = verdict;
+    $("status").textContent = "";
+    // On to the next pair still to judge, if any.
+    const next = PAIRS.findIndex((p, i) => i > at && !picks[p.id]);
+    const first = PAIRS.findIndex((p) => !picks[p.id]);
+    at = next >= 0 ? next : first >= 0 ? first : at;
+    render();
+  }
+
+  $("left").addEventListener("click", () => choose("left"));
+  $("same").addEventListener("click", () => choose("same"));
+  $("right").addEventListener("click", () => choose("right"));
+  $("chips").addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-at]");
+    if (button) {
+      at = Number(button.dataset.at);
+      render();
+    }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.target.closest("input, textarea")) {
+      return;
+    }
+    const verdict = { ArrowLeft: "left", ArrowDown: "same", ArrowRight: "right" }[event.key];
+    if (verdict) {
+      event.preventDefault();
+      choose(verdict);
+    }
+  });
+
+  render();
+  (async () => {
+    db = (await window.claude?.use?.("db")) ?? null;
+    if (!db) {
+      $("status").textContent = "Picks can't be saved here: open this page on claude.ai, signed in.";
+      return;
+    }
+    // Earlier picks, so a reload picks up where it was left: at the first pair still to judge, once.
+    let resumed = false;
+    db.collection("picks").onSnapshot((snapshot) => {
+      for (const doc of snapshot.docs) {
+        saved[doc.id] = doc.data()?.pick;
+        if (!saving[doc.id]) {
+          picks[doc.id] = saved[doc.id];
+        }
+      }
+      if (!resumed) {
+        resumed = true;
+        const first = PAIRS.findIndex((p) => !picks[p.id]);
+        at = first >= 0 ? first : 0;
+      }
+      render();
+    }, () => {
+      $("status").textContent = "Your earlier picks couldn't be read; new ones are still saved.";
+    });
+  })();
+</script>
