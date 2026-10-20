@@ -131,19 +131,16 @@ public sealed class Scribes
                         Left: _ => Option<int>.None)),
                 None: () => Task.FromResult(Left<Error, Option<int>>(ScriptoriumRepository.ChangedMeanwhile)))));
 
-    /// <summary>
-    /// Restores a burned draft, however long ago it burned: it waits again, in the Augury's order. Given the place it had
-    /// in the Scribes' order (1 is next), as the calendar's Undo gives it straight after a burn, it goes back there.
-    /// </summary>
-    public Task<Either<Error, Unit>> Restore(Guid draftId, string note, string scribe, Option<int> scribesPlace, CancellationToken cancellationToken)
+    /// <summary>Restores a burned draft, however long ago it burned: it waits again, in the Augury's order.</summary>
+    public Task<Either<Error, Unit>> Restore(Guid draftId, string note, string scribe, CancellationToken cancellationToken)
         => Note(note).BindAsync(checkedNote => drafts.Get(draftId, cancellationToken)
-            .BindAsync(stored => Restored(draftId, scribesPlace, scribe, cancellationToken)
-                .BindAsync(restored => stored.Filter(draft => draft.State == DraftState.Burned).Match(
+            .BindAsync(stored => scriptorium.GetPlacements(cancellationToken)
+                .BindAsync(placements => stored.Filter(draft => draft.State == DraftState.Burned).Match(
                     Some: draft => scriptorium
                         .ChangeState(draftId, DraftState.Burned, DraftState.Waiting,
                             Decision(draft, ScribeAction.Restore, checkedNote, None),
-                            restored.Placements,
-                            AuditEntries.Of(time, scribe, AuditAction.Restore, draft, restored.Place.Map(place => $"to #{place}")),
+                            WithoutDraft(placements, draftId),
+                            AuditEntries.Of(time, scribe, AuditAction.Restore, draft, None),
                             cancellationToken)
                         .MapAsync(_ => Task.FromResult(unit)),
                     None: () => Task.FromResult(Left<Error, Unit>(ScriptoriumRepository.ChangedMeanwhile))))));
@@ -201,30 +198,6 @@ public sealed class Scribes
 
     private static Option<string> Placer(Placements placements, Guid draftId)
         => placements.PlacedBy.TryGetValue(draftId, out var placer) ? Some(placer) : None;
-
-    // The Scribes' order once the draft is restored, if it changes, and the draft's place in it. Without a place to go
-    // back to, the draft starts again in the Augury's order; the calendar is read only to find the place.
-    private Task<Either<Error, (Option<Placements> Placements, Option<int> Place)>> Restored(
-        Guid draftId, Option<int> scribesPlace, string scribe, CancellationToken cancellationToken)
-        => scribesPlace.Match(
-            Some: place => Calendar(cancellationToken).MapAsync(calendar =>
-            {
-                var (placements, placed) = BackInPlace(calendar, draftId, place, scribe);
-                return Task.FromResult((Some(placements), Some(placed)));
-            }),
-            None: () => scriptorium.GetPlacements(cancellationToken)
-                .MapAsync(placements => Task.FromResult((WithoutDraft(placements, draftId), Option<int>.None))));
-
-    // Back in its place among the drafts the Scribes placed, or last when fewer are placed now, placed by the restoring
-    // Scribe: the order forgets who placed a draft when it leaves, and putting it back is placing it.
-    private static (Placements Placements, int Place) BackInPlace(CalendarState calendar, Guid draftId, int place, string scribe)
-    {
-        var placed = calendar.Ordered.Select(draft => draft.Id).Where(calendar.Placements.Order.Contains).ToList();
-        var index = Math.Clamp(place - 1, 0, placed.Count);
-        var placedBy = calendar.Placements.PlacedBy.ToDictionary();
-        placedBy[draftId] = scribe;
-        return (calendar.Placements with { Order = [.. placed[..index], draftId, .. placed[index..]], PlacedBy = placedBy }, index + 1);
-    }
 
     // A burned or restored draft leaves the Scribes' order: a restored one starts again in the Augury's.
     private static Option<Placements> WithoutDraft(Placements placements, Guid draftId)

@@ -334,9 +334,8 @@ observability/                    — the Grafana dashboards (technical, activit
     the drafts it passed stay where they were, so a better draft summoned later can still go ahead of the Augury's. The order keeps who placed each draft (`placedBy`, by Access
     id): the Scribe who moved it, or who placed it by moving another; one already placed keeps its Scribe unless it's
     the one moved. On the calendar, the rites the Scribes placed are a group of their own, above the Augury's, each
-    card saying who placed it (`ScribeNames`) when the order knows. Undo, straight after a burn, restores a rite the
-    Scribes placed to its place in their order (`Scribes.Restore` with its place); the Ashes' Restore puts it in the
-    Augury's.
+    card saying who placed it (`ScribeNames`) when the order knows. Undo, straight after a burn, restores the rite into the
+    Augury's order, as the Ashes' Restore does, even one the Scribes had placed.
   - **Every action is a lesson:** it saves a `ScribeDecision` with the draft as it was, the Augury's place and quality
     for it, and the Scribe's optional note, in the same batch as the change. The Precepts are learned from them.
   - **The Precepts** (`/scriptorium/precepts`, #12): rules for writing and choosing rites, learned from the Scribes'

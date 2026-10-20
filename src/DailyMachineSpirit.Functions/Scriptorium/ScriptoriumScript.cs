@@ -73,15 +73,13 @@ public static class ScriptoriumScript
             clearTimeout(toastTimer);
             toasts?.replaceChildren();
           };
-          const showToast = ({ id, title, place }) => {
+          const showToast = ({ id, title }) => {
             const template = document.getElementById('undo-toast');
             if (!toasts || !(template instanceof HTMLTemplateElement)) return;
             const toast = template.content.firstElementChild.cloneNode(true);
             toast.querySelector('.toast-text').textContent = `“${title}” was consigned to the flames.`;
             const form = toast.querySelector('form');
             form.setAttribute('action', `/scriptorium/drafts/${id}/restore`);
-            const input = form.querySelector('[name=place]');
-            if (place) input.value = place; else input.remove();
             const later = () => {
               clearTimeout(toastTimer);
               toastTimer = setTimeout(() => (toast.matches(':hover, :focus-within') ? later() : hideToast()), 7000);
@@ -322,7 +320,7 @@ public static class ScriptoriumScript
               const picked = panel.querySelector('.reason[aria-pressed=true]')?.textContent ?? '';
               const reason = panel.querySelector('.reason-text').value.trim() || picked;
               if (reason) body.set('note', reason);
-              burning = { id: card.id.slice('rite-'.length), title: titleOf(card), place: card.classList.contains('scribes') ? card.dataset.place : '' };
+              burning = { id: card.id.slice('rite-'.length), title: titleOf(card) };
             }
             // Under way, the button says so: it can't be pressed again, and the pointer shows it's working (a summon's
             // request can take seconds). The new calendar brings its own buttons.

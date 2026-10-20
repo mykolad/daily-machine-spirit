@@ -184,7 +184,7 @@ public static partial class ScriptoriumPage
         var id = draft.Id.ToString("D");
         var title = draft.Writing.Title;
         var classes = $"rite row{(entry.PlacedByScribes ? " scribes" : string.Empty)}{(place == 1 ? " next" : string.Empty)}{Acted(draft, acted)}";
-        html.Append($"""<li><article class="{classes}" id="rite-{id}" aria-labelledby="title-{id}" data-place="{place}">""");
+        html.Append($"""<li><article class="{classes}" id="rite-{id}" aria-labelledby="title-{id}">""");
         if (place == 1)
         {
             NextToPublish(html, entry.PublishesOnUtc, nowUtc);
@@ -363,7 +363,7 @@ public static partial class ScriptoriumPage
     private static void UndoToast(StringBuilder html)
         => html.Append($"""
             <div class="toasts" id="toasts" role="status"></div>
-            <template id="undo-toast"><div class="toast"><span class="toast-text"></span><form method="post"><input type="hidden" name="place"><button class="undo" title="Puts the rite back where it was">{ScriptoriumIcons.Undo}Undo</button></form></div></template>
+            <template id="undo-toast"><div class="toast"><span class="toast-text"></span><form method="post"><button class="undo" title="Restores the rite from the Ashes, into the Augury's order">{ScriptoriumIcons.Undo}Undo</button></form></div></template>
             """);
 
     private static string Percent(float quality) => quality.ToString("0%", CultureInfo.InvariantCulture);

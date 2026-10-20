@@ -82,7 +82,7 @@ public sealed class AgreementTrendTests : IAsyncLifetime
         await testbed.AddDraft("Fair", 0.5f);
         var worst = await testbed.AddDraft("Worst", 0.3f);
         Ok(await testbed.Scribes().Burn(worst.Id, "", Tester, CancellationToken.None));
-        Ok(await testbed.Scribes().Restore(worst.Id, "", Tester, None, CancellationToken.None));
+        Ok(await testbed.Scribes().Restore(worst.Id, "", Tester, CancellationToken.None));
 
         var october = Ok(await new AgreementTrend(testbed.Scriptorium, Options.Create(Settings.ScriptoriumPages), testbed.Time).Months(CancellationToken.None))[0];
 

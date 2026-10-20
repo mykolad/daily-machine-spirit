@@ -1,4 +1,3 @@
-using System.Globalization;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Generation.Judging;
@@ -214,7 +213,7 @@ public sealed class ScriptoriumFunction
             "anoint" => Answer(request, action, draftId, subject, await scribes.Anoint(draftId, note, scribe, cancellationToken)),
             "exalt" => Answer(request, action, draftId, subject, await scribes.Exalt(draftId, note, scribe, cancellationToken)),
             "humble" => Answer(request, action, draftId, subject, await scribes.Humble(draftId, note, scribe, cancellationToken)),
-            "restore" => Answer(request, action, draftId, subject, await scribes.Restore(draftId, note, scribe, Place(fields), cancellationToken)),
+            "restore" => Answer(request, action, draftId, subject, await scribes.Restore(draftId, note, scribe, cancellationToken)),
             "judge" => JudgedAgain(request, draftId, subject, await judging.Judge(draftId, scribe, cancellationToken)),
             "burn" => (await scribes.Burn(draftId, note, scribe, cancellationToken)).Match(
                 // Nothing waits any more, or it can't be told: refill now rather than at the next daily run. A refill
@@ -407,8 +406,4 @@ public sealed class ScriptoriumFunction
     // read only loses the subject.
     private static async Task<Option<Tag>> SubjectOf(HttpRequest request, CancellationToken cancellationToken)
         => (await ReadForm(request, cancellationToken)).Bind(fields => Subject(fields["subject"].ToString()));
-
-    // Where an Undo puts a burned rite back in the Scribes' order; none for a rite the Augury placed.
-    private static Option<int> Place(IFormCollection fields)
-        => int.TryParse(fields["place"].ToString(), NumberStyles.None, CultureInfo.InvariantCulture, out var place) && place > 0 ? Some(place) : None;
 }

@@ -78,7 +78,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Contains("""<a class="chip" href="/scriptorium" aria-current="true">Caches<span class="chip-count">2</span></a>""", html);
         Assert.Contains("""Placed by the Scribes<span class="group-count">1 of 1</span>""", html);
         Assert.Contains("""The Augury’s order<span class="group-count">1 of 2</span>""", html);
-        Assert.Contains($"""id="rite-{cold.Id:D}" aria-labelledby="title-{cold.Id:D}" data-place="3">""", html);
+        Assert.Contains($"""id="rite-{cold.Id:D}" aria-labelledby="title-{cold.Id:D}">""", html);
         Assert.DoesNotContain($"""id="rite-{names.Id:D}" """, html);
         // Both rites' forms, Summon's and Let the Augury Decide's.
         Assert.Equal(4, html.Split("""<input type="hidden" name="subject" value="caches">""").Length - 1);
@@ -130,23 +130,22 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Equal("/scriptorium?done=augury&subject=caches", Assert.IsType<RedirectResult>(augury).Url);
     }
 
-    // Straight after a burn, the calendar's Undo puts a rite the Scribes placed back in its place.
+    // Straight after a burn, the calendar's Undo restores the rite, a Scribes' one too, into the Augury's order.
     [Fact]
-    public async Task Undo_PutsABurnedRiteBackInItsPlace()
+    public async Task Undo_PutsABurnedRiteBackInTheAugurysOrder()
     {
-        var first = await testbed.AddDraft("First", 0.9f);
+        await testbed.AddDraft("First", 0.9f);
         var second = await testbed.AddDraft("Second", 0.8f);
-        await testbed.AddDraft("Third", 0.7f);
         Ok(await testbed.Scribes().Anoint(second.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         var function = Function();
-        Ok(await testbed.Scribes().Burn(first.Id, "Duplicate", BacklogTestbed.Tester, CancellationToken.None));
+        Ok(await testbed.Scribes().Burn(second.Id, "Duplicate", BacklogTestbed.Tester, CancellationToken.None));
 
-        var response = await function.Decide(Post("application/x-www-form-urlencoded", "note=&place=2"), first.Id, "restore", CancellationToken.None);
+        var response = await function.Decide(Post("application/x-www-form-urlencoded", "note="), second.Id, "restore", CancellationToken.None);
 
         var calendar = Ok(await testbed.Scribes().View(CancellationToken.None)).Calendar;
-        Assert.Equal([second.Id, first.Id], calendar.Take(2).Select(entry => entry.Draft.Id));
-        Assert.True(calendar[1].PlacedByScribes);
-        Assert.Equal($"/scriptorium?done=restore&rite={first.Id:D}#rite-{first.Id:D}", Assert.IsType<RedirectResult>(response.Result).Url);
+        Assert.Equal(["First", "Second"], calendar.Select(entry => entry.Draft.Writing.Title));
+        Assert.All(calendar, entry => Assert.False(entry.PlacedByScribes));
+        Assert.Equal($"/scriptorium?done=restore&rite={second.Id:D}#rite-{second.Id:D}", Assert.IsType<RedirectResult>(response.Result).Url);
     }
 
     [Fact]
