@@ -12,6 +12,9 @@ public interface IQualityJudge
 {
     Task<Either<Error, Augury>> Judge(Draft draft, CancellationToken cancellationToken);
 
-    /// <summary>Whether this judge gave the quality, as it judges now: else the draft is judged again.</summary>
+    /// <summary>
+    /// Whether this judge gave the quality, as it judges now: one from another judge, or an older version of this one,
+    /// can't be compared with its own.
+    /// </summary>
     bool HasJudged(Augury augury);
 }

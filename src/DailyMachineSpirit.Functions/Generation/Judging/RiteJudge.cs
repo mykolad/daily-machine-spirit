@@ -7,7 +7,7 @@ namespace DailyMachineSpirit.Functions.Generation.Judging;
 
 /// <summary>
 /// The similarity judge's scores and tags, and the quality judge's quality, asked at once. While the similarity judge is
-/// off, the draft gets its quality alone; when either fails, the draft waits to be judged again whole.
+/// off, the draft gets its quality alone; when either fails, it's an error, so no draft is judged in part.
 /// </summary>
 public sealed class RiteJudge : IRiteJudge
 {
@@ -20,7 +20,7 @@ public sealed class RiteJudge : IRiteJudge
         this.quality = quality;
     }
 
-    // Judged while the similarity judge was off, a draft has its quality but no scores: once it's on, it's judged again.
+    // Judged while the similarity judge was off, a draft has its quality but no scores: once it's on, that's not all.
     public bool HasJudged(Draft draft) => draft.Augury.Exists(quality.HasJudged) && similarity.HasJudged(draft);
 
     public async Task<Either<Error, Draft>> Judge(Draft draft, CancellationToken cancellationToken)

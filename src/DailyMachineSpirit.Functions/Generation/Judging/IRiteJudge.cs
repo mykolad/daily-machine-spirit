@@ -14,14 +14,14 @@ namespace DailyMachineSpirit.Functions.Generation.Judging;
 public interface IRiteJudge
 {
     /// <summary>
-    /// Whether the draft has everything this judge gives now: else it's judged again (<see cref="DraftJudging"/>). A
-    /// quality another judge gave doesn't count, since the Augury only compares qualities from the same judge.
+    /// Whether the draft has everything this judge gives now. A quality another judge gave doesn't count, since the
+    /// Augury only compares qualities from the same judge.
     /// </summary>
     bool HasJudged(Draft draft);
 
     /// <summary>
-    /// The draft with its scores, tags and quality; an error when any part couldn't be judged, so the draft waits to be
-    /// judged again whole.
+    /// The draft with its scores, tags and quality; an error when any part couldn't be judged, so no draft is judged in
+    /// part.
     /// </summary>
     Task<Either<Error, Draft>> Judge(Draft draft, CancellationToken cancellationToken);
 
