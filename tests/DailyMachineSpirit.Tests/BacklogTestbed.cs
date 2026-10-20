@@ -104,7 +104,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
             Scriptorium,
             Writer(),
             new DuplicateCheck(Models, Options.Create(Settings.DuplicateRiteCheck), Time, Probe.Metrics),
-            JudgingAgain(),
+            DraftJudging(),
             Judge(),
             Options.Create(Settings.Backlog with { DraftsWaiting = BacklogSize }),
             Probe.Metrics,
@@ -117,7 +117,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public TabCounting Tabs() => new(Drafts, Scriptorium, Precepts, Audit, NullLogger<TabCounting>.Instance);
 
-    public JudgingAgain JudgingAgain() => new(Drafts, Judge(), Time, NullLogger<JudgingAgain>.Instance);
+    public DraftJudging DraftJudging() => new(Drafts, Judge(), Time, NullLogger<DraftJudging>.Instance);
 
     /// <summary>Jev for the scores and tags, and the quality judges' fake models for the quality, as the app wires them.</summary>
     public RiteJudge Judge() => new(Jev.NewJudge(Time, JevApiKey), new RubricJudge(Models, Options.Create(QualityJudging), Time, Probe.Metrics));

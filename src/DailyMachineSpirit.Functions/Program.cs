@@ -101,7 +101,7 @@ builder.Services.AddTransient<IRiteJudge, RiteJudge>();
 builder.Services.AddHostedService<TagBackfill>();
 builder.Services.AddTransient<RiteWriter>();
 builder.Services.AddTransient<DuplicateCheck>();
-builder.Services.AddTransient<JudgingAgain>();
+builder.Services.AddTransient<DraftJudging>();
 builder.Services.AddTransient<BacklogRefiller>();
 builder.Services.AddTransient<DailyRitePublisher>();
 builder.Services.AddTransient<PreceptCheck>();

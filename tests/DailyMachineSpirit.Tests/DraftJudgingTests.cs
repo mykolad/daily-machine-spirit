@@ -8,8 +8,8 @@ using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Tests;
 
-/// <summary>Judging again the drafts judging couldn't score, against the Cosmos DB emulator with a fake Jev.</summary>
-public sealed class JudgingAgainTests : IAsyncLifetime
+/// <summary>Judging the drafts the current judge hasn't judged, against the Cosmos DB emulator with a fake Jev.</summary>
+public sealed class DraftJudgingTests : IAsyncLifetime
 {
     private readonly BacklogTestbed testbed = new();
 
@@ -17,14 +17,16 @@ public sealed class JudgingAgainTests : IAsyncLifetime
 
     public Task DisposeAsync() => testbed.DisposeAsync();
 
-    // An outage that's over heals: the unjudged get their scores, quality and tags, recorded as the Machine Spirit's.
+    // An outage that's over heals: each refill judges the unjudged before it writes, so they get their scores, quality
+    // and tags, recorded as the Machine Spirit's. The judged are left as they are.
     [Fact]
-    public async Task TheUnjudged_AreJudged_AndRecorded()
+    public async Task ARefill_JudgesTheUnjudgedFirst_AndRecordsIt()
     {
         var unjudged = await testbed.AddUnjudgedDraft("Litany of the Cold Cache");
         var judged = await testbed.AddDraft("Already judged", 0.9f);
+        testbed.BacklogSize = 2;
 
-        Assert.Equal(1, Ok(await testbed.JudgingAgain().JudgeTheUnjudged(CancellationToken.None)));
+        Assert.Equal(0, Ok(await testbed.Refiller().Refill(CancellationToken.None)));
 
         var saved = Ok(await testbed.Drafts.Get(unjudged.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Gone."));
         Assert.True(saved.Augury.IsSome && saved.Similarity.IsSome && saved.Tags.IsSome);
@@ -32,6 +34,7 @@ public sealed class JudgingAgainTests : IAsyncLifetime
         var entry = Assert.Single(Ok(await testbed.Audit.GetHistory(unjudged.Id, CancellationToken.None)), found => found.Action == AuditAction.JudgeAgain);
         Assert.Equal(AuditEntry.MachineSpirit, entry.Actor);
         Assert.StartsWith("the Augury: ", entry.Detail.IfNone(string.Empty));
+        Assert.DoesNotContain(Ok(await testbed.Audit.GetHistory(judged.Id, CancellationToken.None)), found => found.Action == AuditAction.JudgeAgain);
     }
 
     // Jev still failing, or the quality's models: nothing is saved, and nothing recorded.
@@ -47,12 +50,10 @@ public sealed class JudgingAgainTests : IAsyncLifetime
         }
         else
         {
-            // Each judging asks for its scores at once: two judgings.
-            testbed.QualityJudgesFail(2 * Settings.QualityJudging.ScoresPerDraft);
+            testbed.QualityJudgesFail(Settings.QualityJudging.ScoresPerDraft);
         }
 
-        Assert.Equal(0, Ok(await testbed.JudgingAgain().JudgeTheUnjudged(CancellationToken.None)));
-        Assert.True(Ok(await testbed.JudgingAgain().JudgeAgain(unjudged.Id, Tester, CancellationToken.None)).IsNone);
+        Assert.True(Ok(await testbed.DraftJudging().Judge(unjudged.Id, Tester, CancellationToken.None)).IsNone);
 
         Assert.True(Ok(await testbed.Drafts.Get(unjudged.Id, CancellationToken.None)).Bind(draft => draft.Augury).IsNone);
         Assert.DoesNotContain(Ok(await testbed.Audit.GetHistory(unjudged.Id, CancellationToken.None)), entry => entry.Action == AuditAction.JudgeAgain);
@@ -63,7 +64,7 @@ public sealed class JudgingAgainTests : IAsyncLifetime
     {
         var judged = await testbed.AddDraft("Already judged", 0.9f);
 
-        Assert.Equal(JudgingAgain.NothingToJudge, Failed(await testbed.JudgingAgain().JudgeAgain(judged.Id, Tester, CancellationToken.None)));
+        Assert.Equal(DraftJudging.NothingToJudge, Failed(await testbed.DraftJudging().Judge(judged.Id, Tester, CancellationToken.None)));
     }
 
     // Judged meanwhile (an amendment, or another refill): the later save mustn't overwrite it.
@@ -102,28 +103,17 @@ public sealed class JudgingAgainTests : IAsyncLifetime
         Assert.Equal(("Litany of the Warm Cache", true), (saved.Writing.Title, saved.Augury.IsNone));
     }
 
-    // Each refill judges the unjudged first, so an outage heals without a Scribe.
-    [Fact]
-    public async Task ARefill_JudgesTheUnjudgedFirst()
-    {
-        var unjudged = await testbed.AddUnjudgedDraft("Litany of the Cold Cache");
-        testbed.BacklogSize = 1;
-
-        Ok(await testbed.Refiller().Refill(CancellationToken.None));
-
-        Assert.True(Ok(await testbed.Drafts.Get(unjudged.Id, CancellationToken.None)).Bind(draft => draft.Augury).IsSome);
-    }
-
     // A quality from an older judge (Jev's question, before #10) can't be compared with the current judge's: the draft
     // would wait behind every new one. The next refill judges it again.
     [Fact]
-    public async Task ADraftAnOlderJudgeJudged_IsJudgedAgain()
+    public async Task ADraftAnOlderJudgeJudged_IsJudgedByTheCurrentOne()
     {
         var older = await testbed.AddUnjudgedDraft("Litany of the Cold Cache");
         Ok(await testbed.Drafts.SaveJudgmentIfUnchanged(
             older with { Augury = new Augury { Quality = 0.9f, JudgedBy = "jev-1.13.0/quality-q1" } }, await ETag(older), Entry(older), CancellationToken.None));
+        testbed.BacklogSize = 1;
 
-        Assert.Equal(1, Ok(await testbed.JudgingAgain().JudgeTheUnjudged(CancellationToken.None)));
+        Ok(await testbed.Refiller().Refill(CancellationToken.None));
 
         var judged = Ok(await testbed.Drafts.Get(older.Id, CancellationToken.None)).Bind(draft => draft.Augury);
         Assert.Equal(Some(RubricJudge.Version), judged.Map(augury => augury.JudgedBy));
@@ -137,16 +127,16 @@ public sealed class JudgingAgainTests : IAsyncLifetime
     {
         var unjudged = await testbed.AddUnjudgedDraft("Litany of the Cold Cache");
         testbed.JevApiKey = "";
-        Assert.Equal(1, Ok(await testbed.JudgingAgain().JudgeTheUnjudged(CancellationToken.None)));
+        Assert.True(Ok(await testbed.DraftJudging().Judge(unjudged.Id, AuditEntry.MachineSpirit, CancellationToken.None)).IsSome);
         Assert.True(Ok(await testbed.Drafts.Get(unjudged.Id, CancellationToken.None)).Bind(draft => draft.Similarity).IsNone);
 
         testbed.JevApiKey = FakeJev.ApiKey;
-        Assert.Equal(1, Ok(await testbed.JudgingAgain().JudgeTheUnjudged(CancellationToken.None)));
+        Assert.True(Ok(await testbed.DraftJudging().Judge(unjudged.Id, AuditEntry.MachineSpirit, CancellationToken.None)).IsSome);
 
         var judged = Ok(await testbed.Drafts.Get(unjudged.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Gone."));
         Assert.True(judged.Similarity.IsSome);
         Assert.Equal(Some(new[] { "builds" }), judged.Tags);
-        Assert.Equal(0, Ok(await testbed.JudgingAgain().JudgeTheUnjudged(CancellationToken.None)));
+        Assert.Equal(DraftJudging.NothingToJudge, Failed(await testbed.DraftJudging().Judge(unjudged.Id, AuditEntry.MachineSpirit, CancellationToken.None)));
     }
 
     private async Task<string> ETag(Draft draft)

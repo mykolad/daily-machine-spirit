@@ -277,11 +277,14 @@ observability/                    — the Grafana dashboards (technical, activit
       better than Jev's own quality question, which barely told drafts apart (`experiments/blind-judges`). Its version
       (`RubricJudge.Version`) is the `JudgedBy` the Augury compares.
 
-    A draft that can't be judged (either failing) still joins the backlog, without scores. It's judged again
-    (`JudgingAgain`), as is one an older judge scored, or one judged while Jev was off once it's on (`IRiteJudge.HasJudged`): by each refill, before it writes, so an outage or a new judge
-    heals on its own, or at once by a Scribe's **Judge Again** (offered only on an unjudged draft). The judgment is
-    saved only if the draft is still the version judged (its ETag), and recorded (#9), but it's no lesson for the
-    Augury: it says nothing of the Scribes' taste. "Scores" are always the similarity scores, never the quality.
+    A draft that can't be judged (either failing) still joins the backlog, without scores. It's judged later, as is
+    one an older judge scored, or one judged while Jev was off once it's on (`IRiteJudge.HasJudged`): by each refill,
+    before it writes, one draft at a time, so an outage or a new judge heals on its own, or at once by a Scribe's
+    **Judge Again** (offered only on an unjudged draft). Both go through `DraftJudging`, which reads the draft again
+    and saves the judgment only if it's still the version judged (its ETag), so two at once judge a draft twice at
+    worst, and save it once; no lock. It's recorded (#9), but it's no lesson for the Augury: it says nothing of the
+    Scribes' taste. The judge itself (`IRiteJudge`) only judges, and saves nothing. "Scores" are always the similarity
+    scores, never the quality.
   - **Settings:** `AzureOpenAI:Endpoint` (the models are reached as the managed identity), `Jev:ApiKey` (a Key Vault
     reference in Azure; empty turns Jev off).
   - **Tuning: `machine-spirit.jsonc`** (in the Functions project, copied with the app): every value worth tuning, in one

@@ -14,7 +14,7 @@ namespace DailyMachineSpirit.Functions.Generation.Judging;
 public interface IRiteJudge
 {
     /// <summary>
-    /// Whether the draft has everything this judge gives now: else it's judged again (<see cref="JudgingAgain"/>). A
+    /// Whether the draft has everything this judge gives now: else it's judged again (<see cref="DraftJudging"/>). A
     /// quality another judge gave doesn't count, since the Augury only compares qualities from the same judge.
     /// </summary>
     bool HasJudged(Draft draft);

@@ -115,7 +115,7 @@ public sealed class BacklogRefillerTests : IAsyncLifetime
 
         var saved = Assert.Single(await testbed.Waiting());
         Assert.Equal(("Restart III", Some("The Sacred Restart")), (saved.Writing.Title, saved.Resembles));
-        var html = Html(await new ScriptoriumFunction(testbed.Scribes(), testbed.Amendments(), testbed.JudgingAgain(), testbed.Audit, testbed.ScribeNaming(), testbed.Tabs(), Options.Create(Settings.ScriptoriumPages), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance)
+        var html = Html(await new ScriptoriumFunction(testbed.Scribes(), testbed.Amendments(), testbed.DraftJudging(), testbed.Audit, testbed.ScribeNaming(), testbed.Tabs(), Options.Create(Settings.ScriptoriumPages), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<ScriptoriumFunction>.Instance)
             .Page(Get(""), CancellationToken.None), 200);
         Assert.Contains("""<p class="resembles">Much like “The Sacred Restart”, already written.</p>""", html);
     }
