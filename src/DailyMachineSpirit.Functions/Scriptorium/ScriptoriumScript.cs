@@ -123,6 +123,13 @@ public static class ScriptoriumScript
             const tab = now.closest('nav.tabs a')?.getAttribute('href');
             if (tab) return () => document.querySelector(`nav.tabs a[href="${CSS.escape(tab)}"]`);
             if (!main.contains(now)) return null;
+            // A chip by its state: narrowed, All and the chosen subject's chip both lead to /scriptorium.
+            const chip = now.closest('.subjects a');
+            if (chip) {
+              const chosen = chip.hasAttribute('aria-current');
+              const href = CSS.escape(chip.getAttribute('href') ?? '');
+              return () => main.querySelector(chosen ? '.subjects [aria-current]' : `.subjects a:not([aria-current])[href="${href}"]`);
+            }
             const rite = now.closest('article.row')?.id;
             const action = now.matches('button') ? actionOf(now) : null;
             const href = now.getAttribute('href');
@@ -280,12 +287,17 @@ public static class ScriptoriumScript
               button.disabled = false;
             }
           };
+          // A new watch (another summon, or a last burn) replaces the one running: a look of the old one, its request under
+          // way, stops when it comes back.
+          let watches = 0;
           function watchForRites(fullAt) {
             clearTimeout(watching);
+            const watch = ++watches;
             summoning = true;
             summonWaits();
             let lastArrival = Date.now();
             const look = async () => {
+              if (watch !== watches) return;
               if (Number(main.dataset.waiting) >= fullAt || Date.now() - lastArrival > 5 * 60_000) {
                 summoning = false;
                 summonWaits();
@@ -302,13 +314,14 @@ public static class ScriptoriumScript
                   const waiting = Number(page.getElementById('main')?.dataset.waiting);
                   // A subject chosen while the look was under way is the calendar to keep: this look is dropped.
                   const sameSubject = new URL(location.href).searchParams.get('subject') === url.searchParams.get('subject');
+                  if (watch !== watches) return;
                   if (response.ok && waiting > Number(main.dataset.waiting) && !busy && sameSubject) {
                     lastArrival = Date.now();
                     await load(url.href, {}, { pressed: null, card: null, burning: null, arriving: true });
                   }
                 } catch { /* the next look tries again */ }
               }
-              watching = setTimeout(look, 15_000);
+              if (watch === watches) watching = setTimeout(look, 15_000);
             };
             watching = setTimeout(look, 15_000);
           }

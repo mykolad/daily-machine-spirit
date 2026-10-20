@@ -122,7 +122,7 @@ public static partial class ScriptoriumPage
         .note-fold summary::-webkit-details-marker { display: none; }
         .note-fold summary:hover { color: #f0d59a; }
         .note-fold summary .icon { width: 16px; height: 16px; }
-        .note-fold[open] summary { display: none; }
+        [data-folding] .note-fold[open] summary { display: none; }
         .note-fold label { display: block; margin: 0 0 6px; font-size: 15px; font-weight: 600; color: #cdbd9e; }
         .note-fold .optional { font-weight: 400; }
         .burn-panel { display: grid; gap: 12px; padding: 16px; background: #1f1210; border: 1px solid #5a2a22; border-radius: 16px; }
