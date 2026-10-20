@@ -88,7 +88,10 @@ public static partial class ScriptoriumPage
         var calendar = view.Calendar;
         // No summary or help above the rites: the tab counts them, each row says its day, and each button says what it
         // does where the pointer rests.
+        html.Append("""<div class="filters">""");
         Subjects(html, calendar, subject);
+        html.Append(EveryRite());
+        html.Append("</div>");
 
         var rows = calendar.Select((entry, index) => new CalendarRow(entry, index + 1, index == calendar.Count - 1)).ToList();
         Group(html, rows.Where(row => row.Entry.PlacedByScribes).ToList(), subject, view.NowUtc, acted, names, new(
@@ -123,6 +126,11 @@ public static partial class ScriptoriumPage
         }
         html.Append("</p>");
     }
+
+    // Opening or folding every rite at once is the script's: without it, every rite is open, so the pair stays hidden.
+    // Two buttons rather than one that changes its name, so neither needs a state to be understood.
+    private static string EveryRite()
+        => $"""<span class="pair every" role="group" aria-label="Every rite" hidden><button type="button" class="step" data-fold="open" title="Open every rite shown">{ScriptoriumIcons.OpenEvery}<span class="visually-hidden">Open every rite</span></button><button type="button" class="step" data-fold="fold" title="Fold every rite but the next">{ScriptoriumIcons.FoldEvery}<span class="visually-hidden">Fold every rite</span></button></span>""";
 
     private static string Chip(string href, string label, int count, bool current)
         => $"""<a class="chip" href="{href}"{(current ? " aria-current=\"true\"" : string.Empty)}>{Encode(label)}<span class="chip-count">{count}</span></a>""";

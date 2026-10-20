@@ -43,6 +43,7 @@ public static class ScriptoriumScript
             const next = main.querySelector('article.row.next');
             if (next) opened.add(next.id);
             for (const card of cards()) fold(card, opened.has(card.id));
+            main.querySelector('.every')?.removeAttribute('hidden');
           };
           if (main.hasAttribute('data-open-all')) cards().forEach((card) => opened.add(card.id));
           if (location.hash.startsWith('#rite-')) opened.add(location.hash.slice(1));
@@ -185,6 +186,7 @@ public static class ScriptoriumScript
               }
 
               if (fresh.dataset.summoning) watchForRites(Number(fresh.dataset.summoning));
+              summonWaits();
 
               // Each rite that moved starts where it was and slides to its new place (First, Last, Invert, Play).
               let arrived = Promise.resolve();
@@ -246,11 +248,32 @@ public static class ScriptoriumScript
           // each as it arrives, until it's full or five minutes pass without one. Not while the Scribe is typing, about
           // to burn or acting: the next look shows what came meanwhile.
           let watching = 0;
+          // While they're written, Summon waits too, saying why; it's back when the watch ends.
+          let summoning = false;
+          const summonWaits = () => {
+            const button = main.querySelector('form[action="/scriptorium/summon"] button');
+            if (!button) return;
+            if (summoning && !button.disabled) {
+              button.dataset.idleTitle = button.title;
+              button.title = 'New rites are being written: each appears here as it arrives.';
+              button.disabled = true;
+            } else if (!summoning && button.dataset.idleTitle !== undefined) {
+              button.title = button.dataset.idleTitle;
+              delete button.dataset.idleTitle;
+              button.disabled = false;
+            }
+          };
           function watchForRites(fullAt) {
             clearTimeout(watching);
+            summoning = true;
+            summonWaits();
             let lastArrival = Date.now();
             const look = async () => {
-              if (Number(main.dataset.waiting) >= fullAt || Date.now() - lastArrival > 5 * 60_000) return;
+              if (Number(main.dataset.waiting) >= fullAt || Date.now() - lastArrival > 5 * 60_000) {
+                summoning = false;
+                summonWaits();
+                return;
+              }
               const typing = document.activeElement instanceof Element && document.activeElement.matches('textarea, input');
               if (!busy && !typing && !main.querySelector('.burn-panel:not([hidden])')) {
                 const url = new URL(location.href);
@@ -301,6 +324,10 @@ public static class ScriptoriumScript
               if (reason) body.set('note', reason);
               burning = { id: card.id.slice('rite-'.length), title: titleOf(card), place: card.classList.contains('scribes') ? card.dataset.place : '' };
             }
+            // Under way, the button says so: it can't be pressed again, and the pointer shows it's working (a summon's
+            // request can take seconds). The new calendar brings its own buttons.
+            button?.setAttribute('disabled', '');
+            form.setAttribute('data-busy', '');
             hideToast();
             // Not the button's formAction: without the attribute, that's the page's own address (Summon's and the
             // Augury's buttons have none).
@@ -315,6 +342,16 @@ public static class ScriptoriumScript
               if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
               event.preventDefault();
               if (!busy) load(chip.href, {}, { pressed: null, card: null, burning: null });
+              return;
+            }
+            // Every rite shown, opened or folded, remembered as one opened or folded by hand; the next stays open.
+            const every = target.closest('[data-fold]');
+            if (every) {
+              for (const card of cards()) {
+                if (every.dataset.fold === 'open') opened.add(card.id); else opened.delete(card.id);
+              }
+              keepOpened();
+              foldAll();
               return;
             }
             const card = target.closest('article.row');

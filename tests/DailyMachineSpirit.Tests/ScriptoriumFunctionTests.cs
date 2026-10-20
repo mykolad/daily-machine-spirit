@@ -322,6 +322,19 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Contains("""<button title="The calendar is full: 3 rites wait. More are written as rites are published or burned." class="primary" disabled>""", full);
     }
 
+    // Opening or folding every rite is the script's: without it every rite is open, so the pair waits hidden.
+    [Fact]
+    public async Task Page_OffersToOpenOrFoldEveryRite_WhereTheScriptRuns()
+    {
+        await testbed.AddDraft("First", 0.9f);
+
+        var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
+
+        Assert.Contains("""<span class="pair every" role="group" aria-label="Every rite" hidden>""", html);
+        Assert.Contains("""data-fold="open" title="Open every rite shown">""", html);
+        Assert.Contains("""<span class="visually-hidden">Fold every rite</span>""", html);
+    }
+
     [Fact]
     public async Task Page_SaysNothing_ForAnUnknownOutcome()
     {

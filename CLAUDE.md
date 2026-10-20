@@ -431,7 +431,8 @@ observability/                    — the Grafana dashboards (technical, activit
     card; the next to publish is open, with when it goes out. The header says who's signed in. No summary or help
     text above the rites: the tab counts them, each row says its day, and each button its action, in its `title`. **Subject chips**
     narrow the calendar to one subject (`?subject=<key>`, links, so it works without the script), each rite keeping
-    its place; the forms carry the subject, so an action comes back narrowed. `?open=all` opens every card. Recent
+    its place; the forms carry the subject, so an action comes back narrowed. `?open=all` opens every card, and so does the pair of icons beside the chips (where the script runs), which also
+    folds every card but the next. Recent
     judgments are the last five, with a link to the Record. **Burning asks why** (the script's panel): "Too specific"
     and "Duplicate" (the Record's most common burn notes), "The joke falls flat" and "The truth is wrong" (the rubric's
     measures), or the Scribe's own words, sent as the note; none is needed. Without the script, every card is open and

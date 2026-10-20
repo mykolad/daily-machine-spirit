@@ -48,4 +48,9 @@ public static class ScriptoriumIcons
     public const string Chevron = $"""{Open}<path d="m6 9 6 6 6-6"/></svg>""";
 
     public const string Undo = $"""{Open}<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>""";
+
+    // Every rite at once: Lucide's chevrons-up-down to open them, chevrons-down-up to fold them.
+    public const string OpenEvery = $"""{Open}<path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>""";
+
+    public const string FoldEvery = $"""{Open}<path d="m7 20 5-5 5 5"/><path d="m7 4 5 5 5-5"/></svg>""";
 }

@@ -67,7 +67,9 @@ public static partial class ScriptoriumPage
         .ash { opacity: .92; }
         .acted, .row.arrived { border-color: #f0b45a; animation: acted 1.4s ease-out; }
         @keyframes acted { from { box-shadow: 0 0 0 4px rgba(240, 180, 90, .45); } to { box-shadow: 0 0 0 4px rgba(240, 180, 90, 0); } }
-        .subjects { display: flex; flex-wrap: wrap; gap: 6px; margin: 18px 0 0; }
+        .filters { display: flex; align-items: flex-start; gap: 12px; margin: 18px 0 0; }
+        .subjects { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+        .every { margin-left: auto; flex: none; }
         .chip { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; min-height: 34px; padding: 5px 12px; border-radius: 999px; border: 1px solid rgba(201,162,90,.45); font: 600 14px/1.4 Figtree, sans-serif; color: #d9b874; text-decoration: none; }
         .chip:hover { border-color: #c9a25a; color: #f0d59a; }
         .chip[aria-current] { background: #c9a25a; border-color: #c9a25a; color: #100e0b; }

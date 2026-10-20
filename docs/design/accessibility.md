@@ -174,7 +174,10 @@ month, with Today's masthead, margins and altar, and search as the Archive filte
   message ("1 new rite arrived.") and marked like a rite acted on, while focus stays on the control it was on (found
   again by its rite and action) and the page doesn't scroll. It waits while the Scribe is typing or about to burn, so
   a field never loses its focus or its words under them. A full calendar's Summon is disabled, its `title` saying why,
-  like Exalt and Humble at the ends.
+  like Exalt and Humble at the ends; while a summon's rites are being written, it waits too, saying so.
+- **Opening and folding every rite** is two icon buttons, each named for screen readers ("Open every rite", "Fold
+  every rite") and in its `title`, rather than one toggle that changes its name. Without the script they stay hidden:
+  every rite is open then.
 
 ## The wide screen
 
