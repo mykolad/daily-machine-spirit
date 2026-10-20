@@ -105,7 +105,7 @@
   // The Scribes' pages.
   "ScriptoriumPages": {
     "AshesShown": 20,
-    "JudgmentsShown": 20,
+    "JudgmentsShown": 5,
     "RecordEntriesShown": 100,
     // Do the Scribes agree with the Augury? How many months the table shows, this one included.
     "AgreementMonthsShown": 6

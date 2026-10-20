@@ -77,7 +77,7 @@ public sealed class ScribesTests : IAsyncLifetime
         await testbed.AddDraft("Excellent", 0.95f);
         var good = await testbed.AddDraft("Good", 0.7f);
         await testbed.AddDraft("Fair", 0.4f);
-        Ok(await testbed.Scribes().Anoint(good.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        Ok(await testbed.Scribes().Exalt(good.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
         Ok(await testbed.Scribes().Burn(good.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
@@ -96,7 +96,7 @@ public sealed class ScribesTests : IAsyncLifetime
         await testbed.AddDraft("Excellent", 0.95f);
         var good = await testbed.AddDraft("Good", 0.7f);
         var fair = await testbed.AddDraft("Fair", 0.4f);
-        Ok(await testbed.Scribes().Anoint(good.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        Ok(await testbed.Scribes().Exalt(good.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         Ok(await testbed.Publisher().PublishToday(CancellationToken.None));
 
         Ok(await testbed.Scribes().Exalt(fair.Id, "", "another-scribe", CancellationToken.None));
@@ -120,8 +120,8 @@ public sealed class ScribesTests : IAsyncLifetime
 
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
         Assert.Equal(["Fair", "Excellent", "Good"], view.Calendar.Select(entry => entry.Draft.Writing.Title));
-        // The ones it jumped over keep their order, now as the Scribes'.
-        Assert.All(view.Calendar, entry => Assert.True(entry.PlacedByScribes));
+        // Only it joins the Scribes' order: the ones it passed stay the Augury's.
+        Assert.Equal([true, false, false], view.Calendar.Select(entry => entry.PlacedByScribes));
         var decision = Assert.Single(view.Decisions);
         Assert.Equal(ScribeAction.Anoint, decision.Action);
         Assert.Equal(fair.Id, decision.DraftId);
@@ -146,6 +146,29 @@ public sealed class ScribesTests : IAsyncLifetime
         Assert.Equal(Some("Yes, this one."), Assert.Single(view.Decisions).Note);
     }
 
+    // The rites an anointed one passed stay the Augury's, so a better one written later goes ahead of them, and the
+    // Scribes' earlier placings follow the anointed one, still in their order.
+    [Fact]
+    public async Task Anoint_LeavesTheRitesItPassedToTheAugury_AndTheScribesPlacingsInOrder()
+    {
+        var excellent = await testbed.AddDraft("Excellent", 0.9f);
+        var good = await testbed.AddDraft("Good", 0.7f);
+        var fair = await testbed.AddDraft("Fair", 0.4f);
+        Ok(await testbed.Scribes().Exalt(good.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        Ok(await testbed.Scribes().Anoint(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+
+        await testbed.AddDraft("Best, from a refill", 0.99f);
+
+        var view = Ok(await testbed.Scribes().View(CancellationToken.None));
+        Assert.Equal(["Fair", "Good", "Excellent", "Best, from a refill"], view.Calendar.Select(entry => entry.Draft.Writing.Title));
+        Assert.Equal([true, true, true, false], view.Calendar.Select(entry => entry.PlacedByScribes));
+        Ok(await testbed.Scribes().LetTheAuguryDecide(BacklogTestbed.Tester, CancellationToken.None));
+        Ok(await testbed.Scribes().Anoint(excellent.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        var anointed = Ok(await testbed.Scribes().View(CancellationToken.None));
+        Assert.Equal(["Excellent", "Best, from a refill", "Good", "Fair"], anointed.Calendar.Select(entry => entry.Draft.Writing.Title));
+        Assert.Equal([true, false, false, false], anointed.Calendar.Select(entry => entry.PlacedByScribes));
+    }
+
     [Fact]
     public async Task AnAnointingBetweenReadingTheOrderAndTheDrafts_IsNotLost()
     {
@@ -159,7 +182,7 @@ public sealed class ScribesTests : IAsyncLifetime
             anointedMeanwhile = arrived.Id;
             Ok(await testbed.Scribes().Anoint(arrived.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         });
-        var scribes = new Scribes(drafts, testbed.Rites, testbed.Scriptorium, Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages), testbed.Time);
+        var scribes = new Scribes(drafts, testbed.Rites, testbed.Scriptorium, Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages), Options.Create(Settings.Backlog), testbed.Time);
 
         var result = await scribes.Exalt(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None);
 
@@ -176,7 +199,7 @@ public sealed class ScribesTests : IAsyncLifetime
         // Right after this request reads the waiting drafts, another Scribe burns the one it's about to exalt.
         var drafts = new InterruptedDrafts(testbed.Drafts,
             async () => Ok(await testbed.Scribes().Burn(fair.Id, "Burned meanwhile.", BacklogTestbed.Tester, CancellationToken.None)));
-        var scribes = new Scribes(drafts, testbed.Rites, testbed.Scriptorium, Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages), testbed.Time);
+        var scribes = new Scribes(drafts, testbed.Rites, testbed.Scriptorium, Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages), Options.Create(Settings.Backlog), testbed.Time);
 
         var result = await scribes.Exalt(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None);
 
@@ -195,7 +218,7 @@ public sealed class ScribesTests : IAsyncLifetime
         // still goes through (both Scribes acted on what they saw), and Fair stays in the Scribes' order, burned.
         var drafts = new InterruptedDrafts(testbed.Drafts,
             async () => Ok(await testbed.Scribes().Anoint(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None)));
-        var scribes = new Scribes(drafts, testbed.Rites, testbed.Scriptorium, Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages), testbed.Time);
+        var scribes = new Scribes(drafts, testbed.Rites, testbed.Scriptorium, Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages), Options.Create(Settings.Backlog), testbed.Time);
 
         Ok(await scribes.Burn(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
@@ -218,7 +241,7 @@ public sealed class ScribesTests : IAsyncLifetime
         // burns Good, which wasn't placed, so the order's ETag doesn't change: only Good's own state can tell.
         var drafts = new InterruptedDrafts(testbed.Drafts,
             async () => Ok(await testbed.Scribes().Burn(good.Id, "Burned meanwhile.", BacklogTestbed.Tester, CancellationToken.None)));
-        var scribes = new Scribes(drafts, testbed.Rites, testbed.Scriptorium, Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages), testbed.Time);
+        var scribes = new Scribes(drafts, testbed.Rites, testbed.Scriptorium, Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages), Options.Create(Settings.Backlog), testbed.Time);
 
         var result = await scribes.Humble(excellent.Id, "", BacklogTestbed.Tester, CancellationToken.None);
 

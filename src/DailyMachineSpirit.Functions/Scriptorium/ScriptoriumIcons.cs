@@ -43,4 +43,14 @@ public static class ScriptoriumIcons
         $"""{Open}<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>""";
 
     public const string Add = $"""{Open}<path d="M5 12h14"/><path d="M12 5v14"/></svg>""";
+
+    // The calendar's rows (the Scriptorium redesign): Lucide's chevron-down, to open a rite, and undo-2, after a burn.
+    public const string Chevron = $"""{Open}<path d="m6 9 6 6 6-6"/></svg>""";
+
+    public const string Undo = $"""{Open}<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>""";
+
+    // Every rite at once: Lucide's chevrons-up-down to open them, chevrons-down-up to fold them.
+    public const string OpenEvery = $"""{Open}<path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>""";
+
+    public const string FoldEvery = $"""{Open}<path d="m7 20 5-5 5 5"/><path d="m7 4 5 5 5-5"/></svg>""";
 }

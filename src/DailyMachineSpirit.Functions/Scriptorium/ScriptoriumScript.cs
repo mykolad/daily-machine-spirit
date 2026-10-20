@@ -1,56 +1,180 @@
 namespace DailyMachineSpirit.Functions.Scriptorium;
 
 /// <summary>
-/// The Scriptorium's only script, on top of its forms: an action is posted in the background and the new calendar takes
-/// the old one's place, every rite that moved sliding from where it was, so a Scribe sees what changed. Without it (or
-/// when anything goes wrong) the forms work as they are: post, redirect, a new page.
+/// The calendar's script, on top of its forms and links. It folds every rite but the next to publish into its row, and
+/// asks why before a burn, then offers to undo it. An action is posted in the background and the new calendar takes the
+/// old one's place, every rite that moved sliding from where it was, so a Scribe sees what changed; a subject's chip
+/// loads the calendar narrowed to it the same way. Without it (or when anything goes wrong) the forms and links work as
+/// they are: post, redirect, a new page, every rite open.
 /// </summary>
 public static class ScriptoriumScript
 {
     public const string Js = """
         (() => {
           const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+          const main = document.getElementById('main');
+          const toasts = document.getElementById('toasts');
+          const openKey = 'dms-scriptorium-open';
           let busy = false;
+          let toastTimer = 0;
+          // The note fold a Scribe just opened, whose field takes the focus; not one reopened to keep its note.
+          let openingNote = null;
 
-          // Where each rite is, by its id (rite-<draft>), measured from the top of the calendar's section: the status
-          // message above it appearing or changing length moves every rite down, which isn't a move worth showing.
+          // The rites a Scribe opened, by their ids (rite-<draft>), kept for the session; the next to publish is always
+          // open, and so is the rite an address points at (back from amending it).
+          const opened = (() => {
+            try { return new Set(JSON.parse(sessionStorage.getItem(openKey) ?? '[]')); } catch { return new Set(); }
+          })();
+          const keepOpened = () => {
+            try { sessionStorage.setItem(openKey, JSON.stringify([...opened])); } catch { /* the session forgets */ }
+          };
+          const cards = () => [...main.querySelectorAll('article.row')];
+          const titleOf = (card) => card.querySelector('h4')?.textContent ?? '';
+          const fold = (card, open) => {
+            const body = card.querySelector('.body');
+            const toggle = card.querySelector('.expand');
+            if (!body || !toggle) return;
+            body.hidden = !open;
+            toggle.hidden = false;
+            toggle.setAttribute('aria-expanded', String(open));
+            toggle.setAttribute('aria-label', `${open ? 'Collapse' : 'Expand'} ${titleOf(card)}`);
+          };
+          const foldAll = () => {
+            const next = main.querySelector('article.row.next');
+            if (next) opened.add(next.id);
+            for (const card of cards()) fold(card, opened.has(card.id));
+            main.querySelector('.every')?.removeAttribute('hidden');
+          };
+          if (main.hasAttribute('data-open-all')) cards().forEach((card) => opened.add(card.id));
+          if (location.hash.startsWith('#rite-')) opened.add(location.hash.slice(1));
+          main.setAttribute('data-folding', '');
+          foldAll();
+
+          // Consign to the Flames asks why first, in place of the note and the buttons. Leaving it for another action or
+          // subject cancels the burn, as Escape does: the reason belonged to a burn that didn't happen, unlike a note,
+          // which is written for the Augury and kept.
+          const showPanel = (card, shown) => {
+            const panel = card.querySelector('.burn-panel');
+            if (!panel) return;
+            panel.hidden = !shown;
+            card.querySelector('.note-fold').hidden = shown;
+            card.querySelector('.buttons').hidden = shown;
+            if (shown) {
+              panel.querySelector('.reason')?.focus();
+            } else {
+              panel.querySelectorAll('.reason').forEach((reason) => reason.setAttribute('aria-pressed', 'false'));
+              panel.querySelector('.reason-text').value = '';
+              card.querySelector('.buttons .burn')?.focus();
+            }
+          };
+
+          // After a burn, a few seconds to undo it: never gone while the pointer or focus is on it.
+          const hideToast = () => {
+            clearTimeout(toastTimer);
+            toasts?.replaceChildren();
+          };
+          const showToast = ({ id, title }) => {
+            const template = document.getElementById('undo-toast');
+            if (!toasts || !(template instanceof HTMLTemplateElement)) return;
+            const toast = template.content.firstElementChild.cloneNode(true);
+            toast.querySelector('.toast-text').textContent = `“${title}” was consigned to the flames.`;
+            const form = toast.querySelector('form');
+            form.setAttribute('action', `/scriptorium/drafts/${id}/restore`);
+            const later = () => {
+              clearTimeout(toastTimer);
+              toastTimer = setTimeout(() => (toast.matches(':hover, :focus-within') ? later() : hideToast()), 7000);
+            };
+            toast.addEventListener('mouseleave', later);
+            toast.addEventListener('focusout', later);
+            toasts.replaceChildren(toast);
+            later();
+          };
+
+          // Where each rite is, by its id, measured from the top of the calendar's section: the status message above it
+          // appearing or changing length moves every rite down, which isn't a move worth showing.
           const positions = () => {
             const from = document.querySelector('#main section').getBoundingClientRect().top;
-            return new Map([...document.querySelectorAll('article.rite[id]')]
-              .map((card) => [card.id, card.getBoundingClientRect().top - from]));
+            return new Map(cards().map((card) => [card.id, card.getBoundingClientRect().top - from]));
           };
-          // What a button does: its formaction, or its form's action (Summon, handing the order back to the Augury).
+          // What a button does: its formaction, or its form's action (Summon, handing the order back to the Augury, Undo).
           const actionOf = (button) =>
             button?.getAttribute('formaction') ?? button?.form?.getAttribute('action') ?? null;
+          const firstButton = (card) => card?.querySelector('button:not(:disabled):not([hidden])') ?? null;
 
-          document.addEventListener('submit', async (event) => {
-            const form = event.target;
-            const button = event.submitter;
-            if (!(form instanceof HTMLFormElement) || form.method !== 'post') return;
-            event.preventDefault();
-            // One action at a time: a second click while the first is under way would act on a calendar it hasn't seen.
-            if (busy) return;
+          // The notes being written on other rites survive the new calendar, kept by rite while a subject hides theirs;
+          // the acted-on rite's went with its action, and a note cleared is no longer kept.
+          const notes = new Map();
+          const keepNotes = (acting) => {
+            for (const card of cards()) {
+              const note = card === acting ? '' : card.querySelector('textarea[name=note]')?.value ?? '';
+              if (note) notes.set(card.id, note); else notes.delete(card.id);
+            }
+          };
+
+          // The Scribe is midway through something a new calendar would undo: typing, or about to burn. A burn panel left
+          // open in a card since folded is out of sight, and counts no more.
+          const midway = () => (document.activeElement instanceof Element && document.activeElement.matches('textarea, input'))
+            || [...main.querySelectorAll('.burn-panel:not([hidden])')].some((panel) => !panel.parentElement?.closest('[hidden]'));
+
+          // Where focus was, found again in a new calendar: the same control of the same rite, the same chip, or the same
+          // tab (the tab bar is replaced too).
+          const focusAgain = () => {
+            const now = document.activeElement;
+            if (!(now instanceof Element)) return null;
+            const tab = now.closest('nav.tabs a')?.getAttribute('href');
+            if (tab) return () => document.querySelector(`nav.tabs a[href="${CSS.escape(tab)}"]`);
+            if (!main.contains(now)) return null;
+            // A chip by its state: narrowed, All and the chosen subject's chip both lead to /scriptorium.
+            const chip = now.closest('.subjects a');
+            if (chip) {
+              const chosen = chip.hasAttribute('aria-current');
+              const href = CSS.escape(chip.getAttribute('href') ?? '');
+              return () => main.querySelector(chosen ? '.subjects [aria-current]' : `.subjects a:not([aria-current])[href="${href}"]`);
+            }
+            const rite = now.closest('article.row')?.id;
+            const action = now.matches('button') ? actionOf(now) : null;
+            const href = now.getAttribute('href');
+            const expand = now.matches('.expand');
+            const every = now.getAttribute('data-fold');
+            // Anything else (a note's fold): the same control by its place among its rite's, which a new rite arriving
+            // doesn't change.
+            const controls = (scope) => [...scope.querySelectorAll('button, a[href], summary, input, textarea, select')];
+            const at = controls(rite ? now.closest('article.row') : main).indexOf(now);
+            return () => {
+              const scope = rite ? document.getElementById(rite) : main;
+              if (!scope) return null;
+              if (expand) return scope.querySelector('.expand');
+              if (every) return main.querySelector(`[data-fold="${every}"]`);
+              if (action) return [...scope.querySelectorAll('button')].find((other) => actionOf(other) === action) ?? null;
+              if (href) return scope.querySelector(`a[href="${CSS.escape(href)}"]`);
+              return at >= 0 ? controls(scope)[at] ?? null : null;
+            };
+          };
+
+          // Loads the calendar from the address (an action's answer, or a subject's) in place of the one shown. Rites
+          // arriving from a summon come in without moving focus or the page.
+          const load = async (url, init, { pressed, card, burning, arriving }) => {
             busy = true;
-            const main = document.getElementById('main');
             main.setAttribute('aria-busy', 'true');
-            const pressed = actionOf(button);
             const before = positions();
-            // Where a burned rite stood in the calendar, for focus. Not its neighbour: the Augury orders what's left anew,
-            // so the rite after it before the burn needn't be the one in its place after.
-            const row = form.closest('ol.calendar > li');
-            const place = row ? [...row.parentElement.children].indexOf(row) : -1;
+            // Where a burned rite stood among the rites shown, for focus. Not its neighbour: the Augury orders what's
+            // left anew, so the rite after it before the burn needn't be the one in its place after.
+            const place = card ? cards().indexOf(card) : -1;
             try {
-              // Not the button's formAction: without the attribute, that's the page's own address (Summon's and the
-              // Augury's buttons have none).
-              const response = await fetch(pressed ?? form.action, {
-                method: 'POST',
-                body: new URLSearchParams(new FormData(form, button)),
-              });
+              const response = await fetch(url, init);
               const page = new DOMParser().parseFromString(await response.text(), 'text/html');
               const fresh = page.getElementById('main');
               const freshStatus = fresh?.querySelector('.status');
               const status = main.querySelector('.status');
               if (!response.ok || !freshStatus || !status) throw new Error(String(response.status));
+              // Arriving rites wait for the next look while the Scribe is typing or about to burn, as checked again now:
+              // either may have begun while the request was under way.
+              if (arriving && midway()) return;
+              // Kept now, not before the request: the fields stay editable while it's under way.
+              keepNotes(card);
+              const refocus = arriving ? focusAgain() : null;
+              const came = Number(fresh.dataset.waiting) - Number(main.dataset.waiting);
+              main.dataset.waiting = fresh.dataset.waiting ?? '';
 
               // Everything but the status message is replaced; the message stays the same element, given the new text,
               // so a screen reader announces it as it would after a reload.
@@ -65,15 +189,32 @@ public static class ScriptoriumScript
               const tabs = page.querySelector('nav.tabs');
               if (tabs) document.querySelector('nav.tabs')?.replaceWith(document.importNode(tabs, true));
 
+              foldAll();
+              for (const [id, note] of notes) {
+                const field = document.getElementById(id)?.querySelector('textarea[name=note]');
+                if (!field) continue;
+                field.value = note;
+                field.closest('details').open = true;
+              }
+
               const acted = main.querySelector('.acted');
-              // A burn can be refused (a note too long, a calendar changed meanwhile), which leaves the rite marked in the
-              // calendar, so it counts only when the rite has left it for the Ashes, another page.
-              const burned = (pressed?.endsWith('/burn') ?? false) && !acted;
+              // A burn counts only when the server says it burned: refused (a note too long), or the rite gone meanwhile
+              // (published at midnight), the rite isn't in the Ashes and there's nothing to undo.
+              const done = new URL(response.url).searchParams.get('done');
+              const burned = done === 'burn' || done === 'burn-last';
               history.replaceState(null, '', response.url + (acted && !burned ? `#${acted.id}` : ''));
+              if (burned && burning) {
+                // The Undo says it, in place of the message's own words and its way back from the Ashes.
+                status.querySelectorAll('[data-undoable]').forEach((said) => said.remove());
+                showToast(burning);
+              }
+
+              if (fresh.dataset.summoning) watchForRites(Number(fresh.dataset.summoning));
+              summonWaits();
 
               // Each rite that moved starts where it was and slides to its new place (First, Last, Invert, Play).
               let arrived = Promise.resolve();
-              if (!reduced.matches) {
+              if ((pressed || arriving) && !reduced.matches) {
                 for (const [id, top] of positions()) {
                   const was = before.get(id);
                   if (was === undefined || Math.abs(was - top) < 1) continue;
@@ -84,37 +225,207 @@ public static class ScriptoriumScript
                 }
               }
 
+              if (arriving) {
+                // Marked like a rite acted on, and said; focus stays on what the Scribe was on, the status otherwise.
+                cards().filter((row) => !before.has(row.id)).forEach((row) => row.classList.add('arrived'));
+                status.textContent = came === 1 ? '1 new rite arrived.' : `${came} new rites arrived.`;
+                if (refocus) {
+                  status.tabIndex = -1;
+                  (refocus() ?? status).focus({ preventScroll: true });
+                }
+                return;
+              }
+
               // Focus stays where the Scribe is working: the same button on the rite, else its first one. After a burn,
               // the rite now in the burned one's place (the last, when it was the last), so the page doesn't jump away
-              // from it; the message (with its link to restore the rite) is announced all the same.
-              const calendar = [...main.querySelectorAll('ol.calendar > li')];
-              const burnedNeighbour = burned && place >= 0
-                ? (calendar[place] ?? calendar.at(-1))?.querySelector('article') ?? null
-                : null;
-              const again = burned ? burnedNeighbour?.querySelector('button')
-                : [...main.querySelectorAll('button')].find((other) => actionOf(other) === pressed)
-                  ?? acted?.querySelector('button');
+              // from it. A subject's chip keeps it on the chips. Never a button the new calendar disabled (Summon, while
+              // its rites are written): focus there would be lost, so the status takes it.
+              const rows = cards();
+              const neighbour = burned && place >= 0 ? rows[place] ?? rows.at(-1) ?? null : null;
+              const again = !pressed ? main.querySelector('.subjects [aria-current]')
+                : burned ? firstButton(neighbour)
+                : [...main.querySelectorAll('button:not(:disabled)')].find((other) => actionOf(other) === pressed) ?? firstButton(acted);
               status.tabIndex = -1;
               (again ?? status).focus({ preventScroll: true });
               // Once the rite has arrived, it's brought into view. Not awaited: a hidden tab pauses the slide, and the
               // page mustn't stay busy until it's shown again.
-              const card = burned ? burnedNeighbour : again && acted;
-              arrived.then(() => {
-                // A rite taller than the window (a short one, or zoomed in) can't be shown whole, and 'nearest' leaves
-                // it where it is: then its focused button is shown instead.
-                const shown = !card ? status
-                  : card.getBoundingClientRect().height <= innerHeight ? card : again ?? status;
-                shown.scrollIntoView({ block: 'nearest', behavior: reduced.matches ? 'auto' : 'smooth' });
-              });
+              const shownCard = burned ? neighbour : again && acted;
+              if (pressed) {
+                arrived.then(() => {
+                  // A rite taller than the window can't be shown whole, and 'nearest' leaves it where it is: then its
+                  // focused button is shown instead.
+                  const shown = !shownCard ? status
+                    : shownCard.getBoundingClientRect().height <= innerHeight ? shownCard : again ?? status;
+                  shown.scrollIntoView({ block: 'nearest', behavior: reduced.matches ? 'auto' : 'smooth' });
+                });
+              }
             } catch {
               // Whether the action happened isn't known (Cloudflare Access may want a new sign-in, or the network
-              // failed): the page as it is now says.
-              location.assign('/scriptorium');
+              // failed): the page as it is now says. Rites that failed to arrive only wait for the next look.
+              if (!arriving) location.assign(pressed ? '/scriptorium' : url);
             } finally {
               main.removeAttribute('aria-busy');
               busy = false;
             }
+          };
+
+          // Summoned rites are written one at a time over minutes: the calendar looks for them every 15 seconds and shows
+          // each as it arrives, until it's full or five minutes pass without one. Not while the Scribe is typing, about
+          // to burn or acting: the next look shows what came meanwhile.
+          let watching = 0;
+          // While they're written, Summon waits too, saying why; it's back when the watch ends.
+          let summoning = false;
+          const summonWaits = () => {
+            const button = main.querySelector('form[action="/scriptorium/summon"] button');
+            if (!button) return;
+            if (summoning && !button.disabled) {
+              button.dataset.idleTitle = button.title;
+              button.title = 'New rites are being written: each appears here as it arrives.';
+              button.disabled = true;
+            } else if (!summoning && button.dataset.idleTitle !== undefined) {
+              button.title = button.dataset.idleTitle;
+              delete button.dataset.idleTitle;
+              button.disabled = false;
+            }
+          };
+          // A new watch (another summon, or a last burn) replaces the one running: a look of the old one, its request under
+          // way, stops when it comes back.
+          let watches = 0;
+          function watchForRites(fullAt) {
+            clearTimeout(watching);
+            const watch = ++watches;
+            summoning = true;
+            summonWaits();
+            let lastArrival = Date.now();
+            const look = async () => {
+              if (watch !== watches) return;
+              if (Number(main.dataset.waiting) >= fullAt || Date.now() - lastArrival > 5 * 60_000) {
+                summoning = false;
+                summonWaits();
+                return;
+              }
+              if (!busy && !midway()) {
+                const url = new URL(location.href);
+                url.searchParams.delete('done');
+                url.searchParams.delete('rite');
+                url.hash = '';
+                try {
+                  const response = await fetch(url);
+                  const page = new DOMParser().parseFromString(await response.text(), 'text/html');
+                  const waiting = Number(page.getElementById('main')?.dataset.waiting);
+                  // A subject chosen while the look was under way is the calendar to keep: this look is dropped.
+                  const sameSubject = new URL(location.href).searchParams.get('subject') === url.searchParams.get('subject');
+                  if (watch !== watches) return;
+                  if (response.ok && waiting > Number(main.dataset.waiting) && !busy && sameSubject) {
+                    lastArrival = Date.now();
+                    await load(url.href, {}, { pressed: null, card: null, burning: null, arriving: true });
+                  }
+                } catch { /* the next look tries again */ }
+              }
+              if (watch === watches) watching = setTimeout(look, 15_000);
+            };
+            watching = setTimeout(look, 15_000);
+          }
+          if (main.dataset.summoning) watchForRites(Number(main.dataset.summoning));
+
+          document.addEventListener('submit', (event) => {
+            const form = event.target;
+            const button = event.submitter;
+            if (!(form instanceof HTMLFormElement) || form.method !== 'post') return;
+            event.preventDefault();
+            // One action at a time: a second click while the first is under way would act on a calendar it hasn't seen.
+            if (busy) return;
+            const pressed = actionOf(button) ?? form.getAttribute('action');
+            const card = form.closest('article.row');
+            const confirming = button?.hasAttribute('data-confirm') ?? false;
+            if (card && pressed?.endsWith('/burn') && !confirming) {
+              showPanel(card, true);
+              return;
+            }
+            const body = new URLSearchParams(new FormData(form, button));
+            // Undo's form is the toast's, which knows no subject: the calendar shown now is the one to come back to.
+            const subject = new URLSearchParams(location.search).get('subject');
+            if (!card && subject && !body.has('subject')) body.set('subject', subject);
+            // The reason in the Scribe's own words, else the one picked; none is needed, and then the note written for
+            // the Augury goes with the burn.
+            let burning = null;
+            if (card && confirming) {
+              const panel = card.querySelector('.burn-panel');
+              const picked = panel.querySelector('.reason[aria-pressed=true]')?.textContent ?? '';
+              const reason = panel.querySelector('.reason-text').value.trim() || picked;
+              if (reason) body.set('note', reason);
+              burning = { id: card.id.slice('rite-'.length), title: titleOf(card) };
+            }
+            // Under way, the button says so: it can't be pressed again, and the pointer shows it's working (a summon's
+            // request can take seconds). The new calendar brings its own buttons.
+            button?.setAttribute('disabled', '');
+            form.setAttribute('data-busy', '');
+            // Its rite's note went with the request: written on meanwhile, it would be lost with the old calendar.
+            card?.querySelectorAll('textarea').forEach((field) => { field.readOnly = true; });
+            hideToast();
+            // Not the button's formAction: without the attribute, that's the page's own address (Summon's and the
+            // Augury's buttons have none).
+            load(pressed, { method: 'POST', body }, { pressed, card, burning });
           });
+
+          main.addEventListener('click', (event) => {
+            const target = event.target;
+            if (!(target instanceof Element)) return;
+            const chip = target.closest('.subjects a');
+            if (chip) {
+              if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+              event.preventDefault();
+              if (!busy) load(chip.href, {}, { pressed: null, card: null, burning: null });
+              return;
+            }
+            // Every rite shown, opened or folded, remembered as one opened or folded by hand; the next stays open.
+            const every = target.closest('[data-fold]');
+            if (every) {
+              for (const card of cards()) {
+                if (every.dataset.fold === 'open') opened.add(card.id); else opened.delete(card.id);
+              }
+              keepOpened();
+              foldAll();
+              return;
+            }
+            const card = target.closest('article.row');
+            if (!card) return;
+            if (target.closest('.note-fold summary')) {
+              openingNote = target.closest('details');
+              return;
+            }
+            const reason = target.closest('.reason');
+            if (reason) {
+              const on = reason.getAttribute('aria-pressed') !== 'true';
+              card.querySelectorAll('.reason').forEach((other) => other.setAttribute('aria-pressed', String(other === reason && on)));
+              return;
+            }
+            if (target.closest('.cancel')) {
+              showPanel(card, false);
+              return;
+            }
+            // The chevron, or anywhere on the row that isn't a control of its own (or words being selected).
+            const onRow = target.closest('.row-head') && !target.closest('button, a') && !getSelection()?.toString();
+            if (!target.closest('.expand') && !onRow) return;
+            const open = card.querySelector('.body').hidden;
+            if (open) opened.add(card.id); else opened.delete(card.id);
+            keepOpened();
+            fold(card, open);
+          });
+
+          main.addEventListener('keydown', (event) => {
+            const panel = event.target instanceof Element ? event.target.closest('.burn-panel') : null;
+            if (event.key === 'Escape' && panel) showPanel(panel.closest('article.row'), false);
+          });
+
+          // Opening the note's fold goes straight to its field: the fold's own button gives way to it.
+          main.addEventListener('toggle', (event) => {
+            const note = event.target;
+            if (note === openingNote && note.open) {
+              openingNote = null;
+              note.querySelector('textarea')?.focus();
+            }
+          }, true);
         })();
         """;
 }

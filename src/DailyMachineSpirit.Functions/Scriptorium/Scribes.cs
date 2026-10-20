@@ -14,8 +14,14 @@ namespace DailyMachineSpirit.Functions.Scriptorium;
 /// </summary>
 public sealed record CalendarEntry(Draft Draft, DateOnly PublishesOnUtc, bool PlacedByScribes, Option<string> PlacedBy, int AuguryPlace);
 
-/// <summary><see cref="Today"/> (UTC) tells whether the first entry goes out at the coming midnight, or is already due.</summary>
-public sealed record ScriptoriumView(List<CalendarEntry> Calendar, List<ScribeDecision> Decisions, DateOnly Today);
+/// <summary>
+/// <see cref="NowUtc"/> tells whether the first entry goes out at the coming midnight, or is already due, and how long
+/// until it does. The calendar is full at <see cref="FullAt"/> rites, as many as a refill keeps waiting.
+/// </summary>
+public sealed record ScriptoriumView(List<CalendarEntry> Calendar, List<ScribeDecision> Decisions, DateTime NowUtc, int FullAt)
+{
+    public DateOnly Today => DateOnly.FromDateTime(NowUtc);
+}
 
 /// <summary>
 /// What the Scribes of the Scriptorium do: anoint, exalt and humble drafts (placing them in their order, ahead of the
@@ -34,6 +40,7 @@ public sealed class Scribes
     private readonly IScriptoriumRepository scriptorium;
     private readonly IOptions<AuguryOptions> augury;
     private readonly IOptions<ScriptoriumPagesOptions> pages;
+    private readonly IOptions<BacklogOptions> backlog;
     private readonly TimeProvider time;
 
     public Scribes(
@@ -42,6 +49,7 @@ public sealed class Scribes
         IScriptoriumRepository scriptorium,
         IOptions<AuguryOptions> augury,
         IOptions<ScriptoriumPagesOptions> pages,
+        IOptions<BacklogOptions> backlog,
         TimeProvider time)
     {
         this.drafts = drafts;
@@ -49,12 +57,14 @@ public sealed class Scribes
         this.scriptorium = scriptorium;
         this.augury = augury;
         this.pages = pages;
+        this.backlog = backlog;
         this.time = time;
     }
 
     public Task<Either<Error, ScriptoriumView>> View(CancellationToken cancellationToken)
     {
-        var today = Today;
+        var now = time.GetUtcNow().UtcDateTime;
+        var today = DateOnly.FromDateTime(now);
         return Calendar(cancellationToken)
             .BindAsync(calendar => rites.GetPublishedOn(today, cancellationToken)
                 .BindAsync(todays => scriptorium.GetDecisions(pages.Value.JudgmentsShown, cancellationToken)
@@ -68,7 +78,7 @@ public sealed class Scribes
                                 draft, first.AddDays(place), placed.Contains(draft.Id), Placer(calendar.Placements, draft.Id),
                                 calendar.AuguryPlace(draft)))
                             .ToList();
-                        return Task.FromResult(new ScriptoriumView(entries, decisions, today));
+                        return Task.FromResult(new ScriptoriumView(entries, decisions, now, backlog.Value.DraftsWaiting));
                     })));
     }
 
@@ -81,9 +91,13 @@ public sealed class Scribes
         => drafts.Get(draftId, cancellationToken)
             .MapAsync(found => Task.FromResult(found.Filter(draft => draft.State == DraftState.Burned)));
 
-    /// <summary>Makes the draft the next to be published; for the first, it keeps it there, ahead of the Augury's later picks.</summary>
+    /// <summary>
+    /// Makes the draft the next to be published, placing it alone: the drafts above it stay where they were, the Scribes'
+    /// in their order after it and the rest the Augury's, so a better draft written later can still go ahead of them.
+    /// For the first, it keeps it there, ahead of the Augury's later picks.
+    /// </summary>
     public Task<Either<Error, Unit>> Anoint(Guid draftId, string note, string scribe, CancellationToken cancellationToken)
-        => Reorder(draftId, ScribeAction.Anoint, note, scribe, (order, index) => Some<List<Guid>>([order[index], .. order[..index]]), cancellationToken);
+        => Reorder(draftId, ScribeAction.Anoint, note, scribe, (order, index) => Some<List<Guid>>([order[index]]), cancellationToken);
 
     /// <summary>Moves the draft up one place; everything above it is now in the Scribes' order.</summary>
     public Task<Either<Error, Unit>> Exalt(Guid draftId, string note, string scribe, CancellationToken cancellationToken)
@@ -143,8 +157,6 @@ public sealed class Scribes
         => scriptorium.GetPlacements(cancellationToken)
             .BindAsync(placements => scriptorium.SavePlacements(placements with { Order = [] }, None, [],
                 AuditEntries.Of(time, scribe, AuditAction.LetTheAuguryDecide, None, None), cancellationToken));
-
-    private DateOnly Today => DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime);
 
     private Task<Either<Error, Unit>> Reorder(
         Guid draftId, ScribeAction action, string note, string scribe, Func<List<Guid>, int, Option<List<Guid>>> reorder,

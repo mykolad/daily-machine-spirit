@@ -204,7 +204,7 @@ public sealed class ScribeNamingTests : IAsyncLifetime
 
         Assert.Equal("/scriptorium?done=named", RedirectedTo(taken));
         var scriptorium = Html(await Scriptorium(Ferrum).Page(Following(taken), CancellationToken.None), 200);
-        Assert.Contains("""The Record calls you “Brother Ferrum”. <a href="/scriptorium/name">Change your name</a>""", scriptorium);
+        Assert.Contains("""Signed in as <strong>Brother Ferrum</strong></span><a href="/scriptorium/name">Change your name</a>""", scriptorium);
         Assert.Contains("The Record shows your name now, on every change you made.", scriptorium);
         var page = Html(refused, 422);
         Assert.Contains("""<p class="status" role="status" id="name-status">Another Scribe goes by that name. Choose another.</p>""", page);
@@ -229,8 +229,8 @@ public sealed class ScribeNamingTests : IAsyncLifetime
         var unnamed = Html(await Scriptorium(Ferrum).Page(Get(""), CancellationToken.None), 200);
         var staging = Html(await Scriptorium(AuditEntry.StagingScribe).Page(Get(""), CancellationToken.None), 200);
 
-        Assert.Contains("""The Record shows you as “A Scribe (…6f0d3b)”. <a href="/scriptorium/name">Choose a name</a> for it.""", unnamed);
-        Assert.Contains("""The Record shows you as “A Scribe on staging”. <a href="/scriptorium/name">Choose a name</a> for it.""", staging);
+        Assert.Contains("""Signed in as <strong>A Scribe (…6f0d3b)</strong></span><a href="/scriptorium/name">Choose a name</a>""", unnamed);
+        Assert.Contains("""Signed in as <strong>A Scribe on staging</strong></span><a href="/scriptorium/name">Choose a name</a>""", staging);
     }
 
     [Fact]

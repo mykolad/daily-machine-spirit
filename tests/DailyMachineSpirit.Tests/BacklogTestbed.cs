@@ -117,7 +117,8 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public DailyRitePublisher Publisher() => new(Rites, Drafts, Scriptorium, Refiller(), Options.Create(Settings.Augury), Time, Probe.Metrics, NullLogger<DailyRitePublisher>.Instance);
 
-    public Scribes Scribes() => new(Drafts, Rites, Scriptorium, Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages), Time);
+    public Scribes Scribes() => new(Drafts, Rites, Scriptorium, Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages),
+        Options.Create(Settings.Backlog with { DraftsWaiting = BacklogSize }), Time);
 
     public TabCounting Tabs() => new(Drafts, Scriptorium, Precepts, Audit, NullLogger<TabCounting>.Instance);
 
@@ -176,7 +177,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
     {
         var missing = cosmos.Container.Database.GetContainer("missing");
         return new Scribes(new DraftRepository(missing), new RiteRepository(missing, NullLogger<RiteRepository>.Instance), new ScriptoriumRepository(missing),
-            Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages), Time);
+            Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages), Options.Create(Settings.Backlog), Time);
     }
 
     /// <summary>A waiting draft, already judged, as if written by an earlier refill.</summary>

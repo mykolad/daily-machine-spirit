@@ -27,11 +27,34 @@ Proposal.dc.html`, `scriptorium-icons.md`): icons, grouped buttons, folded notes
   page's `role="status"` message, and the fields keep what the Scribe typed.
 - **The tab bar is a `<nav>` named "The Scriptorium",** its links in a list. The current page's tab carries
   `aria-current="page"` and a brass underline, not a colour change alone. Each count is text inside its tab's link, so
-  it's read with the tab's name; the calendar's says who placed the rites in words ("Scribes 2 · Augury 18").
-  The links are 44px tall, and the tabs wrap on a narrow screen rather than scroll.
-- **A rite the Scribes placed says so in words,** "Placed by Magos Ferrum", under its date: its brass frame (2px,
-  `#c9a25a`, well above 3:1 on the background) isn't the only sign, so the difference doesn't rest on colour (WCAG
-  1.4.1). The line's icon is decorative.
+  it's read with the tab's name. The links are 44px tall, and the tabs wrap on a narrow screen rather than scroll.
+
+## The Calendar (the Scriptorium redesign, step 1)
+
+The handoff's `design_handoff_scriptorium_calendar`: the Scribes' and the Augury's orders as two groups of compact rows,
+each opening into its card, subject chips, a reason asked at the moment of burning, and Undo.
+
+- **Which order a rite is in is said in words:** each group has a heading ("Placed by the Scribes", "The Augury's
+  order") that names its list, and a rite's place ("#3") is text. The brass border and the position's colour aren't
+  the only sign (WCAG 1.4.1). A rite's card still says who placed it ("placed by Magos Ferrum") when the order knows.
+- **Exalt and Humble are icons alone,** so each has visually hidden text naming the rite ("Exalt: The Rite of Re-Run"),
+  and a `title` saying where it goes ("Exalt: one day earlier, into the Scribes' order"). At the ends they're
+  `disabled`, with a `title` saying why, rather than missing, so every row's controls line up.
+- **The chevron is the card's toggle,** a button with `aria-expanded` and `aria-controls`; clicking the row is only a
+  shortcut for a pointer. Without the script every card is open and the chevron is hidden.
+- **The subject chips are links,** so the filter works without the script; the chosen one carries
+  `aria-current="true"` and the gold fill. They're 34px tall: above the 24px of WCAG 2.5.8, below the 44px of the
+  buttons, as the handoff drew them.
+- **The burn panel is a `role="group"` named by its question,** its reasons toggle buttons (`aria-pressed`), one at a
+  time, and its text field has a visually hidden label (the placeholder isn't one). Escape or Cancel closes it and
+  returns focus to "Consign to the Flames". Only the script shows it; without it, the button burns at once with the
+  note, as before.
+- **The note's fold opens straight into its field:** "Add a note for the Augury" gives way to the labelled field, and
+  focus moves into it, so it isn't lost with the hidden summary.
+- **Undo doesn't vanish under the Scribe:** the toast sits in a `role="status"` region that's always in the page, so
+  it's announced, and its seven seconds wait while the pointer or focus is on it (WCAG 2.2.1). After that, the Ashes
+  still restore the rite, as without the script; the toast says what the status message would, so the message drops
+  those words rather than say them twice.
 - **An Expurgator chooses words with checkboxes,** one per word, each labelled by its word, in a fieldset per part
   (Title, Text, Heretical Truth): a keyboard and a screen reader choose them as any checkbox, without a script. The box
   itself is invisible over its word; a chosen word is struck through on a dark red ground, so the choice isn't shown by
@@ -139,12 +162,22 @@ month, with Today's masthead, margins and altar, and search as the Archive filte
 - **The status message is never replaced, only given new text,** so a screen reader announces it as after a reload: a
   live region that's removed and added again may not be.
 - **Focus stays where the Scribe is working:** the same button on the rite that moved, else its first button. After a
-  burn, the first button of the rite that took its place, without scrolling away; the message, with its link to the
-  rite in the Ashes, is announced all the same.
+  burn, the first button of the rite that took its place, without scrolling away; the Undo is announced all the same.
+  After a subject's chip, the chosen chip.
+- **What the Scribe had open stays open:** the cards opened and the notes being written on other rites survive the new
+  calendar, even while a subject hides them.
 - **Reduced motion** (`prefers-reduced-motion`) turns off the slide and the glow; the rite acted on keeps its amber
   border, which isn't motion.
 - **One action at a time:** while one is under way, `aria-busy` marks the page, and a second click is ignored until
   the first is done.
+- **Summoned rites arrive without taking the Scribe away:** each one the script brings in is announced in the status
+  message ("1 new rite arrived.") and marked like a rite acted on, while focus stays on the control it was on (found
+  again by its rite and action) and the page doesn't scroll. It waits while the Scribe is typing or about to burn, so
+  a field never loses its focus or its words under them. A full calendar's Summon is disabled, its `title` saying why,
+  like Exalt and Humble at the ends; while a summon's rites are being written, it waits too, saying so.
+- **Opening and folding every rite** is two icon buttons, each named for screen readers ("Open every rite", "Fold
+  every rite") and in its `title`, rather than one toggle that changes its name. Without the script they stay hidden:
+  every rite is open then.
 
 ## The wide screen
 
