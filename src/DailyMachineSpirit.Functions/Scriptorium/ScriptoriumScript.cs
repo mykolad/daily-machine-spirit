@@ -49,7 +49,9 @@ public static class ScriptoriumScript
           main.setAttribute('data-folding', '');
           foldAll();
 
-          // Consign to the Flames asks why first, in place of the note and the buttons.
+          // Consign to the Flames asks why first, in place of the note and the buttons. Leaving it for another action or
+          // subject cancels the burn, as Escape does: the reason belonged to a burn that didn't happen, unlike a note,
+          // which is written for the Augury and kept.
           const showPanel = (card, shown) => {
             const panel = card.querySelector('.burn-panel');
             if (!panel) return;
@@ -118,7 +120,6 @@ public static class ScriptoriumScript
             // Where a burned rite stood among the rites shown, for focus. Not its neighbour: the Augury orders what's
             // left anew, so the rite after it before the burn needn't be the one in its place after.
             const place = card ? cards().indexOf(card) : -1;
-            keepNotes(card);
             try {
               const response = await fetch(url, init);
               const page = new DOMParser().parseFromString(await response.text(), 'text/html');
@@ -126,6 +127,8 @@ public static class ScriptoriumScript
               const freshStatus = fresh?.querySelector('.status');
               const status = main.querySelector('.status');
               if (!response.ok || !freshStatus || !status) throw new Error(String(response.status));
+              // Kept now, not before the request: the fields stay editable while it's under way.
+              keepNotes(card);
 
               // Everything but the status message is replaced; the message stays the same element, given the new text,
               // so a screen reader announces it as it would after a reload.
@@ -149,9 +152,10 @@ public static class ScriptoriumScript
               }
 
               const acted = main.querySelector('.acted');
-              // A burn can be refused (a note too long, a calendar changed meanwhile), which leaves the rite marked in the
-              // calendar, so it counts only when the rite has left it for the Ashes.
-              const burned = (pressed?.endsWith('/burn') ?? false) && !acted;
+              // A burn counts only when the server says it burned: refused (a note too long), or the rite gone meanwhile
+              // (published at midnight), the rite isn't in the Ashes and there's nothing to undo.
+              const done = new URL(response.url).searchParams.get('done');
+              const burned = done === 'burn' || done === 'burn-last';
               history.replaceState(null, '', response.url + (acted && !burned ? `#${acted.id}` : ''));
               if (burned && burning) {
                 // The Undo says it, in place of the message's own words and its way back from the Ashes.

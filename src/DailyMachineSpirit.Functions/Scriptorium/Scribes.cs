@@ -208,14 +208,14 @@ public sealed class Scribes
             None: () => scriptorium.GetPlacements(cancellationToken)
                 .MapAsync(placements => Task.FromResult((WithoutDraft(placements, draftId), Option<int>.None))));
 
-    // Back in its place among the drafts the Scribes placed, or last when fewer are placed now. It keeps the Scribe who
-    // placed it, when the order still remembers (a burn leaves who placed it); else it's the restoring Scribe's.
+    // Back in its place among the drafts the Scribes placed, or last when fewer are placed now, placed by the restoring
+    // Scribe: the order forgets who placed a draft when it leaves, and putting it back is placing it.
     private static (Placements Placements, int Place) BackInPlace(CalendarState calendar, Guid draftId, int place, string scribe)
     {
         var placed = calendar.Ordered.Select(draft => draft.Id).Where(calendar.Placements.Order.Contains).ToList();
         var index = Math.Clamp(place - 1, 0, placed.Count);
         var placedBy = calendar.Placements.PlacedBy.ToDictionary();
-        placedBy.TryAdd(draftId, scribe);
+        placedBy[draftId] = scribe;
         return (calendar.Placements with { Order = [.. placed[..index], draftId, .. placed[index..]], PlacedBy = placedBy }, index + 1);
     }
 
