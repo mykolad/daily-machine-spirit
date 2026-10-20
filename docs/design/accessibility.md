@@ -165,7 +165,7 @@ month, with Today's masthead, margins and altar, and search as the Archive filte
   burn, the first button of the rite that took its place, without scrolling away; the Undo is announced all the same.
   After a subject's chip, the chosen chip.
 - **What the Scribe had open stays open:** the cards opened and the notes being written on other rites survive the new
-  calendar.
+  calendar, even while a subject hides them.
 - **Reduced motion** (`prefers-reduced-motion`) turns off the slide and the glow; the rite acted on keeps its amber
   border, which isn't motion.
 - **One action at a time:** while one is under way, `aria-busy` marks the page, and a second click is ignored until

@@ -420,7 +420,7 @@ observability/                    — the Grafana dashboards (technical, activit
     so it's announced, and the tab bar is swapped for the new page's, with its new counts; focus returns to the same button (after a burn, to the rite now in its place in the calendar,
     which the Augury may have reordered, without scrolling away). Anything unexpected (an error, Cloudflare Access wanting a new sign-in) loads `/scriptorium`
     afresh. Reduced motion: no slide, only the mark. The cards a Scribe opened (kept for the session in
-    `sessionStorage`) and the notes being written on other rites survive the swap. A subject's chip loads the narrowed
+    `sessionStorage`) and the notes being written on other rites survive the swap, even while a subject hides them. A subject's chip loads the narrowed
     calendar the same way. After a burn, a toast offers Undo for seven seconds (longer while the pointer or focus is on
     it), and the status drops the words it says.
   - **Access:** who counts as a Scribe is an `IScribeSignIn`

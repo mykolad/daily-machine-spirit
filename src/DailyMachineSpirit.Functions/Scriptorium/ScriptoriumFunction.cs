@@ -183,7 +183,7 @@ public sealed class ScriptoriumFunction
                 (await audit.Add(AuditEntries.Of(time, scribe, AuditAction.Summon, None, None), cancellationToken))
                     .IfLeft(error => logger.LogError(error.ToException(), "A summon wasn't recorded: {Reason}", error.Message));
                 logger.CountScribeAction("summon");
-                return new ScriptoriumResponse { Result = BackToPage("summon", None), RefillReason = Summoned };
+                return new ScriptoriumResponse { Result = BackToPage("summon", await SubjectOf(request, cancellationToken)), RefillReason = Summoned };
             });
 
     [Function("ScriptoriumAugury")]
@@ -191,7 +191,11 @@ public sealed class ScriptoriumFunction
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "scriptorium/augury")] HttpRequest request, CancellationToken cancellationToken)
         => await (await gate.ActingScribe(request, cancellationToken)).Match(
             Left: refused => Task.FromResult(refused),
-            Right: async scribe => Answer(request, "augury", None, None, await scribes.LetTheAuguryDecide(scribe, cancellationToken)).Result);
+            Right: async scribe =>
+            {
+                var subject = await SubjectOf(request, cancellationToken);
+                return Answer(request, "augury", None, subject, await scribes.LetTheAuguryDecide(scribe, cancellationToken)).Result;
+            });
 
     private async Task<ScriptoriumResponse> Act(HttpRequest request, Guid draftId, string action, string scribe, CancellationToken cancellationToken)
         => await (await ReadForm(request, cancellationToken)).Match(
@@ -398,6 +402,11 @@ public sealed class ScriptoriumFunction
 
     // A key the vocabulary doesn't have is no filter.
     private static Option<Tag> Subject(string key) => RiteTags.Find(key);
+
+    // Summon and Let the Augury Decide act on no one rite and need nothing else from their forms: one that can't be
+    // read only loses the subject.
+    private static async Task<Option<Tag>> SubjectOf(HttpRequest request, CancellationToken cancellationToken)
+        => (await ReadForm(request, cancellationToken)).Bind(fields => Subject(fields["subject"].ToString()));
 
     // Where an Undo puts a burned rite back in the Scribes' order; none for a rite the Augury placed.
     private static Option<int> Place(IFormCollection fields)

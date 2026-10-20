@@ -43,11 +43,11 @@ public static partial class ScriptoriumPage
             <div class="section-head">
             <h2 id="calendar-heading">The Liturgical Calendar</h2>
             <div class="actions">
-            <form method="post" action="/scriptorium/summon"><button title="{Encode(About("summon"))}" class="primary">{ScriptoriumIcons.Summon}Summon New Rites</button></form>
+            <form method="post" action="/scriptorium/summon">{SubjectField(shown.Subject)}<button title="{Encode(About("summon"))}" class="primary">{ScriptoriumIcons.Summon}Summon New Rites</button></form>
             """);
         if (view.Calendar.Any(entry => entry.PlacedByScribes))
         {
-            html.Append($"""<form method="post" action="/scriptorium/augury"><button title="{Encode(About("augury"))}" class="outline">{ScriptoriumIcons.Augury}Let the Augury Decide</button></form>""");
+            html.Append($"""<form method="post" action="/scriptorium/augury">{SubjectField(shown.Subject)}<button title="{Encode(About("augury"))}" class="outline">{ScriptoriumIcons.Augury}Let the Augury Decide</button></form>""");
         }
         html.Append("</div></div>");
 
@@ -123,6 +123,10 @@ public static partial class ScriptoriumPage
     private static string Chip(string href, string label, int count, bool current)
         => $"""<a class="chip" href="{href}"{(current ? " aria-current=\"true\"" : string.Empty)}>{Encode(label)}<span class="chip-count">{count}</span></a>""";
 
+    // Each of the calendar's forms carries the subject it's narrowed to, so the calendar comes back narrowed.
+    private static string SubjectField(Option<Tag> subject)
+        => subject.Map(tag => $"""<input type="hidden" name="subject" value="{tag.Key}">""").IfNone(string.Empty);
+
     // One of the calendar's two orders. Narrowed to a subject, it shows that subject's rites, each in its own place.
     private static void Group(
         StringBuilder html, List<CalendarRow> rows, Option<Tag> subject, DateTime nowUtc, Option<Guid> acted, IReadOnlyList<ScribeName> names,
@@ -170,7 +174,7 @@ public static partial class ScriptoriumPage
 
         // One form per rite, so its note goes with whichever button is pressed, Exalt and Humble's in the row too.
         html.Append("""<form method="post" class="decide">""");
-        subject.IfSome(tag => html.Append($"""<input type="hidden" name="subject" value="{tag.Key}">"""));
+        html.Append(SubjectField(subject));
         html.Append($"""
             <div class="row-head">
             <p class="where"><span class="place">#{place}</span><span class="day"><time datetime="{entry.PublishesOnUtc:yyyy-MM-dd}">{Date(entry.PublishesOnUtc)}</time><span class="kind">{(draft.Writing.Kind == RiteKind.Prayer ? "Prayer" : "Ritual")}</span></span></p>

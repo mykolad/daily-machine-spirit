@@ -80,7 +80,8 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Contains("""The Augury’s order<span class="group-count">1 of 2</span>""", html);
         Assert.Contains($"""id="rite-{cold.Id:D}" aria-labelledby="title-{cold.Id:D}" data-place="3">""", html);
         Assert.DoesNotContain($"""id="rite-{names.Id:D}" """, html);
-        Assert.Equal(2, html.Split("""<input type="hidden" name="subject" value="caches">""").Length - 1);
+        // Both rites' forms, Summon's and Let the Augury Decide's.
+        Assert.Equal(4, html.Split("""<input type="hidden" name="subject" value="caches">""").Length - 1);
         Assert.Contains($"""id="rite-{names.Id:D}" """, unknown);
         Assert.DoesNotContain("""name="subject" """, unknown);
     }
@@ -111,6 +112,22 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var response = await Function().Decide(Post("application/x-www-form-urlencoded", "note=&subject=caches"), cold.Id, action, CancellationToken.None);
 
         Assert.Contains("&subject=caches", Assert.IsType<RedirectResult>(response.Result).Url);
+    }
+
+    // So do Summon and Let the Augury Decide, which act on the whole calendar.
+    [Fact]
+    public async Task SummonAndTheAugury_OnANarrowedCalendar_ComeBackNarrowed()
+    {
+        await testbed.AddDraft("The Rite of the Hard Refresh", 0.9f, RiteKind.Ritual, new[] { "caches" });
+        var cold = await testbed.AddDraft("The Litany of the Cold Cache", 0.7f, RiteKind.Prayer, new[] { "caches" });
+        Ok(await testbed.Scribes().Anoint(cold.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        var function = Function();
+
+        var summon = await function.Summon(Post("application/x-www-form-urlencoded", "subject=caches"), CancellationToken.None);
+        var augury = await function.LetTheAuguryDecide(Post("application/x-www-form-urlencoded", "subject=caches"), CancellationToken.None);
+
+        Assert.Equal("/scriptorium?done=summon&subject=caches", Assert.IsType<RedirectResult>(summon.Result).Url);
+        Assert.Equal("/scriptorium?done=augury&subject=caches", Assert.IsType<RedirectResult>(augury).Url);
     }
 
     // Straight after a burn, the calendar's Undo puts a rite the Scribes placed back in its place.

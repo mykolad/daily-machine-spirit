@@ -100,11 +100,15 @@ public static class ScriptoriumScript
             button?.getAttribute('formaction') ?? button?.form?.getAttribute('action') ?? null;
           const firstButton = (card) => card?.querySelector('button:not(:disabled):not([hidden])') ?? null;
 
-          // The notes being written on other rites survive the new calendar; the acted-on rite's went with its action.
-          const notesNow = (acting) => new Map(cards()
-            .filter((card) => card !== acting)
-            .map((card) => [card.id, card.querySelector('textarea[name=note]')?.value ?? ''])
-            .filter(([, note]) => note));
+          // The notes being written on other rites survive the new calendar, kept by rite while a subject hides theirs;
+          // the acted-on rite's went with its action, and a note cleared is no longer kept.
+          const notes = new Map();
+          const keepNotes = (acting) => {
+            for (const card of cards()) {
+              const note = card === acting ? '' : card.querySelector('textarea[name=note]')?.value ?? '';
+              if (note) notes.set(card.id, note); else notes.delete(card.id);
+            }
+          };
 
           // Loads the calendar from the address (an action's answer, or a subject's) in place of the one shown.
           const load = async (url, init, { pressed, card, burning }) => {
@@ -114,7 +118,7 @@ public static class ScriptoriumScript
             // Where a burned rite stood among the rites shown, for focus. Not its neighbour: the Augury orders what's
             // left anew, so the rite after it before the burn needn't be the one in its place after.
             const place = card ? cards().indexOf(card) : -1;
-            const notes = notesNow(card);
+            keepNotes(card);
             try {
               const response = await fetch(url, init);
               const page = new DOMParser().parseFromString(await response.text(), 'text/html');
@@ -215,12 +219,17 @@ public static class ScriptoriumScript
               return;
             }
             const body = new URLSearchParams(new FormData(form, button));
-            // The reason in the Scribe's own words, else the one picked; none is needed.
+            // Undo's form is the toast's, which knows no subject: the calendar shown now is the one to come back to.
+            const subject = new URLSearchParams(location.search).get('subject');
+            if (!card && subject && !body.has('subject')) body.set('subject', subject);
+            // The reason in the Scribe's own words, else the one picked; none is needed, and then the note written for
+            // the Augury goes with the burn.
             let burning = null;
             if (card && confirming) {
               const panel = card.querySelector('.burn-panel');
               const picked = panel.querySelector('.reason[aria-pressed=true]')?.textContent ?? '';
-              body.set('note', panel.querySelector('.reason-text').value.trim() || picked);
+              const reason = panel.querySelector('.reason-text').value.trim() || picked;
+              if (reason) body.set('note', reason);
               burning = { id: card.id.slice('rite-'.length), title: titleOf(card), place: card.classList.contains('scribes') ? card.dataset.place : '' };
             }
             hideToast();
