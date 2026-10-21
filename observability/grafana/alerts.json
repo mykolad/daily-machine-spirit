@@ -119,6 +119,35 @@
       }
     },
     {
+      "uid": "dms-today-failing",
+      "title": "Today unreachable or stale",
+      "condition": "C",
+      "data": [
+        {
+          "refId": "A",
+          "relativeTimeRange": { "from": 900, "to": 0 },
+          "datasourceUid": "${prometheus}",
+          "model": {
+            "refId": "A",
+            "instant": true,
+            "expr": "sum(increase(probe_all_success_sum{job=\"Today's rite\"}[15m])) / sum(increase(probe_all_success_count{job=\"Today's rite\"}[15m]))"
+          }
+        },
+        {
+          "refId": "C",
+          "datasourceUid": "__expr__",
+          "model": { "refId": "C", "type": "threshold", "expression": "A", "conditions": [{ "evaluator": { "type": "lt", "params": [0.5] } }] }
+        }
+      ],
+      "noDataState": "Alerting",
+      "execErrState": "Error",
+      "for": "5m",
+      "annotations": {
+        "summary": "More than half of the last 15 minutes' checks of Today failed, for five minutes.",
+        "description": "Synthetic Monitoring's check (Today's rite, observability/synthetics/todays-rite.js) loads Today through Cloudflare, as readers do, every five minutes from two probes. It fails when Today doesn't answer 200, when Cloudflare served a STALE copy because the app didn't answer (readers still see the site, read-only), or when Today doesn't show today's rite after 01:30 UTC. The check's own logs in Synthetic Monitoring say which. No data means the check was paused or deleted: run tools/grafana-synthetics.ps1."
+      }
+    },
+    {
       "uid": "dms-no-telemetry",
       "title": "No telemetry from production",
       "condition": "C",
