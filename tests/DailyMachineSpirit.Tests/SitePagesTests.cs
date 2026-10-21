@@ -58,6 +58,20 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.Contains($"""<p class="motto">{motto}</p>""", notFound);
     }
 
+    // Cloudflare adds its timing beacon to every page on the way out, so every page says so, the app's own included.
+    [Fact]
+    public async Task EveryPage_SaysCloudflareMeasuresItsLoading()
+    {
+        await Add(Day, "The Rite of Re-Run");
+        const string notice = "Cloudflare measures how fast pages load for readers, without cookies and without keeping your IP address";
+
+        var (_, today) = await Today("");
+        var (_, notFound) = await Today("no-such-page");
+        var (_, archive) = await Archive("");
+
+        Assert.All([today, notFound, archive], html => Assert.Contains(notice, html));
+    }
+
     [Fact]
     public async Task BeforeTheFirstRite_TheMottoIsUnderTheSlumber()
     {
