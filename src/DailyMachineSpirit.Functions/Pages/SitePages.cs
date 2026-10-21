@@ -225,9 +225,14 @@ public sealed class SitePages
     private static ContentResult Page(HttpRequest request, int status, string html, EdgeLifetime edge)
     {
         var headers = request.HttpContext.Response.Headers;
-        headers.CacheControl = status != StatusCodes.Status200OK ? "no-store"
-            : request.QueryString.HasValue ? EdgeLifetime.Brief.CacheControl
-            : edge.CacheControl;
+        if (status != StatusCodes.Status200OK)
+        {
+            headers.CacheControl = "no-store";
+        }
+        else
+        {
+            (request.QueryString.HasValue ? EdgeLifetime.Brief : edge).WriteTo(headers);
+        }
         headers.XContentTypeOptions = "nosniff";
         headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
         return new ContentResult { Content = html, ContentType = "text/html; charset=utf-8", StatusCode = status };
