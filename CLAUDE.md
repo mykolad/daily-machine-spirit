@@ -215,12 +215,15 @@ skills/                           — Consult the Machine Spirit, a skill that p
       with the page (`data-subjects` on the search icon, every page but the Archive), so they need no request and show
       even when the index can't be loaded. Picking one opens the subject's page.
 - **The rites API** (`GET /api/v1/rites`, `Api/RitesFunction`, #101): every published rite (number, day, kind, words,
-  Heretical Truth, subjects and page), for clients outside the site, such as the skill in `skills/`. Unlike the search
+  ailment, subjects and page), for clients outside the site, such as the skill in `skills/`. Each Heretical Truth stays
+  sealed, as on the site, until a client asks for that rite's (`/api/v1/rites/{number}/heretical-truth`). The ailment
+  (the trouble a rite is for, without its fix) is optional and empty until rites have one. Unlike the search
   index, which only the site's own script reads, it's a contract: documented in `docs/api.md`, versioned in its path,
-  its types (`PublishedRite`, `PublishedRites`) named for what they serve and kept as they are, so a breaking change is
+  its types (`PublishedRite`, `PublishedRites`, `RevealedTruth`) named for what they serve and kept as they are, so a breaking change is
   a `v2` beside it. Read-only, open to any site's page (`Access-Control-Allow-Origin: *`), and nothing about the caller
-  is kept; it reads only the words and tags (`GetAllTaggedWords`), never scores or votes. Kept at Cloudflare until a
-  new rite or an erasure purges it, with the search index; a query string is redirected to the one address. The skill
+  is kept; it reads only the words and tags (`GetAllUnrevealed`), or one truth (`GetHereticalTruth`), never scores or
+  votes. Kept at Cloudflare until a new rite or an erasure purges it, with the search index (a truth no rite has yet,
+  `404`, isn't kept); a query string is redirected to the one address. The skill
   fetches the whole list and lets the user's own model choose, so the trouble never leaves their machine and the site
   pays for no model. An MCP server, if clients without skills ask, would be a thin read-only layer over it.
 - **Votes** (Blessed / Heresy, `Api/VotesFunction`): one per account per rite, which the reader can switch or
@@ -416,7 +419,7 @@ skills/                           — Consult the Machine Spirit, a skill that p
       redacted part, field by field; an older copy (from before an amendment) and a note have each erased word replaced
       wherever it appears. The rite's own copy must still read as the words chosen from, and each copy is patched only
       if it's the version read: a vote changes the rite's, so a refusal is read and erased again,
-      up to three times. Then Today, the rite's page, the search index and the rites API are purged; another rite's page that names it
+      up to three times. Then Today, the rite's page, the search index and the rites API (with the rite's truth) are purged; another rite's page that names it
       in More rites refreshes within its hour. Cosmos's own backups keep the old words until they expire. A
       refill already running may still mark a new draft as much like the rite by its old title: it read the titles
       before the erasure, and only knows the rite by its title (`TakenRite`), so no batch can guard it.

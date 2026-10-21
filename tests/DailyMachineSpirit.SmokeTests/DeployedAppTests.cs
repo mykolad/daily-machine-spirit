@@ -76,8 +76,13 @@ public sealed partial class DeployedAppTests
         foreach (var rite in rites.EnumerateArray().Take(1))
         {
             Assert.True(rite.GetProperty("number").GetInt32() > 0, $"{page.Path}'s first rite has no number.");
-            Assert.False(string.IsNullOrEmpty(rite.GetProperty("hereticalTruth").GetString()), $"{page.Path}'s first rite has no Heretical Truth.");
+            Assert.False(rite.TryGetProperty("hereticalTruth", out _), $"{page.Path} reveals its first rite's Heretical Truth.");
             Assert.EndsWith($"/r/{rite.GetProperty("number").GetInt32()}", rite.GetProperty("url").GetString());
+            // Revealed only when asked for.
+            var truth = await app.Get($"/api/v1/rites/{rite.GetProperty("number").GetInt32()}/heretical-truth");
+            Assert.True(truth.Status == HttpStatusCode.OK, $"{truth.Path} answered {(int)truth.Status}, not 200.");
+            Assert.False(string.IsNullOrEmpty(JsonSerializer.Deserialize<JsonElement>(truth.Text).GetProperty("hereticalTruth").GetString()),
+                $"{truth.Path} has no Heretical Truth.");
         }
     }
 
