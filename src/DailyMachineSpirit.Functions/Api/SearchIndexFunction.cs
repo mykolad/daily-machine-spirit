@@ -45,7 +45,7 @@ public sealed class SearchIndexFunction
         return (await rites.GetAllWords(cancellationToken)).Match<IActionResult>(
             Right: words =>
             {
-                headers.CacheControl = EdgeLifetime.UntilPurged.CacheControl;
+                EdgeLifetime.UntilPurged.WriteTo(headers);
                 return new ContentResult
                 {
                     Content = JsonSerializer.Serialize(words.Select(Entry), Json),

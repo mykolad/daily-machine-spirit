@@ -227,11 +227,14 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
     `docs/api.md`: the list and each rite's Heretical Truth), the only APIs cached, each kept until a new rite or an
     erasure purges it;
     **Eligible for cache**, Edge TTL **Use cache-control header if present, bypass cache if not**, Browser TTL
-    **Respect origin TTL**. The app's `Cache-Control` decides the rest: Today, a rite's page and the search index an
-    hour at the edge (`s-maxage`), purged on change, the archive a minute, errors and the rest of the API never;
-    browsers a minute (`max-age`). Without Respect origin TTL, Cloudflare raises `max-age` to the zone's Browser Cache
+    **Respect origin TTL**. The app's headers decide the rest: Cloudflare reads `Cloudflare-CDN-Cache-Control` (and never passes it on), so
+    Today, a rite's page and the search index stay an hour at the edge, purged on change, the archive a minute, errors
+    and the rest of the API never (`no-store`); browsers read `Cache-Control`, a minute (`max-age`). Without Respect origin TTL, Cloudflare raises `max-age` to the zone's Browser Cache
     TTL (4 hours by default), and a purge never reaches a browser's copy. `cf-cache-status: HIT` on a second request for `/` shows it works, and
-    its `cache-control` should read `public, max-age=60, s-maxage=3600`.
+    its `cache-control` should read `public, max-age=60`, and `age` should pass 60 on later requests (Cloudflare keeps it
+    an hour). Cloudflare's own header carries `stale-if-error=604800`, which lets Cloudflare serve a page it still holds for up to a week past its lifetime while the app answers with a 5xx or not at
+    all (`cf-cache-status: STALE`), so readers keep the site read-only through an outage. A purged page is gone, not
+    stale. Cloudflare ignores `stale-if-error` while **Always Online** (Caching → Configuration) is on, so leave that off.
   - **A rate limit rule** (Security → WAF → Rate limiting rules, set up 2026-10-13) for votes and searches (each
     search reads every rite; the Archive's field searches as the reader types, a request per pause), counted by IP, 20
     in 10 seconds, blocked for 10 seconds. The Free plan has one such rule, so every limited path shares it:

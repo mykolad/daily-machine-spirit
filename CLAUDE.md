@@ -162,14 +162,16 @@ skills/                           — Consult the Machine Spirit, a skill that p
     margins), each row says its number, and the Archive's last page has Today's ribbon and wax seal hanging from the
     sheet (`ArchiveSheet.Closing`). A tag's page is the same sheet, with the other subjects in the right margin.
   - **Cached until they change** (#37): browsers keep a page a minute, and Cloudflare keeps Today and a rite's page an
-    hour (`s-maxage`, `EdgeLifetime.UntilPurged`), so their requests rarely reach the app. Whatever changes them purges
+    hour (`Cloudflare-CDN-Cache-Control`, `EdgeLifetime.UntilPurged`), so their requests rarely reach the app. Whatever changes them purges
     them (`IPageCache`, `CloudflarePageCache`): a vote that changed something (`SavedVote.Changed`: not the same
     vote sent again) adds its rite's page and Today
     (`Paths.ShowingVotesOf`) to the minute's batch (`PurgeBatcher`), so a vote never waits for Cloudflare and a page is
     purged at most once a minute per instance; a new rite purges Today, the search index and the rites API at once. The archive and a
     tag's page, which no purge can find, stay a minute, as does any address with a query string (Cloudflare caches each
     apart). Purges go 30 URLs to a request. A purge never fails the change: it's logged and counted (`dms.pages.purges`), and the page
-    refreshes within the hour.
+    refreshes within the hour. Cloudflare's header also carries `stale-if-error` (a week): while the app fails, Cloudflare
+    serves the copies it still holds instead of an error page. Never `s-maxage` in `Cache-Control`: Cloudflare reads it
+    as `proxy-revalidate`, which forbids serving stale.
     Settings: `Cloudflare:ZoneId`, `:SiteUrl`, `:ApiToken` (a token that may only purge the zone); without them
     (staging, a local run) nothing is purged.
   - **The voter's own counts survive a cached page:** the vote answers with the counts and when they were counted

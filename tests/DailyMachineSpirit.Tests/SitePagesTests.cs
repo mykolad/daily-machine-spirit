@@ -589,7 +589,7 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.All([today, rite, archive, tag, search], page => Assert.Equal(StatusCodes.Status503ServiceUnavailable, page.Status));
         Assert.Contains("The rite has failed.", today.Html);
         Assert.Contains("""href="/archive?before=4">""", archive.Html);
-        Assert.Equal("no-store", archive.CacheControl);
+        Assert.Equal(("no-store", ""), (archive.CacheControl, archive.AtCloudflare));
     }
 
     [Fact]
@@ -605,7 +605,7 @@ public sealed class SitePagesTests : IAsyncLifetime
 
     // Votes and publishing purge Today and a rite's page from Cloudflare, so it can keep them an hour; nothing purges the
     // archive, a tag's page, or an address with a query string, which Cloudflare caches apart. Browsers keep each a
-    // minute.
+    // minute. While the app fails, Cloudflare may still show any of them for a week.
     [Fact]
     public async Task TodayAndARitesPage_StayAtTheEdgeUntilPurged_TheArchiveTagsAndQueriesBriefly()
     {
@@ -618,8 +618,9 @@ public sealed class SitePagesTests : IAsyncLifetime
         var withQuery = await Read(context => Pages().Today(context.Request, "", CancellationToken.None), "/", "?utm_source=feed");
         var tag = await Read(context => Pages().Tag(context.Request, "caches", CancellationToken.None), "/tags/caches", "");
 
-        Assert.All([slumbering, today, rite], page => Assert.Equal("public, max-age=60, s-maxage=3600", page.CacheControl));
-        Assert.All([archive, tag, withQuery], page => Assert.Equal("public, max-age=60", page.CacheControl));
+        Assert.All([slumbering, today, rite, archive, tag, withQuery], page => Assert.Equal("public, max-age=60", page.CacheControl));
+        Assert.All([slumbering, today, rite], page => Assert.Equal("public, max-age=3600, stale-if-error=604800", page.AtCloudflare));
+        Assert.All([archive, tag, withQuery], page => Assert.Equal("public, max-age=60, stale-if-error=604800", page.AtCloudflare));
     }
 
     // The script shows the counts a vote answered over a page whose counts were read before that vote.
@@ -688,17 +689,18 @@ public sealed class SitePagesTests : IAsyncLifetime
         await Add(Day, "The Cold Cache");
     }
 
-    private static Task<(int Status, string Html, string CacheControl)> Read(Func<HttpContext, Task<IActionResult>> serve)
+    private static Task<(int Status, string Html, string CacheControl, string AtCloudflare)> Read(Func<HttpContext, Task<IActionResult>> serve)
         => Read(serve, "/", "");
 
-    private static async Task<(int Status, string Html, string CacheControl)> Read(
+    private static async Task<(int Status, string Html, string CacheControl, string AtCloudflare)> Read(
         Func<HttpContext, Task<IActionResult>> serve, string path, string query)
     {
         var context = new DefaultHttpContext();
         context.Request.Path = path;
         context.Request.QueryString = new QueryString(query);
         var result = Assert.IsType<ContentResult>(await serve(context));
-        return (result.StatusCode ?? 0, result.Content ?? "", context.Response.Headers.CacheControl.ToString());
+        return (result.StatusCode ?? 0, result.Content ?? "", context.Response.Headers.CacheControl.ToString(),
+            context.Response.Headers["Cloudflare-CDN-Cache-Control"].ToString());
     }
 
     // The More rites cards' titles, in order.
