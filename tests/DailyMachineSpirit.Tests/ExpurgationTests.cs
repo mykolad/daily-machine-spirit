@@ -83,7 +83,7 @@ public sealed class ExpurgationTests : IAsyncLifetime
         var entry = Assert.Single(Ok(await testbed.Audit.GetNewest(20, CancellationToken.None)), entry => entry.Action == AuditAction.Expurgate);
         Assert.Equal((Expurgator, Some(number), "The Litany of the 💀 Cache"), (entry.Actor, entry.RiteNumber, entry.Title));
         Assert.Equal(Some("1 word of its title, 1 word of its text"), entry.Detail);
-        Assert.Equal([Paths.Today, Paths.Rite(number), Paths.SearchIndex], Assert.Single(pages.Purges));
+        Assert.Equal([Paths.Today, Paths.Rite(number), Paths.SearchIndex, Paths.RitesApi, Paths.HereticalTruthApi(number)], Assert.Single(pages.Purges));
     }
 
     // Chosen on a page shown before another erasure, the places would land on other words: nothing changes.

@@ -223,8 +223,9 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
     `customDomainVerificationId`, which Azure checks before binding the domain.
   - **A Cache Rule** (Caching → Cache Rules), after the purge is set up (Secrets): hostname equals
     `dailymachinespirit.fyi`, and either the URI path doesn't start with `/api/`, `/auth/`, `/scriptorium` or `/healthz`,
-    or it equals `/api/search-index` (the search field's index, kept until a new rite purges it, the only public API
-    cached);
+    or it equals `/api/search-index` (the search field's index), or it starts with `/api/v1/rites` (the public rites API,
+    `docs/api.md`: the list and each rite's Heretical Truth), the only APIs cached, each kept until a new rite or an
+    erasure purges it;
     **Eligible for cache**, Edge TTL **Use cache-control header if present, bypass cache if not**, Browser TTL
     **Respect origin TTL**. The app's headers decide the rest: Cloudflare reads `Cloudflare-CDN-Cache-Control` (and never passes it on), so
     Today, a rite's page and the search index stay an hour at the edge, purged on change, the archive a minute, errors

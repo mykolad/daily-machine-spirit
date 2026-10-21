@@ -63,6 +63,32 @@ public sealed partial class DeployedAppTests
         }
     }
 
+    // The public rites API that clients outside the site rely on (docs/api.md): its shape is a contract.
+    [Fact]
+    public async Task TheRitesApi_Answers()
+    {
+        var page = await app.Get("/api/v1/rites");
+
+        Assert.True(page.Status == HttpStatusCode.OK, $"{page.Path} answered {(int)page.Status}, not 200.");
+        // A new environment has no rite yet, and rightly lists none.
+        var rites = JsonSerializer.Deserialize<JsonElement>(page.Text).GetProperty("rites");
+        Assert.Equal(JsonValueKind.Array, rites.ValueKind);
+        foreach (var rite in rites.EnumerateArray().Take(1))
+        {
+            Assert.True(rite.GetProperty("number").GetInt32() > 0, $"{page.Path}'s first rite has no number.");
+            Assert.False(rite.TryGetProperty("hereticalTruth", out _), $"{page.Path} reveals its first rite's Heretical Truth.");
+            Assert.EndsWith($"/r/{rite.GetProperty("number").GetInt32()}", rite.GetProperty("url").GetString());
+            // Revealed only when asked for.
+            var truth = await app.Get($"/api/v1/rites/{rite.GetProperty("number").GetInt32()}/heretical-truth");
+            Assert.True(truth.Status == HttpStatusCode.OK, $"{truth.Path} answered {(int)truth.Status}, not 200.");
+            Assert.False(string.IsNullOrEmpty(JsonSerializer.Deserialize<JsonElement>(truth.Text).GetProperty("hereticalTruth").GetString()),
+                $"{truth.Path} has no Heretical Truth.");
+            // Spelled another way, it's not found: the worker failed such an address with a 500 once, before the app saw it.
+            var spelled = await app.Get($"/api/v1/rites/0{rite.GetProperty("number").GetInt32()}/heretical-truth");
+            Assert.True(spelled.Status == HttpStatusCode.NotFound, $"{spelled.Path} answered {(int)spelled.Status}, not 404.");
+        }
+    }
+
     // Search was a page of its own: links to it lead to the Archive's search (the client follows the redirect).
     [Fact]
     public async Task TheOldSearchAddress_LeadsToTheArchivesSearch()
