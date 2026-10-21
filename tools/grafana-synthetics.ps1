@@ -76,10 +76,10 @@ if ($existing) {
     $check.tenantId = $existing.tenantId
     $saved = Invoke-RestMethod -Method Post -Uri "$api/check/update" -Headers $headers -ContentType 'application/json' `
         -Body ($check | ConvertTo-Json -Depth 10)
-    Write-Host "Updated the check $job (id $($saved.id)), run from $($Probes -join ' and ')."
+    Write-Host "Updated the check $($saved.job) (id $($saved.id)): every $($saved.frequency / 60000) minutes from $($Probes -join ' and ')."
 }
 else {
     $saved = Invoke-RestMethod -Method Post -Uri "$api/check/add" -Headers $headers -ContentType 'application/json' `
         -Body ($check | ConvertTo-Json -Depth 10)
-    Write-Host "Added the check $job (id $($saved.id)), run from $($Probes -join ' and ')."
+    Write-Host "Added the check $($saved.job) (id $($saved.id)): every $($saved.frequency / 60000) minutes from $($Probes -join ' and ')."
 }
