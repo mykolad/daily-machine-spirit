@@ -15,8 +15,8 @@ namespace DailyMachineSpirit.Functions.Scriptorium.Expurgation;
 /// What an Expurgator does: erase words from a published rite, as if lost to time. Each word becomes an emoji
 /// everywhere the site keeps it (<see cref="IExpurgationRepository"/>): the rite, the draft it was published from, the
 /// Scribes' decisions on it, the Record's entries about it, the drafts marked as much like it. The Record notes who
-/// erased how many words of which part, never the words. Then Today, the rite's page and the search index are purged
-/// from Cloudflare's cache.
+/// erased how many words of which part, never the words. Then Today, the rite's page, the search index and the rites API
+/// (the list and the rite's Heretical Truth) are purged from Cloudflare's cache.
 /// </summary>
 public sealed partial class Expurgations
 {
@@ -70,7 +70,7 @@ public sealed partial class Expurgations
         }
         if (erased.Exists(rite => rite.IsSome))
         {
-            await pages.Purge([Paths.Today, Paths.Rite(number), Paths.SearchIndex], cancellationToken);
+            await pages.Purge([Paths.Today, Paths.Rite(number), Paths.SearchIndex, Paths.RitesApi, Paths.HereticalTruthApi(number)], cancellationToken);
         }
         return erased;
     }

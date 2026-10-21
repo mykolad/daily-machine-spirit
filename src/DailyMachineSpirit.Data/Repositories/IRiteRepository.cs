@@ -32,6 +32,12 @@ public interface IRiteRepository
     /// <summary>Every rite's words, the newest first, without scores, votes or tags.</summary>
     Task<Either<Error, List<RiteWords>>> GetAllWords(CancellationToken cancellationToken);
 
+    /// <summary>Every rite before its Heretical Truth is revealed, the newest first.</summary>
+    Task<Either<Error, List<UnrevealedRite>>> GetAllUnrevealed(CancellationToken cancellationToken);
+
+    /// <summary>The Heretical Truth of the rite with that number; None when no rite has it.</summary>
+    Task<Either<Error, Option<string>>> GetHereticalTruth(int number, CancellationToken cancellationToken);
+
     /// <summary>
     /// The saved rite, with the next number; <see cref="RiteRepository.DayAlreadyHasRite"/> when that day already has one,
     /// so two generations for the same day can't both save.

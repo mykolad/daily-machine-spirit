@@ -35,6 +35,8 @@ tools/coverage.ps1                — tests + coverage report + the coverage gat
 tools/grafana-alerts.ps1          — puts the alert rules into Grafana Cloud (observability/README.md)
 infra/                            — Bicep for all of Azure (main.bicep); infra/README.md covers what Bicep can't do
 observability/                    — the Grafana dashboards (technical, activity) and alerts, and what the app's metrics measure
+docs/api.md                       — the public rites API, a contract with outside clients
+skills/                           — Consult the Machine Spirit, a skill that prescribes a rite for a developer's trouble (#101)
 ```
 
 ## Code style rules
@@ -164,7 +166,7 @@ observability/                    — the Grafana dashboards (technical, activit
     them (`IPageCache`, `CloudflarePageCache`): a vote that changed something (`SavedVote.Changed`: not the same
     vote sent again) adds its rite's page and Today
     (`Paths.ShowingVotesOf`) to the minute's batch (`PurgeBatcher`), so a vote never waits for Cloudflare and a page is
-    purged at most once a minute per instance; a new rite purges Today and the search index at once. The archive and a
+    purged at most once a minute per instance; a new rite purges Today, the search index and the rites API at once. The archive and a
     tag's page, which no purge can find, stay a minute, as does any address with a query string (Cloudflare caches each
     apart). Purges go 30 URLs to a request. A purge never fails the change: it's logged and counted (`dms.pages.purges`), and the page
     refreshes within the hour. Cloudflare's header also carries `stale-if-error` (a week): while the app fails, Cloudflare
@@ -214,6 +216,18 @@ observability/                    — the Grafana dashboards (technical, activit
       word starting with each word typed, ignoring case and accents, so "flaky" suggests Builds. The vocabulary comes
       with the page (`data-subjects` on the search icon, every page but the Archive), so they need no request and show
       even when the index can't be loaded. Picking one opens the subject's page.
+- **The rites API** (`GET /api/v1/rites`, `Api/RitesFunction`, #101): every published rite (number, day, kind, words,
+  ailment, subjects and page), for clients outside the site, such as the skill in `skills/`. Each Heretical Truth stays
+  sealed, as on the site, until a client asks for that rite's (`/api/v1/rites/{number}/heretical-truth`). The ailment
+  (the trouble a rite is for, without its fix) is optional and empty until rites have one. Unlike the search
+  index, which only the site's own script reads, it's a contract: documented in `docs/api.md`, versioned in its path,
+  its types (`PublishedRite`, `PublishedRites`, `RevealedTruth`) named for what they serve and kept as they are, so a breaking change is
+  a `v2` beside it. Read-only, open to any site's page (`Access-Control-Allow-Origin: *`), and nothing about the caller
+  is kept; it reads only the words and tags (`GetAllUnrevealed`), or one truth (`GetHereticalTruth`), never scores or
+  votes. Kept at Cloudflare until a new rite or an erasure purges it, with the search index (a truth no rite has yet,
+  `404`, isn't kept); a query string is redirected to the one address. The skill
+  fetches the whole list and lets the user's own model choose, so the trouble never leaves their machine and the site
+  pays for no model. An MCP server, if clients without skills ask, would be a thin read-only layer over it.
 - **Votes** (Blessed / Heresy, `Api/VotesFunction`): one per account per rite, which the reader can switch or
   take back, signed in as below. `POST /api/rites/{number}/vote` with `{"vote": "blessed" | "heresy" | null}`, and
   `GET /api/votes?rites=12` for the page to show the reader's own vote pressed.
@@ -407,7 +421,7 @@ observability/                    — the Grafana dashboards (technical, activit
       redacted part, field by field; an older copy (from before an amendment) and a note have each erased word replaced
       wherever it appears. The rite's own copy must still read as the words chosen from, and each copy is patched only
       if it's the version read: a vote changes the rite's, so a refusal is read and erased again,
-      up to three times. Then Today, the rite's page and the search index are purged; another rite's page that names it
+      up to three times. Then Today, the rite's page, the search index and the rites API (with the rite's truth) are purged; another rite's page that names it
       in More rites refreshes within its hour. Cosmos's own backups keep the old words until they expire. A
       refill already running may still mark a new draft as much like the rite by its old title: it read the titles
       before the erasure, and only knows the rite by its title (`TakenRite`), so no batch can guard it.
@@ -534,7 +548,7 @@ repository tests. For a deployment it also packages the app (the `app` artifact,
 - Both call `deploy.yml`, which deploys the package as the GitHub environment's identity (OIDC: the environment's
   `AZURE_*` variables hold ids, not secrets), one deployment per environment at a time. Then:
   - **Smoke tests** (`tests/DailyMachineSpirit.SmokeTests`, published into the package, so a package is always checked
-    by its own): `/healthz` reports the new commit, and Today, the archive, a rite, a tag's page, a search (and the old address), the votes
+    by its own): `/healthz` reports the new commit, and Today, the archive, a rite, a tag's page, a search (and the old address), the rites API, the votes
     API, the 404 page and a font answer as they should. They read the app's address and expected version from
     `SMOKE_TEST_BASE_URL` and `SMOKE_TEST_VERSION`, so they can also run from your machine against staging. They call
     the app's own address (production's past Cloudflare's cache), and both apps admit only some addresses (staging its
