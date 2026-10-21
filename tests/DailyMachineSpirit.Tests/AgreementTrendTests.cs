@@ -1,4 +1,5 @@
 using DailyMachineSpirit.Data.Entities;
+using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Scriptorium;
 using LanguageExt;
 using Microsoft.Extensions.Options;
@@ -18,17 +19,19 @@ public sealed class AgreementTrendTests : IAsyncLifetime
     public Task DisposeAsync() => testbed.DisposeAsync();
 
     // The Augury orders the four by quality. Burning its first pick counts against it; anointing its third moves it two
-    // places, and humbling that one back from first to second moves it one from the Augury's third: 1.5 on average.
+    // places; anointing its second after it leaves it there, at #2; and humbling the first back to second moves it one
+    // from the Augury's third: 1 on average.
     [Fact]
     public async Task AMonth_CountsTheTopPicksBurned_AndHowFarDraftsMoved()
     {
         var best = await testbed.AddDraft("Best", 0.9f);
         await testbed.AddDraft("Good", 0.7f);
-        await testbed.AddDraft("Fair", 0.5f);
+        var fair = await testbed.AddDraft("Fair", 0.5f);
         var worst = await testbed.AddDraft("Worst", 0.3f);
         var scribes = testbed.Scribes();
         Ok(await scribes.Burn(best.Id, "", Tester, CancellationToken.None));
         Ok(await scribes.Anoint(worst.Id, "", Tester, CancellationToken.None));
+        Ok(await scribes.Anoint(fair.Id, "", Tester, CancellationToken.None));
         Ok(await scribes.Humble(worst.Id, "", Tester, CancellationToken.None));
         testbed.Time.SetUtcNow(new DateTimeOffset(2026, 11, 2, 9, 0, 0, TimeSpan.Zero));
 
@@ -38,7 +41,30 @@ public sealed class AgreementTrendTests : IAsyncLifetime
         Assert.Equal([new DateOnly(2026, 11, 1), new DateOnly(2026, 10, 1), new DateOnly(2026, 6, 1)],
             [months[0].FirstDayUtc, months[1].FirstDayUtc, months[^1].FirstDayUtc]);
         Assert.Equal(new AgreementMonth(new DateOnly(2026, 11, 1), 0, 0, 0, 0, None), months[0]);
-        Assert.Equal(new AgreementMonth(new DateOnly(2026, 10, 1), 3, 1, 1, 2, Some(1.5)), months[1]);
+        Assert.Equal(new AgreementMonth(new DateOnly(2026, 10, 1), 4, 1, 1, 3, Some(1.0)), months[1]);
+    }
+
+    // A decision saved before the place after a move was kept: an anointing then made the draft next.
+    [Fact]
+    public async Task AnAnointingSavedBeforeItsPlaceAfterWasKept_CountsAsMakingTheDraftNext()
+    {
+        var anointing = new ScribeDecision
+        {
+            Id = Guid.NewGuid(),
+            DraftId = Guid.NewGuid(),
+            Action = ScribeAction.Anoint,
+            Title = "Anointed long ago",
+            CalendarPlace = Some(3),
+            AuguryPlace = Some(3),
+            AuguryRankedByQuality = true,
+            DecidedAtUtc = testbed.Time.GetUtcNow().UtcDateTime,
+        };
+        Ok(await testbed.Scriptorium.SavePlacements(new Placements([], new Dictionary<Guid, string>(), None),
+            Some(anointing), [], AuditEntries.Of(testbed.Time, Tester, AuditAction.Anoint, None, None), CancellationToken.None));
+
+        var months = Ok(await new AgreementTrend(testbed.Scriptorium, Options.Create(Settings.ScriptoriumPages), testbed.Time).Months(CancellationToken.None));
+
+        Assert.Equal(Some(2.0), months[0].AveragePlacesFromAuguryPlace);
     }
 
     // Without a quality (Jev off or failing), the Augury places drafts by age alone: burning or moving them says

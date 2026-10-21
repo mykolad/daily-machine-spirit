@@ -38,8 +38,12 @@ each opening into its card, subject chips, a reason asked at the moment of burni
   order") that names its list, and a rite's place ("#3") is text. The brass border and the position's colour aren't
   the only sign (WCAG 1.4.1). A rite's card still says who placed it ("placed by Magos Ferrum") when the order knows.
 - **Exalt and Humble are icons alone,** so each has visually hidden text naming the rite ("Exalt: The Rite of Re-Run"),
-  and a `title` saying where it goes ("Exalt: one day earlier, into the Scribes' order"). At the ends they're
-  `disabled`, with a `title` saying why, rather than missing, so every row's controls line up.
+  and a `title` saying where it goes ("Exalt: one day earlier"). They're the anointed's alone: on the Augury's rows
+  they're left out rather than disabled, since twenty pairs that can never be pressed would only be noise. At the
+  ends of the anointed they're `disabled`, with a `title` saying why, rather than missing, so the anointed rows'
+  controls line up.
+- **Release to the Augury** stands in Anoint's stead on an anointed rite, before the burn, with its own icon (Anoint's
+  oil struck through) and its name for screen readers, like every action button.
 - **The chevron is the card's toggle,** a button with `aria-expanded` and `aria-controls`; clicking the row is only a
   shortcut for a pointer. Without the script every card is open and the chevron is hidden.
 - **The subject chips are links,** so the filter works without the script; the chosen one carries
