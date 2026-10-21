@@ -17,3 +17,8 @@ they aren't found.)
 
 Then ask, for example, "Consult the Machine Spirit: my cache keeps serving the old page." It needs a way to fetch a URL
 to a file (`curl`, or PowerShell's `Invoke-WebRequest`).
+
+**In the Claude app** (claude.ai, desktop), add the skill's folder as a skill, and add `dailymachinespirit.fyi` to the
+domains its code may reach (Settings → Capabilities; on a Team or Enterprise plan, an admin does). The app runs the
+skill's commands in a sandbox that reaches only those domains, and its web fetch tool, which the skill falls back to,
+gives a summary of the rites rather than their words: without the domain, the skill can only say it can't reach them.
