@@ -134,6 +134,10 @@ skills/                           — Consult the Machine Spirit, a skill that p
   is one request (plus the fonts, cached for a year) and works without the script (the truth then simply shows).
   - The fonts are the site's own copies (`Pages/Fonts/`, Latin subsets, OFL), served at `/fonts/<name>.woff2`: a page
     never makes the visitor's browser contact another site (Google Fonts would learn every visitor's address).
+    The one exception is Cloudflare's own: its Web Analytics (RUM, set in Cloudflare's dashboard, EU included) adds
+    its beacon to each page on the way out, which loads from `static.cloudflareinsights.com` and reports how fast the
+    page loaded. Cloudflare already sees every request; the beacon sets no cookies and Cloudflare doesn't keep the IP.
+    The footer says so (`Layout`): turning the beacon off in Cloudflare means taking that line out.
   - The tab's icon is the logo's cog, inline in each page (the Scriptorium's too) as an SVG data URI (`Svg.Favicon`):
     no request for it, and browsers don't ask for `/favicon.ico`.
   - Routes: `/` (Today: the newest rite), `/archive` (`?before=<number>` for older pages, which the archive also
