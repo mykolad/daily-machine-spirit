@@ -57,12 +57,14 @@ public sealed class RitesFunctionTests : IAsyncLifetime
         Assert.Empty(rites[0].GetProperty("subjects").EnumerateArray());
     }
 
-    // Any query string would be its own cache entry, and its own read of every rite: one address answers for all.
-    [Fact]
-    public async Task Rites_WithAQueryString_RedirectsToTheOneAddress()
+    // Each would be its own cache entry, and its own read of every rite: one address answers for all.
+    [Theory]
+    [InlineData("/api/v1/rites", "?q=flaky")]
+    [InlineData("/api/v1/rites/", "")]
+    public async Task Rites_WithAQueryStringOrASlash_RedirectToTheOneAddress(string path, string query)
     {
-        var context = At("/api/v1/rites");
-        context.Request.QueryString = new QueryString("?q=flaky");
+        var context = At(path);
+        context.Request.QueryString = new QueryString(query);
 
         var result = Assert.IsType<RedirectResult>(await Function(Repository).Rites(context.Request, CancellationToken.None));
 
@@ -114,13 +116,15 @@ public sealed class RitesFunctionTests : IAsyncLifetime
         Assert.Equal("no-store", context.Response.Headers.CacheControl.ToString());
     }
 
-    [Fact]
-    public async Task HereticalTruth_WithAQueryString_RedirectsToItsOneAddress()
+    [Theory]
+    [InlineData("/api/v1/rites/03/heretical-truth", "03", "?reveal=yes")]
+    [InlineData("/api/v1/rites/3/heretical-truth/", "3", "")]
+    public async Task HereticalTruth_WithAQueryStringOrASlash_RedirectsToItsOneAddress(string path, string id, string query)
     {
-        var context = At("/api/v1/rites/03/heretical-truth");
-        context.Request.QueryString = new QueryString("?reveal=yes");
+        var context = At(path);
+        context.Request.QueryString = new QueryString(query);
 
-        var result = Assert.IsType<RedirectResult>(await Function(Repository).HereticalTruth(context.Request, "03", CancellationToken.None));
+        var result = Assert.IsType<RedirectResult>(await Function(Repository).HereticalTruth(context.Request, id, CancellationToken.None));
 
         Assert.Equal(("/api/v1/rites/3/heretical-truth", true), (result.Url, result.Permanent));
         Assert.Equal("*", context.Response.Headers.AccessControlAllowOrigin.ToString());
@@ -128,8 +132,8 @@ public sealed class RitesFunctionTests : IAsyncLifetime
 
     // Each would be cached apart, and an erasure's purge, naming the one address, would leave its old words there.
     [Theory]
-    [InlineData("/api/v1/rites/03/heretical-truth", "03")]
-    [InlineData("/API/v1/rites/3/heretical-truth", "3")]
+    [InlineData("/api/v1/rites/01/heretical-truth", "01")]
+    [InlineData("/API/v1/rites/1/heretical-truth", "1")]
     public async Task HereticalTruth_SpelledAnotherWay_IsNotFound(string path, string id)
     {
         await Add(new DateOnly(2026, 10, 8), RiteKind.Prayer, "The Litany of the Warm Cache", None);
@@ -143,7 +147,7 @@ public sealed class RitesFunctionTests : IAsyncLifetime
     [Fact]
     public async Task Rites_SpelledAnotherWay_AreNotFound()
     {
-        var context = At("/api/v1/rites/");
+        var context = At("/API/v1/rites");
 
         var result = Assert.IsType<StatusCodeResult>(await Function(Repository).Rites(context.Request, CancellationToken.None));
 

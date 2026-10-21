@@ -7,9 +7,9 @@ As on the site, each rite's **Heretical Truth** stays sealed until it's asked fo
 - **Read-only and open:** no sign-in, no key, and nothing about the caller is kept. Any site's page may read it
   (`Access-Control-Allow-Origin: *`).
 - **One address for each answer, cached:** Cloudflare keeps each answer until a new rite is published or a rite's
-  words are erased, so ask as often as you need. A query string is redirected (301) to the address
-  without it: nothing is filtered on the server, so whatever a client is looking for never leaves it. Any other
-  spelling (`/01/` for `/1/`, another case, a trailing slash) is not found (`404`).
+  words are erased, so ask as often as you need. A query string or a trailing slash is redirected (301)
+  to the address without it: nothing is filtered on the server, so whatever a client is looking for never leaves it.
+  Any other spelling (`/01/` for `/1/`, another case) is not found (`404`).
 - **Versioned in the path:** `v1` keeps its fields, their names and their meaning. A change that would break a client
   comes as `v2`, beside it. Fields may be added; a client ignores what it doesn't know.
 

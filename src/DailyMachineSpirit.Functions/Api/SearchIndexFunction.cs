@@ -34,7 +34,7 @@ public sealed class SearchIndexFunction
         CancellationToken cancellationToken)
     {
         // Cloudflare keeps an address with a query string apart, so /api/search-index?anything would read every rite
-        // again. One address for all: a redirect costs no read, and it's cached too.
+        // again. One address for all: a redirect reads nothing.
         if (request.QueryString.HasValue)
         {
             return new RedirectResult(Paths.SearchIndex, permanent: true);

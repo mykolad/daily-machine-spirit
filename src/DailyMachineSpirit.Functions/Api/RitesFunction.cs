@@ -43,7 +43,7 @@ public sealed class RitesFunction
         CancellationToken cancellationToken)
     {
         OpenToAll(request);
-        if (request.QueryString.HasValue)
+        if (WithQueryOrSlash(request, Paths.RitesApi))
         {
             return new RedirectResult(Paths.RitesApi, permanent: true);
         }
@@ -70,7 +70,7 @@ public sealed class RitesFunction
         {
             return NotFound(request);
         }
-        if (request.QueryString.HasValue)
+        if (WithQueryOrSlash(request, Paths.HereticalTruthApi(number)))
         {
             return new RedirectResult(Paths.HereticalTruthApi(number), permanent: true);
         }
@@ -97,9 +97,12 @@ public sealed class RitesFunction
     }
 
     // Cloudflare keeps every spelling of an address apart, and a purge names only the one: an answer kept at `/01/` would
-    // still show words erased from `/1/`. Another spelling (`/01/`, another case, a trailing slash) is not found, and a
-    // query string, which a client may add to dodge a cache, is redirected: the redirect is cached too, and every new
-    // query string would otherwise read the rites again.
+    // still show words erased from `/1/`. So the words are answered at one spelling only. A query string (which a client
+    // may add to dodge a cache) or a trailing slash is forgiven with a redirect, which reads nothing and holds no words
+    // to go stale; any other spelling (`/01/`, another case) is not found.
+    private static bool WithQueryOrSlash(HttpRequest request, string address)
+        => request.QueryString.HasValue || string.Equals(request.Path.Value, address + "/", StringComparison.Ordinal);
+
     private static bool SpelledAs(HttpRequest request, string address)
         => string.Equals(request.Path.Value, address, StringComparison.Ordinal);
 
