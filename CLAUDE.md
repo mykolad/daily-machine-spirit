@@ -33,8 +33,9 @@ tests/DailyMachineSpirit.SmokeTests — xUnit tests of a deployed app over HTTP 
 tests/load                        — k6 load tests of the public pages, run by hand against staging (its README)
 tools/coverage.ps1                — tests + coverage report + the coverage gate (Build and Test runs it)
 tools/grafana-alerts.ps1          — puts the alert rules into Grafana Cloud (observability/README.md)
+tools/grafana-synthetics.ps1      — puts the synthetic check of Today into Grafana Cloud (observability/README.md)
 infra/                            — Bicep for all of Azure (main.bicep); infra/README.md covers what Bicep can't do
-observability/                    — the Grafana dashboards (technical, activity) and alerts, and what the app's metrics measure
+observability/                    — the Grafana dashboards (technical, activity), alerts and synthetic check, and what the app's metrics measure
 docs/api.md                       — the public rites API, a contract with outside clients
 skills/                           — Consult the Machine Spirit, a skill that prescribes a rite for a developer's trouble (#101)
 ```
