@@ -108,7 +108,7 @@ public sealed class RitesFunction
 
     private static ContentResult Answer<T>(HttpRequest request, T body)
     {
-        request.HttpContext.Response.Headers.CacheControl = EdgeLifetime.UntilPurged.CacheControl;
+        EdgeLifetime.UntilPurged.WriteTo(request.HttpContext.Response.Headers);
         return new ContentResult
         {
             Content = JsonSerializer.Serialize(body, Json),

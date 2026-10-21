@@ -35,7 +35,8 @@ public sealed class RitesFunctionTests : IAsyncLifetime
 
         Assert.Equal(StatusCodes.Status200OK, result.StatusCode);
         Assert.Equal("application/json; charset=utf-8", result.ContentType);
-        Assert.Equal("public, max-age=60, s-maxage=3600", context.Response.Headers.CacheControl.ToString());
+        Assert.Equal(("public, max-age=60", "public, max-age=3600, stale-if-error=604800"),
+            (context.Response.Headers.CacheControl.ToString(), context.Response.Headers["Cloudflare-CDN-Cache-Control"].ToString()));
         Assert.Equal("*", context.Response.Headers.AccessControlAllowOrigin.ToString());
         // Unescaped, so a client searching the saved answer finds `it passed locally` as written.
         Assert.Contains("intoning `it passed locally`.", result.Content);
@@ -95,7 +96,8 @@ public sealed class RitesFunctionTests : IAsyncLifetime
         var result = Assert.IsType<ContentResult>(await Function(Repository).HereticalTruth(context.Request, "1", CancellationToken.None));
 
         Assert.Equal((StatusCodes.Status200OK, "application/json; charset=utf-8"), (result.StatusCode, result.ContentType));
-        Assert.Equal("public, max-age=60, s-maxage=3600", context.Response.Headers.CacheControl.ToString());
+        Assert.Equal(("public, max-age=60", "public, max-age=3600, stale-if-error=604800"),
+            (context.Response.Headers.CacheControl.ToString(), context.Response.Headers["Cloudflare-CDN-Cache-Control"].ToString()));
         Assert.Equal("*", context.Response.Headers.AccessControlAllowOrigin.ToString());
         Assert.Equal("""{"number":1,"hereticalTruth":"Your test depends on `timing`."}""", result.Content);
     }
