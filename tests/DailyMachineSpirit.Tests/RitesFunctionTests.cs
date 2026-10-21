@@ -90,7 +90,7 @@ public sealed class RitesFunctionTests : IAsyncLifetime
         await Add(new DateOnly(2026, 10, 8), RiteKind.Prayer, "The Litany of the Warm Cache", None);
         var context = At("/api/v1/rites/1/heretical-truth");
 
-        var result = Assert.IsType<ContentResult>(await Function(Repository).HereticalTruth(context.Request, 1, CancellationToken.None));
+        var result = Assert.IsType<ContentResult>(await Function(Repository).HereticalTruth(context.Request, "1", CancellationToken.None));
 
         Assert.Equal((StatusCodes.Status200OK, "application/json; charset=utf-8"), (result.StatusCode, result.ContentType));
         Assert.Equal("public, max-age=60, s-maxage=3600", context.Response.Headers.CacheControl.ToString());
@@ -99,12 +99,16 @@ public sealed class RitesFunctionTests : IAsyncLifetime
     }
 
     // Not kept, so the rite published with that number later is found.
-    [Fact]
-    public async Task HereticalTruth_OfNoRite_IsNotFound_AndNotCached()
+    [Theory]
+    [InlineData("7")]
+    [InlineData("0")]
+    [InlineData("seven")]
+    [InlineData("-1")]
+    public async Task HereticalTruth_OfNoRite_IsNotFound_AndNotCached(string id)
     {
-        var context = At("/api/v1/rites/7/heretical-truth");
+        var context = At($"/api/v1/rites/{id}/heretical-truth");
 
-        var result = Assert.IsType<StatusCodeResult>(await Function(Repository).HereticalTruth(context.Request, 7, CancellationToken.None));
+        var result = Assert.IsType<StatusCodeResult>(await Function(Repository).HereticalTruth(context.Request, id, CancellationToken.None));
 
         Assert.Equal(StatusCodes.Status404NotFound, result.StatusCode);
         Assert.Equal("no-store", context.Response.Headers.CacheControl.ToString());
@@ -112,15 +116,15 @@ public sealed class RitesFunctionTests : IAsyncLifetime
 
     // Each would be cached apart, and an erasure's purge, naming the one address, would leave its old words there.
     [Theory]
-    [InlineData("/api/v1/rites/3/heretical-truth", "?reveal=yes")]
-    [InlineData("/api/v1/rites/03/heretical-truth", "")]
-    [InlineData("/API/v1/rites/3/heretical-truth", "")]
-    public async Task HereticalTruth_AtAnotherSpelling_RedirectsToItsOneAddress(string path, string query)
+    [InlineData("/api/v1/rites/3/heretical-truth", "3", "?reveal=yes")]
+    [InlineData("/api/v1/rites/03/heretical-truth", "03", "")]
+    [InlineData("/API/v1/rites/3/heretical-truth", "3", "")]
+    public async Task HereticalTruth_AtAnotherSpelling_RedirectsToItsOneAddress(string path, string id, string query)
     {
         var context = At(path);
         context.Request.QueryString = new QueryString(query);
 
-        var result = Assert.IsType<RedirectResult>(await Function(Repository).HereticalTruth(context.Request, 3, CancellationToken.None));
+        var result = Assert.IsType<RedirectResult>(await Function(Repository).HereticalTruth(context.Request, id, CancellationToken.None));
 
         Assert.Equal(("/api/v1/rites/3/heretical-truth", true), (result.Url, result.Permanent));
         Assert.Equal("*", context.Response.Headers.AccessControlAllowOrigin.ToString());

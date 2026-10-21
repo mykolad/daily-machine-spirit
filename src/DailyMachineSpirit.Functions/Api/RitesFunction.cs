@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using DailyMachineSpirit.Data.Entities;
@@ -55,11 +56,17 @@ public sealed class RitesFunction
 
     [Function("HereticalTruthV1")]
     public async Task<IActionResult> HereticalTruth(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/v1/rites/{number:int}/heretical-truth")] HttpRequest request,
-        int number,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/v1/rites/{id}/heretical-truth")] HttpRequest request,
+        string id,
         CancellationToken cancellationToken)
     {
         OpenToAll(request);
+        // Read as text: the worker can't bind `01` to an int (it fails the request), and `01` is the rite NO. 1's
+        // address spelled another way, redirected below.
+        if (!int.TryParse(id, NumberStyles.None, CultureInfo.InvariantCulture, out var number) || number < 1)
+        {
+            return NotFound(request);
+        }
         if (!AtItsOneAddress(request, Paths.HereticalTruthApi(number)))
         {
             return new RedirectResult(Paths.HereticalTruthApi(number), permanent: true);
@@ -69,7 +76,7 @@ public sealed class RitesFunction
             Right: truth => truth.Match(
                 Some: words => Answer(request, new RevealedTruth(number, words)),
                 // Not kept: the rite with that number may be published tomorrow, and nothing would purge this.
-                None: () => NeverCached(request, new StatusCodeResult(StatusCodes.Status404NotFound))),
+                None: () => NotFound(request)),
             Left: error => Unavailable(request, error, "A Heretical Truth couldn't be revealed"));
     }
 
@@ -98,6 +105,8 @@ public sealed class RitesFunction
             StatusCode = StatusCodes.Status200OK,
         };
     }
+
+    private static IActionResult NotFound(HttpRequest request) => NeverCached(request, new StatusCodeResult(StatusCodes.Status404NotFound));
 
     private IActionResult Unavailable(HttpRequest request, Error error, string what)
     {
