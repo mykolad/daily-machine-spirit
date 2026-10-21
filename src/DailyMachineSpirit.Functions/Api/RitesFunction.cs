@@ -42,9 +42,7 @@ public sealed class RitesFunction
         CancellationToken cancellationToken)
     {
         OpenToAll(request);
-        // Cloudflare keeps an address with a query string apart, so every new one would read every rite again. One
-        // address for each answer: a redirect costs no read, and it's cached too.
-        if (request.QueryString.HasValue)
+        if (!AtItsOneAddress(request, Paths.RitesApi))
         {
             return new RedirectResult(Paths.RitesApi, permanent: true);
         }
@@ -62,7 +60,7 @@ public sealed class RitesFunction
         CancellationToken cancellationToken)
     {
         OpenToAll(request);
-        if (request.QueryString.HasValue)
+        if (!AtItsOneAddress(request, Paths.HereticalTruthApi(number)))
         {
             return new RedirectResult(Paths.HereticalTruthApi(number), permanent: true);
         }
@@ -83,6 +81,12 @@ public sealed class RitesFunction
         headers.XContentTypeOptions = "nosniff";
         headers.AccessControlAllowOrigin = "*";
     }
+
+    // Cloudflare keeps every spelling of an address apart (a query string, `/01/` for `/1/`, another case), so each new
+    // one would read the rites again, and a purge, which names the one address, would miss the others. One address for
+    // each answer: a redirect costs no read, and it's cached too.
+    private static bool AtItsOneAddress(HttpRequest request, string address)
+        => !request.QueryString.HasValue && string.Equals(request.Path.Value, address, StringComparison.Ordinal);
 
     private static ContentResult Answer<T>(HttpRequest request, T body)
     {
