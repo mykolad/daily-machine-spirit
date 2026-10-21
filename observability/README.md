@@ -63,7 +63,7 @@ what to look at.
 | **Backlog ran empty** | publishing found no waiting draft more than once in a week (its warning logs) |
 | **Jev failing** | two or more drafts in a day couldn't be judged (the refiller's warning logs) |
 | **Server errors** | more than 5% of requests answered 5xx for ten minutes, over at least ten requests |
-| **Today unreachable or stale** | more than half of the last 15 minutes' synthetic checks of Today failed, for five minutes: no 200, a `STALE` copy from Cloudflare (the app didn't answer), or yesterday's rite after 01:30 UTC (below) |
+| **Today unreachable or stale** | more than half of the last 45 minutes' synthetic checks of Today failed (six runs): no 200, a `STALE` copy from Cloudflare (the app didn't answer), or yesterday's rite after 01:30 UTC (below) |
 | **No telemetry from production** | nothing for 26 hours: the midnight timer wakes the app every day, so silence means a broken export or a dead app |
 
 Rare events are counted from logs, not metrics, for the reason the activity dashboard's are (above): a counter's first
@@ -86,7 +86,7 @@ Grafana's own **More → Export** writes another format (file provisioning), whi
 
 ## The synthetic check
 
-Grafana Cloud's Synthetic Monitoring loads Today as a reader does, through Cloudflare, every five minutes from two
+Grafana Cloud's Synthetic Monitoring loads Today as a reader does, through Cloudflare, every 15 minutes from two
 public probes (Frankfurt and London), with a k6 script (`synthetics/todays-rite.js`). The app's own telemetry can't
 see what readers get: a page Cloudflare answers never reaches the app, and while the app is down, Cloudflare's
 `stale-if-error` copies keep the site up, read-only. The check fails when Today doesn't answer 200, when Cloudflare

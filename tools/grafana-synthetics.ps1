@@ -53,8 +53,9 @@ $script = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes((Get-Content 
 $check = [ordered]@{
     job = $job
     target = $target
-    # Every five minutes from each probe: about 17,000 runs a month, within the free tier's executions.
-    frequency = 300000
+    # Every 15 minutes from each probe: about 5,800 runs a month, leaving room in the free tier for the stack's
+    # other checks.
+    frequency = 900000
     timeout = 30000
     enabled = $true
     labels = @()

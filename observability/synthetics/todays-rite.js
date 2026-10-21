@@ -1,4 +1,4 @@
-// What a reader gets at Today, through Cloudflare, as Grafana's Synthetic Monitoring checks it every five minutes
+// What a reader gets at Today, through Cloudflare, as Grafana's Synthetic Monitoring checks it every 15 minutes
 // (tools/grafana-synthetics.ps1, observability/README.md). It fails when Today doesn't answer, when Cloudflare serves a
 // stale copy because it couldn't reach the app, or when Today doesn't show today's rite.
 import http from 'k6/http';
