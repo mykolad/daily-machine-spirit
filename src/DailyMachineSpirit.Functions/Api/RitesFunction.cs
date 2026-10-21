@@ -38,6 +38,12 @@ public sealed class RitesFunction
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/v1/rites")] HttpRequest request,
         CancellationToken cancellationToken)
     {
+        var headers = request.HttpContext.Response.Headers;
+        headers.XContentTypeOptions = "nosniff";
+        // Any site's page may read it: it's public, and takes nothing from the caller. Set before the redirect below,
+        // which a browser checks too before following it.
+        headers.AccessControlAllowOrigin = "*";
+
         // Cloudflare keeps an address with a query string apart, so every new one would read every rite again. One
         // address for all: a redirect costs no read, and it's cached too.
         if (request.QueryString.HasValue)
@@ -45,10 +51,6 @@ public sealed class RitesFunction
             return new RedirectResult(Paths.RitesApi, permanent: true);
         }
 
-        var headers = request.HttpContext.Response.Headers;
-        headers.XContentTypeOptions = "nosniff";
-        // Any site's page may read it: it's public, and takes nothing from the caller.
-        headers.AccessControlAllowOrigin = "*";
         return (await rites.GetAllTaggedWords(cancellationToken)).Match<IActionResult>(
             Right: all =>
             {

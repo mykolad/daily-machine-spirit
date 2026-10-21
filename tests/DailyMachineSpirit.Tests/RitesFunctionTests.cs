@@ -64,6 +64,8 @@ public sealed class RitesFunctionTests : IAsyncLifetime
         var result = Assert.IsType<RedirectResult>(await Function(Repository).Rites(context.Request, CancellationToken.None));
 
         Assert.Equal(("/api/v1/rites", true), (result.Url, result.Permanent));
+        // A browser on another site follows it only if it may read it.
+        Assert.Equal("*", context.Response.Headers.AccessControlAllowOrigin.ToString());
     }
 
     [Fact]
