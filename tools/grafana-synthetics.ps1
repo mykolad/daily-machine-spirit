@@ -57,7 +57,10 @@ $check = [ordered]@{
     settings = @{ scripted = @{ script = $script } }
 }
 
-$existing = Invoke-RestMethod -Uri "$api/check/list" -Headers $headers | Where-Object { $_.job -eq $job -and $_.target -eq $target }
+# Assigned first: Invoke-RestMethod sends a JSON array down the pipeline as one object, which Where-Object would keep
+# or drop whole.
+$checks = Invoke-RestMethod -Uri "$api/check/list" -Headers $headers
+$existing = $checks | Where-Object { $_.job -eq $job -and $_.target -eq $target } | Select-Object -First 1
 if ($existing) {
     $check.id = $existing.id
     $check.tenantId = $existing.tenantId
