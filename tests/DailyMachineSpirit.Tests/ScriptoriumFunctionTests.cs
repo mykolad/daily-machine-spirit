@@ -76,7 +76,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var unknown = Html(await Function().Page(Get("?subject=gossip"), CancellationToken.None), 200);
 
         Assert.Contains("""<a class="chip" href="/scriptorium" aria-current="true">Caches<span class="chip-count">2</span></a>""", html);
-        Assert.Contains("""Placed by the Scribes<span class="group-count">1 of 1</span>""", html);
+        Assert.Contains("""Anointed<span class="group-count">1 of 1</span>""", html);
         Assert.Contains("""The Augury’s order<span class="group-count">1 of 2</span>""", html);
         Assert.Contains($"""id="rite-{cold.Id:D}" aria-labelledby="title-{cold.Id:D}">""", html);
         Assert.DoesNotContain($"""id="rite-{names.Id:D}" """, html);
@@ -95,9 +95,9 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var all = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
         Assert.Contains("""<a class="chip" href="/scriptorium" aria-current="true">Security<span class="chip-count">0</span></a>""", html);
-        Assert.Contains("No Security rites in the Scribes’ order.", html);
+        Assert.Contains("No Security rites among the anointed.", html);
         Assert.Contains("No Security rites in the Augury’s order.", html);
-        Assert.Contains("The Scribes have placed nothing yet.", all);
+        Assert.Contains("No rite is anointed yet.", all);
     }
 
     // An action on the narrowed calendar comes back to it, narrowed.
@@ -181,12 +181,11 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     [Fact]
     public async Task EveryPage_HasTheTabs_CountingWhatEachHolds_AndMarkingItsOwn()
     {
-        await testbed.AddDraft("Excellent", 0.95f);
+        var excellent = await testbed.AddDraft("Excellent", 0.95f);
         var good = await testbed.AddDraft("Good", 0.7f);
         await testbed.AddDraft("Fair", 0.4f);
         var burned = await testbed.AddDraft("Burned", 0.3f);
-        // Exalting the second places it and the one above it.
-        Ok(await testbed.Scribes().Exalt(good.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        await AnointAll(excellent, good);
         Ok(await testbed.Scribes().Burn(burned.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         Ok(await testbed.PreceptKeeping().AddPinned("Name the command.", BacklogTestbed.Tester, CancellationToken.None));
         var function = Function();
@@ -204,12 +203,12 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
 
         Assert.All(pages, page =>
         {
-            // Excellent and Good in the Scribes’ order, Fair in the Augury’s.
-            Assert.Contains("""The Calendar<span class="count"><span aria-hidden="true" title="In the Scribes’ order / in the Augury’s">2/1</span><span class="visually-hidden">: 2 in the Scribes’ order, 1 in the Augury’s</span></span>""", page.Value);
+            // Excellent and Good anointed, Fair in the Augury’s order.
+            Assert.Contains("""The Calendar<span class="count"><span aria-hidden="true" title="Anointed / in the Augury’s order">2/1</span><span class="visually-hidden">: 2 anointed, 1 in the Augury’s order</span></span>""", page.Value);
             Assert.Contains("""The Ashes<span class="count">1</span>""", page.Value);
             Assert.Contains("""The Precepts<span class="count">1</span>""", page.Value);
-            // Four drafts written, one exalted, one burned, and a precept added.
-            Assert.Contains("""The Record<span class="count">7</span>""", page.Value);
+            // Four drafts written, two anointed, one burned, and a precept added.
+            Assert.Contains("""The Record<span class="count">8</span>""", page.Value);
             Assert.Contains($"""<a href="{page.Key}" aria-current="page">""", page.Value);
             Assert.Single(page.Value.Split("aria-current=\"page\"").Skip(1));
         });
@@ -304,7 +303,8 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     }
 
     [Theory]
-    [InlineData("anoint", "Anointed: it goes out next.")]
+    [InlineData("anoint", "Anointed.")]
+    [InlineData("release", "Released to the Augury.")]
     [InlineData("exalt", "Exalted.")]
     [InlineData("humble", "Humbled.")]
     [InlineData("restore", "Restored from the ashes.")]
@@ -366,8 +366,12 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     [InlineData("anoint", "Anointed")]
     public async Task AfterAMove_ThePageNamesTheRite_AndWhenItNowGoesOut(string action, string done)
     {
-        await testbed.AddDraft("Excellent", 0.95f);
+        var excellent = await testbed.AddDraft("Excellent", 0.95f);
         var good = await testbed.AddDraft("Good", 0.7f);
+        if (action == "exalt")
+        {
+            await AnointAll(excellent, good);
+        }
         var function = Function();
 
         var response = await function.Decide(Post(""), good.Id, action, CancellationToken.None);
@@ -384,7 +388,8 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     public async Task AfterAHumbling_ThePageSaysWhenTheRiteNowGoesOut()
     {
         var excellent = await testbed.AddDraft("Excellent", 0.95f);
-        await testbed.AddDraft("Good", 0.7f);
+        var good = await testbed.AddDraft("Good", 0.7f);
+        await AnointAll(excellent, good);
         var function = Function();
 
         var response = await function.Decide(Post(""), excellent.Id, "humble", CancellationToken.None);
@@ -416,8 +421,9 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     [Fact]
     public async Task AfterAnAction_TheRiteItWasOnIsMarked_AndNoOther()
     {
-        await testbed.AddDraft("First", 0.9f);
+        var first = await testbed.AddDraft("First", 0.9f);
         var exalted = await testbed.AddDraft("Second", 0.5f);
+        await AnointAll(first, exalted);
         var function = Function();
 
         var response = await function.Decide(Post(""), exalted.Id, "exalt", CancellationToken.None);
@@ -476,24 +482,24 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         await testbed.AddDraft("Excellent", 0.95f);
         var good = await testbed.AddDraft("Good", 0.7f);
-        await testbed.AddDraft("Fair", 0.4f);
+        var fair = await testbed.AddDraft("Fair", 0.4f);
         var before = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
-        // Good goes up and Excellent down, both placed by the Scribes; Fair stays where the Augury put it.
-        Ok(await testbed.Scribes().Exalt(good.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        // Good and Fair anointed, ahead of the Augury's pick, which stays where the Augury put it.
+        await AnointAll(good, fair);
         var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
         Assert.DoesNotContain("would rank it", before);
         Assert.Contains("would rank it #2", html);
-        Assert.Contains("would rank it #1", html);
+        Assert.Contains("would rank it #3", html);
         Assert.Equal(2, html.Split("would rank it").Length - 1);
-        Assert.Equal(2, html.Split("placed by A Scribe (…456789)").Length - 1);
+        Assert.Equal(2, html.Split("anointed by A Scribe (…456789)").Length - 1);
         Assert.Equal(2, html.Split("class=\"rite row scribes").Length - 1);
     }
 
-    // The rites the Scribes placed come first, in a group of their own, each saying who placed it, by the name they chose.
+    // The anointed come first, in a group of their own, each saying who anointed it, by the name they chose.
     [Fact]
-    public async Task Page_GroupsTheRitesTheScribesPlaced_AndNamesWhoPlacedThem()
+    public async Task Page_GroupsTheAnointed_AndNamesWhoAnointedThem()
     {
         await testbed.AddDraft("Excellent", 0.95f);
         var good = await testbed.AddDraft("Good", 0.7f);
@@ -504,9 +510,9 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
 
         Assert.Contains($"""<article class="rite row scribes next" id="rite-{good.Id:D}" """, html);
         // Anointing places it alone: the rite it passed stays the Augury's.
-        Assert.Contains("""Placed by the Scribes<span class="group-count">1</span>""", html);
+        Assert.Contains("""Anointed<span class="group-count">1</span>""", html);
         Assert.Contains("""The Augury’s order<span class="group-count">1</span>""", html);
-        Assert.Single(html.Split("placed by Magos Ferrum ·").Skip(1));
+        Assert.Single(html.Split("anointed by Magos Ferrum ·").Skip(1));
     }
 
     // Orders saved before they kept who placed each draft still group their drafts as the Scribes'.
@@ -525,41 +531,46 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.DoesNotContain("placed by ", html);
     }
 
-    // Exalt and Humble say where they move a rite: one moved from the Augury's order joins the Scribes', with every rite
-    // above it. At the ends they can't be pressed, and say why.
+    // Exalt and Humble are the anointed's alone: the Augury orders the rest. At the ends of the anointed they can't be
+    // pressed, and say why.
     [Fact]
-    public async Task Page_LabelsExaltAndHumble_ByWhereTheyMoveTheRite()
+    public async Task Page_OffersExaltAndHumble_OnlyAmongTheAnointed()
     {
         var first = await testbed.AddDraft("First", 0.9f);
         var second = await testbed.AddDraft("Second", 0.8f);
         var third = await testbed.AddDraft("Third", 0.7f);
         var augurys = Html(await Function().Page(Get(""), CancellationToken.None), 200);
-        Ok(await testbed.Scribes().Exalt(second.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        await AnointAll(first, second);
 
         var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
-        Assert.Contains("""<button class="step" title="Already next to publish" disabled>""", augurys);
-        Assert.Contains($"""<button class="step" title="Exalt: one day earlier, into the Scribes’ order" formaction="/scriptorium/drafts/{second.Id:D}/exalt">""", augurys);
-        Assert.Contains("""<button class="step" title="Already the last in the calendar" disabled>""", augurys);
+        Assert.DoesNotMatch("formaction=\"[^\"]+/(exalt|humble)\"", augurys);
+        Assert.Contains("""<button class="step" title="Already next to publish" disabled>""", html);
         Assert.Contains($"""<button class="step" title="Humble: one day later" formaction="/scriptorium/drafts/{first.Id:D}/humble">""", html);
-        Assert.Contains($"""<button class="step" title="Exalt: one day earlier, into the Scribes’ order" formaction="/scriptorium/drafts/{third.Id:D}/exalt">""", html);
-        Assert.Contains("""<span class="visually-hidden">Exalt: Third</span>""", html);
+        Assert.Contains($"""<button class="step" title="Exalt: one day earlier" formaction="/scriptorium/drafts/{second.Id:D}/exalt">""", html);
+        Assert.Contains("""<button class="step" title="Already the last anointed: the Augury’s order follows" disabled>""", html);
+        Assert.Contains("""<span class="visually-hidden">Exalt: Second</span>""", html);
+        Assert.DoesNotContain($"/scriptorium/drafts/{third.Id:D}/exalt", html);
     }
 
     [Fact]
     public async Task Page_GivesEachRiteItsButtons_EachIconHiddenFromScreenReaders_AndFoldsTheNotes()
     {
-        await testbed.AddDraft("Excellent", 0.95f);
+        var augurys = await testbed.AddDraft("Excellent", 0.95f);
         var top = await testbed.AddDraft("Good", 0.7f);
         var burned = await testbed.AddDraft("Burned", 0.3f);
         Ok(await testbed.Scribes().Burn(burned.Id, "", BacklogTestbed.Tester, CancellationToken.None));
-        // A Scribe placed a draft, so Let the Augury Decide shows too.
+        // A Scribe anointed a draft, so Let the Augury Decide shows too.
         Ok(await testbed.Scribes().Anoint(top.Id, "", BacklogTestbed.Tester, CancellationToken.None));
 
         var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
-        Assert.Contains($""" class="primary" formaction="/scriptorium/drafts/{top.Id:D}/anoint">""", html);
-        Assert.Contains("""<span class="pair" role="group" aria-label="Reorder">""", html);
+        // The Augury's rite is offered Anoint; the anointed one Release, in its place, and the arrows.
+        Assert.Contains($""" class="primary" formaction="/scriptorium/drafts/{augurys.Id:D}/anoint">""", html);
+        Assert.DoesNotContain($"/scriptorium/drafts/{top.Id:D}/anoint", html);
+        Assert.Contains($""" class="secondary" formaction="/scriptorium/drafts/{top.Id:D}/release">""", html);
+        Assert.DoesNotContain($"/scriptorium/drafts/{augurys.Id:D}/release", html);
+        Assert.Single(html.Split("""<span class="pair" role="group" aria-label="Reorder">""").Skip(1));
         Assert.Contains($""" class="danger burn" formaction="/scriptorium/drafts/{top.Id:D}/burn">""", html);
         Assert.Contains("Let the Augury Decide", html);
         // Every button but the burn panel's reasons and its Cancel, which are words alone.
@@ -608,17 +619,23 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     [InlineData("anoint")]
     [InlineData("exalt")]
     [InlineData("humble")]
+    [InlineData("release")]
     public async Task Reordering_GoesBackToThePage_AndSaysWhatHappened(string action)
     {
-        await testbed.AddDraft("Excellent", 0.95f);
+        var excellent = await testbed.AddDraft("Excellent", 0.95f);
         var middle = await testbed.AddDraft("Good", 0.7f);
-        await testbed.AddDraft("Fair", 0.4f);
+        var fair = await testbed.AddDraft("Fair", 0.4f);
+        if (action != "anoint")
+        {
+            await AnointAll(excellent, middle, fair);
+        }
 
         var response = await Function().Decide(Post("A fine note."), middle.Id, action, CancellationToken.None);
 
         Assert.Equal($"/scriptorium?done={action}&rite={middle.Id:D}#rite-{middle.Id:D}", Assert.IsType<RedirectResult>(response.Result).Url);
         Assert.Null(response.RefillReason);
-        var decision = Assert.Single(Ok(await testbed.Scribes().View(CancellationToken.None)).Decisions);
+        var decision = Assert.Single(Ok(await testbed.Scribes().View(CancellationToken.None)).Decisions,
+            found => found.Action == Enum.Parse<ScribeAction>(action, ignoreCase: true));
         Assert.Equal(LanguageExt.Prelude.Some("A fine note."), decision.Note);
     }
 
@@ -700,11 +717,40 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     public async Task ExaltingTheFirst_SaysNothingMoved_RatherThanExalted()
     {
         var first = await testbed.AddDraft("Excellent", 0.95f);
-        await testbed.AddDraft("Fair", 0.4f);
+        var fair = await testbed.AddDraft("Fair", 0.4f);
+        await AnointAll(first, fair);
 
         var response = await Function().Decide(Post(""), first.Id, "exalt", CancellationToken.None);
 
         Assert.Equal($"/scriptorium?done=unmoved&rite={first.Id:D}#rite-{first.Id:D}", Assert.IsType<RedirectResult>(response.Result).Url);
+        Assert.DoesNotContain(Ok(await testbed.Scribes().View(CancellationToken.None)).Decisions, decision => decision.Action == ScribeAction.Exalt);
+    }
+
+    // A release is a judgment of its own in Recent judgments, said and drawn as one, not as a restore.
+    [Fact]
+    public async Task RecentJudgments_ShowARelease_AsARelease()
+    {
+        await testbed.AddDraft("Excellent", 0.95f);
+        var fair = await testbed.AddDraft("Fair", 0.4f);
+        await AnointAll(fair);
+        Ok(await testbed.Scribes().Release(fair.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+
+        var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
+
+        Assert.Contains("""<span class="verb">Released to the Augury:</span> <cite>Fair</cite>""", html);
+        Assert.Contains($"""<span class="judgment-icon">{ScriptoriumIcons.Release}</span>""", html);
+    }
+
+    // Exalting a rite the Augury orders comes from a page shown before it was released: the calendar changed.
+    [Fact]
+    public async Task ExaltingARiteTheAuguryOrders_SaysTheCalendarChanged()
+    {
+        await testbed.AddDraft("Excellent", 0.95f);
+        var fair = await testbed.AddDraft("Fair", 0.4f);
+
+        var response = await Function().Decide(Post(""), fair.Id, "exalt", CancellationToken.None);
+
+        Assert.Equal($"/scriptorium?done=changed&rite={fair.Id:D}#rite-{fair.Id:D}", Assert.IsType<RedirectResult>(response.Result).Url);
         Assert.Empty(Ok(await testbed.Scribes().View(CancellationToken.None)).Decisions);
     }
 
@@ -1065,6 +1111,14 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
             request.QueryString = new QueryString(query);
         }
         return request;
+    }
+
+    private async Task AnointAll(params Draft[] drafts)
+    {
+        foreach (var draft in drafts)
+        {
+            Ok(await testbed.Scribes().Anoint(draft.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        }
     }
 
     // Where a redirect leads, as the browser asks for it: the address without its #fragment.

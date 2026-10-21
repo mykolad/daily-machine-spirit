@@ -46,6 +46,8 @@ internal sealed record ScribeDecisionDocument
     // Null when missing: the JSON serializer doesn't know Option.
     public int? CalendarPlace { get; init; }
 
+    public int? CalendarPlaceAfter { get; init; }
+
     public int? AuguryPlace { get; init; }
 
     public float? AuguryQuality { get; init; }
@@ -66,6 +68,7 @@ internal sealed record ScribeDecisionDocument
         Text = decision.Text,
         HereticalTruth = decision.HereticalTruth,
         CalendarPlace = decision.CalendarPlace.OrNullable(),
+        CalendarPlaceAfter = decision.CalendarPlaceAfter.OrNullable(),
         AuguryPlace = decision.AuguryPlace.OrNullable(),
         AuguryQuality = decision.AuguryQuality.OrNullable(),
         AuguryRankedByQuality = decision.AuguryRankedByQuality,
@@ -83,6 +86,7 @@ internal sealed record ScribeDecisionDocument
         Text = Text,
         HereticalTruth = HereticalTruth,
         CalendarPlace = Optional(CalendarPlace),
+        CalendarPlaceAfter = Optional(CalendarPlaceAfter),
         AuguryPlace = Optional(AuguryPlace),
         AuguryQuality = Optional(AuguryQuality),
         // Decisions saved before it was kept: a judged draft was taken as ranked by its quality then.

@@ -21,7 +21,7 @@ public sealed class AuditTests : IAsyncLifetime
     [Fact]
     public async Task EveryScribeAction_IsRecorded_WithTheScribe()
     {
-        await testbed.AddDraft("Excellent", 0.95f);
+        var excellent = await testbed.AddDraft("Excellent", 0.95f);
         var good = await testbed.AddDraft("Good", 0.7f);
         var fair = await testbed.AddDraft("Fair", 0.4f);
         var scribes = testbed.Scribes();
@@ -29,7 +29,11 @@ public sealed class AuditTests : IAsyncLifetime
         // A minute apart, so newest first is one order.
         Ok(await scribes.Anoint(good.Id, "", Tester, CancellationToken.None));
         testbed.Time.Advance(TimeSpan.FromMinutes(1));
+        Ok(await scribes.Anoint(excellent.Id, "", Tester, CancellationToken.None));
+        testbed.Time.Advance(TimeSpan.FromMinutes(1));
         Ok(await scribes.Humble(good.Id, "", Tester, CancellationToken.None));
+        testbed.Time.Advance(TimeSpan.FromMinutes(1));
+        Ok(await scribes.Release(good.Id, "", Tester, CancellationToken.None));
         testbed.Time.Advance(TimeSpan.FromMinutes(1));
         Ok(await scribes.Burn(fair.Id, "", Tester, CancellationToken.None));
         testbed.Time.Advance(TimeSpan.FromMinutes(1));
@@ -44,7 +48,9 @@ public sealed class AuditTests : IAsyncLifetime
             (AuditAction.LetTheAuguryDecide, "", ""),
             (AuditAction.Restore, "Fair", ""),
             (AuditAction.Burn, "Fair", "from #3"),
+            (AuditAction.Release, "Good", "from #2 to the Augury's order"),
             (AuditAction.Humble, "Good", "from #1 to #2"),
+            (AuditAction.Anoint, "Excellent", "from #2 to #2"),
             (AuditAction.Anoint, "Good", "from #2 to #1"),
         ], scribesEntries);
     }

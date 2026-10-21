@@ -11,6 +11,7 @@ public enum AuditAction
     Amend,
     Summon,
     LetTheAuguryDecide,
+    Release,
 
     // The Machine Spirit's own.
     Write,

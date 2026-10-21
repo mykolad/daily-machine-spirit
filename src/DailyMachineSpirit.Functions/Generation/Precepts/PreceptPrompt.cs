@@ -22,7 +22,8 @@ public static class PreceptPrompt
         (one or two plain, technically accurate sentences on what really happens and what would fix it).
 
         A model writes the rites as drafts. The Augury orders them by a quality score; the Scribes (human moderators) then
-        anoint a draft (publish it next), exalt or humble it (move it up or down a day), consign it to the flames (reject
+        anoint a draft (publish it ahead of the Augury's order, after those anointed before), exalt or humble an anointed one
+        (move it up or down a day), release it (give it back to the Augury), consign it to the flames (reject
         it), restore it, or amend its words. Each judgment records the draft, the place the Augury gave it (1 is next), its
         quality, and sometimes the Scribe's note on why. Notes are the strongest signal; actions without notes still show
         what the Scribes prefer and reject, especially where they overruled the Augury.
