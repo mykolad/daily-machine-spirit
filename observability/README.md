@@ -92,7 +92,7 @@ see what readers get: a page Cloudflare answers never reaches the app, and while
 `stale-if-error` copies keep the site up, read-only. The check fails when Today doesn't answer 200, when Cloudflare
 marks its copy `STALE` (it couldn't reach the app), or when Today doesn't show today's rite after 01:30 UTC, by when
 publishing and its retries are over. Its results are metrics in the stack's Prometheus (`probe_all_success_sum` and
-`_count`, `job="Today's rite"`), which **Today unreachable or stale** watches. **Check Today's Rite** (the workflow)
+`_count`, `job="Daily Machine Spirit Today"`), which **Today unreachable or stale** watches. **Check Today's Rite** (the workflow)
 still opens an issue once a day for a missing rite.
 
 A `STALE` copy shows only once Cloudflare's copy is older than its hour, so the check notices the app being down
@@ -103,7 +103,7 @@ To put it into Grafana, and after changing the script:
 1. **Testing & synthetics → Synthetics → Config**: generate an access token, and save it to
    `$HOME\.machinespirit\grafana-synthetics-token.txt`. The page also shows the API's address for the stack's region.
 2. Run `./tools/grafana-synthetics.ps1 -ApiUrl <that address>`. It adds the check, or updates it if it's there (found
-   by its job and target). `-Probes` picks other probes by name; an unknown name lists the probes there are.
+   by its target, so it renames one with an older job name). `-Probes` picks other probes by name; an unknown name lists the probes there are.
 3. Run `./tools/grafana-alerts.ps1` (above) for the alert.
 
 To try the script itself: `docker run --rm -i grafana/k6 run - < observability/synthetics/todays-rite.js`.

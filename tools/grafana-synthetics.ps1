@@ -1,9 +1,9 @@
 <#
 .SYNOPSIS
-    Puts the Today's rite check (observability/synthetics/todays-rite.js) into Grafana Cloud's Synthetic Monitoring.
+    Puts the synthetic check of Today (observability/synthetics/todays-rite.js) into Grafana Cloud's Synthetic Monitoring.
 
 .DESCRIPTION
-    Run by hand after changing the script (observability/README.md). The check is found by its job and target, so
+    Run by hand after changing the script (observability/README.md). The check is found by its target, so
     running it again updates the same check rather than adding another. Its results are metrics in the stack's
     Prometheus (probe_all_success_*), which the "Today unreachable or stale" rule in observability/grafana/alerts.json
     watches.
@@ -30,7 +30,9 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$job = "Today's rite"
+# No quotes or commas: Synthetic Monitoring's editor refuses them in a job name (the metrics' job label), though its
+# API takes them, so a check named so can't be edited in Grafana.
+$job = 'Daily Machine Spirit Today'
 $target = 'https://dailymachinespirit.fyi/'
 $scriptPath = Join-Path $PSScriptRoot '..' 'observability' 'synthetics' 'todays-rite.js'
 # Without a scheme, PowerShell would call http://, and the API answers plain HTTP too: the token would cross unencrypted.
@@ -66,7 +68,8 @@ $check = [ordered]@{
 # Assigned first: Invoke-RestMethod sends a JSON array down the pipeline as one object, which Where-Object would keep
 # or drop whole.
 $checks = Invoke-RestMethod -Uri "$api/check/list" -Headers $headers
-$existing = $checks | Where-Object { $_.job -eq $job -and $_.target -eq $target } | Select-Object -First 1
+# By target alone, so a run after the job is renamed renames the check rather than adding another.
+$existing = $checks | Where-Object { $_.target -eq $target } | Select-Object -First 1
 if ($existing) {
     $check.id = $existing.id
     $check.tenantId = $existing.tenantId
