@@ -9,7 +9,8 @@
     watches.
 
 .PARAMETER ApiUrl
-    The Synthetic Monitoring API's address for the stack's region, as Synthetic Monitoring's Config page shows it.
+    The Synthetic Monitoring API's address for the stack's region, as Synthetic Monitoring's Config page shows it. With
+    https:// or without a scheme; never http://, which would send the token unencrypted.
 
 .PARAMETER TokenPath
     A file holding a Synthetic Monitoring access token (Config → Generate access token). The token is read from it and
@@ -32,7 +33,12 @@ $ErrorActionPreference = 'Stop'
 $job = "Today's rite"
 $target = 'https://dailymachinespirit.fyi/'
 $scriptPath = Join-Path $PSScriptRoot '..' 'observability' 'synthetics' 'todays-rite.js'
-$api = "$($ApiUrl.TrimEnd('/'))/api/v1"
+# Without a scheme, PowerShell would call http://, and the API answers plain HTTP too: the token would cross unencrypted.
+if ($ApiUrl -match '^http://') {
+    throw "The API takes the token, so only https:// will do: $ApiUrl"
+}
+$base = if ($ApiUrl -match '^https://') { $ApiUrl } else { "https://$ApiUrl" }
+$api = "$($base.TrimEnd('/'))/api/v1"
 $headers = @{ Authorization = "Bearer $((Get-Content -Path $TokenPath -Raw).Trim())" }
 
 $available = Invoke-RestMethod -Uri "$api/probe/list" -Headers $headers
@@ -64,12 +70,12 @@ $existing = $checks | Where-Object { $_.job -eq $job -and $_.target -eq $target 
 if ($existing) {
     $check.id = $existing.id
     $check.tenantId = $existing.tenantId
-    Invoke-RestMethod -Method Post -Uri "$api/check/update" -Headers $headers -ContentType 'application/json' `
-        -Body ($check | ConvertTo-Json -Depth 10) | Out-Null
-    Write-Host "Updated the check $job, run from $($Probes -join ' and ')."
+    $saved = Invoke-RestMethod -Method Post -Uri "$api/check/update" -Headers $headers -ContentType 'application/json' `
+        -Body ($check | ConvertTo-Json -Depth 10)
+    Write-Host "Updated the check $job (id $($saved.id)), run from $($Probes -join ' and ')."
 }
 else {
-    Invoke-RestMethod -Method Post -Uri "$api/check/add" -Headers $headers -ContentType 'application/json' `
-        -Body ($check | ConvertTo-Json -Depth 10) | Out-Null
-    Write-Host "Added the check $job, run from $($Probes -join ' and ')."
+    $saved = Invoke-RestMethod -Method Post -Uri "$api/check/add" -Headers $headers -ContentType 'application/json' `
+        -Body ($check | ConvertTo-Json -Depth 10)
+    Write-Host "Added the check $job (id $($saved.id)), run from $($Probes -join ' and ')."
 }
