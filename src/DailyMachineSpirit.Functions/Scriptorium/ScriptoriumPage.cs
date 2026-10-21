@@ -431,7 +431,8 @@ public static partial class ScriptoriumPage
     {
         "summon" => "Writes new drafts in the background until the calendar is full again; each appears as it's written.",
         "augury" => "Forgets the Scribes' order: the Augury orders every waiting rite again, by quality and variety.",
-        "anoint" => "Makes this rite the next one published. Only it joins the Scribes' order: the rites it passed stay where they were.",
+        "anoint" => "Anoints this rite: it's published after the rites anointed before it, ahead of the Augury's order.",
+        "release" => "Gives this rite back to the Augury, which orders it with the rest by quality and variety.",
         "burn" => "Takes this rite out of the calendar, into the Ashes. Nothing is deleted: it can be restored.",
         "amend" => "Changes its words by hand, or asks the Machine Spirit to rewrite them as your note says. It's judged again when saved.",
         "judge" => "Asks the Augury to judge this rite now, as the next refill would: judging it failed, or was off, when it was written.",
@@ -514,7 +515,7 @@ public static partial class ScriptoriumPage
     private static string CalendarCount(TabCounts counted)
     {
         var (scribes, augury) = (Number(counted.PlacedByScribes), Number(counted.PlacedByAugury));
-        return $"""<span aria-hidden="true" title="In the Scribes’ order / in the Augury’s">{scribes}/{augury}</span><span class="visually-hidden">: {scribes} in the Scribes’ order, {augury} in the Augury’s</span>""";
+        return $"""<span aria-hidden="true" title="Anointed / in the Augury’s order">{scribes}/{augury}</span><span class="visually-hidden">: {scribes} anointed, {augury} in the Augury’s order</span>""";
     }
 
     private static string Acted(Draft draft, Option<Guid> acted) => acted.Exists(id => id == draft.Id) ? " acted" : string.Empty;
@@ -549,7 +550,8 @@ public static partial class ScriptoriumPage
         var restore = burned.Map(ash => $"""<span data-undoable> <a href="/scriptorium/ashes?rite={ash.Id:D}#rite-{ash.Id:D}">Restore it from the Ashes</a>.</span>""").IfNone(string.Empty);
         return outcome switch
         {
-            "anoint" => $"{Named("Anointed")}: it goes out next{date.Map(day => $", {day}").IfNone(string.Empty)}.",
+            "anoint" => $"{Named("Anointed")}{date.Map(day => $": it goes out {day}").IfNone(string.Empty)}.",
+            "release" => $"{Named("Released")} to the Augury{date.Map(day => $": it waits for {day}").IfNone(string.Empty)}.",
             "exalt" => $"{Named("Exalted")}{date.Map(day => $" to {day}").IfNone(string.Empty)}.",
             "humble" => $"{Named("Humbled")}{date.Map(day => $" to {day}").IfNone(string.Empty)}.",
             "burn" => $"""<span data-undoable>{Named("Consigned")} to the flames.</span>{restore}""",
@@ -576,7 +578,8 @@ public static partial class ScriptoriumPage
         ScribeAction.Humble => "Humbled",
         ScribeAction.Burn => "Consigned to the flames",
         ScribeAction.Amend => "Amended",
-        _ => "Restored from the ashes",
+        ScribeAction.Restore => "Restored from the ashes",
+        _ => "Released to the Augury",
     };
 
     // What an entry records, after who: the rite (or precept) named by its words then, a rite linking to its own record.
@@ -595,6 +598,7 @@ public static partial class ScriptoriumPage
             AuditAction.Amend => $"amended {rite}",
             AuditAction.Summon => "summoned new rites",
             AuditAction.LetTheAuguryDecide => "let the Augury decide",
+            AuditAction.Release => $"released {rite} to the Augury",
             AuditAction.Write => $"wrote {rite}",
             AuditAction.Distil => """distilled <a href="/scriptorium/precepts">the Precepts</a>""",
             AuditAction.AddPrecept => $"added the precept {rite}",
