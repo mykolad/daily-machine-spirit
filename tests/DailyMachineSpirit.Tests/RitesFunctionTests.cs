@@ -114,20 +114,40 @@ public sealed class RitesFunctionTests : IAsyncLifetime
         Assert.Equal("no-store", context.Response.Headers.CacheControl.ToString());
     }
 
-    // Each would be cached apart, and an erasure's purge, naming the one address, would leave its old words there.
-    [Theory]
-    [InlineData("/api/v1/rites/3/heretical-truth", "3", "?reveal=yes")]
-    [InlineData("/api/v1/rites/03/heretical-truth", "03", "")]
-    [InlineData("/API/v1/rites/3/heretical-truth", "3", "")]
-    public async Task HereticalTruth_AtAnotherSpelling_RedirectsToItsOneAddress(string path, string id, string query)
+    [Fact]
+    public async Task HereticalTruth_WithAQueryString_RedirectsToItsOneAddress()
     {
-        var context = At(path);
-        context.Request.QueryString = new QueryString(query);
+        var context = At("/api/v1/rites/03/heretical-truth");
+        context.Request.QueryString = new QueryString("?reveal=yes");
 
-        var result = Assert.IsType<RedirectResult>(await Function(Repository).HereticalTruth(context.Request, id, CancellationToken.None));
+        var result = Assert.IsType<RedirectResult>(await Function(Repository).HereticalTruth(context.Request, "03", CancellationToken.None));
 
         Assert.Equal(("/api/v1/rites/3/heretical-truth", true), (result.Url, result.Permanent));
         Assert.Equal("*", context.Response.Headers.AccessControlAllowOrigin.ToString());
+    }
+
+    // Each would be cached apart, and an erasure's purge, naming the one address, would leave its old words there.
+    [Theory]
+    [InlineData("/api/v1/rites/03/heretical-truth", "03")]
+    [InlineData("/API/v1/rites/3/heretical-truth", "3")]
+    public async Task HereticalTruth_SpelledAnotherWay_IsNotFound(string path, string id)
+    {
+        await Add(new DateOnly(2026, 10, 8), RiteKind.Prayer, "The Litany of the Warm Cache", None);
+        var context = At(path);
+
+        var result = Assert.IsType<StatusCodeResult>(await Function(Repository).HereticalTruth(context.Request, id, CancellationToken.None));
+
+        Assert.Equal((StatusCodes.Status404NotFound, "no-store"), (result.StatusCode, context.Response.Headers.CacheControl.ToString()));
+    }
+
+    [Fact]
+    public async Task Rites_SpelledAnotherWay_AreNotFound()
+    {
+        var context = At("/api/v1/rites/");
+
+        var result = Assert.IsType<StatusCodeResult>(await Function(Repository).Rites(context.Request, CancellationToken.None));
+
+        Assert.Equal((StatusCodes.Status404NotFound, "no-store"), (result.StatusCode, context.Response.Headers.CacheControl.ToString()));
     }
 
     private static DefaultHttpContext At(string path)

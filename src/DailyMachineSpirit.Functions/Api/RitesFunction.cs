@@ -43,9 +43,13 @@ public sealed class RitesFunction
         CancellationToken cancellationToken)
     {
         OpenToAll(request);
-        if (!AtItsOneAddress(request, Paths.RitesApi))
+        if (request.QueryString.HasValue)
         {
             return new RedirectResult(Paths.RitesApi, permanent: true);
+        }
+        if (!SpelledAs(request, Paths.RitesApi))
+        {
+            return NotFound(request);
         }
 
         var site = $"https://{request.Host}";
@@ -61,15 +65,18 @@ public sealed class RitesFunction
         CancellationToken cancellationToken)
     {
         OpenToAll(request);
-        // Read as text: the worker can't bind `01` to an int (it fails the request), and `01` is the rite NO. 1's
-        // address spelled another way, redirected below.
+        // Read as text: the worker can't bind `01` to an int, and fails the request.
         if (!int.TryParse(id, NumberStyles.None, CultureInfo.InvariantCulture, out var number) || number < 1)
         {
             return NotFound(request);
         }
-        if (!AtItsOneAddress(request, Paths.HereticalTruthApi(number)))
+        if (request.QueryString.HasValue)
         {
             return new RedirectResult(Paths.HereticalTruthApi(number), permanent: true);
+        }
+        if (!SpelledAs(request, Paths.HereticalTruthApi(number)))
+        {
+            return NotFound(request);
         }
 
         return (await rites.GetHereticalTruth(number, cancellationToken)).Match(
@@ -89,11 +96,12 @@ public sealed class RitesFunction
         headers.AccessControlAllowOrigin = "*";
     }
 
-    // Cloudflare keeps every spelling of an address apart (a query string, `/01/` for `/1/`, another case), so each new
-    // one would read the rites again, and a purge, which names the one address, would miss the others. One address for
-    // each answer: a redirect costs no read, and it's cached too.
-    private static bool AtItsOneAddress(HttpRequest request, string address)
-        => !request.QueryString.HasValue && string.Equals(request.Path.Value, address, StringComparison.Ordinal);
+    // Cloudflare keeps every spelling of an address apart, and a purge names only the one: an answer kept at `/01/` would
+    // still show words erased from `/1/`. Another spelling (`/01/`, another case, a trailing slash) is not found, and a
+    // query string, which a client may add to dodge a cache, is redirected: the redirect is cached too, and every new
+    // query string would otherwise read the rites again.
+    private static bool SpelledAs(HttpRequest request, string address)
+        => string.Equals(request.Path.Value, address, StringComparison.Ordinal);
 
     private static ContentResult Answer<T>(HttpRequest request, T body)
     {

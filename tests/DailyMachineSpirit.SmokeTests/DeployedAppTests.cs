@@ -83,10 +83,9 @@ public sealed partial class DeployedAppTests
             Assert.True(truth.Status == HttpStatusCode.OK, $"{truth.Path} answered {(int)truth.Status}, not 200.");
             Assert.False(string.IsNullOrEmpty(JsonSerializer.Deserialize<JsonElement>(truth.Text).GetProperty("hereticalTruth").GetString()),
                 $"{truth.Path} has no Heretical Truth.");
-            // Spelled another way, it leads to the same truth (the client follows the redirect): the host can fail before
-            // the app sees such an address.
+            // Spelled another way, it's not found: the worker failed such an address with a 500 once, before the app saw it.
             var spelled = await app.Get($"/api/v1/rites/0{rite.GetProperty("number").GetInt32()}/heretical-truth");
-            Assert.True(spelled.Status == HttpStatusCode.OK, $"{spelled.Path} answered {(int)spelled.Status}, not 200.");
+            Assert.True(spelled.Status == HttpStatusCode.NotFound, $"{spelled.Path} answered {(int)spelled.Status}, not 404.");
         }
     }
 
