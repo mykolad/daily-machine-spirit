@@ -167,7 +167,8 @@ observability/                    — the Grafana dashboards (technical, activit
     purged at most once a minute per instance; a new rite purges Today and the search index at once. The archive and a
     tag's page, which no purge can find, stay a minute, as does any address with a query string (Cloudflare caches each
     apart). Purges go 30 URLs to a request. A purge never fails the change: it's logged and counted (`dms.pages.purges`), and the page
-    refreshes within the hour.
+    refreshes within the hour. Every page also carries `stale-if-error` (a week): while the app fails, Cloudflare serves
+    the copies it still holds instead of an error page.
     Settings: `Cloudflare:ZoneId`, `:SiteUrl`, `:ApiToken` (a token that may only purge the zone); without them
     (staging, a local run) nothing is purged.
   - **The voter's own counts survive a cached page:** the vote answers with the counts and when they were counted

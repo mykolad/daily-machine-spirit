@@ -30,7 +30,7 @@ public sealed class SearchIndexFunctionTests : IAsyncLifetime
 
         Assert.Equal(StatusCodes.Status200OK, result.StatusCode);
         Assert.Equal("application/json; charset=utf-8", result.ContentType);
-        Assert.Equal("public, max-age=60, s-maxage=3600", context.Response.Headers.CacheControl.ToString());
+        Assert.Equal("public, max-age=60, s-maxage=3600, stale-if-error=604800", context.Response.Headers.CacheControl.ToString());
         var entries = JsonSerializer.Deserialize<SearchIndexEntry[]>(result.Content ?? "[]", new JsonSerializerOptions(JsonSerializerDefaults.Web)) ?? [];
         Assert.Equal(
             [
