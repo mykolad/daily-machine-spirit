@@ -34,9 +34,9 @@ public sealed class DailyRiteFunction
         var result = await publisher.PublishToday(cancellationToken);
         if (result.Exists(published => published.IsNew))
         {
-            // Today showed yesterday's rite (or the slumbering page), and the search field's index lacked the new one: both
-            // are kept at the edge until purged.
-            await pages.Purge([Paths.Today, Paths.SearchIndex], cancellationToken);
+            // Today showed yesterday's rite (or the slumbering page), and the search field's index and the rites API
+            // lacked the new one: all are kept at the edge until purged.
+            await pages.Purge([Paths.Today, Paths.SearchIndex, Paths.RitesApi], cancellationToken);
         }
         return result.Match(
             Right: published =>

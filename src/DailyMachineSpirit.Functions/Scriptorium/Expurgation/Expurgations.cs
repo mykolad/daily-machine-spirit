@@ -70,7 +70,7 @@ public sealed partial class Expurgations
         }
         if (erased.Exists(rite => rite.IsSome))
         {
-            await pages.Purge([Paths.Today, Paths.Rite(number), Paths.SearchIndex], cancellationToken);
+            await pages.Purge([Paths.Today, Paths.Rite(number), Paths.SearchIndex, Paths.RitesApi], cancellationToken);
         }
         return erased;
     }

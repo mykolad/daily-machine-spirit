@@ -32,6 +32,9 @@ public interface IRiteRepository
     /// <summary>Every rite's words, the newest first, without scores, votes or tags.</summary>
     Task<Either<Error, List<RiteWords>>> GetAllWords(CancellationToken cancellationToken);
 
+    /// <summary>Every rite's words and tags, the newest first, without scores or votes.</summary>
+    Task<Either<Error, List<TaggedRiteWords>>> GetAllTaggedWords(CancellationToken cancellationToken);
+
     /// <summary>
     /// The saved rite, with the next number; <see cref="RiteRepository.DayAlreadyHasRite"/> when that day already has one,
     /// so two generations for the same day can't both save.

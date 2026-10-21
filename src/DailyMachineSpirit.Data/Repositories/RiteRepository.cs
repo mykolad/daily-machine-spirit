@@ -75,6 +75,13 @@ public class RiteRepository : IRiteRepository
                 .WithParameter("@type", RiteDocument.RiteType),
             cancellationToken));
 
+    public Task<Either<Error, List<TaggedRiteWords>>> GetAllTaggedWords(CancellationToken cancellationToken)
+        => Attempt(async () => (await container.Query<TaggedRiteWordsDocument>(
+            new QueryDefinition(
+                "SELECT c.number, c.publishedOnUtc, c.kind, c.title, c.text, c.hereticalTruth, c.tags FROM c WHERE c.type = @type ORDER BY c.number DESC")
+                .WithParameter("@type", RiteDocument.RiteType),
+            cancellationToken)).Select(document => document.ToTaggedRiteWords()).ToList());
+
     public Task<Either<Error, List<RiteDay>>> GetDays(CancellationToken cancellationToken)
         => Attempt(async () => await container.Query<RiteDay>(
             new QueryDefinition("SELECT c.number, c.publishedOnUtc FROM c WHERE c.type = @type ORDER BY c.number DESC")

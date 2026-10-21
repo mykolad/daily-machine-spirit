@@ -16,6 +16,9 @@ public static class Paths
     /// </summary>
     public const string SearchIndex = "/api/search-index";
 
+    /// <summary>The public rites API, version 1: every published rite, for clients outside the site (<c>docs/api.md</c>).</summary>
+    public const string RitesApi = "/api/v1/rites";
+
     public static string Rite(int number) => $"/r/{number}";
 
     public static string ArchiveBefore(int number) => $"{Archive}?before={number}";

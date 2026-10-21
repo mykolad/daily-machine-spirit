@@ -63,6 +63,24 @@ public sealed partial class DeployedAppTests
         }
     }
 
+    // The public rites API that clients outside the site rely on (docs/api.md): its shape is a contract.
+    [Fact]
+    public async Task TheRitesApi_Answers()
+    {
+        var page = await app.Get("/api/v1/rites");
+
+        Assert.True(page.Status == HttpStatusCode.OK, $"{page.Path} answered {(int)page.Status}, not 200.");
+        // A new environment has no rite yet, and rightly lists none.
+        var rites = JsonSerializer.Deserialize<JsonElement>(page.Text).GetProperty("rites");
+        Assert.Equal(JsonValueKind.Array, rites.ValueKind);
+        foreach (var rite in rites.EnumerateArray().Take(1))
+        {
+            Assert.True(rite.GetProperty("number").GetInt32() > 0, $"{page.Path}'s first rite has no number.");
+            Assert.False(string.IsNullOrEmpty(rite.GetProperty("hereticalTruth").GetString()), $"{page.Path}'s first rite has no Heretical Truth.");
+            Assert.EndsWith($"/r/{rite.GetProperty("number").GetInt32()}", rite.GetProperty("url").GetString());
+        }
+    }
+
     // Search was a page of its own: links to it lead to the Archive's search (the client follows the redirect).
     [Fact]
     public async Task TheOldSearchAddress_LeadsToTheArchivesSearch()
