@@ -70,6 +70,7 @@ public static class Styles
         .parchment .imperial-date:focus-visible{outline-color:#8f2a20;outline-offset:2px}
         .imperial-day{display:none;position:absolute;z-index:5;top:calc(100% + 6px);left:50%;transform:translateX(-50%);padding:6px 12px;border-radius:8px;background:#241c12;color:#ede3cf;font-family:Figtree,system-ui,sans-serif;font-style:normal;font-weight:500;font-size:14px;line-height:1.3;letter-spacing:0;white-space:nowrap;box-shadow:0 6px 20px rgba(0,0,0,.4)}
         .imperial:hover .imperial-day,.imperial-date:focus-visible+.imperial-day,.imperial[data-open] .imperial-day{display:block}
+        .imperial-day::before{content:'';position:absolute;left:0;right:0;top:-6px;height:6px}
         .imperial[data-dismissed] .imperial-day{display:none}
         .parchment .divider{margin:6px 0 10px}
         .prayer{margin:0;align-self:stretch;text-align:left;font-family:'EB Garamond',serif;font-size:clamp(20px,2.4vw,23px);line-height:1.65;color:#2b2117;text-wrap:pretty}

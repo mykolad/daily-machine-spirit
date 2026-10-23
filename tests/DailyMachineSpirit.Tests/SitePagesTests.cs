@@ -761,7 +761,7 @@ public sealed class SitePagesTests : IAsyncLifetime
 
     // The archive rows' titles, in order, without a search's marks.
     private static List<string> Titles(string html)
-        => Regex.Matches(html, """<a class="row-title" href="/r/\d+">(.*?)</a>""")
+        => Regex.Matches(html, """<a class="row-title" href="/r/\d+" title="[^"]+">(.*?)</a>""")
             .Select(match => match.Groups[1].Value.Replace("<mark>", string.Empty).Replace("</mark>", string.Empty))
             .ToList();
 

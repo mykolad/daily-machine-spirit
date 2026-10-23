@@ -549,6 +549,7 @@ public static class Script
                   const said = document.createElement('span');
                   said.className = 'sr-only';
                   said.textContent = `${day} ${monthNames[month - 1]} ${year}`;
+                  shown.title = said.textContent;
                   meta.append(`${rite.kind === 'prayer' ? 'Prayer' : 'Ritual'} · `, shown, said);
                   return optionOf(`search-option-${rite.number}`, `/r/${rite.number}`, marked(rite.title, words, false), meta);
                 }));
@@ -642,32 +643,38 @@ public static class Script
 
           // An Imperial date's day as we reckon it shows while the pointer is on it or it has focus (the stylesheet); a
           // tap shows or hides it too, for a touch screen, and a tap elsewhere hides it. Escape hides any, until the
-          // pointer leaves or focus moves on (WCAG 1.4.13).
-          const dates = [...document.querySelectorAll('.imperial')];
-          for (const date of dates) {
-            const button = date.querySelector('.imperial-date');
-            button.addEventListener('click', () => {
-              date.toggleAttribute('data-open');
-              date.removeAttribute('data-dismissed');
-            });
-            button.addEventListener('blur', () => {
-              date.removeAttribute('data-open');
-              date.removeAttribute('data-dismissed');
-            });
-            date.addEventListener('mouseleave', () => date.removeAttribute('data-dismissed'));
-          }
-          if (dates.length > 0) {
-            document.addEventListener('click', (event) => {
-              dates.filter((date) => !date.contains(event.target)).forEach((date) => date.removeAttribute('data-open'));
-            });
-            document.addEventListener('keydown', (event) => {
-              if (event.key !== 'Escape') return;
-              dates.forEach((date) => {
+          // pointer leaves or focus moves on (WCAG 1.4.13). Listened for on the document, since the Archive's search swaps
+          // its margins, "Since" with them, for new ones.
+          const dateOf = (target) => (target instanceof Element ? target.closest('.imperial') : null);
+          document.addEventListener('click', (event) => {
+            const tapped = event.target instanceof Element && event.target.closest('.imperial-date') ? dateOf(event.target) : null;
+            document.querySelectorAll('.imperial').forEach((date) => {
+              if (date === tapped) {
+                date.toggleAttribute('data-open');
+                date.removeAttribute('data-dismissed');
+              } else {
                 date.removeAttribute('data-open');
-                date.setAttribute('data-dismissed', '');
-              });
+              }
             });
-          }
+          });
+          document.addEventListener('focusout', (event) => {
+            const date = dateOf(event.target);
+            date?.removeAttribute('data-open');
+            date?.removeAttribute('data-dismissed');
+          });
+          document.addEventListener('mouseout', (event) => {
+            const date = dateOf(event.target);
+            if (date && !date.contains(event.relatedTarget)) date.removeAttribute('data-dismissed');
+          });
+          // Only a day showing is dismissed: one hidden now must still show when focus or the pointer comes to it.
+          document.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape') return;
+            document.querySelectorAll('.imperial').forEach((date) => {
+              if (!date.matches('[data-open], :hover, :has(.imperial-date:focus-visible)')) return;
+              date.removeAttribute('data-open');
+              date.setAttribute('data-dismissed', '');
+            });
+          });
         })();
         """;
 }

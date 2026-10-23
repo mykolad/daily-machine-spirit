@@ -216,5 +216,6 @@ and candles behind it, and the recent rites under Today.
   it (`aria-describedby`), so it's said without opening anything. The date stays a `<time datetime>`.
 - **Inside a link** (the Archive's rows, recent rites, More rites, the search's suggestions), where a button can't be,
   the day is visually hidden text after the Imperial date, which is hidden from screen readers, so they hear the day
-  alone; the pointer gets it from the `title`. A touch screen reads it on the rite's own page, a tap away.
+  alone; the pointer gets it from a `title` (an Archive row's on its link, which covers the row). A touch screen
+  reads it on the rite's own page, a tap away.
 - **On the parchment the button's focus ring is red** (`#8f2a20`), as the sheet's controls are: amber is too faint there.
