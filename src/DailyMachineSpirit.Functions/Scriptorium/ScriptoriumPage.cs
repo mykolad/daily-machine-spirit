@@ -620,7 +620,7 @@ public static partial class ScriptoriumPage
     // The rites put commands and file names in `backticks`.
     private static string WithCode(string text) => InlineCode().Replace(Encode(text), "<code>$1</code>");
 
-    // The trouble the rite is for, which the rites API serves; a draft written before ailments shows none until the backfill.
+    // The trouble the rite is for, which the rites API serves.
     private static string Ailment(RiteWriting writing)
         => writing.Ailment.Match(
             Some: ailment => $"""<p class="ailment"><span class="truth-label">Ailment</span> {WithCode(ailment)}</p>""",

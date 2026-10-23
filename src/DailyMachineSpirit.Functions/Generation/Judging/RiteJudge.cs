@@ -31,6 +31,4 @@ public sealed class RiteJudge : IRiteJudge
                from judgment in augury
                select judged with { Augury = Some(judgment) };
     }
-
-    public Option<string[]> TagsFrom(RiteSimilarity scores) => similarity.TagsFrom(scores);
 }

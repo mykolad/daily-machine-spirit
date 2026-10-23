@@ -143,20 +143,6 @@ public class RiteRepository : IRiteRepository, IRitePublishing
                 .WithParameter("@number", number),
             cancellationToken)).Select(document => document.ToRite()).ToList());
 
-    public Task<Either<Error, List<Rite>>> GetUntagged(CancellationToken cancellationToken)
-        => Attempt(async () => (await container.Query<RiteDocument>(
-            new QueryDefinition("SELECT * FROM c WHERE c.type = @type AND IS_OBJECT(c.similarity) AND NOT IS_ARRAY(c.tags)")
-                .WithParameter("@type", RiteDocument.RiteType),
-            cancellationToken)).Select(document => document.ToRite()).ToList());
-
-    public Task<Either<Error, Unit>> SaveTags(DateOnly publishedOnUtc, string[] tags, CancellationToken cancellationToken)
-        => Attempt(async () =>
-        {
-            await container.PatchItemAsync<RiteDocument>(RiteDocument.IdFor(publishedOnUtc), SharedPartitionKey,
-                [PatchOperation.Set("/tags", tags)], cancellationToken: cancellationToken);
-            return unit;
-        });
-
     private sealed record NumberAndScores(int Number, float[] Scores);
 
     // The rites holding every word somewhere in their title, text or Heretical Truth, ignoring case. Each word is a

@@ -22,7 +22,7 @@ public sealed record RiteWriting
 
     /// <summary>
     /// The trouble the rite is for, in a line, without its fix ("a test that fails at random and passes when re-run"): what
-    /// a client of the rites API matches a user's trouble on. None until <c>AilmentBackfill</c> writes one.
+    /// a client of the rites API matches a user's trouble on.
     /// </summary>
     public Option<string> Ailment { get; init; }
 

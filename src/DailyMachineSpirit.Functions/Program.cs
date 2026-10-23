@@ -12,7 +12,6 @@ using DailyMachineSpirit.Functions.Scriptorium.Expurgation;
 using DailyMachineSpirit.Functions.Scriptorium.Naming;
 using DailyMachineSpirit.Functions.Scriptorium.SignIn;
 using DailyMachineSpirit.Functions.Snapshot;
-using DailyMachineSpirit.Functions.Tags;
 using DailyMachineSpirit.Functions.Telemetry;
 using DailyMachineSpirit.Functions.Voters;
 using Microsoft.AspNetCore.DataProtection;
@@ -107,14 +106,11 @@ builder.Services.AddSingleton<IExpurgationRepository>(services => new SnapshotFo
 builder.Services.AddSingleton<IPreceptRepository, PreceptRepository>();
 builder.Services.AddSingleton<IScribeNameRepository, ScribeNameRepository>();
 builder.Services.AddSingleton<IVoteRepository, VoteRepository>();
-builder.Services.AddSingleton<IBurnRepository, BurnRepository>();
-builder.Services.AddSingleton<IAilmentRepository, AilmentRepository>();
 
 // The daily rite and the backlog. Created only when the timer or a refill runs, so HTTP functions start without the generation settings.
 Tuned<RiteWritingOptions>(RiteWritingOptions.SectionName);
 Tuned<BacklogOptions>(BacklogOptions.SectionName);
 Tuned<DuplicateRiteCheckOptions>(DuplicateRiteCheckOptions.SectionName);
-Tuned<AilmentWritingOptions>(AilmentWritingOptions.SectionName);
 Tuned<PreceptDistillingOptions>(PreceptDistillingOptions.SectionName);
 Tuned<PreceptCheckOptions>(PreceptCheckOptions.SectionName);
 Tuned<AuguryOptions>(AuguryOptions.SectionName);
@@ -126,14 +122,8 @@ builder.Services.AddSingleton<IChatClients>(_ => new AzureOpenAIChatClients(open
 builder.Services.AddHttpClient<ISimilarityJudge, JevJudge>(http => http.Timeout = jev.Patience.TryLimit.IfNone(Timeout.InfiniteTimeSpan));
 builder.Services.AddTransient<IQualityJudge, RubricJudge>();
 builder.Services.AddTransient<IRiteJudge, RiteJudge>();
-// Tags the rites judged before tags existed, once per start (nothing left after the first).
-builder.Services.AddHostedService<TagBackfill>();
-// Gives the drafts burned before a draft kept its burn's details the Record's, once per start.
-builder.Services.AddHostedService<BurnBackfill>();
-builder.Services.AddHostedService<AilmentBackfill>();
 builder.Services.AddTransient<RiteWriter>();
 builder.Services.AddTransient<DuplicateCheck>();
-builder.Services.AddTransient<AilmentWriter>();
 builder.Services.AddTransient<DraftJudging>();
 builder.Services.AddTransient<BacklogRefiller>();
 builder.Services.AddTransient<DailyRitePublisher>();

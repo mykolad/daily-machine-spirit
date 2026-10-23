@@ -63,11 +63,6 @@ public sealed class SwitchableRites : IRiteRepository
     public Task<Either<Error, List<Rite>>> GetTaggedOlderThan(string tag, int number, int count, CancellationToken cancellationToken)
         => Counted(() => Current.GetTaggedOlderThan(tag, number, count, cancellationToken));
 
-    public Task<Either<Error, List<Rite>>> GetUntagged(CancellationToken cancellationToken) => Current.GetUntagged(cancellationToken);
-
-    public Task<Either<Error, Unit>> SaveTags(DateOnly publishedOnUtc, string[] tags, CancellationToken cancellationToken)
-        => Current.SaveTags(publishedOnUtc, tags, cancellationToken);
-
     private async Task<T> Counted<T>(Func<Task<T>> read)
     {
         Reads++;

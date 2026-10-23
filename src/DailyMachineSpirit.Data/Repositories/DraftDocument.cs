@@ -24,7 +24,6 @@ internal sealed record DraftDocument
 
     public string HereticalTruth { get; init; } = string.Empty;
 
-    // Null until AilmentBackfill writes one.
     public string? Ailment { get; init; }
 
     public string GeneratedByModel { get; init; } = string.Empty;
@@ -44,8 +43,6 @@ internal sealed record DraftDocument
 
     public DateTime? BurnedAtUtc { get; init; }
 
-    // Written as null when unknown, so a burned draft missing them (burned before they were kept) is told apart from one
-    // whose Record had none: BurnRepository.GetBurnedWithoutDetails.
     public string? BurnedBy { get; init; }
 
     public int? BurnedFromPlace { get; init; }

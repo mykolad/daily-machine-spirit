@@ -21,15 +21,6 @@ public interface IDraftRepository
     /// <summary>The drafts that can still be published, in no particular order (the Augury orders them).</summary>
     Task<Either<Error, List<Draft>>> GetWaiting(CancellationToken cancellationToken);
 
-    /// <summary>The drafts judged before tags existed: with scores, without tags. Whatever their state.</summary>
-    Task<Either<Error, List<Draft>>> GetUntagged(CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Tags a draft <see cref="GetUntagged"/> found, if it's still untagged and scored: changed since (an amendment
-    /// tagged it anew, or cleared its scores), it's left as it is.
-    /// </summary>
-    Task<Either<Error, Unit>> SaveTags(Guid draftId, string[] tags, CancellationToken cancellationToken);
-
     /// <summary>
     /// Saves a judgment (scores, quality, tags) with its record entry, if the draft is still the version judged
     /// (<paramref name="etag"/>): <see cref="ScriptoriumRepository.ChangedMeanwhile"/> when it was judged, amended, burned

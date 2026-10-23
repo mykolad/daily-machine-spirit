@@ -104,7 +104,7 @@ public sealed class RiteSnapshotTests : IAsyncLifetime
     {
         Type[] saving = [typeof(Functions.Generation.BacklogRefiller), typeof(Functions.Generation.DailyRitePublisher),
             typeof(Functions.Scriptorium.Scribes), typeof(Functions.Scriptorium.Expurgation.Expurgations),
-            typeof(Functions.Tags.TagBackfill), typeof(RiteSnapshots)];
+            typeof(RiteSnapshots)];
 
         Assert.False(typeof(IRiteRepository).IsAssignableFrom(typeof(RitesWithFallback)));
         Assert.All(saving, type => Assert.Contains(type.GetConstructors().Single().GetParameters(), parameter => parameter.ParameterType == typeof(IRiteRepository)));

@@ -28,7 +28,6 @@ internal sealed record RiteDocument
 
     public string HereticalTruth { get; init; } = string.Empty;
 
-    // Null until AilmentBackfill writes one.
     public string? Ailment { get; init; }
 
     public string GeneratedByModel { get; init; } = string.Empty;
@@ -46,7 +45,7 @@ internal sealed record RiteDocument
     // Null when missing: the JSON serializer doesn't know Option, so this is the one place a rite's null lives.
     public RiteSimilarity? Similarity { get; init; }
 
-    // Null until its judge tagged it: rites judged before tags existed get theirs later (TagBackfill).
+    // Null until its judge tagged it.
     public string[]? Tags { get; init; }
 
     public static string IdFor(DateOnly publishedOnUtc) => publishedOnUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
