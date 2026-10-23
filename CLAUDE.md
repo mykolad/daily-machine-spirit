@@ -465,7 +465,7 @@ skills/                           — Consult the Machine Spirit, a skill that p
     for being simple (the labels themselves stay the rite's names). Each draft's tags show as chips under its title,
     to match against the calendar's subjects.
   - **The Calendar** (`ScriptoriumPage.Calendar`, the redesign's step 1, `design_handoff_scriptorium_calendar` outside
-    the repo; the Ashes, Precepts and Record follow with the same header and tabs): two groups, the anointed and
+    the repo; the Precepts and Record follow with the same header and tabs): two groups, the anointed and
     the Augury's order, each rite a row (place, day, title, tags, the Augury's score, and an anointed one's Exalt and
     Humble) that opens into its card, where an anointed rite's Release to the Augury stands in Anoint's stead, before
     the burn; the next to publish is open, with when it goes out. The header says who's signed in. No summary or help
@@ -477,22 +477,33 @@ skills/                           — Consult the Machine Spirit, a skill that p
     and "Duplicate" (the Record's most common burn notes), "The joke falls flat" and "The truth is wrong" (the rubric's
     measures), or the Scribe's own words, sent as the note; none is needed. Without the script, every card is open and
     a burn takes the note, as before.
+  - **The Ashes** (`ScriptoriumPage.Ashes`, the redesign's step 2): the burned rites (the newest,
+    `ScriptoriumPages:AshesShown`, saying how many there are in all), grouped by the day they burned, each a row (its
+    kind, the place it burned from, title, tags, why it burned, and Restore) that opens into its card, saying who
+    burned it. The same subject chips narrow them. Restoring stays in the Ashes (its forms carry `page=ashes`), with
+    a message naming the rite and linking to it in the calendar.
+    - **Who burned it, from where and why** are kept on the draft while it's burned (`BurnedBy`, `BurnedFromPlace`,
+      `BurnReason`: the Record's actor, the decision's place and note, saved in the burn's batch), so the page needs no
+      join with the Record; a restore clears them, as it clears `BurnedAtUtc`. Drafts burned before they were kept get
+      them from the Record when the app starts (`BurnBackfill`, `IBurnRepository`); a burn older than the Record says
+      "a Scribe" and no place. They're written as null when unknown, so a draft missing them is one still to fill.
   - **Tabs** (`TabCounting`): the Calendar (`/scriptorium`), the Ashes (`/scriptorium/ashes`), the Precepts and the
     Record each start with the tab bar, every tab saying what its page holds: the anointed rites and those in the Augury's order ("4/16", said in words to a screen
     reader), the burned ones, the
     precepts, the Record's entries. They're counted on every load, a few
-    small queries; when a count fails, the tabs show without counts. The Ashes shows the newest burned
-    (`ScriptoriumPages:AshesShown`) and says how many there are in all. Amending a rite and choosing a name are pages
+    small queries; when a count fails, the tabs show without counts. The Calendar, the Ashes and the Record say who's
+    signed in, with the way to choose a name and the Expurgator's Desk. Amending a rite and choosing a name are pages
     under a tab, without the bar: they lead back where they came from.
-  - **Shown in place** (`ScriptoriumScript`): where scripts run, an action is posted in the background, the new page's
-    calendar replaces the old, and each rite that moved slides from its old place to its new one, so a Scribe sees
+  - **Shown in place** (`ScriptoriumScript`, the Calendar's and the Ashes'): where scripts run, an action is posted in
+    the background, the new page replaces the old, and each rite that moved slides from its old place to its new one, so a Scribe sees
     what changed (an Exalt can reorder the rites the Augury places, too). The status message stays the same element,
-    so it's announced, and the tab bar is swapped for the new page's, with its new counts; focus returns to the same button (after a burn, to the rite now in its place in the calendar,
-    which the Augury may have reordered, without scrolling away). Anything unexpected (an error, Cloudflare Access wanting a new sign-in) loads `/scriptorium`
+    so it's announced, and the tab bar is swapped for the new page's, with its new counts; focus returns to the same button (after a burn or a restore, to the rite now in its place,
+    which the Augury may have reordered, without scrolling away). Anything unexpected (an error, Cloudflare Access wanting a new sign-in) loads the page
     afresh. Reduced motion: no slide, only the mark. The cards a Scribe opened (kept for the session in
     `sessionStorage`) and the notes being written on other rites survive the swap, even while a subject hides them. A subject's chip loads the narrowed
     calendar the same way. After a burn, a toast offers Undo for seven seconds (longer while the pointer or focus is on
-    it), and the status drops the words it says.
+    it), and the status drops the words it says. After a restore in the Ashes, the same: its Undo burns the rite again
+    for the reason it had (the row's `data-reason`), as a new burn, so it's back among the Ashes as burned now.
   - **Access:** who counts as a Scribe is an `IScribeSignIn`
     (`Scriptorium/SignIn/`), chosen to fail closed (`AddScribeSignIn`):
     - **Cloudflare Access** (`CloudflareAccess:TeamDomain` and `:Audience` set, production): every request must carry

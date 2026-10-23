@@ -59,6 +59,21 @@ each opening into its card, subject chips, a reason asked at the moment of burni
   it's announced, and its seven seconds wait while the pointer or focus is on it (WCAG 2.2.1). After that, the Ashes
   still restore the rite, as without the script; the toast says what the status message would, so the message drops
   those words rather than say them twice.
+- **Button labels don't wrap, except on a narrow screen:** the handoff's `white-space: nowrap` on every button holds
+  down to 400px wide; below that, labels wrap again, so "Ask the Machine Spirit to Rewrite" never pushes the page
+  sideways at 320px (WCAG 1.4.10, reflow).
+
+## The Ashes (the Scriptorium redesign, step 2)
+
+- **Each day is a heading** ("Burned Tue 20 Oct", with its count), so a screen reader can move between the days, and
+  its rows are a list named by it. The burn-day red (`#e88a78`) is 7.6:1 on the page.
+- **The row's Restore names its rite** with visually hidden text ("Restore from the Ashes: The Rite of the Blessed
+  Seed") instead of the handoff's `aria-label`, so the name still begins with the visible word (WCAG 2.5.3).
+- **Why it burned is said as such:** the quoted reason under the title starts with a visually hidden "Why it burned:",
+  since the quotation marks alone tell a screen reader nothing.
+- **Undo after a restore** is the calendar's toast, in the same `role="status"` region, waiting while the pointer or
+  focus is on it. Focus goes to the rite now in the restored one's place, as after a burn on the calendar.
+
 - **An Expurgator chooses words with checkboxes,** one per word, each labelled by its word, in a fieldset per part
   (Title, Text, Heretical Truth): a keyboard and a screen reader choose them as any checkbox, without a script. The box
   itself is invisible over its word; a chosen word is struck through on a dark red ground, so the choice isn't shown by
