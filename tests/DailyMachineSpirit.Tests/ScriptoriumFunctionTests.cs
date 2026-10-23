@@ -277,6 +277,26 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Contains($"The {Settings.ScriptoriumPages.AshesShown} burned most recently, of {Settings.ScriptoriumPages.AshesShown + 1}.", html);
     }
 
+    // One rite's record leads to the rite where it is now: waiting, burned, or published.
+    [Fact]
+    public async Task OneRitesRecord_LeadsToTheRiteWhereItIsNow()
+    {
+        var draft = await testbed.AddDraft("Wanderer", 0.9f);
+        var function = Function();
+        string RecordOf() => $"?draft={draft.Id:D}";
+
+        var waiting = Html(await function.Record(Get(RecordOf()), CancellationToken.None), 200);
+        await function.Decide(Post(""), draft.Id, "burn", CancellationToken.None);
+        var burned = Html(await function.Record(Get(RecordOf()), CancellationToken.None), 200);
+        await function.Decide(Post(""), draft.Id, "restore", CancellationToken.None);
+        var published = Ok(await testbed.Publisher().PublishToday(CancellationToken.None));
+        var read = Html(await function.Record(Get(RecordOf()), CancellationToken.None), 200);
+
+        Assert.Contains($"""<p>One rite's record. <a href="/scriptorium?rite={draft.Id:D}#rite-{draft.Id:D}">See it in the calendar</a> · <a href="/scriptorium/record">The whole record</a></p>""", waiting);
+        Assert.Contains($"""<a href="/scriptorium/ashes?rite={draft.Id:D}#rite-{draft.Id:D}">See it in the Ashes</a>""", burned);
+        Assert.Contains($"""<a href="/r/{published.Rite.Number}">Read it, NO. {published.Rite.Number}</a>""", read);
+    }
+
     [Fact]
     public async Task Page_CarriesTheSitesIcon_Inline()
     {
@@ -919,7 +939,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var html = Html(await Function().Page(Following(response.Result), CancellationToken.None), 200);
         Assert.Matches("Judged “Litany of the Cold Cache” again, \\d+%: the Augury places it for ", html);
         Assert.Contains($"""A Scribe on staging judged <a href="/scriptorium/record?draft={unjudged.Id:D}">“Litany of the Cold Cache”</a> again""", ScriptoriumPage.RenderRecord(
-            Ok(await testbed.Audit.GetHistory(unjudged.Id, CancellationToken.None)), [], LanguageExt.Prelude.None, LanguageExt.Prelude.None));
+            Ok(await testbed.Audit.GetHistory(unjudged.Id, CancellationToken.None)), [], LanguageExt.Prelude.None, LanguageExt.Prelude.None, LanguageExt.Prelude.None));
     }
 
     [Fact]

@@ -156,8 +156,12 @@ public sealed class ScriptoriumFunction
             None: () => audit.GetNewest(pages.Value.RecordEntriesShown, cancellationToken));
         var names = await Names(cancellationToken);
         var counts = await tabs.Count(cancellationToken);
+        // Where the rite is now, to lead to it; unreadable, its record goes without the way there.
+        var found = await draft.MatchAsync(
+            Some: async id => (await scribes.Find(id, cancellationToken)).IfLeft(Option<Draft>.None),
+            None: () => Option<Draft>.None);
         return entries.Match(
-            Right: entries => Html(request, ScriptoriumPage.RenderRecord(entries, names, counts, draft), StatusCodes.Status200OK),
+            Right: entries => Html(request, ScriptoriumPage.RenderRecord(entries, names, counts, draft, found), StatusCodes.Status200OK),
             Left: error => Failed(request, error));
     }
 

@@ -396,7 +396,8 @@ skills/                           — Consult the Machine Spirit, a skill that p
       judged drafts count: without a quality, the Augury places a draft by age alone. When
       both stay low, the Augury can be left to choose on its own.
   - **The Record** (`/scriptorium/record`, #9): who changed what, newest first, the last 100; `?draft=` gives one
-    draft's whole history. An `AuditEntry` (documents of type `audit`) is saved in the same batch as each change, so
+    draft's whole history, with the way to it as it is now: its card in the calendar or the Ashes (opened, marked and
+    scrolled to), or its page once published. An `AuditEntry` (documents of type `audit`) is saved in the same batch as each change, so
     there's no change without its entry: the Scribes' actions, and the Machine Spirit's own (each draft it writes, each
     rite it publishes). Only Summon, which stores nothing itself, saves its entry alone, and goes ahead if that fails.
     - **Who:** a Scribe is their Access id (the token's `sub`), never their email; on staging, with no sign-in, every
