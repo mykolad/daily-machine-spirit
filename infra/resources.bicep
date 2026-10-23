@@ -14,9 +14,9 @@ param githubSubjectPrefix string = 'repo:mykolad@2202717/daily-machine-spirit@14
 // first, and production's are left as they are (nothing deleted, nothing updated). The shared resources above (the
 // models, Cosmos DB, the infrastructure identity) are deployed either way, and production uses them too.
 param deployProduction bool = false
-// Where the rites' snapshot is kept (#112): outside the app's region, so an outage there leaves the copy readable. North
-// Europe has Flex Consumption too, for a second region later (#113).
-param snapshotLocation string = 'northeurope'
+// Where the rites' snapshot is kept (#112): outside the app's region, so an outage there leaves the copy readable, and
+// outside North Europe, the second region planned for the app (#113), so the copy outlives an outage of either.
+param snapshotLocation string = 'germanywestcentral'
 
 var roles = {
   cognitiveServicesOpenAiUser: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'

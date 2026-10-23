@@ -122,7 +122,7 @@ skills/                           — Consult the Machine Spirit, a skill that p
   (`CosmosClients.Create`); the account's keys stay off. The account, databases, container, role assignments and the
   app's settings are all created by the Bicep in `infra/`, never by the app (its data-plane role can't create them). Settings: `Cosmos:Endpoint`, `Cosmos:Database`.
 - **Read-only when Cosmos DB is down** (#112): every published rite is copied, whole, to one blob per environment in a
-  storage account outside the app's region (`machinespiritsnapshots`, North Europe, `infra/`), written by
+  storage account outside the app's region (`machinespiritsnapshots`, Germany West Central, `infra/`), written by
   `RiteSnapshots` after a new rite and an erasure (before their pages are purged), and every six hours
   (`WriteRiteSnapshot`) for votes, tags and ailments. Each copy has a version (the blob's ETag): a write saves only over
   the version it read before reading the rites, else reads them again, so an older copy never replaces an erasure's; an
