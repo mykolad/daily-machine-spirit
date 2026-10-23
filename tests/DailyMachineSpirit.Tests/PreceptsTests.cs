@@ -28,6 +28,17 @@ public sealed class PreceptsTests : IAsyncLifetime
     public static string Breaking(params (int Number, string Reason)[] breaking)
         => JsonSerializer.Serialize(new { breaking = breaking.Select(broken => new { number = broken.Number, reason = broken.Reason }) });
 
+    // Kept before whose words they were was known: a Scribe's words say no more than that, and a distilled one is the
+    // Machine Spirit's. A precept saved now still says ByScribe, for a version of the app from before.
+    [Theory]
+    [InlineData(true, PreceptOrigin.ScribesWords)]
+    [InlineData(false, PreceptOrigin.Distilled)]
+    public void APreceptKeptBeforeItsOrigin_ReadsAsWhatItWas(bool byScribe, PreceptOrigin origin)
+    {
+        Assert.Equal(origin, new PreceptDocument { Text = "Old.", ByScribe = byScribe }.ToPrecept().Origin);
+        Assert.True(PreceptDocument.From(new Precept { Text = "New.", Origin = PreceptOrigin.Amended }).ByScribe);
+    }
+
     // A precept that would have the writer break a rule has no effect: the Scribe is told why at once, and it isn't saved.
     [Fact]
     public async Task AScribesPrecept_BreakingARule_IsRefusedWithWhy()

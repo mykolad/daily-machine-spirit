@@ -16,6 +16,9 @@ public sealed record PreceptBook
     /// <summary>What the Scribes deleted, the newest first: a distillation is told not to propose these again.</summary>
     public List<string> Rejected { get; init; } = [];
 
+    /// <summary>The precept deleted last, until an Undo puts it back or another change to the Precepts is saved.</summary>
+    public Option<DeletedPrecept> LastDeleted { get; init; }
+
     public Option<DateTime> DistilledAtUtc { get; init; }
 
     /// <summary>How many of the Scribes' judgments the last distillation learned from.</summary>

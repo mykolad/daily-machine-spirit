@@ -22,6 +22,9 @@ namespace DailyMachineSpirit.Tests;
 /// <summary>The Precepts over HTTP (#12): their page, the Scribes' changes, distilling on demand, and the weekly timer.</summary>
 public sealed class PreceptsFunctionTests : IAsyncLifetime
 {
+    // How the page is shown when a test renders it directly: nothing open to edit, nobody named.
+    private static readonly PreceptsShown Shown = new(None, new DateTime(2026, 10, 7, 12, 0, 0, DateTimeKind.Utc), None, []);
+
     private readonly BacklogTestbed testbed = new();
 
     public Task InitializeAsync() => testbed.InitializeAsync();
@@ -38,17 +41,66 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
 
         var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
-        Assert.Contains("Distilled Wed 7 Oct, 00:00 UTC from 1 judgments, and again every Monday.", html);
-        Assert.Contains("""<p class="text">Name the command: <code>npm ci</code>.</p>""", html);
-        Assert.Contains("""<span class="placed">Pinned</span> · A Scribe&#39;s words""", html);
-        Assert.Contains("Distilled by the Machine Spirit", html);
-        Assert.Contains("""Unpin<span class="visually-hidden">: Name the command: `npm ci`.</span>""", html);
-        Assert.Contains("""Pin<span class="visually-hidden">: Prefer the real fix.</span>""", html);
-        Assert.Contains("<button title=\"Keeps this precept, word for word, when the Precepts are distilled again. Pinned precepts come first.\"", html);
-        Assert.Contains("<button title=\"Lets the next distillation replace this precept with a new one.\"", html);
-        Assert.Contains("""<label for="precept-new">A precept of your own</label>""", html);
+        Assert.Contains("""<p class="distilled-at">Distilled Wed 7 Oct, 00:00 UTC</p>""", html);
+        Assert.Contains("From 1 judgments, and again every Monday (next: Mon 12 Oct).", html);
+        Assert.Contains("""<span class="numeral" aria-hidden="true">I</span>""", html);
+        Assert.Contains("""<span class="numeral" aria-hidden="true">II</span>""", html);
+        Assert.Contains("""<p class="precept-text" title="Click to edit">Name the command: <code>npm ci</code>.</p>""", html);
+        Assert.Contains($"""<span class="pinned-by">{ScriptoriumIcons.PinFilled}Written by A Scribe (…456789) · pinned</span>""", html);
+        Assert.Contains("""<p class="precept-meta">Distilled by the Machine Spirit</p>""", html);
+        Assert.Contains("""aria-pressed="true" title="Unpin: the next distillation may replace it with a new one.">""", html);
+        Assert.Contains("""aria-pressed="false" title="Pin: distilling again keeps it, word for word. Pinned precepts come first.">""", html);
+        Assert.Contains("""<span class="visually-hidden">Pin, so distilling keeps it: Prefer the real fix.</span>""", html);
+        Assert.Contains("""<span class="visually-hidden">Edit: Name the command: `npm ci`.</span>""", html);
+        Assert.Contains("""<span class="visually-hidden">Delete: Prefer the real fix.</span>""", html);
+        Assert.Contains("""<span class="numeral" aria-hidden="true">III</span>""", html);
+        Assert.Contains("""<label for="precept-new">A precept of your own <span class="optional">(kept pinned)</span></label>""", html);
         Assert.Contains("""<a href="/scriptorium">The Calendar""", html);
+        Assert.Contains("Signed in as <strong>", html);
     }
+
+    // Whose words each precept is, and who pinned it: the Scribe who wrote or amended it, or who pinned a distilled one.
+    [Fact]
+    public async Task Page_SaysWhoWroteAmendedOrPinnedEachPrecept()
+    {
+        await AJudgment();
+        testbed.Models.Answers(Sol, Distilled("Prefer the real fix.", "Name the command.", "Keep it short."));
+        Ok(await testbed.Distiller().Distil(Tester, CancellationToken.None));
+        var distilled = Ok(await testbed.Precepts.Get(CancellationToken.None));
+        var (first, second) = (distilled.Book.Precepts[0], distilled.Book.Precepts[1]);
+        Ok(await testbed.PreceptKeeping().Pin(first.Id, distilled.ETag.IfNone(""), Tester, CancellationToken.None));
+        Ok(await testbed.PreceptKeeping().EditAndPin(second.Id, Ok(await testbed.Precepts.Get(CancellationToken.None)).ETag.IfNone(""),
+            "Name the one command.", Tester, CancellationToken.None));
+
+        var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
+
+        Assert.Contains("Pinned by A Scribe (…456789)</span>", html);
+        Assert.Contains("Amended by A Scribe (…456789) · pinned</span>", html);
+        Assert.Contains("""<p class="precept-meta">Distilled by the Machine Spirit</p>""", html);
+    }
+
+    // Without the script, the pencil is a link to the page with the precept's words open to edit.
+    [Fact]
+    public async Task Page_OpensAPreceptsWordsToEdit_WhenAsked()
+    {
+        var id = Ok(await testbed.PreceptKeeping().AddPinned("Name the command.", Tester, CancellationToken.None));
+
+        var html = Html(await Function().Page(Get($"?edit={id:D}"), CancellationToken.None), 200);
+        var unasked = Html(await Function().Page(Get(""), CancellationToken.None), 200);
+
+        Assert.Contains($"""<li class="precept pinned editing" id="precept-{id:D}">""", html);
+        Assert.Contains($"""<a class="icon-button edit" href="/scriptorium/precepts?edit={id:D}#precept-{id:D}" """, unasked);
+        Assert.Contains($"""<li class="precept pinned" id="precept-{id:D}">""", unasked);
+    }
+
+    [Theory]
+    [InlineData(2026, 10, 7, 12, "2026-10-12T01:00:00")]
+    [InlineData(2026, 10, 12, 0, "2026-10-12T01:00:00")]
+    [InlineData(2026, 10, 12, 1, "2026-10-19T01:00:00")]
+    [InlineData(2026, 10, 18, 23, "2026-10-19T01:00:00")]
+    public void NextDistillation_IsTheComingMondayAtOne(int year, int month, int day, int hour, string expected)
+        => Assert.Equal(DateTime.Parse(expected, System.Globalization.CultureInfo.InvariantCulture),
+            ScriptoriumPage.NextDistillation(new DateTime(year, month, day, hour, 0, 0, DateTimeKind.Utc)));
 
     // Just distilled, the new precepts are marked, so the eye finds them; the Scribe's pinned one stayed, so it isn't.
     // Distilling takes seconds, which its button says when pressed.
@@ -63,8 +115,8 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
 
         var html = Html(await Function().Page(Get("?done=distil"), CancellationToken.None), 200);
 
-        Assert.Contains($"""<li class="rite acted" id="precept-{book.Precepts.Single(precept => !precept.Pinned).Id:D}">""", html);
-        Assert.Contains($"""<li class="rite" id="precept-{book.Precepts.Single(precept => precept.Pinned).Id:D}">""", html);
+        Assert.Contains($"""<li class="precept acted" id="precept-{book.Precepts.Single(precept => !precept.Pinned).Id:D}">""", html);
+        Assert.Contains($"""<li class="precept pinned" id="precept-{book.Precepts.Single(precept => precept.Pinned).Id:D}">""", html);
         Assert.Contains("""data-slow="The Machine Spirit is distilling the Precepts…" data-busy-label="Distilling…">""", html);
         Assert.Contains(SlowActionScript.Js, html);
     }
@@ -81,9 +133,10 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
         Assert.Contains("""<h2 id="agreement-heading">Do the Scribes Agree with the Augury?</h2>""", html);
-        Assert.Contains("""<th scope="col">Top picks burned</th>""", html);
-        Assert.Contains("""<tr><th scope="row">Oct 2026</th><td>2</td><td>1 of 1 burn</td><td>1 place (1 move)</td></tr>""", html);
-        Assert.Contains("""<tr><th scope="row">Sep 2026</th><td>0</td><td>No burns</td><td>No moves</td></tr>""", html);
+        Assert.Contains("""<th scope="col" class="number">Top picks burned</th>""", html);
+        Assert.Contains("""<tr><th scope="row">Oct 2026</th><td class="number">2</td><td class="number">1 <span class="muted">of 1 burn</span></td><td class="number">1 place <span class="muted">(1 move)</span></td></tr>""", html);
+        // The five months before, all without a judgment, share one row.
+        Assert.Contains("""<tr class="quiet"><th scope="row">May–Sep 2026</th><td colspan="3">No judgments</td></tr>""", html);
     }
 
     [Fact]
@@ -92,7 +145,8 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
 
         Assert.Contains("Not distilled yet", html);
-        Assert.Contains("There are no precepts yet.", html);
+        Assert.Contains("There are no precepts yet: distil them, or write one of your own.", html);
+        Assert.Contains("They're distilled every Monday from the Scribes' judgments (next: Mon 12 Oct).", html.Replace("&#39;", "'"));
     }
 
     // Full, the page offers no way to add one.
@@ -172,21 +226,94 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
     public async Task TheScribes_AddEditPinUnpinAndDelete_OverHttp()
     {
         var function = Function();
-        Assert.Equal("/scriptorium/precepts?done=add", RedirectedTo(await function.Add(Form(("text", "Prefer the real fix.")), CancellationToken.None)));
+        var added = RedirectedTo(await function.Add(Form(("text", "Prefer the real fix.")), CancellationToken.None));
         var id = Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts.Single().Id;
         var at = $"&precept={id:D}#precept-{id:D}";
+        Assert.Equal($"/scriptorium/precepts?done=add{at}", added);
 
         Assert.Equal($"/scriptorium/precepts?done=edit{at}",
             RedirectedTo(await function.Change(Form(("text", "Name the real fix."), await Seen()), id, "edit", CancellationToken.None)));
         Assert.Equal($"/scriptorium/precepts?done=unpin{at}", RedirectedTo(await function.Change(Form(await Seen()), id, "unpin", CancellationToken.None)));
         var unpinned = await function.Page(Get($"?done=unpin&precept={id:D}"), CancellationToken.None);
-        Assert.Contains($"""<li class="rite acted" id="precept-{id:D}">""", Html(unpinned, 200));
+        Assert.Contains($"""<li class="precept acted" id="precept-{id:D}">""", Html(unpinned, 200));
         Assert.Equal($"/scriptorium/precepts?done=pin{at}", RedirectedTo(await function.Change(Form(await Seen()), id, "pin", CancellationToken.None)));
         Assert.Equal("Name the real fix.", Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts.Single().Text);
 
-        Assert.Equal("/scriptorium/precepts?done=delete", RedirectedTo(await function.Change(Form(await Seen()), id, "delete", CancellationToken.None)));
+        Assert.Equal($"/scriptorium/precepts?done=delete&precept={id:D}", RedirectedTo(await function.Change(Form(await Seen()), id, "delete", CancellationToken.None)));
         Assert.Empty(Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts);
         Assert.Equal("/scriptorium/precepts?done=changed", RedirectedTo(await function.Change(Form(await Seen()), id, "pin", CancellationToken.None)));
+    }
+
+    // A delete takes the precept away at once, and offers to undo it: Undo puts it back where it was, as it was, and a
+    // distillation may propose its words again. Only straight after: any change since makes the Undo look again.
+    [Fact]
+    public async Task Undo_AfterADelete_PutsThePreceptBackWhereItWas()
+    {
+        var function = Function();
+        var first = Ok(await testbed.PreceptKeeping().AddPinned("First.", Tester, CancellationToken.None));
+        var middle = Ok(await testbed.PreceptKeeping().AddPinned("Middle.", Tester, CancellationToken.None));
+        Ok(await testbed.PreceptKeeping().AddPinned("Last.", Tester, CancellationToken.None));
+
+        await function.Change(Form(await Seen()), middle, "delete", CancellationToken.None);
+        var html = Html(await function.Page(Get($"?done=delete&precept={middle:D}"), CancellationToken.None), 200);
+
+        Assert.Contains($"""<div class="toast"><span class="toast-text">Precept deleted.</span><form method="post" action="/scriptorium/precepts/{middle:D}/restore">""", html);
+        Assert.Contains("""<p class="status" role="status" id="precepts-status"></p>""", html);
+        Assert.Contains("Middle.", Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Rejected);
+
+        Assert.Equal($"/scriptorium/precepts?done=restore&precept={middle:D}#precept-{middle:D}",
+            RedirectedTo(await function.Change(Form(await Seen()), middle, "restore", CancellationToken.None)));
+        var book = Ok(await testbed.Precepts.Get(CancellationToken.None)).Book;
+        Assert.Equal(["First.", "Middle.", "Last."], book.Precepts.Select(precept => precept.Text));
+        Assert.Equal(PreceptOrigin.Written, book.Precepts[1].Origin);
+        Assert.DoesNotContain("Middle.", book.Rejected);
+        // An addition in the Record, which an older version of the app reads too.
+        var putBack = Assert.Single(Ok(await testbed.Audit.GetNewest(20, CancellationToken.None)), entry => entry.Detail == Some(PreceptKeeping.PutBack));
+        Assert.Equal((AuditAction.AddPrecept, "Middle."), (putBack.Action, putBack.Title));
+        Assert.Equal("/scriptorium/precepts?done=changed", RedirectedTo(await function.Change(Form(await Seen()), middle, "restore", CancellationToken.None)));
+
+        await function.Change(Form(await Seen()), middle, "delete", CancellationToken.None);
+        await function.Change(Form(await Seen()), first, "unpin", CancellationToken.None);
+        Assert.Equal("/scriptorium/precepts?done=changed", RedirectedTo(await function.Change(Form(await Seen()), middle, "restore", CancellationToken.None)));
+        Assert.Equal(["Last.", "First."], Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts.Select(precept => precept.Text));
+    }
+
+    // With the deleted precepts remembered already as many as are kept, the delete lets the oldest go; Undo remembers it
+    // again, so a distillation still may not propose it.
+    [Fact]
+    public async Task Undo_WithAFullListOfDeletedPrecepts_RemembersTheOneTheDeleteLetGo()
+    {
+        var function = Function();
+        var precept = Ok(await testbed.PreceptKeeping().AddPinned("Kept.", Tester, CancellationToken.None));
+        var rejected = Enumerable.Range(1, PreceptBook.RejectedKept).Select(n => $"Rejected {n}.").ToList();
+        var read = Ok(await testbed.Precepts.Get(CancellationToken.None));
+        Ok(await testbed.Precepts.Save(read, read.Book with { Rejected = rejected },
+            new AuditEntry { Id = Guid.NewGuid(), Actor = Tester, Action = AuditAction.DeletePrecept }, CancellationToken.None));
+
+        await function.Change(Form(await Seen()), precept, "delete", CancellationToken.None);
+        Assert.DoesNotContain($"Rejected {PreceptBook.RejectedKept}.", Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Rejected);
+        await function.Change(Form(await Seen()), precept, "restore", CancellationToken.None);
+
+        Assert.Equal(rejected, Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Rejected);
+    }
+
+    // A distillation since the delete is a change like any other: the page shown after it offers no Undo, and an Undo
+    // from before is refused.
+    [Fact]
+    public async Task Undo_AfterADistillation_IsRefused()
+    {
+        var function = Function();
+        await AJudgment();
+        var deleted = Ok(await testbed.PreceptKeeping().AddPinned("Gone.", Tester, CancellationToken.None));
+        await function.Change(Form(await Seen()), deleted, "delete", CancellationToken.None);
+        testbed.Models.Answers(Sol, Distilled("Prefer the real fix."));
+        Ok(await testbed.Distiller().Distil(Tester, CancellationToken.None));
+
+        var html = Html(await function.Page(Get($"?done=delete&precept={deleted:D}"), CancellationToken.None), 200);
+
+        Assert.DoesNotContain("Precept deleted.", html);
+        Assert.Equal("/scriptorium/precepts?done=changed", RedirectedTo(await function.Change(Form(await Seen()), deleted, "restore", CancellationToken.None)));
+        Assert.Equal(["Prefer the real fix."], Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts.Select(precept => precept.Text));
     }
 
     // Two Scribes with the same page open: the second, saving after the first, is told to look again rather than
@@ -268,7 +395,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         Assert.Equal("/scriptorium/precepts?done=distil-unchecked",
             RedirectedTo(await Function().Distil(Form(), CancellationToken.None)));
         Assert.Contains("couldn&#39;t be checked against the writer&#39;s rules just now, so the Precepts stay as they were. Try again in a moment.",
-            ScriptoriumPage.RenderPrecepts(new StoredPrecepts(new PreceptBook(), None), None, [], Some("distil-unchecked"), None, None));
+            ScriptoriumPage.RenderPrecepts(new StoredPrecepts(new PreceptBook(), None), None, [], Some("distil-unchecked"), None, None, Shown));
     }
 
     // While the check ran, the precept being edited was deleted or replaced, or the Precepts filled up: the field is
@@ -283,9 +410,9 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         };
 
         var edited = ScriptoriumPage.RenderPrecepts(new StoredPrecepts(new PreceptBook(), None), None, [], None, None,
-            Some(new RefusedPrecept(Some(Guid.NewGuid()), "Mock the managers.", refusal, "Reword it, or leave it as it was.")));
+            Some(new RefusedPrecept(Some(Guid.NewGuid()), "Mock the managers.", refusal, "Reword it, or leave it as it was.")), Shown);
         var added = ScriptoriumPage.RenderPrecepts(new StoredPrecepts(full, None), None, [], None, None,
-            Some(new RefusedPrecept(None, "Mock the managers.", refusal, "Reword it, or leave it as it was.")));
+            Some(new RefusedPrecept(None, "Mock the managers.", refusal, "Reword it, or leave it as it was.")), Shown);
 
         Assert.Contains(
             "Not saved: It mocks a group of people. The precept changed meanwhile (another Scribe, or a distillation), so it isn&#39;t on the page any more. Your words were: “Mock the managers.”",
@@ -303,8 +430,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
 
         var html = Html(await Function().Change(Form(("text", "Use Imperium words."), await Seen()), id, "edit", CancellationToken.None), 422);
 
-        Assert.Contains($"""<li class="rite acted" id="precept-{id:D}">""", html);
-        Assert.Contains("""<details class="fold" open>""", html);
+        Assert.Contains($"""<li class="precept pinned acted editing" id="precept-{id:D}">""", html);
         Assert.Contains($"""aria-describedby="precept-{id:D}-hint precepts-status" aria-invalid="true" required>Use Imperium words.</textarea>""", html);
         Assert.Equal("Prefer the real fix.", Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts.Single().Text);
     }
@@ -392,14 +518,14 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
     private PreceptsFunction Function() => Function(new EveryoneIsScribeSignIn());
 
     private PreceptsFunction Function(IScribeSignIn signIn)
-        => new(testbed.PreceptKeeping(), testbed.Distiller(), new AgreementTrend(testbed.Scriptorium, Options.Create(Settings.ScriptoriumPages), testbed.Time), testbed.Tabs(), signIn, NullLogger<PreceptsFunction>.Instance);
+        => new(testbed.PreceptKeeping(), testbed.Distiller(), new AgreementTrend(testbed.Scriptorium, Options.Create(Settings.ScriptoriumPages), testbed.Time), testbed.Tabs(), testbed.NamesShown(), signIn, testbed.Time, NullLogger<PreceptsFunction>.Instance);
 
     private PreceptsFunction Function(FakePrecepts precepts)
         => new(new PreceptKeeping(precepts, testbed.PreceptCheck(), testbed.Time, NullLogger<PreceptKeeping>.Instance),
             new PreceptDistiller(testbed.Scriptorium, precepts, testbed.Models, testbed.PreceptCheck(), Options.Create(Settings.PreceptDistilling), testbed.Time, testbed.Probe.Metrics, NullLogger<PreceptDistiller>.Instance),
             new AgreementTrend(testbed.Scriptorium, Options.Create(Settings.ScriptoriumPages), testbed.Time),
             new TabCounting(testbed.Drafts, testbed.Scriptorium, precepts, testbed.Audit, NullLogger<TabCounting>.Instance),
-            new EveryoneIsScribeSignIn(), NullLogger<PreceptsFunction>.Instance);
+            testbed.NamesShown(), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<PreceptsFunction>.Instance);
 
     private DistilPreceptsFunction Timer()
         => new(testbed.Distiller(), NullLogger<DistilPreceptsFunction>.Instance);

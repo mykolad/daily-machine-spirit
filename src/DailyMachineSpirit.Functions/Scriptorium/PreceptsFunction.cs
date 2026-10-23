@@ -1,5 +1,6 @@
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Generation.Precepts;
+using DailyMachineSpirit.Functions.Scriptorium.Naming;
 using DailyMachineSpirit.Functions.Scriptorium.SignIn;
 using DailyMachineSpirit.Functions.Telemetry;
 using LanguageExt;
@@ -24,6 +25,8 @@ public sealed class PreceptsFunction
     private readonly PreceptDistiller distiller;
     private readonly AgreementTrend trend;
     private readonly TabCounting tabs;
+    private readonly NamesShown names;
+    private readonly TimeProvider time;
     private readonly ScriptoriumGate gate;
     private readonly ILogger<PreceptsFunction> logger;
 
@@ -32,13 +35,17 @@ public sealed class PreceptsFunction
         PreceptDistiller distiller,
         AgreementTrend trend,
         TabCounting tabs,
+        NamesShown names,
         IScribeSignIn signIn,
+        TimeProvider time,
         ILogger<PreceptsFunction> logger)
     {
         this.keeping = keeping;
         this.distiller = distiller;
         this.trend = trend;
         this.tabs = tabs;
+        this.names = names;
+        this.time = time;
         gate = new ScriptoriumGate(signIn);
         this.logger = logger;
     }
@@ -47,16 +54,19 @@ public sealed class PreceptsFunction
     public async Task<IActionResult> Page(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "scriptorium/precepts")] HttpRequest request, CancellationToken cancellationToken)
     {
-        if ((await gate.Refusal(request, cancellationToken)).Case is IActionResult refused)
+        var looking = await gate.LookingScribe(request, cancellationToken);
+        if (looking.Case is IActionResult refused)
         {
             return refused;
         }
+        var scribe = (string)looking.Case;
 
         var outcome = Optional(request.Query["done"].ToString()).Filter(done => done.Length > 0);
-        var acted = Optional(request.Query["precept"].ToString()).Bind(text => Guid.TryParse(text, out var id) ? Some(id) : None);
+        var acted = Id(request.Query["precept"].ToString());
+        var shown = await Shown(Id(request.Query["edit"].ToString()), scribe, cancellationToken);
         var counts = await tabs.Count(cancellationToken);
         return (await PreceptsAndTrend(cancellationToken)).Match(
-            Right: found => Html(request, ScriptoriumPage.RenderPrecepts(found.Stored, counts, found.Months, outcome, acted, None), StatusCodes.Status200OK),
+            Right: found => Html(request, ScriptoriumPage.RenderPrecepts(found.Stored, counts, found.Months, outcome, acted, None, shown), StatusCodes.Status200OK),
             Left: error => Failed(request, error));
     }
 
@@ -106,8 +116,12 @@ public sealed class PreceptsFunction
         => await (await gate.ActingScribe(request, cancellationToken)).Match(
             Left: refused => Task.FromResult(refused),
             Right: async scribe => await (await ReadForm(request, cancellationToken)).Match(
-                Some: async fields => await Saved(
-                    request, "add", None, fields["text"].ToString(), await keeping.AddPinned(fields["text"].ToString(), scribe, cancellationToken), cancellationToken),
+                Some: async fields =>
+                {
+                    // Back to the new precept, marked, as after any change to one.
+                    var added = await keeping.AddPinned(fields["text"].ToString(), scribe, cancellationToken);
+                    return await Saved(request, "add", added.ToOption(), fields["text"].ToString(), added.Map(_ => unit), scribe, cancellationToken);
+                },
                 None: () => Task.FromResult<IActionResult>(new BadRequestResult())));
 
     [Function("ScriptoriumPrecept")]
@@ -130,11 +144,18 @@ public sealed class PreceptsFunction
         return action switch
         {
             "edit" => await Saved(request, action, preceptId, fields["text"].ToString(),
-                await keeping.EditAndPin(preceptId, etag, fields["text"].ToString(), scribe, cancellationToken), cancellationToken),
+                await keeping.EditAndPin(preceptId, etag, fields["text"].ToString(), scribe, cancellationToken), scribe, cancellationToken),
             "pin" => Answer(request, action, preceptId, await keeping.Pin(preceptId, etag, scribe, cancellationToken)),
             "unpin" => Answer(request, action, preceptId, await keeping.Unpin(preceptId, etag, scribe, cancellationToken)),
-            // Gone from the page, so the message is where the eye goes.
-            "delete" => Answer(request, action, None, await keeping.Delete(preceptId, etag, scribe, cancellationToken)),
+            // Gone from the page, so the page stays at the top, where the Undo names it.
+            "delete" => (await keeping.Delete(preceptId, etag, scribe, cancellationToken)).Match(
+                Right: _ =>
+                {
+                    logger.CountScribeAction("precept-delete");
+                    return Redirect($"/scriptorium/precepts?done=delete&precept={preceptId:D}");
+                },
+                Left: error => Answer(request, action, None, Left<Error, Unit>(error))),
+            "restore" => Answer(request, action, preceptId, await keeping.RestoreDeleted(preceptId, etag, scribe, cancellationToken)),
             _ => new NotFoundResult(),
         };
     }
@@ -142,7 +163,8 @@ public sealed class PreceptsFunction
     // Refused for breaking the writer's rules, or because they couldn't be checked: the page again, with the Scribe's
     // words in their field and why (422), rather than a redirect, which couldn't carry them.
     private async Task<IActionResult> Saved(
-        HttpRequest request, string action, Option<Guid> preceptId, string text, Either<Error, Unit> result, CancellationToken cancellationToken)
+        HttpRequest request, string action, Option<Guid> preceptId, string text, Either<Error, Unit> result, string scribe,
+        CancellationToken cancellationToken)
     {
         var nextStep = result.Case switch
         {
@@ -156,11 +178,17 @@ public sealed class PreceptsFunction
         }
         var refused = new RefusedPrecept(preceptId, text, refusal.Message, nextStep);
         var counts = await tabs.Count(cancellationToken);
+        var shown = await Shown(None, scribe, cancellationToken);
         return (await PreceptsAndTrend(cancellationToken)).Match(
-            Right: found => Html(request, ScriptoriumPage.RenderPrecepts(found.Stored, counts, found.Months, None, preceptId, Some(refused)),
+            Right: found => Html(request, ScriptoriumPage.RenderPrecepts(found.Stored, counts, found.Months, None, preceptId, Some(refused), shown),
                 StatusCodes.Status422UnprocessableEntity),
             Left: error => Failed(request, error));
     }
+
+    private async Task<PreceptsShown> Shown(Option<Guid> editing, string scribe, CancellationToken cancellationToken)
+        => new(editing, time.GetUtcNow().UtcDateTime, await names.Of(scribe, cancellationToken), await names.All(cancellationToken));
+
+    private static Option<Guid> Id(string text) => Guid.TryParse(text, out var id) ? Some(id) : None;
 
     private Task<Either<Error, (StoredPrecepts Stored, List<AgreementMonth> Months)>> PreceptsAndTrend(CancellationToken cancellationToken)
         => keeping.View(cancellationToken)

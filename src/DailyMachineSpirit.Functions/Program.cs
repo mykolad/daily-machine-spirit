@@ -123,6 +123,7 @@ builder.Services.AddTransient<Expurgations>();
 builder.Services.AddTransient<Amendments>();
 builder.Services.AddTransient<PreceptKeeping>();
 builder.Services.AddTransient<ScribeNaming>();
+builder.Services.AddTransient<NamesShown>();
 builder.Services.AddTransient<NameSuggester>();
 builder.Services.AddTransient<AgreementTrend>();
 builder.Services.AddScribeSignIn(builder.Configuration);

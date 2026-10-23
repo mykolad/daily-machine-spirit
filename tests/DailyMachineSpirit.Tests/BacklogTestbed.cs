@@ -151,6 +151,8 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public ScribeNaming ScribeNaming() => new(ScribeNames, Time);
 
+    public NamesShown NamesShown() => new(ScribeNaming(), NullLogger<NamesShown>.Instance);
+
     public Expurgations Expurgations(IExpurgationRepository copies, IPageCache pages) => new(Rites, copies, pages, Time);
 
     /// <summary>Every stored document as JSON, to check what's kept anywhere.</summary>

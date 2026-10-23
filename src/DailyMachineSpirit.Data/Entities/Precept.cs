@@ -1,3 +1,5 @@
+using LanguageExt;
+
 namespace DailyMachineSpirit.Data.Entities;
 
 /// <summary>
@@ -15,6 +17,14 @@ public sealed record Precept
 
     public bool Pinned { get; init; }
 
+    public PreceptOrigin Origin { get; init; }
+
+    /// <summary>
+    /// The Scribe (their Access id) who wrote or amended it, or who pinned a distilled one; None for one the Machine
+    /// Spirit's alone, or kept before it was known.
+    /// </summary>
+    public Option<string> By { get; init; }
+
     /// <summary>Written or edited by a Scribe, rather than as a model distilled it.</summary>
-    public bool ByScribe { get; init; }
+    public bool ByScribe => Origin != PreceptOrigin.Distilled;
 }
