@@ -158,10 +158,11 @@ public static partial class ScriptoriumPage
         .resembles { margin: 0 0 12px; padding: 8px 12px; border-left: 4px solid #f0b45a; background: #241c12; border-radius: 8px; color: #ede3cf; }
         .text { font: 400 19px/1.55 "EB Garamond", serif; margin: 0 0 12px; }
         .truth { background: #141c1f; border: 1px solid #2e4248; border-radius: 16px; padding: 12px 16px; color: #dbe6e8; margin: 0 0 12px; }
-        .ailment { margin: 0 0 12px; color: #cdbd9e; }
+        .ailment { background: #211a12; border: 1px solid #5a4630; border-radius: 16px; padding: 12px 16px; color: #ede3cf; margin: 0 0 12px; }
         .truth-label { display: block; font: 500 14px "JetBrains Mono", monospace; letter-spacing: .14em; text-transform: uppercase; color: #8cc4ae; }
+        .ailment .truth-label { color: #c9a25a; }
         code { font-family: "JetBrains Mono", monospace; font-size: .9em; background: #0b1214; color: #f0d58c; padding: 1px 6px; border-radius: 6px; }
-        .text code { background: #2b2117; color: #f0d58c; }
+        .text code, .ailment code { background: #2b2117; color: #f0d58c; }
         .meta, .when, .optional { color: #b6a98f; }
         .meta { margin: 0 0 12px; font-size: 15px; }
         .tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
