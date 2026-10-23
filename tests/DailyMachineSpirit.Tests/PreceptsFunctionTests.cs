@@ -275,6 +275,25 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         Assert.Equal(["Last.", "First."], Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts.Select(precept => precept.Text));
     }
 
+    // A distillation since the delete is a change like any other: the page shown after it offers no Undo, and an Undo
+    // from before is refused.
+    [Fact]
+    public async Task Undo_AfterADistillation_IsRefused()
+    {
+        var function = Function();
+        await AJudgment();
+        var deleted = Ok(await testbed.PreceptKeeping().AddPinned("Gone.", Tester, CancellationToken.None));
+        await function.Change(Form(await Seen()), deleted, "delete", CancellationToken.None);
+        testbed.Models.Answers(Sol, Distilled("Prefer the real fix."));
+        Ok(await testbed.Distiller().Distil(Tester, CancellationToken.None));
+
+        var html = Html(await function.Page(Get($"?done=delete&precept={deleted:D}"), CancellationToken.None), 200);
+
+        Assert.DoesNotContain("Precept deleted.", html);
+        Assert.Equal("/scriptorium/precepts?done=changed", RedirectedTo(await function.Change(Form(await Seen()), deleted, "restore", CancellationToken.None)));
+        Assert.Equal(["Prefer the real fix."], Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts.Select(precept => precept.Text));
+    }
+
     // Two Scribes with the same page open: the second, saving after the first, is told to look again rather than
     // overwriting the first one's words unseen.
     [Fact]
