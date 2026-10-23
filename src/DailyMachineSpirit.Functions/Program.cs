@@ -14,12 +14,14 @@ using DailyMachineSpirit.Functions.Scriptorium.SignIn;
 using DailyMachineSpirit.Functions.Tags;
 using DailyMachineSpirit.Functions.Telemetry;
 using DailyMachineSpirit.Functions.Voters;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Azure.Functions.Worker.OpenTelemetry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
@@ -39,6 +41,12 @@ void Tuned<T>(string section) where T : class
 // ASP.NET Core integration: HTTP functions take HttpRequest and return IActionResult.
 builder.ConfigureFunctionsWebApplication();
 builder.UseMiddleware<InvocationMetricsMiddleware>();
+// Nothing is protected with ASP.NET Core's keys (the voter cookie is signed with its own secret), so they're kept in
+// memory: on the instance's disk, which an instance doesn't keep, they warned at every start.
+builder.Services.AddDataProtection().UseEphemeralDataProtectionProvider();
+// The host gives the worker's own server its address (URLS) over the image's HTTP_PORTS, as it should, which ASP.NET Core
+// warned about at every start; errors still show.
+builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Error);
 
 // Logs, traces and metrics in OpenTelemetry form: the code's logs, each invocation, and its outgoing calls (the models,
 // Jev, Cosmos DB). Only the app exports, not the Functions host: the host's request spans carry each visitor's user
