@@ -69,7 +69,7 @@ public sealed class ExpurgationRepository : IExpurgationRepository
             cancellationToken);
         var draftIds = drafts.Select(draft => draft.Id).ToList();
         var decisions = await Words(
-            new QueryDefinition("SELECT c.id, c._etag, c.title, c.text, c.hereticalTruth, c.note FROM c WHERE c.type = @type AND ARRAY_CONTAINS(@drafts, c.draftId)")
+            new QueryDefinition("SELECT c.id, c._etag, c.title, c.text, c.hereticalTruth, c.ailment, c.note FROM c WHERE c.type = @type AND ARRAY_CONTAINS(@drafts, c.draftId)")
                 .WithParameter("@type", ScribeDecisionDocument.DecisionType)
                 .WithParameter("@drafts", draftIds),
             cancellationToken);

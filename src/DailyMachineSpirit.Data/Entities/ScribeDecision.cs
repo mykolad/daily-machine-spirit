@@ -24,6 +24,9 @@ public sealed record ScribeDecision
 
     public string HereticalTruth { get; init; } = string.Empty;
 
+    /// <summary>The trouble it was for, as it stood: none for words written before rites had one.</summary>
+    public Option<string> Ailment { get; init; }
+
     /// <summary>Its place in the Liturgical Calendar before the decision (1 is next); none for a burned draft.</summary>
     public Option<int> CalendarPlace { get; init; }
 

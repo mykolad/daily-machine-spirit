@@ -111,6 +111,7 @@ public sealed class Amendments
         Title = before.Writing.Title,
         Text = before.Writing.Text,
         HereticalTruth = before.Writing.HereticalTruth,
+        Ailment = before.Writing.Ailment,
         CalendarPlace = places.Map(found => found.CalendarPlace),
         AuguryPlace = places.Map(found => found.AuguryPlace),
         AuguryRankedByQuality = places.Exists(found => found.AuguryRankedByQuality),
