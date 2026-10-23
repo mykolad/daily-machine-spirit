@@ -45,7 +45,7 @@ public static partial class ScriptoriumPage
         html.Append($"""<p class="status" role="status">{status.IfNone(string.Empty)}</p>""");
 
         html.Append($"""
-            <section aria-labelledby="calendar-heading">
+            <section aria-labelledby="calendar-heading" data-rows>
             <div class="section-head">
             <h2 id="calendar-heading">The Liturgical Calendar</h2>
             <div class="actions">
@@ -68,7 +68,7 @@ public static partial class ScriptoriumPage
         html.Append("</section>");
         RecentJudgments(html, view.Decisions);
         html.Append("</main>");
-        UndoToast(html);
+        UndoToast(html, "Restores the rite from the Ashes, into the Augury's order", string.Empty);
         Footer(html, Some(ScriptoriumScript.Js));
         return html.ToString();
     }
@@ -89,7 +89,7 @@ public static partial class ScriptoriumPage
         // No summary or help above the rites: the tab counts them, each row says its day, and each button says what it
         // does where the pointer rests.
         html.Append("""<div class="filters">""");
-        Subjects(html, calendar, subject);
+        Subjects(html, calendar.Select(entry => entry.Draft).ToList(), subject, "/scriptorium");
         html.Append(EveryRite());
         html.Append("</div>");
 
@@ -103,12 +103,13 @@ public static partial class ScriptoriumPage
             "Every rite is anointed.", "in the Augury’s order"));
     }
 
-    // What the waiting rites are about, by their tags, most first, so the Scribes see a calendar heavy on one subject;
-    // each narrows the calendar to its rites. Links, so the filter works without the script, which loads them in place.
-    private static void Subjects(StringBuilder html, IReadOnlyList<CalendarEntry> calendar, Option<Tag> subject)
+    // What the rites on the page (waiting, or in the Ashes) are about, by their tags, most first, so the Scribes see a
+    // calendar heavy on one subject; each narrows the page to its rites. Links, so the filter works without the script,
+    // which loads them in place.
+    private static void Subjects(StringBuilder html, IReadOnlyList<Draft> drafts, Option<Tag> subject, string path)
     {
-        var counted = calendar
-            .SelectMany(entry => RiteTags.Of(entry.Draft.Tags))
+        var counted = drafts
+            .SelectMany(draft => RiteTags.Of(draft.Tags))
             .GroupBy(tag => tag)
             .OrderByDescending(group => group.Count())
             .ThenBy(group => group.Key.Label, StringComparer.Ordinal)
@@ -118,12 +119,12 @@ public static partial class ScriptoriumPage
         subject.Filter(tag => !counted.Exists(found => found.Tag == tag)).IfSome(tag => counted.Add((tag, 0)));
 
         html.Append("""<p class="subjects" role="group" aria-label="Filter by subject">""");
-        html.Append(Chip("/scriptorium", "All", calendar.Count, subject.IsNone));
+        html.Append(Chip(path, "All", drafts.Count, subject.IsNone));
         foreach (var (tag, count) in counted)
         {
             var current = subject.Exists(chosen => chosen == tag);
             // The chosen subject's chip clears the filter.
-            html.Append(Chip(current ? "/scriptorium" : $"/scriptorium?subject={tag.Key}", tag.Label, count, current));
+            html.Append(Chip(current ? path : $"{path}?subject={tag.Key}", tag.Label, count, current));
         }
         html.Append("</p>");
     }
@@ -197,7 +198,7 @@ public static partial class ScriptoriumPage
         html.Append($"""
             <div class="row-head">
             <p class="where"><span class="place">#{place}</span><span class="day"><time datetime="{entry.PublishesOnUtc:yyyy-MM-dd}">{Date(entry.PublishesOnUtc)}</time><span class="kind">{(draft.Writing.Kind == RiteKind.Prayer ? "Prayer" : "Ritual")}</span></span></p>
-            <div class="heading"><h4 id="title-{id}">{WithCode(title)}</h4>{Tags(draft)}</div>
+            <div class="heading"><h4 class="row-title" id="title-{id}">{WithCode(title)}</h4>{Tags(draft)}</div>
             <div class="cluster">
             {Score(draft)}
             {(entry.PlacedByScribes ? $"""<span class="pair" role="group" aria-label="Reorder">{Exalt(id, title, place)}{Humble(id, title, lastAnointed)}</span>""" : string.Empty)}
@@ -316,7 +317,7 @@ public static partial class ScriptoriumPage
             <div class="burn-buttons">
             <button title="{Encode(About("burn"))}" class="danger" formaction="/scriptorium/drafts/{id}/burn" data-confirm>{ScriptoriumIcons.Burn}Consign to the Flames<span class="visually-hidden">: {Encode(title)}</span></button>
             <button type="button" class="cancel">Cancel</button>
-            <span class="burn-help">The reason teaches the Augury. A burned rite can be restored from the Ashes.</span>
+            <span class="button-help">The reason teaches the Augury. A burned rite can be restored from the Ashes.</span>
             </div>
             </div>
             """);
@@ -359,12 +360,14 @@ public static partial class ScriptoriumPage
         _ => $"""<span class="judgment-icon">{ScriptoriumIcons.Release}</span>""",
     };
 
-    // After a burn, the script offers to undo it for a few seconds: the rite goes back where it was. Filled from the
-    // template into a live region that's always there, so a screen reader announces it.
-    private static void UndoToast(StringBuilder html)
+    // After a burn on the calendar, or a restore in the Ashes, the script offers to undo it for a few seconds: the rite
+    // goes back. Filled from the template (what it says, where its form posts, and the reason a burn takes again) into
+    // a live region that's always there, so a screen reader announces it. The fields bring the Scribe back to the page;
+    // the script adds the subject shown now, which loading a subject's chip in place changes.
+    private static void UndoToast(StringBuilder html, string does, string fields)
         => html.Append($"""
             <div class="toasts" id="toasts" role="status"></div>
-            <template id="undo-toast"><div class="toast"><span class="toast-text"></span><form method="post"><button class="undo" title="Restores the rite from the Ashes, into the Augury's order">{ScriptoriumIcons.Undo}Undo</button></form></div></template>
+            <template id="undo-toast"><div class="toast"><span class="toast-text"></span><form method="post">{fields}<button class="undo" title="{Encode(does)}">{ScriptoriumIcons.Undo}Undo</button></form></div></template>
             """);
 
     private static string Percent(float quality) => quality.ToString("0%", CultureInfo.InvariantCulture);

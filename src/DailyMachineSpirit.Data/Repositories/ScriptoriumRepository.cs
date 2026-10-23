@@ -57,10 +57,16 @@ public class ScriptoriumRepository : IScriptoriumRepository
                 .Match(
                     Some: async found =>
                     {
+                        // The Ashes say who burned it, from where and why; a restored draft forgets its burn, which
+                        // the Record and the decisions keep.
+                        var burned = to == DraftState.Burned;
                         var changed = found.Document with
                         {
                             State = to,
-                            BurnedAtUtc = to == DraftState.Burned ? Utc.From(decision.DecidedAtUtc) : null,
+                            BurnedAtUtc = burned ? Utc.From(decision.DecidedAtUtc) : null,
+                            BurnedBy = burned ? audit.Actor : null,
+                            BurnedFromPlace = burned ? decision.CalendarPlace.OrNullable() : null,
+                            BurnReason = burned ? decision.Note.OrNull() : null,
                         };
                         var batch = container.CreateTransactionalBatch(SharedPartitionKey)
                             .ReplaceItem(changed.Id, changed, new TransactionalBatchItemRequestOptions { IfMatchEtag = found.ETag })
