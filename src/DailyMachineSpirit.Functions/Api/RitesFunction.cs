@@ -131,14 +131,14 @@ public sealed class RitesFunction
         return result;
     }
 
-    // The words as stored, backticks too: a client shows them as it can. No rite has an ailment yet (#101).
+    // The words as stored, backticks too: a client shows them as it can. An ailment not written yet is empty.
     private static PublishedRite Published(UnrevealedRite rite, string site) => new(
         rite.Number,
         Html.IsoDate(rite.PublishedOnUtc),
         rite.Kind == RiteKind.Prayer ? "prayer" : "ritual",
         rite.Title,
         rite.Text,
-        Ailment: string.Empty,
+        rite.Ailment.IfNone(string.Empty),
         RiteTags.Of(Some(rite.Tags.ToArray())).Select(tag => new RiteSubject(tag.Key, tag.Label)).ToList(),
         site + Paths.Rite(rite.Number));
 }

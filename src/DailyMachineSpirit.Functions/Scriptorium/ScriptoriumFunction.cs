@@ -305,11 +305,12 @@ public sealed class ScriptoriumFunction
     // A browser posts a textarea's line breaks as CRLF, while its maxlength counted each as one character: as LF, words
     // the field allowed fit the same limits here.
     private static RiteContent Words(IFormCollection fields)
-        => new(fields["title"].ToString(), WithLineFeeds(fields["text"].ToString()), WithLineFeeds(fields["truth"].ToString()));
+        => new(fields["title"].ToString(), WithLineFeeds(fields["text"].ToString()), WithLineFeeds(fields["truth"].ToString()), WithLineFeeds(fields["ailment"].ToString()));
 
     private static string WithLineFeeds(string text) => text.Replace("\r\n", "\n");
 
-    private static RiteContent Words(Draft draft) => new(draft.Writing.Title, draft.Writing.Text, draft.Writing.HereticalTruth);
+    private static RiteContent Words(Draft draft)
+        => new(draft.Writing.Title, draft.Writing.Text, draft.Writing.HereticalTruth, draft.Writing.Ailment.IfNone(string.Empty));
 
     // Judged meanwhile (a refill did it), amended, burned or published: there's nothing left to judge, so look again.
     private ScriptoriumResponse JudgedAgain(HttpRequest request, Guid draftId, Option<Tag> subject, Either<Error, Option<Augury>> result)
