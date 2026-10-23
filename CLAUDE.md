@@ -135,7 +135,8 @@ skills/                           — Consult the Machine Spirit, a skill that p
   after, then one read per instance asks Cosmos DB again while the others keep reading the copy. The copy is loaded once
   and kept while it's the version saved. Without a copy, the failure is the read's, and the next read tries Cosmos DB.
   What saves (publishing, refilling, the Scribes, the backfills) takes `IRiteRepository` and reads Cosmos DB alone. So
-  the pages, search and the rites API keep working; voting, sign-in and the Scriptorium don't. Setting:
+  the pages, search, the rites API and signing in keep working (sign-in needs only GitHub and the signed cookie); voting
+  and the Scriptorium don't. Setting:
   `RiteSnapshot:ContainerUri`; without it (a local run) nothing is copied.
 - **Telemetry: OpenTelemetry to Grafana Cloud.** The app (`Program.cs`) exports its logs, traces and metrics over OTLP
   wherever `OTEL_EXPORTER_OTLP_ENDPOINT` is set; `infra/` sets it, with the token's header from the vault. The Functions
