@@ -32,6 +32,24 @@ public sealed class BurnBackfillTests : IAsyncLifetime
         Assert.Equal(0, Ok(await Backfill().Run(CancellationToken.None)));
     }
 
+    // Burned, restored and burned again within a second: the first on the whole second, which Cosmos would sort as newer.
+    [Fact]
+    public async Task ADraftBurnedTwiceInASecond_GetsTheLaterBurnsDetails()
+    {
+        var draft = await testbed.AddDraft("Twice burned", 0.5f);
+        Assert.Equal(0, testbed.Time.GetUtcNow().Millisecond);
+        Ok(await testbed.Scribes().Burn(draft.Id, "Too specific", BacklogTestbed.Tester, CancellationToken.None));
+        Ok(await testbed.Scribes().Restore(draft.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        testbed.Time.Advance(TimeSpan.FromMilliseconds(500));
+        Ok(await testbed.Scribes().Burn(draft.Id, "Duplicate", BacklogTestbed.Tester, CancellationToken.None));
+        await testbed.ForgetBurnDetails(draft.Id);
+
+        Ok(await Backfill().Run(CancellationToken.None));
+
+        var burned = Ok(await testbed.Drafts.Get(draft.Id, CancellationToken.None)).IfNone(() => throw new InvalidOperationException("gone"));
+        Assert.Equal(Some("Duplicate"), burned.BurnReason);
+    }
+
     // Older than the Record, a burn has nothing to say; it's marked as looked at, so the next start doesn't look again.
     [Fact]
     public async Task ABurnTheRecordDoesntKnow_StaysWithoutDetails_AndIsntLookedForAgain()

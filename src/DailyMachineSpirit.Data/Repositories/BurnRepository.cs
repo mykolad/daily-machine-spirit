@@ -32,19 +32,21 @@ public class BurnRepository : IBurnRepository
     public Task<Either<Error, RecordedBurn>> FindInTheRecord(Guid draftId, CancellationToken cancellationToken)
         => Attempt(async () =>
         {
-            var burn = JsonNamingPolicy.CamelCase.ConvertName(nameof(AuditAction.Burn));
+            var burn =JsonNamingPolicy.CamelCase.ConvertName(nameof(AuditAction.Burn));
             var entry = (await container.Query<AuditEntryDocument>(
                 new QueryDefinition("SELECT TOP 1 * FROM c WHERE c.type = @type AND c.draftId = @draftId AND c.action = @action ORDER BY c.atUtc DESC")
                     .WithParameter("@type", AuditEntryDocument.AuditType)
                     .WithParameter("@draftId", draftId)
                     .WithParameter("@action", burn),
                 cancellationToken)).HeadOrNone();
-            var decision = (await container.Query<ScribeDecisionDocument>(
-                new QueryDefinition("SELECT TOP 1 * FROM c WHERE c.type = @type AND c.draftId = @draftId AND c.action = @action ORDER BY c.decidedAtUtc DESC")
+            // The newest is picked here, not by the query: a decision's time is written without trailing zeros, so Cosmos
+            // would sort a burn at …:00Z after one half a second later. A draft has only a few.
+            var decision =(await container.Query<ScribeDecisionDocument>(
+                new QueryDefinition("SELECT * FROM c WHERE c.type = @type AND c.draftId = @draftId AND c.action = @action")
                     .WithParameter("@type", ScribeDecisionDocument.DecisionType)
                     .WithParameter("@draftId", draftId)
                     .WithParameter("@action", JsonNamingPolicy.CamelCase.ConvertName(nameof(ScribeAction.Burn))),
-                cancellationToken)).HeadOrNone();
+                cancellationToken)).OrderByDescending(found => found.DecidedAtUtc).HeadOrNone();
             return new RecordedBurn(
                 entry.Map(found => found.Actor),
                 decision.Bind(found => Optional(found.CalendarPlace)),
