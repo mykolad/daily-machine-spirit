@@ -321,7 +321,7 @@ public static partial class ScriptoriumPage
             <textarea id="amend-note" name="note" rows="3" maxlength="{ScribeDecision.MaxNoteLength}" aria-describedby="amend-note-hint">{Encode(note)}</textarea>
             <div class="buttons">
             <button class="primary">{ScriptoriumIcons.Save}Save the Amendment</button>
-            <button class="secondary" formaction="/scriptorium/drafts/{id}/rewrite" data-needs-note data-in-place data-slow="{Encode(Rewriting)}" data-busy-label="Rewriting…">{ScriptoriumIcons.Summon}Ask the Machine Spirit to Rewrite</button>
+            <button class="secondary" formaction="/scriptorium/drafts/{id}/rewrite" formnovalidate data-needs-note data-in-place data-slow="{Encode(Rewriting)}" data-busy-label="Rewriting…">{ScriptoriumIcons.Summon}Ask the Machine Spirit to Rewrite</button>
             <a class="button-link" href="/scriptorium{subject.Map(tag => $"?subject={tag.Key}").IfNone(string.Empty)}#rite-{id}">Leave It as It Was</a>
             </div>
             </form>

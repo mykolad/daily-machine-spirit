@@ -57,7 +57,7 @@ public static class RiteChecks
                 $"The answer is too long: title {content.Title.Length}, text {content.Text.Length}, heretical truth {content.HereticalTruth.Length}, ailment {content.Ailment.Length} characters.");
         }
 
-        var everything = $"{content.Title}\n{content.Text}\n{content.HereticalTruth}";
+        var everything = $"{content.Title}\n{content.Text}\n{content.HereticalTruth}\n{content.Ailment}";
         var forbidden = ForbiddenNames.Where(name => everything.Contains(name, StringComparison.OrdinalIgnoreCase)).ToList();
         if (forbidden.Count > 0)
         {

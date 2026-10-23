@@ -175,6 +175,22 @@ public sealed class RiteWriterTests : IDisposable
         Assert.Equal("The Rite of Re-Run", draft.Writing.Title);
     }
 
+    // The ailment follows the rite's rules too, however the words reach the checks: a model's answer, a rewrite, an
+    // amendment.
+    [Theory]
+    [InlineData("A chatbot gives the wrong answer.")]
+    [InlineData("The Imperium's builds keep failing.")]
+    [InlineData("The Omnissiah won't answer.")]
+    [InlineData("Running npm install --force never helps.")]
+    public async Task Write_AsksAgain_WhenTheAilmentBreaksTheRules(string ailment)
+    {
+        models.Answers(Sol, FakeChatClients.Answer("Title", "Text.", "Truth.", ailment), GoodAnswer);
+
+        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Prayer, [], CancellationToken.None));
+
+        Assert.Equal("The Rite of Re-Run", draft.Writing.Title);
+    }
+
     // Whole words, and only what the far future forgot: the machine's own words stay.
     [Theory]
     [InlineData("He said the cache would maintain itself.")]

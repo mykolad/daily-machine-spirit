@@ -886,7 +886,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
 
         Assert.Contains("""<input type="text" id="amend-title" name="title" value="Litany of the Cold Cache" """, html);
         Assert.Contains("""<input type="hidden" name="etag" value=""", html);
-        Assert.Contains($"""formaction="/scriptorium/drafts/{draft.Id:D}/rewrite" data-needs-note""", html);
+        Assert.Contains($"""formaction="/scriptorium/drafts/{draft.Id:D}/rewrite" formnovalidate data-needs-note""", html);
         Assert.Contains(SlowActionScript.Js, html);
         Assert.DoesNotContain(ScriptoriumScript.Js, html);
         Assert.Contains("""data-needs-note data-in-place data-slow="The Machine Spirit is rewriting it… usually a few seconds, at most a minute and a half." data-busy-label="Rewriting…">""", html);
@@ -1047,6 +1047,9 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Contains("""<textarea id="amend-text" name="text" rows="6" maxlength="2000" class="changed" autofocus required>""", html);
         Assert.Contains("""<label for="amend-title">Title</label>""", html);
         Assert.Contains("""<label for="amend-truth">Heretical Truth</label>""", html);
+        // A rewrite can supply an ailment an older draft lacks: the empty required field mustn't block asking for one.
+        Assert.Contains("""formaction="/scriptorium/drafts/""", html);
+        Assert.Matches("formaction=\"/scriptorium/drafts/[^\"]+/rewrite\" formnovalidate", html);
         Assert.Contains("""<label for="amend-ailment">Ailment<span class="changed-mark"> · rewritten</span></label>""", html);
         Assert.Single(Regex.Matches(html, "class=\"changed\" autofocus"));
     }
