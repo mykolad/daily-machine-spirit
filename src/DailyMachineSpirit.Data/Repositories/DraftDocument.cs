@@ -44,6 +44,14 @@ internal sealed record DraftDocument
 
     public DateTime? BurnedAtUtc { get; init; }
 
+    // Written as null when unknown, so a burned draft missing them (burned before they were kept) is told apart from one
+    // whose Record had none: BurnRepository.GetBurnedWithoutDetails.
+    public string? BurnedBy { get; init; }
+
+    public int? BurnedFromPlace { get; init; }
+
+    public string? BurnReason { get; init; }
+
     public string? Resembles { get; init; }
 
     public static string IdFor(Guid draftId) => draftId.ToString("D");
@@ -65,6 +73,9 @@ internal sealed record DraftDocument
         Augury = draft.Augury.Map(augury => augury with { JudgedAtUtc = Utc.From(augury.JudgedAtUtc) }).OrNull(),
         PublishedOnUtc = draft.PublishedOnUtc.OrNullable(),
         BurnedAtUtc = draft.BurnedAtUtc.Map(Utc.From).OrNullable(),
+        BurnedBy = draft.BurnedBy.OrNull(),
+        BurnedFromPlace = draft.BurnedFromPlace.OrNullable(),
+        BurnReason = draft.BurnReason.OrNull(),
         Resembles = draft.Resembles.OrNull(),
     };
 
@@ -88,6 +99,9 @@ internal sealed record DraftDocument
         Augury = Optional(Augury),
         PublishedOnUtc = Optional(PublishedOnUtc),
         BurnedAtUtc = Optional(BurnedAtUtc),
+        BurnedBy = Optional(BurnedBy),
+        BurnedFromPlace = Optional(BurnedFromPlace),
+        BurnReason = Optional(BurnReason),
         Resembles = Optional(Resembles),
     };
 }

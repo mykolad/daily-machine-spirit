@@ -39,6 +39,8 @@ public sealed class ScriptoriumFunction
     public const string AllBurned = "every draft was burned";
     public const string Uncounted = "the backlog couldn't be counted after a burn";
 
+    private const string AshesPage = "/scriptorium/ashes";
+
     private readonly Scribes scribes;
     private readonly Amendments amendments;
     private readonly DraftJudging judging;
@@ -99,22 +101,31 @@ public sealed class ScriptoriumFunction
             Left: error => Task.FromResult(Failed(request, error)));
     }
 
-    /// <summary>The Ashes: the burned rites, to restore; <c>?rite=</c> marks the one a burn just sent there.</summary>
+    /// <summary>
+    /// The Ashes: the burned rites, to restore; <c>?rite=</c> marks the one a burn just sent there, and with <c>done</c>
+    /// names the one an action here restored or burned again; <c>?subject=</c> narrows them to a subject.
+    /// </summary>
     [Function("ScriptoriumAshes")]
     public async Task<IActionResult> Ashes(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "scriptorium/ashes")] HttpRequest request, CancellationToken cancellationToken)
     {
-        if ((await gate.Refusal(request, cancellationToken)).Case is IActionResult refused)
+        var looking = await gate.LookingScribe(request, cancellationToken);
+        if (looking.Case is IActionResult refused)
         {
             return refused;
         }
+        var scribe = (string)looking.Case;
 
+        var outcome = Optional(request.Query["done"].ToString()).Filter(done => done.Length > 0);
         var rite = Optional(request.Query["rite"].ToString()).Bind(text => Guid.TryParse(text, out var id) ? Some(id) : None);
+        var subject = Subject(request.Query["subject"].ToString());
+        var name = await NameOf(scribe, cancellationToken);
+        var names = await Names(cancellationToken);
         var counts = await tabs.Count(cancellationToken);
         return await (await scribes.Ashes(cancellationToken)).Match(
             Right: async ashes => Html(request,
-                // A burn's message links to its rite, which newer burns may have pushed past the ones shown.
-                ScriptoriumPage.RenderAshes(ashes, await BurnedUnlessShown(rite, id => ashes.Exists(ash => ash.Id == id), cancellationToken), counts, rite),
+                ScriptoriumPage.RenderAshes(ashes, subject, counts, outcome, rite,
+                    await NamedUnlessShown(rite, id => ashes.Exists(ash => ash.Id == id), cancellationToken), name, names),
                 StatusCodes.Status200OK),
             Left: error => Task.FromResult(Failed(request, error)));
     }
@@ -145,19 +156,22 @@ public sealed class ScriptoriumFunction
     public async Task<IActionResult> Record(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "scriptorium/record")] HttpRequest request, CancellationToken cancellationToken)
     {
-        if ((await gate.Refusal(request, cancellationToken)).Case is IActionResult refused)
+        var looking = await gate.LookingScribe(request, cancellationToken);
+        if (looking.Case is IActionResult refused)
         {
             return refused;
         }
+        var scribe = (string)looking.Case;
 
         var draft = Optional(request.Query["draft"].ToString()).Bind(text => Guid.TryParse(text, out var id) ? Some(id) : None);
         var entries = await draft.Match(
             Some: id => audit.GetHistory(id, cancellationToken),
             None: () => audit.GetNewest(pages.Value.RecordEntriesShown, cancellationToken));
+        var name = await NameOf(scribe, cancellationToken);
         var names = await Names(cancellationToken);
         var counts = await tabs.Count(cancellationToken);
         return entries.Match(
-            Right: entries => Html(request, ScriptoriumPage.RenderRecord(entries, names, counts, draft), StatusCodes.Status200OK),
+            Right: entries => Html(request, ScriptoriumPage.RenderRecord(entries, names, counts, draft, name), StatusCodes.Status200OK),
             Left: error => Failed(request, error));
     }
 
@@ -207,6 +221,7 @@ public sealed class ScriptoriumFunction
     {
         var note = fields["note"].ToString();
         var subject = Subject(fields["subject"].ToString());
+        var fromAshes = fields["page"].ToString() == "ashes";
         return action switch
         {
             "amend" => await Amend(request, draftId, fields, scribe, subject, cancellationToken),
@@ -215,7 +230,16 @@ public sealed class ScriptoriumFunction
             "exalt" => Answer(request, action, draftId, subject, await scribes.Exalt(draftId, note, scribe, cancellationToken)),
             "humble" => Answer(request, action, draftId, subject, await scribes.Humble(draftId, note, scribe, cancellationToken)),
             "release" => Answer(request, action, draftId, subject, await scribes.Release(draftId, note, scribe, cancellationToken)),
-            "restore" => Answer(request, action, draftId, subject, await scribes.Restore(draftId, note, scribe, cancellationToken)),
+            // From the Ashes, back to them: the rite has left them, so the page stays at the message.
+            "restore" => fromAshes
+                ? (await scribes.Restore(draftId, note, scribe, cancellationToken)).Match(
+                    Right: _ =>
+                    {
+                        logger.CountScribeAction(action);
+                        return new ScriptoriumResponse { Result = Redirect($"{AshesPage}?done=restore&rite={draftId:D}{Narrowed(subject)}") };
+                    },
+                    Left: error => InTheAshes(request, error, draftId, subject))
+                : Answer(request, action, draftId, subject, await scribes.Restore(draftId, note, scribe, cancellationToken)),
             "judge" => JudgedAgain(request, draftId, subject, await judging.Judge(draftId, scribe, cancellationToken)),
             "burn" => (await scribes.Burn(draftId, note, scribe, cancellationToken)).Match(
                 // Nothing waits any more, or it can't be told: refill now rather than at the next daily run. A refill
@@ -223,13 +247,17 @@ public sealed class ScriptoriumFunction
                 Right: waiting =>
                 {
                     logger.CountScribeAction(action);
+                    // Burned again by the Ashes' Undo, the rite is back among them, where the page goes.
+                    IActionResult After(string outcome) => fromAshes
+                        ? Redirect($"{AshesPage}?done={outcome}&rite={draftId:D}{Narrowed(subject)}#rite-{draftId:D}")
+                        : AfterBurning(outcome, draftId, subject);
                     return waiting.Match(
                         Some: count => count == 0
-                            ? new ScriptoriumResponse { Result = AfterBurning("burn-last", draftId, subject), RefillReason = AllBurned }
-                            : new ScriptoriumResponse { Result = AfterBurning("burn", draftId, subject) },
-                        None: () => new ScriptoriumResponse { Result = AfterBurning("burn", draftId, subject), RefillReason = Uncounted });
+                            ? new ScriptoriumResponse { Result = After("burn-last"), RefillReason = AllBurned }
+                            : new ScriptoriumResponse { Result = After("burn") },
+                        None: () => new ScriptoriumResponse { Result = After("burn"), RefillReason = Uncounted });
                 },
-                Left: error => Failure(request, error, draftId, subject)),
+                Left: error => fromAshes ? InTheAshes(request, error, draftId, subject) : Failure(request, error, draftId, subject)),
             _ => new ScriptoriumResponse { Result = new NotFoundResult() },
         };
     }
@@ -348,6 +376,27 @@ public sealed class ScriptoriumFunction
             return new ScriptoriumResponse { Result = Back("note-too-long", draftId, subject) };
         }
         return new ScriptoriumResponse { Result = Failed(request, error) };
+    }
+
+    // A restore or burn refused in the Ashes says why there, as the calendar's actions do on the calendar.
+    private ScriptoriumResponse InTheAshes(HttpRequest request, Error error, Guid draftId, Option<Tag> subject)
+    {
+        var outcome = error == ScriptoriumRepository.ChangedMeanwhile ? Some("changed")
+            : error == Scribes.NoteTooLong ? Some("note-too-long")
+            : None;
+        return outcome.Match(
+            Some: said => new ScriptoriumResponse { Result = Redirect($"{AshesPage}?done={said}&rite={draftId:D}{Narrowed(subject)}") },
+            None: () => new ScriptoriumResponse { Result = Failed(request, error) });
+    }
+
+    // The rite an address names in the Ashes, when it isn't among the rites shown: burned longer ago, or just restored.
+    // Unreadable, the page goes without it.
+    private async Task<Option<Draft>> NamedUnlessShown(Option<Guid> rite, Func<Guid, bool> shown, CancellationToken cancellationToken)
+    {
+        var gone = rite.Filter(id => !shown(id));
+        return await gone.MatchAsync(
+            Some: async id => (await scribes.Find(id, cancellationToken)).IfLeft(Option<Draft>.None),
+            None: () => Option<Draft>.None);
     }
 
     // The rite an address names, when it's burned and not among the rites the page shows anyway: on the calendar, the one
