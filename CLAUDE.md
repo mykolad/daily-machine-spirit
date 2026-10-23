@@ -432,9 +432,18 @@ skills/                           — Consult the Machine Spirit, a skill that p
       leaves the draft to the Augury, isn't a move. Only
       judged drafts count: without a quality, the Augury places a draft by age alone. When
       both stay low, the Augury can be left to choose on its own.
-  - **The Record** (`/scriptorium/record`, #9): who changed what, newest first, the last 100; `?draft=` gives one
+  - **The Record** (`/scriptorium/record`, #9): who changed what, newest first; `?draft=` gives one
     draft's whole history, with the way to it as it is now: its card in the calendar or the Ashes (opened, marked and
-    scrolled to), or its page once published. An `AuditEntry` (documents of type `audit`) is saved in the same batch as each change, so
+    scrolled to), or its page once published.
+    - **The page** (`ScriptoriumPage.Record`, the redesign's step 2): the entries by day (UTC), under sticky headings
+      that count them, each a row with its time, a badge (its action's icon, coloured by who acted, a burn in the
+      flames' colour) and what was done, the detail in the Record's own short words ("#2 → #1", "stayed #3", "Augury
+      70%", "No. 9"). Three or more "judged again" in a row by one actor fold into one row, each rite under Show all (a
+      `<details>`). Filters, links that the address keeps (`?who=scribes|spirit`, `?what=published|written|judged|moved|burned|other`,
+      `RecordFilter`), narrow what was read: who, and what kind (`RecordKind`), counting the kinds the who leaves.
+      It reads `ScriptoriumPages:RecordEntriesShown` entries at a time and shows whole days (`RecordShown.WholeDays`):
+      the oldest, which may go on past them, is left for "Older days →" (`?from=<day>`, `GetNewestBefore`).
+    - An `AuditEntry` (documents of type `audit`) is saved in the same batch as each change, so
     there's no change without its entry: the Scribes' actions, and the Machine Spirit's own (each draft it writes, each
     rite it publishes). Only Summon, which stores nothing itself, saves its entry alone, and goes ahead if that fails.
     - **Who:** a Scribe is their Access id (the token's `sub`), never their email; on staging, with no sign-in, every
