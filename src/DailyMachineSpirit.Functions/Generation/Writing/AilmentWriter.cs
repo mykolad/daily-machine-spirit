@@ -26,6 +26,8 @@ public sealed class AilmentWriter
         - Never mention AI, artificial intelligence, models, LLMs, chatbots, prompts or vibe coding.
         - A command or file name only if truly needed, at most one, in `backticks`.
         - A word replaced by an emoji in the rite was lost to time: leave it out.
+        {RiteRules.Original}
+        {string.Join("\n", RiteRules.Decent)}
         """;
 
     private static readonly JsonSerializerOptions AnswerSerializerOptions = new(JsonSerializerOptions.Web)

@@ -2,6 +2,7 @@ using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Pages;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using static DailyMachineSpirit.Tests.Expect;
@@ -48,6 +49,10 @@ public sealed class AilmentBackfillTests : IAsyncLifetime
         }
         Assert.Equal([Paths.RitesApi], Assert.Single(pages.Purges));
         Assert.Contains("Rite of the Second Run", models.Requests[0].Messages.Last().Text);
+        // Saved to published rites without a Scribe reading it first, so it keeps the rules every rite keeps.
+        var instructions = models.Requests[0].Messages.Single(message => message.Role == ChatRole.System).Text;
+        Assert.Contains("Never quote or paraphrase Games Workshop", instructions);
+        Assert.Contains("Nothing abusive, hateful", instructions);
     }
 
     // Drafts only: the rites API shows no draft, so nothing is purged. One with an ailment already, or published (its rite
