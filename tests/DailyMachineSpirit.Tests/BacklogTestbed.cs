@@ -90,6 +90,17 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public VoteRepository Votes => new(cosmos.Container);
 
+    public BurnRepository Burns => new(cosmos.Container);
+
+    /// <summary>Takes a burned draft's burn details away, as a draft burned before they were kept has none.</summary>
+    public async Task ForgetBurnDetails(Guid draftId)
+        => await cosmos.Container.PatchItemAsync<DraftDocument>(DraftDocument.IdFor(draftId), CosmosCalls.SharedPartitionKey,
+            [
+                Microsoft.Azure.Cosmos.PatchOperation.Remove("/burnedBy"),
+                Microsoft.Azure.Cosmos.PatchOperation.Remove("/burnedFromPlace"),
+                Microsoft.Azure.Cosmos.PatchOperation.Remove("/burnReason"),
+            ]);
+
     public static string Answer(string title)
         => FakeChatClients.Answer(title, "Press Re-run thrice, O Machine Spirit.", "The test is flaky: fix its race instead.");
 
