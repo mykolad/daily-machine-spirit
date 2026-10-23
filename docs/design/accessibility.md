@@ -209,7 +209,7 @@ and candles behind it, and the recent rites under Today.
 ## The Precepts (the Scriptorium redesign, step 2)
 
 - **The numerals are decoration:** the list is an `<ol>`, so a screen reader already counts the precepts; the Roman
-  numerals are `aria-hidden`.
+  numerals are `aria-hidden`. It says `role="list"`, since Safari drops the semantics of a list styled without markers.
 - **The icon buttons name their precept,** with visually hidden text ("Delete: Prefer the real fix."), as the
   calendar's arrows do. Each is 44 by 44 pixels, and their tooltips (`title`) say what they do.
 - **Pin is a toggle with one name,** "Pin, so distilling keeps it", and `aria-pressed` says whether it's pinned. The

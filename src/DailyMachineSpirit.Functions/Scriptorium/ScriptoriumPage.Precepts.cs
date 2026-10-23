@@ -51,7 +51,8 @@ public static partial class ScriptoriumPage
         {
             html.Append("""<p class="empty">There are no precepts yet: distil them, or write one of your own.</p>""");
         }
-        html.Append("""<ol class="precepts">""");
+        // Safari drops a styled list's semantics unless it's said: the count is what stands in for the hidden numerals.
+        html.Append("""<ol class="precepts" role="list">""");
         // Just distilled, the new ones are the unpinned: marked, as an acted-on precept is, so the eye finds them.
         var distilled = outcome.Exists(done => done == "distil");
         for (var index = 0; index < book.Precepts.Count; index++)
