@@ -65,6 +65,12 @@ public static class Styles
         .kicker{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:14px;letter-spacing:.22em;color:#8f2a20}
         .rite-title{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:clamp(28px,4.6vw,44px);line-height:1.1;color:#8f2a20;text-wrap:balance}
         .rite-date{font-family:'EB Garamond',serif;font-style:italic;font-size:18px;color:#5c4a33}
+        .imperial{position:relative;display:inline-block}
+        .imperial-date{margin:0;padding:0;border:0;background:none;font:inherit;letter-spacing:inherit;color:inherit;cursor:help;text-decoration:underline dotted 1px;text-underline-offset:5px}
+        .parchment .imperial-date:focus-visible{outline-color:#8f2a20;outline-offset:2px}
+        .imperial-day{display:none;position:absolute;z-index:5;top:calc(100% + 6px);left:50%;transform:translateX(-50%);padding:6px 12px;border-radius:8px;background:#241c12;color:#ede3cf;font-family:Figtree,system-ui,sans-serif;font-style:normal;font-weight:500;font-size:14px;line-height:1.3;letter-spacing:0;white-space:nowrap;box-shadow:0 6px 20px rgba(0,0,0,.4)}
+        .imperial:hover .imperial-day,.imperial-date:focus-visible+.imperial-day,.imperial[data-open] .imperial-day{display:block}
+        .imperial[data-dismissed] .imperial-day{display:none}
         .parchment .divider{margin:6px 0 10px}
         .prayer{margin:0;align-self:stretch;text-align:left;font-family:'EB Garamond',serif;font-size:clamp(20px,2.4vw,23px);line-height:1.65;color:#2b2117;text-wrap:pretty}
         .drop-cap{float:left;font-family:Cinzel,serif;font-weight:700;font-size:clamp(64px,8vw,84px);line-height:.82;margin:8px 12px 0 0;color:#8f2a20}
@@ -281,7 +287,7 @@ public static class Styles
         .sheet-sub{font-size:16px}
         .sheet-search{height:40px}
         .month-rubric{font-size:12px}
-        .row{display:grid;grid-template-columns:80px minmax(0,1fr);gap:20px;padding:14px 8px}
+        .row{display:grid;grid-template-columns:112px minmax(0,1fr);gap:20px;padding:14px 8px}
         .row-meta{flex-direction:column;gap:4px;padding-top:3px}
         .row-date{font-size:14px}
         .row-title{font-size:19px}

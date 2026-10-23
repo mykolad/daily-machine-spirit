@@ -205,3 +205,16 @@ and candles behind it, and the recent rites under Today.
   Scriptorium puts its heading between two candles (from 1280px), with the glow behind it and the traces beyond, and
   nothing in the margins to read: there's nothing it would say there that it doesn't say already. The
   candles and traces are hidden from screen readers, and the flames stop under reduced motion.
+
+## Imperial dates
+
+- **The day as we reckon it is a toggletip, not a hover-only tooltip.** The Imperial date ("0 805 026.M3") on the rite
+  card and the Archive's "Since" is a button: the day shows while the pointer is on it (and on the day itself, so it
+  can be read), while the button has focus, or once tapped, for a touch screen; Escape hides it until the pointer
+  leaves or focus moves on (WCAG 1.4.13). Without the script, hover and focus still show it.
+- **A screen reader hears both:** the button's name is the Imperial date it shows (WCAG 2.5.3), and the day describes
+  it (`aria-describedby`), so it's said without opening anything. The date stays a `<time datetime>`.
+- **Inside a link** (the Archive's rows, recent rites, More rites, the search's suggestions), where a button can't be,
+  the day is visually hidden text after the Imperial date, which is hidden from screen readers, so they hear the day
+  alone; the pointer gets it from the `title`. A touch screen reads it on the rite's own page, a tap away.
+- **On the parchment the button's focus ring is red** (`#8f2a20`), as the sheet's controls are: amber is too faint there.

@@ -398,6 +398,14 @@ public static class Script
             status.setAttribute('role', 'status');
             box.append(status);
             const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            // A rite's day as the pages show it (ImperialDate.Of): the thousandths of its year passed at its midnight, its
+            // year within the millennium, and the millennium.
+            const imperialOf = (year, month, day) => {
+              const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+              const passed = (Date.UTC(year, month - 1, day) - Date.UTC(year, 0, 1)) / 86_400_000;
+              const three = (number) => String(number).padStart(3, '0');
+              return `0 ${three(Math.floor(passed * 1000 / (leap ? 366 : 365)))} ${three(year % 1000)}.M${Math.floor(year / 1000) + 1}`;
+            };
             let rites;
             let typing;
             let active = -1;
@@ -533,9 +541,16 @@ public static class Script
                   : filed.length > 0 ? `No rite mentions ${quoted}` : `Nothing found for ${quoted}`;
                 none.hidden = found.length > 0 || filed.length > 0;
                 showFound(subjectOptions, found.slice(0, 5).map((rite) => {
-                  const [, month, day] = rite.day.split('-').map(Number);
-                  return optionOf(`search-option-${rite.number}`, `/r/${rite.number}`, marked(rite.title, words, false),
-                    `${rite.kind === 'prayer' ? 'Prayer' : 'Ritual'} · ${day} ${monthNames[month - 1]}`);
+                  const [year, month, day] = rite.day.split('-').map(Number);
+                  const meta = document.createDocumentFragment();
+                  const shown = document.createElement('span');
+                  shown.setAttribute('aria-hidden', 'true');
+                  shown.textContent = imperialOf(year, month, day);
+                  const said = document.createElement('span');
+                  said.className = 'sr-only';
+                  said.textContent = `${day} ${monthNames[month - 1]} ${year}`;
+                  meta.append(`${rite.kind === 'prayer' ? 'Prayer' : 'Ritual'} · `, shown, said);
+                  return optionOf(`search-option-${rite.number}`, `/r/${rite.number}`, marked(rite.title, words, false), meta);
                 }));
                 status.textContent = announced(label.textContent);
               } catch {
@@ -624,6 +639,35 @@ public static class Script
           };
           // Ticked at once too: a cached page may have been rendered up to an hour ago.
           if (document.querySelector('[data-countdown]')) { tick(); setInterval(tick, 30000); }
+
+          // An Imperial date's day as we reckon it shows while the pointer is on it or it has focus (the stylesheet); a
+          // tap shows or hides it too, for a touch screen, and a tap elsewhere hides it. Escape hides any, until the
+          // pointer leaves or focus moves on (WCAG 1.4.13).
+          const dates = [...document.querySelectorAll('.imperial')];
+          for (const date of dates) {
+            const button = date.querySelector('.imperial-date');
+            button.addEventListener('click', () => {
+              date.toggleAttribute('data-open');
+              date.removeAttribute('data-dismissed');
+            });
+            button.addEventListener('blur', () => {
+              date.removeAttribute('data-open');
+              date.removeAttribute('data-dismissed');
+            });
+            date.addEventListener('mouseleave', () => date.removeAttribute('data-dismissed'));
+          }
+          if (dates.length > 0) {
+            document.addEventListener('click', (event) => {
+              dates.filter((date) => !date.contains(event.target)).forEach((date) => date.removeAttribute('data-open'));
+            });
+            document.addEventListener('keydown', (event) => {
+              if (event.key !== 'Escape') return;
+              dates.forEach((date) => {
+                date.removeAttribute('data-open');
+                date.setAttribute('data-dismissed', '');
+              });
+            });
+          }
         })();
         """;
 }

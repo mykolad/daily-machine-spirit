@@ -55,7 +55,7 @@ public static class ArchiveRows
             : $"""<span class="row-tags"><span class="sr-only">Filed under </span>{TagLinks.Render(tags)}</span>""";
         return $"""
             <li class="row">
-            <span class="row-meta"><time class="row-date" datetime="{Html.IsoDate(rite.PublishedOnUtc)}">{Html.DayAndMonth(rite.PublishedOnUtc)}</time><span class="kind">{(rite.Writing.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL")}</span><span class="row-number"><span aria-hidden="true">NO. </span><span class="sr-only">Rite </span>{rite.Number}</span></span>
+            <span class="row-meta">{ImperialDate.InALink(rite.PublishedOnUtc, "row-date")}<span class="kind">{(rite.Writing.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL")}</span><span class="row-number"><span aria-hidden="true">NO. </span><span class="sr-only">Rite </span>{rite.Number}</span></span>
             <span class="row-main"><a class="row-title" href="{Paths.Rite(rite.Number)}">{Highlight.Of(rite.Writing.Title, words)}</a><span class="row-line">{Highlight.Of(line, words)}</span>{Counts(rite)}{tagLinks}</span>
             </li>
             """;

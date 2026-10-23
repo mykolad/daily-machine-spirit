@@ -40,12 +40,10 @@ public class HtmlTests
     public void Count_GroupsThousands(int count, string expected) => Assert.Equal(expected, Html.Count(count));
 
     [Fact]
-    public void Dates_ReadAsTheDesignShowsThem()
+    public void IsoDate_IsTheDayAsAMachineReadsIt()
     {
         var day = new DateOnly(2026, 10, 9);
 
-        Assert.Equal("9 October 2026", Html.LongDate(day));
-        Assert.Equal("9 Oct 2026", Html.ShortDate(day));
         Assert.Equal("2026-10-09", Html.IsoDate(day));
     }
 }

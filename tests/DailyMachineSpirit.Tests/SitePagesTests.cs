@@ -102,7 +102,7 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.Equal(StatusCodes.Status200OK, status);
         Assert.Contains("""<h2 class="rite-title" id="rite-title">The Rite of Re-Run</h2>""", html);
         Assert.Contains("A RITUAL · NO. 2", html);
-        Assert.Contains("""<time class="rite-date" datetime="2026-10-09">9 October 2026</time>""", html);
+        Assert.Contains("""<span class="imperial rite-date"><button type="button" class="imperial-date" aria-describedby="rite-day"><time datetime="2026-10-09">0 769 026.M3</time></button><span class="imperial-day" id="rite-day" role="tooltip">Friday 9 October 2026</span></span>""", html);
         Assert.Contains("""<section class="truth" id="truth-panel" aria-labelledby="truth-heading" hidden>""", html);
         Assert.Contains("Your test depends on <code>timing</code>.", html);
         Assert.Contains("Next litany in", html);
@@ -122,10 +122,10 @@ public sealed class SitePagesTests : IAsyncLifetime
         var (_, html) = await Today("");
 
         Assert.Contains("""<h2 class="rite-title" id="rite-title">Rite 6</h2>""", html);
-        var recent = Regex.Matches(html, """<a class="recent-card" href="(/r/\d+)">\s*<span class="recent-kicker">([^<]+)</span>\s*<span class="recent-title">([^<]+)</span>""")
+        var recent = Regex.Matches(html, """<a class="recent-card" href="(/r/\d+)">\s*<span class="recent-kicker">(.+?)</span>\s*<span class="recent-title">([^<]+)</span>""")
             .Select(card => $"{card.Groups[1].Value} {card.Groups[2].Value} {card.Groups[3].Value}");
         Assert.Equal(
-            ["/r/5 A RITUAL · 8 OCT Rite 5", "/r/4 A RITUAL · 7 OCT Rite 4", "/r/3 A RITUAL · 6 OCT Rite 3", "/r/2 A RITUAL · 5 OCT Rite 2"],
+            new[] { 5, 4, 3, 2 }.Select(number => $"/r/{number} A RITUAL · {ImperialDate.InALink(Day.AddDays(number - 6), "recent-date")} Rite {number}"),
             recent);
     }
 
