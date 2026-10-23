@@ -487,7 +487,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         var html = RecordPages.Of(Ok(await testbed.Audit.GetNewest(10, CancellationToken.None)), []);
 
         Assert.Contains("added the precept “Prefer the real fix.”", html);
-        Assert.Contains("""<span class="actor spirit">The Machine Spirit</span> <span class="did">distilled <a href="/scriptorium/precepts">the Precepts</a></span> <span class="detail">1 new, 1 pinned, from 1 judgments</span>""", html);
+        Assert.Contains("""<span class="actor spirit">The Machine Spirit</span> <span class="did">distilled <a href="/scriptorium/precepts">the Precepts</a></span> <span class="detail long">1 new, 1 pinned, from 1 judgments</span>""", html);
     }
 
     [Fact]
