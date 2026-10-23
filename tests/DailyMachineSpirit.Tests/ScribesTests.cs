@@ -408,6 +408,9 @@ public sealed class ScribesTests : IAsyncLifetime
         var ash = Assert.Single(Ok(await testbed.Scribes().Ashes(CancellationToken.None)));
         Assert.Equal(DraftState.Burned, ash.State);
         Assert.Equal(Some(testbed.Time.GetUtcNow().UtcDateTime), ash.BurnedAtUtc);
+        Assert.Equal(Some(BacklogTestbed.Tester), ash.BurnedBy);
+        Assert.Equal(Some(1), ash.BurnedFromPlace);
+        Assert.Equal(Some("Not funny."), ash.BurnReason);
         var decision = Assert.Single(view.Decisions);
         Assert.Equal(ScribeAction.Burn, decision.Action);
         Assert.Equal(Some("Not funny."), decision.Note);
@@ -418,14 +421,15 @@ public sealed class ScribesTests : IAsyncLifetime
     public async Task Restore_BringsADraftBackFromTheAshes()
     {
         var draft = await testbed.AddDraft("Second chance", 0.6f);
-        Ok(await testbed.Scribes().Burn(draft.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+        Ok(await testbed.Scribes().Burn(draft.Id, "Too specific", BacklogTestbed.Tester, CancellationToken.None));
         testbed.Time.Advance(TimeSpan.FromMinutes(1));
 
         Ok(await testbed.Scribes().Restore(draft.Id, "Funnier than I thought.", BacklogTestbed.Tester, CancellationToken.None));
 
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
         Assert.Equal("Second chance", Assert.Single(view.Calendar).Draft.Writing.Title);
-        Assert.True(view.Calendar[0].Draft.BurnedAtUtc.IsNone);
+        var waiting = view.Calendar[0].Draft;
+        Assert.True(waiting.BurnedAtUtc.IsNone && waiting.BurnedBy.IsNone && waiting.BurnedFromPlace.IsNone && waiting.BurnReason.IsNone);
         Assert.Empty(Ok(await testbed.Scribes().Ashes(CancellationToken.None)));
         var restored = view.Decisions[0];
         Assert.Equal(ScribeAction.Restore, restored.Action);

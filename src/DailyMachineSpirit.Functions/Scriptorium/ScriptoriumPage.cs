@@ -64,7 +64,6 @@ public static partial class ScriptoriumPage
         .suggest-others { margin: 16px 0 0; }
         .suggest-others .button-link { border-style: dashed; }
         .rite { background: #1a1612; border: 1px solid rgba(237,227,207,.1); border-radius: 20px; padding: 20px clamp(16px, 3vw, 24px); scroll-margin-top: 16px; }
-        .ash { opacity: .92; }
         .acted, .row.arrived { border-color: #f0b45a; animation: acted 1.4s ease-out; }
         @keyframes acted { from { box-shadow: 0 0 0 4px rgba(240, 180, 90, .45); } to { box-shadow: 0 0 0 4px rgba(240, 180, 90, 0); } }
         .filters { display: flex; align-items: flex-start; gap: 12px; margin: 18px 0 0; }
@@ -101,7 +100,14 @@ public static partial class ScriptoriumPage
         .day time { font: 500 13px "JetBrains Mono", monospace; color: #cdbd9e; white-space: nowrap; }
         .kind { font: 700 11px Cinzel, serif; letter-spacing: .14em; text-transform: uppercase; color: #b6a98f; }
         .heading { flex: 1 1 240px; min-width: 0; display: grid; gap: 6px; }
-        .row h4 { margin: 0; font: 700 18px/1.25 Cinzel, serif; color: #ede3cf; text-wrap: pretty; }
+        .row-title { margin: 0; font: 700 18px/1.25 Cinzel, serif; color: #ede3cf; text-wrap: pretty; }
+        .burn-day .group-title { color: #e88a78; }
+        .ash-day { width: 72px; }
+        .from { font: 500 13px "JetBrains Mono", monospace; color: #cdbd9e; white-space: nowrap; }
+        .under-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
+        .reason-said { font: italic 17px/1.3 "EB Garamond", serif; color: #cdbd9e; }
+        .restore-now { min-height: 44px; padding: 10px 16px 10px 12px; font-size: 15px; }
+        .more-ashes { margin-top: 24px; }
         .row .tags { margin: 0; }
         .row .tag { padding: 0 10px; font-size: 13px; line-height: 1.6; }
         .cluster { display: flex; align-items: center; gap: 12px; margin-left: auto; flex: none; }
@@ -136,7 +142,7 @@ public static partial class ScriptoriumPage
         .burn-buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
         .cancel { padding: 10px 16px; background: transparent; color: #cdbd9e; }
         .cancel:hover { background: rgba(237,227,207,.08); }
-        .burn-help { flex: 1 1 220px; font-size: 14px; color: #b6a98f; }
+        .button-help { flex: 1 1 220px; font-size: 14px; color: #b6a98f; }
         .more { font-weight: 600; }
         .recent { list-style: none; margin: 14px 0 0; padding: 6px 0; background: #1a1612; border-radius: 20px; }
         .recent li { display: grid; grid-template-columns: 20px 84px minmax(0, 1fr); gap: 4px 14px; align-items: baseline; padding: 10px 20px; }
@@ -176,10 +182,10 @@ public static partial class ScriptoriumPage
         .changed-mark { font-weight: 400; color: #f0b45a; }
         .amend .buttons { margin-top: 20px; }
         .amend input[type=text], textarea { width: 100%; background: #100e0b; color: #ede3cf; border: 1px solid #b6a98f; border-radius: 12px; padding: 8px 12px; font: 16px/1.4 Figtree, sans-serif; margin-bottom: 8px; }
-        button { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 10px 18px 10px 14px; border-radius: 999px; font: 600 16px/1.2 Figtree, sans-serif; cursor: pointer; border: 1px solid transparent; }
+        button { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; min-height: 46px; padding: 10px 18px 10px 14px; border-radius: 999px; font: 600 16px/1.2 Figtree, sans-serif; cursor: pointer; border: 1px solid transparent; }
         .icon { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
         .primary { background: #c9a25a; color: #100e0b; }
-        .button-link { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 10px 18px 10px 14px; border-radius: 999px; border: 1px solid rgba(237,227,207,.22); font: 600 16px/1.2 Figtree, sans-serif; color: #ede3cf; text-decoration: none; }
+        .button-link { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; min-height: 46px; padding: 10px 18px 10px 14px; border-radius: 999px; border: 1px solid rgba(237,227,207,.22); font: 600 16px/1.2 Figtree, sans-serif; color: #ede3cf; text-decoration: none; }
         .button-link:hover { background: rgba(237,227,207,.08); border-color: rgba(237,227,207,.4); color: #ede3cf; }
         .primary:hover { background: #d6b170; }
         .outline, .secondary { background: transparent; color: #ede3cf; border-color: rgba(237,227,207,.22); }
@@ -216,49 +222,9 @@ public static partial class ScriptoriumPage
         .word:hover { background: rgba(237,227,207,.08); }
         .word:has(input:checked) { background: #3b1814; color: #f6cfc6; text-decoration: line-through 2px #d0604d; }
         .word:has(input:focus-visible) { outline: 2px solid #f0b45a; outline-offset: 2px; }
+        @media (max-width: 400px) { button, .button-link { white-space: normal; } }
         @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
         """;
-
-    /// <summary>
-    /// The Ashes: the burned rites, the most recently burned first, each with a way back into the calendar. Plain forms:
-    /// restoring goes to the calendar, where the restored rite now waits.
-    /// </summary>
-    /// <param name="ashes">The rites burned most recently.</param>
-    /// <param name="older">A rite burned before those, which a burn's message linked to.</param>
-    /// <param name="acted">The rite the calendar's last burn sent here, marked so the eye finds it.</param>
-    public static string RenderAshes(IReadOnlyList<Draft> ashes, Option<Draft> older, Option<TabCounts> counts, Option<Guid> acted)
-    {
-        var html = new StringBuilder();
-        Head(html, "The Ashes", TabBar(ScriptoriumTab.Ashes, counts));
-        html.Append("""<main id="main">""");
-        Heading(html, "The Ashes",
-            "Rites consigned to the flames. Nothing burned is lost: a restored rite waits again, where the Augury places it.");
-        if (ashes.Count == 0)
-        {
-            html.Append("<p>Nothing has been consigned to the flames.</p>");
-        }
-        else
-        {
-            // The page shows the newest; the tab counts them all.
-            counts.Filter(counted => counted.Ashes > ashes.Count)
-                .IfSome(counted => html.Append($"<p>The {ashes.Count} burned most recently, of {Number(counted.Ashes)}.</p>"));
-            html.Append("""<ul class="calendar">""");
-            foreach (var draft in ashes)
-            {
-                Ash(html, draft, acted);
-            }
-            html.Append("</ul>");
-        }
-        older.IfSome(draft =>
-        {
-            html.Append("""<section aria-labelledby="older-heading"><h2 id="older-heading">Burned longer ago</h2><ul class="calendar">""");
-            Ash(html, draft, acted);
-            html.Append("</ul></section>");
-        });
-        html.Append("</main>");
-        Footer(html, None);
-        return html.ToString();
-    }
 
     public static string RenderError()
     {
@@ -360,10 +326,12 @@ public static partial class ScriptoriumPage
     /// first draft to its publishing.
     /// </summary>
     /// <param name="names">The names the Scribes chose (#84); the others show by the end of their ids.</param>
-    public static string RenderRecord(IReadOnlyList<AuditEntry> entries, IReadOnlyList<ScribeName> names, Option<TabCounts> counts, Option<Guid> draft)
+    /// <param name="name">How the Record shows the Scribe looking; none when the names can't be read.</param>
+    public static string RenderRecord(
+        IReadOnlyList<AuditEntry> entries, IReadOnlyList<ScribeName> names, Option<TabCounts> counts, Option<Guid> draft, Option<NameInTheRecord> name)
     {
         var html = new StringBuilder();
-        Head(html, "The Record", TabBar(ScriptoriumTab.Record, counts));
+        Head(html, "The Record", TabBar(ScriptoriumTab.Record, counts), Identity(name));
         html.Append("""<main id="main">""");
         Heading(html, "The Record",
             "Every change to the calendar, the rites and the Precepts, and who made it, newest first: the Scribes' actions and the Machine Spirit's own.");
@@ -385,47 +353,6 @@ public static partial class ScriptoriumPage
         Footer(html, None);
         return html.ToString();
     }
-
-    private static void Ash(StringBuilder html, Draft draft, Option<Guid> acted)
-    {
-        var id = draft.Id.ToString("D");
-        html.Append($"""<li><article class="rite ash{Acted(draft, acted)}" id="rite-{id}" aria-labelledby="title-{id}">""");
-        html.Append($"""<p class="kicker">{Kind(draft.Writing.Kind)}""");
-        draft.BurnedAtUtc.IfSome(burned => html.Append($" · burned {Date(DateOnly.FromDateTime(burned))}"));
-        html.Append("</p>");
-        RiteBody(html, draft, id);
-        DecisionForm(html, id, [Button(id, draft.Writing.Title, "restore", ScriptoriumIcons.Restore, "Restore from the Ashes", "secondary")]);
-        html.Append("</article></li>");
-    }
-
-    private static void RiteBody(StringBuilder html, Draft draft, string id)
-    {
-        html.Append($"""<h3 id="title-{id}">{WithCode(draft.Writing.Title)}</h3>""");
-        // Under the title, where an eye matches them against the calendar's subjects above. Not links: following one
-        // would leave the Scriptorium for the public tag page.
-        var tags = RiteTags.Of(draft.Tags);
-        if (tags.Count > 0)
-        {
-            var labels = string.Concat(tags.Select(tag => $"""<span class="tag">{Encode(tag.Label)}</span>"""));
-            html.Append($"""<p class="tags"><span class="visually-hidden">Filed under </span>{labels}</p>""");
-        }
-        html.Append($"""<p class="text">{WithCode(draft.Writing.Text)}</p>""");
-        html.Append($"""<p class="truth"><span class="truth-label">Heretical Truth</span> {WithCode(draft.Writing.HereticalTruth)}</p>""");
-        html.Append(Ailment(draft.Writing));
-    }
-
-    // One form per draft, so its note goes with the button pressed. The note is folded away: most decisions go without one.
-    private static void DecisionForm(StringBuilder html, string id, IEnumerable<string> buttons)
-        => html.Append($"""
-            <form method="post" class="decide">
-            <details class="fold">
-            <summary>{ScriptoriumIcons.Note}Note for the Augury <span class="optional">(optional)</span></summary>
-            <label class="visually-hidden" for="note-{id}">Note for the Augury</label>
-            <textarea id="note-{id}" name="note" rows="2" maxlength="{ScribeDecision.MaxNoteLength}"></textarea>
-            </details>
-            <div class="buttons">{string.Concat(buttons)}</div>
-            </form>
-            """);
 
     // Each button names the rite for screen readers, since every entry has the same buttons.
     private static string Button(string id, string title, string action, string icon, string label, string style)
@@ -480,7 +407,7 @@ public static partial class ScriptoriumPage
 
     private static void Head(StringBuilder html, string title, string tabs) => Head(html, title, tabs, string.Empty);
 
-    // The brand, and beside it who's looking (only the calendar says so, for now), then the tabs.
+    // The brand, and beside it who's looking (the Calendar, the Ashes and the Record say so), then the tabs.
     private static void Head(StringBuilder html, string title, string tabs, string identity)
     {
         html.Append($"""
