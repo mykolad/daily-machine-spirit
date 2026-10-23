@@ -646,14 +646,20 @@ public static class Script
           // pointer leaves or focus moves on (WCAG 1.4.13). Listened for on the document, since the Archive's search swaps
           // its margins, "Since" with them, for new ones.
           const dateOf = (target) => (target instanceof Element ? target.closest('.imperial') : null);
+          const showing = (date) => date.matches('[data-open], :hover, :has(.imperial-date:focus-visible)') && !date.hasAttribute('data-dismissed');
+          // Pressing a date shows its day, or hides it when it shows, whether a press, the pointer or focus showed it. A
+          // touch screen keeps :hover after a tap, so there only the press itself counts.
           document.addEventListener('click', (event) => {
-            const tapped = event.target instanceof Element && event.target.closest('.imperial-date') ? dateOf(event.target) : null;
+            const pressed = event.target instanceof Element && event.target.closest('.imperial-date') ? dateOf(event.target) : null;
             document.querySelectorAll('.imperial').forEach((date) => {
-              if (date === tapped) {
-                date.toggleAttribute('data-open');
-                date.removeAttribute('data-dismissed');
-              } else {
+              if (date !== pressed) {
                 date.removeAttribute('data-open');
+              } else if (event.pointerType === 'touch' ? date.hasAttribute('data-open') : showing(date)) {
+                date.removeAttribute('data-open');
+                date.setAttribute('data-dismissed', '');
+              } else {
+                date.setAttribute('data-open', '');
+                date.removeAttribute('data-dismissed');
               }
             });
           });
@@ -670,7 +676,7 @@ public static class Script
           document.addEventListener('keydown', (event) => {
             if (event.key !== 'Escape') return;
             document.querySelectorAll('.imperial').forEach((date) => {
-              if (!date.matches('[data-open], :hover, :has(.imperial-date:focus-visible)')) return;
+              if (!showing(date)) return;
               date.removeAttribute('data-open');
               date.setAttribute('data-dismissed', '');
             });
