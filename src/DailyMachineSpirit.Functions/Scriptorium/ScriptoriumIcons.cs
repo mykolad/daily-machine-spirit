@@ -48,6 +48,19 @@ public static class ScriptoriumIcons
 
     public const string Add = $"""{Open}<path d="M5 12h14"/><path d="M12 5v14"/></svg>""";
 
+    // The Precepts' redesign (step 2): a pin filled in for a pinned precept, Lucide's pencil to edit one, its flask
+    // to distil them, and its loader-circle, which turns while they're distilled.
+    public const string PinFilled =
+        """<svg class="icon filled" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M12 17v5M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>""";
+
+    public const string Pencil =
+        $"""{Open}<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>""";
+
+    public const string Flask =
+        """<svg class="icon idle-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2M6.453 15h11.094M8.5 2h7"/></svg>""";
+
+    public const string Loader = """<svg class="icon busy-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>""";
+
     // The calendar's rows (the Scriptorium redesign): Lucide's chevron-down, to open a rite, and undo-2, after a burn.
     public const string Chevron = $"""{Open}<path d="m6 9 6 6 6-6"/></svg>""";
 

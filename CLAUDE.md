@@ -377,6 +377,16 @@ skills/                           — Consult the Machine Spirit, a skill that p
       stay when distilled again, the rest make way for the new ones; a Scribe's words are pinned. Pinned ones come first,
       on the page and in the writer's prompt; Pin and Unpin say what they do in their `title`. Deleted ones are
       remembered (the newest 30): the model is told not to propose them, and any it does are dropped.
+    - **The page** (`ScriptoriumPage.Precepts`, the redesign's step 2): the precepts numbered I, II, III, each saying
+      whose words it is and who pinned it (`Precept.Origin` and `By`: written or amended by a Scribe, or distilled and
+      pinned by one; precepts kept before that say "A Scribe's words"), with three icon buttons: Pin (`aria-pressed`),
+      Edit and Delete. Edit opens the words in place (`PreceptsScript`; a click on the words does too), and without the
+      script the pencil is a link to `?edit=<id>`, the page with those words open. A delete takes effect at once, and
+      offers Undo (a toast that fades after seven seconds, never under the pointer or focus): the precept deleted last
+      is kept with its place (`PreceptBook.LastDeleted`) until any other change, and Undo puts it back where it was,
+      as it was, its words no longer barred from a distillation (recorded as `RestorePrecept`). The distil panel says
+      when the next weekly run is (`NextDistillation`), and the agreement table folds months without a judgment into
+      one row ("May–Sep 2026").
     - **Within the writer's rules** (#86, `PreceptCheck`): `gpt-6-luna`, then `gpt-6-sol` if it fails
       (`PreceptCheck` in `machine-spirit.jsonc`, 15 seconds for both together, all the precepts in one request) says which
       precepts would have the writer break one of its rules (`RiteRules`), or are abusive or discriminating, and why. A

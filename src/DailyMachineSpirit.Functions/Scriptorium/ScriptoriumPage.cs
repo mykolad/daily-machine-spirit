@@ -214,6 +214,52 @@ public static partial class ScriptoriumPage
         .word:hover { background: rgba(237,227,207,.08); }
         .word:has(input:checked) { background: #3b1814; color: #f6cfc6; text-decoration: line-through 2px #d0604d; }
         .word:has(input:focus-visible) { outline: 2px solid #f0b45a; outline-offset: 2px; }
+        .distil-panel { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 24px; margin: 24px 0 0; padding: 16px 16px 16px 20px; background: #1a1612; border: 1px solid rgba(237,227,207,.1); border-radius: 20px; }
+        .distil-said { flex: 1 1 320px; display: grid; gap: 4px; }
+        .distil-said p { margin: 0; }
+        .distilled-at { font: 500 13px "JetBrains Mono", monospace; color: #8cc4ae; }
+        .distil-about { font-size: 15px; color: #cdbd9e; }
+        .distil-form { display: grid; justify-items: start; gap: 6px; margin: 0; }
+        .distil-form .hint { margin: 0; font-size: 13px; }
+        .busy-icon { display: none; }
+        form[data-busy] .idle-icon { display: none; }
+        form[data-busy] .busy-icon { display: block; animation: spin 1s linear infinite; }
+        form[data-busy] .primary:disabled { opacity: .7; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .precepts { list-style: none; margin: 24px 0 0; padding: 6px 0; background: #1a1612; border: 1px solid rgba(237,227,207,.1); border-radius: 20px; }
+        .precept { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 4px 12px; align-items: start; padding: 14px 12px 14px 20px; }
+        .precept + .precept { border-top: 1px solid rgba(237,227,207,.08); }
+        .precept.acted { animation: flashbar 1.4s ease-out; }
+        @keyframes flashbar { from { box-shadow: inset 3px 0 0 #f0b45a; } to { box-shadow: inset 3px 0 0 rgba(240,180,90,0); } }
+        .numeral { font: 700 20px/1.45 Cinzel, serif; color: #c9a25a; }
+        .precept-text { margin: 0; font: 400 20px/1.45 "EB Garamond", serif; color: #ede3cf; }
+        [data-edits-in-place] .precept-text { cursor: pointer; }
+        .precept-meta { margin: 4px 0 0; font-size: 14px; color: #b6a98f; }
+        .pinned-by { display: inline-flex; align-items: center; gap: 6px; color: #d9b874; }
+        .pinned-by .icon { width: 14px; height: 14px; }
+        .icon.filled { fill: currentColor; }
+        .precept-actions { display: flex; gap: 2px; margin: 0; }
+        .icon-button { display: inline-grid; place-items: center; width: 44px; height: 44px; min-height: 44px; padding: 0; border-radius: 999px; border: 0; background: transparent; color: #cdbd9e; }
+        .icon-button:hover { background: rgba(237,227,207,.08); color: #f0d59a; }
+        .icon-button.pin[aria-pressed=true] { color: #c9a25a; background: rgba(201,162,90,.12); }
+        .icon-button.delete { color: #b6a98f; }
+        .icon-button.delete:hover { background: #3b1814; color: #f6cfc6; }
+        .precept-edit { display: none; margin: 0; }
+        .precept.editing .precept-edit { display: grid; gap: 8px; }
+        .precept.editing .precept-shown, .precept.editing .precept-actions { display: none; }
+        .precept-edit label, .precept-add label { font-size: 15px; font-weight: 600; color: #cdbd9e; }
+        .precept-edit textarea { margin: 0; font: 19px/1.45 "EB Garamond", serif; }
+        .precept-add { grid-column: 2 / 4; display: grid; gap: 8px; margin: 0; }
+        .precept-add textarea { margin: 0; }
+        .precept-add button:disabled { opacity: .45; }
+        .agreement-card { margin-top: 12px; overflow-x: auto; padding: 8px 16px; background: #1a1612; border: 1px solid rgba(237,227,207,.1); border-radius: 20px; }
+        .agreement-card .agreement { min-width: 520px; margin: 0; }
+        .agreement-card thead th { font: 700 11px Cinzel, serif; letter-spacing: .14em; text-transform: uppercase; color: #b6a98f; }
+        .agreement .number { text-align: right; }
+        .agreement td.number { font: 500 15px "JetBrains Mono", monospace; }
+        .agreement .muted, .agreement .quiet td, .agreement .quiet th { color: #b6a98f; }
+        .agreement tbody tr:last-child th, .agreement tbody tr:last-child td { border-bottom: 0; }
+        @media (max-width: 560px) { .precept { grid-template-columns: 36px minmax(0, 1fr); } .precept-actions { grid-column: 2; } .precept-add { grid-column: 2; } }
         @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
         """;
 
@@ -606,6 +652,7 @@ public static partial class ScriptoriumPage
             AuditAction.PinPrecept => $"pinned the precept {rite}",
             AuditAction.UnpinPrecept => $"unpinned the precept {rite}",
             AuditAction.DeletePrecept => $"deleted the precept {rite}",
+            AuditAction.RestorePrecept => $"restored the precept {rite}",
             AuditAction.JudgeAgain => $"judged {rite} again",
             AuditAction.ChooseName => $"chose the name {rite}",
             AuditAction.Expurgate => $"erased words from {rite}{entry.RiteNumber.Map(number => $" (NO. {number})").IfNone(string.Empty)}",
