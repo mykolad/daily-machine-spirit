@@ -156,7 +156,8 @@ skills/                           — Consult the Machine Spirit, a skill that p
   - The tab's icon is the logo's cog, inline in each page (the Scriptorium's too) as an SVG data URI (`Svg.Favicon`):
     no request for it, and browsers don't ask for `/favicon.ico`.
   - Routes: `/` (Today: the newest rite), `/archive` (`?before=<number>` for older pages, which the archive also
-    loads in place as the reader nears the end; `?q=<words>` for search), `/r/<number>`, `/tags/<key>` (a tag's rites,
+    loads in place as the reader nears the end; `?q=<words>` for search), `/r/<number>` (spelled only so: `/r/01` or
+    `/R/1` is not found, since Cloudflare would keep it apart from what a purge names, and `/r/1/` redirects), `/tags/<key>` (a tag's rites,
     paged like the archive). `/search?q=` redirects to `/archive?q=` for good.
     A catch-all route takes `/` and answers every unknown address with the 404 page. The Functions host tries routes in
     the order of their functions' names, first match wins, so the catch-all's name sorts last (`ZzToday`): any other

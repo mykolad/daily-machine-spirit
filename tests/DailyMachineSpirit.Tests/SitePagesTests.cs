@@ -207,7 +207,7 @@ public sealed class SitePagesTests : IAsyncLifetime
         var failing = new RitesWithoutScores(Repository);
         var pages = new SitePages(failing, Options.Create(Settings.PublicPages), time, NullLogger<SitePages>.Instance);
 
-        var page = await Read(context => pages.Rite(context.Request, "2", CancellationToken.None));
+        var page = await Read(context => pages.Rite(context.Request, "2", CancellationToken.None), "/r/2", "");
 
         Assert.Equal(StatusCodes.Status200OK, page.Status);
         Assert.Contains("The Rite of Re-Run", page.Html);
@@ -239,6 +239,44 @@ public sealed class SitePagesTests : IAsyncLifetime
 
         Assert.Equal(StatusCodes.Status404NotFound, status);
         Assert.Contains($"There is no litany with the id “{id}”.", html);
+    }
+
+    // Cloudflare would keep each apart from /r/1, and a purge naming /r/1 would leave its old words there.
+    [Theory]
+    [InlineData("/r/01", "01")]
+    [InlineData("/r/+1", "+1")]
+    [InlineData("/R/1", "1")]
+    public async Task Rite_SpelledAnotherWay_IsNotFound(string path, string id)
+    {
+        await Add(Day, "The Rite of Re-Run");
+
+        var page = await Read(context => Pages().Rite(context.Request, id, CancellationToken.None), path, "");
+
+        Assert.Equal((StatusCodes.Status404NotFound, "no-store"), (page.Status, page.CacheControl));
+    }
+
+    [Fact]
+    public async Task Rite_WithATrailingSlash_RedirectsToItsAddress_KeepingTheQuery()
+    {
+        await Add(Day, "The Rite of Re-Run");
+        var context = new DefaultHttpContext();
+        context.Request.Path = "/r/1/";
+        context.Request.QueryString = new QueryString("?utm_source=feed");
+
+        var result = Assert.IsType<RedirectResult>(await Pages().Rite(context.Request, "1", CancellationToken.None));
+
+        Assert.Equal(("/r/1?utm_source=feed", true), (result.Url, result.Permanent));
+    }
+
+    // A query string is kept a minute only (EdgeLifetime.Brief), so it may stay.
+    [Fact]
+    public async Task Rite_WithAQueryString_IsServed()
+    {
+        await Add(Day, "The Rite of Re-Run");
+
+        var page = await Read(context => Pages().Rite(context.Request, "1", CancellationToken.None), "/r/1", "?utm_source=feed");
+
+        Assert.Equal((StatusCodes.Status200OK, "public, max-age=60, stale-if-error=604800"), (page.Status, page.AtCloudflare));
     }
 
     [Fact]
@@ -593,7 +631,7 @@ public sealed class SitePagesTests : IAsyncLifetime
         var pages = new SitePages(missing, Options.Create(Settings.PublicPages), time, NullLogger<SitePages>.Instance);
 
         var today = await Read(context => pages.Today(context.Request, "", CancellationToken.None));
-        var rite = await Read(context => pages.Rite(context.Request, "1", CancellationToken.None));
+        var rite = await Read(context => pages.Rite(context.Request, "1", CancellationToken.None), "/r/1", "");
         var archive = await Read(context => pages.Archive(context.Request, CancellationToken.None), "/archive", "?before=4");
 
         var tag = await Read(context => pages.Tag(context.Request, "caches", CancellationToken.None), "/tags/caches", "");
@@ -627,7 +665,7 @@ public sealed class SitePagesTests : IAsyncLifetime
         await Add(Day, "Litany of the Clean Cache");
 
         var today = await Read(context => Pages().Today(context.Request, "", CancellationToken.None));
-        var rite = await Read(context => Pages().Rite(context.Request, "1", CancellationToken.None));
+        var rite = await Read(context => Pages().Rite(context.Request, "1", CancellationToken.None), "/r/1", "");
         var archive = await Read(context => Pages().Archive(context.Request, CancellationToken.None), "/archive", "");
         var withQuery = await Read(context => Pages().Today(context.Request, "", CancellationToken.None), "/", "?utm_source=feed");
         var tag = await Read(context => Pages().Tag(context.Request, "caches", CancellationToken.None), "/tags/caches", "");
@@ -661,7 +699,7 @@ public sealed class SitePagesTests : IAsyncLifetime
 
     private async Task<(int Status, string Html)> Rite(string id)
     {
-        var page = await Read(context => Pages().Rite(context.Request, id, CancellationToken.None));
+        var page = await Read(context => Pages().Rite(context.Request, id, CancellationToken.None), $"/r/{id}", "");
         return (page.Status, page.Html);
     }
 

@@ -1,3 +1,4 @@
+using System.Globalization;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Tags;
@@ -64,7 +65,19 @@ public sealed class SitePages
         string id,
         CancellationToken cancellationToken)
     {
-        if (!int.TryParse(id, out var number) || number < 1)
+        if (!int.TryParse(id, NumberStyles.None, CultureInfo.InvariantCulture, out var number) || number < 1)
+        {
+            return Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(id));
+        }
+        // Cloudflare keeps every spelling of an address apart, and a purge (a vote, an erasure) names only /r/1: kept at
+        // /r/01 or /R/1, a page would show erased words for its hour. A trailing slash is a slip worth forgiving: its
+        // redirect holds no words to go stale. A query string is fine, kept only a minute (EdgeLifetime.Brief).
+        var address = Paths.Rite(number);
+        if (string.Equals(request.Path.Value, address + "/", StringComparison.Ordinal))
+        {
+            return new RedirectResult(address + request.QueryString, permanent: true);
+        }
+        if (!string.Equals(request.Path.Value, address, StringComparison.Ordinal))
         {
             return Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(id));
         }
