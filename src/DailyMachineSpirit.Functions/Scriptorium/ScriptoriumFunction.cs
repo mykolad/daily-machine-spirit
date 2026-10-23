@@ -168,8 +168,10 @@ public sealed class ScriptoriumFunction
         var scribe = (string)looking.Case;
 
         var draft = Optional(request.Query["draft"].ToString()).Bind(text => Guid.TryParse(text, out var id) ? Some(id) : None);
+        // The last day there is has no day after it to read up to: from there, the Record is simply the newest.
         var from = Optional(request.Query["from"].ToString())
-            .Bind(text => DateOnly.TryParseExact(text, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var day) ? Some(day) : None);
+            .Bind(text => DateOnly.TryParseExact(text, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var day) ? Some(day) : None)
+            .Filter(day => day < DateOnly.MaxValue);
         var filter = new RecordFilter(
             request.Query["who"].ToString() switch
             {

@@ -1207,6 +1207,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var unknown = Html(await Function().Record(Get("?who=anyone&what=everything"), CancellationToken.None), 200);
         var fromYesterday = Html(await Function().Record(Get($"?from={today.AddDays(-1):yyyy-MM-dd}"), CancellationToken.None), 200);
         var fromToday = Html(await Function().Record(Get($"?from={today:yyyy-MM-dd}"), CancellationToken.None), 200);
+        var fromTheLastDay = Html(await Function().Record(Get("?from=9999-12-31"), CancellationToken.None), 200);
 
         Assert.Contains("consigned", burnedByScribes);
         Assert.DoesNotContain("<span class=\"did\">wrote", burnedByScribes);
@@ -1214,6 +1215,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Contains("""<a class="seg" href="/scriptorium/record" aria-current="true">Everyone""", unknown);
         Assert.Contains("Nothing is recorded yet.", fromYesterday);
         Assert.Contains("consigned", fromToday);
+        Assert.Contains("consigned", fromTheLastDay);
     }
 
     [Fact]
