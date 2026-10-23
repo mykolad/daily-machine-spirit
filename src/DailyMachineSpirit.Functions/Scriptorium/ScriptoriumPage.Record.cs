@@ -16,6 +16,9 @@ public static partial class ScriptoriumPage
     // So many "judged again" in a row, by one actor, fold into one row: a refill judges every draft it couldn't before.
     private const int JudgedInARun = 3;
 
+    // A detail longer than this (an old title, a precept's words) wraps; a short one ("#2 → #1") stays whole.
+    private const int ShortDetail = 24;
+
     private const string AriaCurrent = " aria-current=\"true\"";
 
     private static readonly (RecordKind Kind, string Key, string Label)[] Kinds =
@@ -134,7 +137,7 @@ public static partial class ScriptoriumPage
 
     private static void RecordEntry(StringBuilder html, AuditEntry entry, IReadOnlyList<ScribeName> names)
     {
-        var detail = Chip(entry).Map(chip => $""" <span class="detail{(entry.Action == AuditAction.JudgeAgain ? " augury" : string.Empty)}">{Encode(chip)}</span>""")
+        var detail = Chip(entry).Map(chip => $""" <span class="detail{(entry.Action == AuditAction.JudgeAgain ? " augury" : string.Empty)}{(chip.Length > ShortDetail ? " long" : string.Empty)}">{Encode(chip)}</span>""")
             .IfNone(string.Empty);
         html.Append($"""<li>{HoursAndMinutes(entry.AtUtc)}{Badge(entry)}<p class="said">{Actor(entry, names)} <span class="did">{Did(entry)}</span>{detail}</p></li>""");
     }

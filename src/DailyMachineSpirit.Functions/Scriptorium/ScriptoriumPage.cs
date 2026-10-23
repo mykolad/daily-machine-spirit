@@ -222,6 +222,7 @@ public static partial class ScriptoriumPage
         .said strong { color: #ede3cf; }
         .detail { margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: rgba(237,227,207,.06); font: 500 12px/1.6 "JetBrains Mono", monospace; color: #cdbd9e; white-space: nowrap; }
         .detail.augury { color: #8cc4ae; }
+        .detail.long { white-space: normal; overflow-wrap: anywhere; }
         .run { display: inline; }
         .run > summary { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; margin-left: 6px; padding: 2px 4px; font: 600 14px Figtree, sans-serif; color: #d9b874; cursor: pointer; list-style: none; }
         .run > summary::-webkit-details-marker { display: none; }

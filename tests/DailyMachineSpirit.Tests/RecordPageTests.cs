@@ -38,6 +38,18 @@ public sealed class RecordPageTests
         => Assert.Contains($"""<span class="detail{(action == AuditAction.JudgeAgain ? " augury" : string.Empty)}">{shown}</span>""",
             Render(Said(action, Tuesday, recorded)));
 
+    // A long detail (an old title, a precept's words) wraps within the row; a short one keeps together.
+    [Fact]
+    public void ALongDetail_Wraps()
+    {
+        var html = Render(
+            Said(AuditAction.EditPrecept, Tuesday.AddMinutes(1), "was “Build rites around a familiar shortcut”"),
+            Said(AuditAction.Exalt, Tuesday, "from #2 to #1"));
+
+        Assert.Contains("""<span class="detail long">was “Build rites around a familiar shortcut”</span>""", html);
+        Assert.Contains("""<span class="detail">#2 → #1</span>""", html);
+    }
+
     [Fact]
     public void APublishedRite_ShowsItsNumber()
         => Assert.Matches("""<span class="did">published <a href="[^"]+">“Litany”</a></span> <span class="detail">No\. 7</span>""",
