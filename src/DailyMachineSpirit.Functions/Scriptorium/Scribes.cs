@@ -86,7 +86,7 @@ public sealed class Scribes
     public Task<Either<Error, List<Draft>>> Ashes(CancellationToken cancellationToken)
         => scriptorium.GetBurned(pages.Value.AshesShown, cancellationToken);
 
-    /// <summary>The draft, whatever its state: what the Ashes' message names after a restore.</summary>
+    /// <summary>The draft, whatever its state.</summary>
     public Task<Either<Error, Option<Draft>>> Find(Guid draftId, CancellationToken cancellationToken)
         => drafts.Get(draftId, cancellationToken);
 

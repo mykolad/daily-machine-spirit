@@ -54,7 +54,7 @@ public static class TodayPage
         {
             cards.Append($"""
                 <li><a class="recent-card" href="{Paths.Rite(other.Number)}">
-                <span class="recent-kicker">A {(other.Writing.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL")} · {Html.DayAndMonth(other.PublishedOnUtc)}</span>
+                <span class="recent-kicker">A {(other.Writing.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL")} · {ImperialDate.InALink(other.PublishedOnUtc, "recent-date")}</span>
                 <span class="recent-title">{Html.Encode(other.Writing.Title)}</span>
                 {Svg.SmallSeal}
                 </a></li>
