@@ -224,7 +224,8 @@ skills/                           — Consult the Machine Spirit, a skill that p
 - **The rites API** (`GET /api/v1/rites`, `Api/RitesFunction`, #101): every published rite (number, day, kind, words,
   ailment, subjects and page), for clients outside the site, such as the skill in `skills/`. Each Heretical Truth stays
   sealed, as on the site, until a client asks for that rite's (`/api/v1/rites/{number}/heretical-truth`). The ailment
-  (the trouble a rite is for, without its fix) is optional and empty until rites have one. Unlike the search
+  (the trouble a rite is for, without its fix, #115) is written with the rite (below); empty in the API for one that has
+  none yet. Unlike the search
   index, which only the site's own script reads, it's a contract: documented in `docs/api.md`, versioned in its path,
   its types (`PublishedRite`, `PublishedRites`, `RevealedTruth`) named for what they serve and kept as they are, so a breaking change is
   a `v2` beside it. Read-only, open to any site's page (`Access-Control-Allow-Origin: *`), and nothing about the caller
@@ -300,6 +301,16 @@ skills/                           — Consult the Machine Spirit, a skill that p
     too). The prompt asks for plain words over code: at most one widely known command or file name, without flags. Its
     rules (`RiteRules`) also forbid anything abusive, hateful or discriminating; the Precepts are checked against them.
     Every draft and rewrite follows the Precepts (below); if they can't be read, the rite is written without them.
+  - **The ailment** (#115, `RiteWriting.Ailment`): the trouble a rite is for, in a line, as a developer would put it
+    when asking for help, never its cause or fix. The writer writes it with the rite, under the same checks, and a
+    Scribe amends it with the words. The rites API serves it, so a client matches a user's trouble on it without seeing
+    the sealed truth; the Scriptorium's cards show it, the public pages don't. Written from the words, it can hold an
+    erased word, so an erasure replaces each wherever it appears there too.
+    - **Words written before rites had one** get theirs when the app starts (`AilmentBackfill`, `AilmentWriter`:
+      `gpt-6-luna`, `AilmentWriting` in `machine-spirit.jsonc`, `RiteChecks.CheckAilment`): published rites and
+      unpublished drafts, burned ones too. Each is saved only to the words it was read with (their ETag, so an
+      amendment, an erasure or a vote meanwhile wins, and the next start tries again), and the rites API is purged if a
+      rite got one. After the first start there's nothing left.
   - **Judging:** an `IRiteJudge` judges each draft (`RiteJudge`, swappable like the models), asking two judges at once, each behind its own interface, so either can be swapped alone:
     - **Jev** (`JevJudge`, an `ISimilarityJudge`): its similarity scores for "More rites", and the tags. Off, a draft has neither.
     - **The rubric judge** (`RubricJudge`, an `IQualityJudge`, #10): the Augury's quality. The model that didn't write the draft
@@ -321,7 +332,7 @@ skills/                           — Consult the Machine Spirit, a skill that p
   - **Settings:** `AzureOpenAI:Endpoint` (the models are reached as the managed identity), `Jev:ApiKey` (a Key Vault
     reference in Azure; empty turns Jev off).
   - **Tuning: `machine-spirit.jsonc`** (in the Functions project, copied with the app): every value worth tuning, in one
-    file with a section per thing it tunes (`RiteWriting`, `Backlog`, `DuplicateRiteCheck`, `PreceptDistilling`,
+    file with a section per thing it tunes (`RiteWriting`, `Backlog`, `DuplicateRiteCheck`, `AilmentWriting`, `PreceptDistilling`,
     `PreceptCheck`, `ScribeNameSuggestions`, `Augury`, `QualityJudging`, `Jev`, `PagePurging`, `PublicPages`, `ScriptoriumPages`), each
     bound to an options class next to its code. Both environments use it as it is; an app setting of the same name
     would override a value, but none needs to, so infra/ keeps only what differs between them. Each model call has a

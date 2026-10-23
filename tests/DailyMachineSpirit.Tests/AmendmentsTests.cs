@@ -17,7 +17,8 @@ public sealed class AmendmentsTests : IAsyncLifetime
     private static readonly RiteContent Sharper = new(
         "The Litany of the Warm Cache",
         "O Machine Spirit, warm thy cache, that `npm ci` may find it full.",
-        "`npm ci` deletes `node_modules` first: only a cache outside it survives.");
+        "`npm ci` deletes `node_modules` first: only a cache outside it survives.",
+        "A clean install throws away the cache every time.");
 
     private readonly BacklogTestbed testbed = new();
 
@@ -162,7 +163,7 @@ public sealed class AmendmentsTests : IAsyncLifetime
     public async Task Rewrite_AsksTheWriter_WithTheNote_AndSavesNothing()
     {
         var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
-        testbed.Models.Answers(Sol, FakeChatClients.Answer(Sharper.Title, Sharper.Text, Sharper.HereticalTruth));
+        testbed.Models.Answers(Sol, FakeChatClients.Answer(Sharper.Title, Sharper.Text, Sharper.HereticalTruth, Sharper.Ailment));
 
         var rewritten = Ok(await testbed.Amendments().ProposeRewrite(draft.Id, Words(draft), "Name the real fix: `npm ci`.", CancellationToken.None));
 
@@ -185,5 +186,6 @@ public sealed class AmendmentsTests : IAsyncLifetime
         Assert.Empty(testbed.Models.Requests);
     }
 
-    private static RiteContent Words(Draft draft) => new(draft.Writing.Title, draft.Writing.Text, draft.Writing.HereticalTruth);
+    private static RiteContent Words(Draft draft)
+        => new(draft.Writing.Title, draft.Writing.Text, draft.Writing.HereticalTruth, draft.Writing.Ailment.IfNone(string.Empty));
 }

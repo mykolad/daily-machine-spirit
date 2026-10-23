@@ -28,6 +28,9 @@ internal sealed record RiteDocument
 
     public string HereticalTruth { get; init; } = string.Empty;
 
+    // Null for words written before rites had one.
+    public string? Ailment { get; init; }
+
     public string GeneratedByModel { get; init; } = string.Empty;
 
     public DateTime GeneratedAtUtc { get; init; }
@@ -57,6 +60,7 @@ internal sealed record RiteDocument
         Title = rite.Writing.Title,
         Text = rite.Writing.Text,
         HereticalTruth = rite.Writing.HereticalTruth,
+        Ailment = rite.Writing.Ailment.OrNull(),
         GeneratedByModel = rite.Writing.GeneratedByModel,
         GeneratedAtUtc = Utc.From(rite.Writing.GeneratedAtUtc),
         Edited = rite.Writing.Edited,
@@ -76,6 +80,7 @@ internal sealed record RiteDocument
             Title = Title,
             Text = Text,
             HereticalTruth = HereticalTruth,
+            Ailment = Optional(Ailment),
             GeneratedByModel = GeneratedByModel,
             GeneratedAtUtc = GeneratedAtUtc,
             Edited = Edited,

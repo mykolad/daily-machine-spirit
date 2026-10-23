@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using static DailyMachineSpirit.Tests.Expect;
+using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Tests;
 
@@ -27,13 +28,14 @@ public sealed class RiteWriterTests : IDisposable
     [Fact]
     public async Task Write_TakesTheFirstModelsAnswer()
     {
-        models.Answers(Sol, FakeChatClients.Answer("  The Rite of Re-Run ", " Press Re-run thrice. ", " It's flaky. "));
+        models.Answers(Sol, FakeChatClients.Answer("  The Rite of Re-Run ", " Press Re-run thrice. ", " It's flaky. ", " A build that passes on the second run. "));
 
         var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, [], CancellationToken.None));
 
         Assert.Equal("The Rite of Re-Run", draft.Writing.Title);
         Assert.Equal("Press Re-run thrice.", draft.Writing.Text);
         Assert.Equal("It's flaky.", draft.Writing.HereticalTruth);
+        Assert.Equal(Some("A build that passes on the second run."), draft.Writing.Ailment);
         Assert.Equal(DraftState.Waiting, draft.State);
         Assert.Equal(RiteKind.Ritual, draft.Writing.Kind);
         Assert.Equal(Sol, draft.Writing.GeneratedByModel);
@@ -74,7 +76,7 @@ public sealed class RiteWriterTests : IDisposable
 
         await Writer(retryDelaySeconds: 0).Write(RiteKind.Prayer, [], CancellationToken.None);
         await Writer(retryDelaySeconds: 0).Rewrite(
-            RiteKind.Prayer, new RiteContent("The Rite of Re-Run", "Press Re-run.", "It's flaky."), "Shorter.", CancellationToken.None);
+            RiteKind.Prayer, new RiteContent("The Rite of Re-Run", "Press Re-run.", "It's flaky.", "A build that fails, then passes when re-run."), "Shorter.", CancellationToken.None);
 
         Assert.All(models.Requests, request =>
         {
@@ -127,11 +129,13 @@ public sealed class RiteWriterTests : IDisposable
     [InlineData("title")]
     [InlineData("text")]
     [InlineData("hereticalTruth")]
+    [InlineData("ailment")]
     public async Task Write_AsksAgain_RatherThanCutAnAnswerThatIsTooLong(string field)
     {
         var tooLong = new string('a', RiteWriting.MaxTextLength + 1);
         models.Answers(Sol, FakeChatClients.Answer(
-            field == "title" ? tooLong : "Title", field == "text" ? tooLong : "Text.", field == "hereticalTruth" ? tooLong : "Truth."),
+            field == "title" ? tooLong : "Title", field == "text" ? tooLong : "Text.", field == "hereticalTruth" ? tooLong : "Truth.",
+            field == "ailment" ? tooLong : "A slow build."),
             GoodAnswer);
 
         var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, [], CancellationToken.None));
@@ -264,7 +268,7 @@ public sealed class RiteWriterTests : IDisposable
         models.Fails(Sol, 1).Answers(Luna, GoodAnswer);
 
         var rewritten = Ok(await Writer(retryDelaySeconds: 30).Rewrite(
-            RiteKind.Ritual, new RiteContent("The Rite of Re-Run", "Press Re-run.", "It's flaky."), "Name the race.", CancellationToken.None));
+            RiteKind.Ritual, new RiteContent("The Rite of Re-Run", "Press Re-run.", "It's flaky.", "A build that fails, then passes when re-run."), "Name the race.", CancellationToken.None));
 
         Assert.Equal("The Rite of Re-Run", rewritten.Title);
         Assert.Equal([Sol, Luna], models.Requests.Select(request => request.Model));
@@ -284,7 +288,7 @@ public sealed class RiteWriterTests : IDisposable
         using var answerTimes = probe.Collect<double>("dms.generation.answer_duration");
 
         var rewritten = await Writer(retryDelaySeconds: 0).Rewrite(
-            RiteKind.Ritual, new RiteContent("The Rite of Re-Run", "Press Re-run.", "It's flaky."), "Name the race.", CancellationToken.None);
+            RiteKind.Ritual, new RiteContent("The Rite of Re-Run", "Press Re-run.", "It's flaky.", "A build that fails, then passes when re-run."), "Name the race.", CancellationToken.None);
 
         Assert.Equal("The Rite of Re-Run", Ok(rewritten).Title);
         Assert.Equal(["model=gpt-6-sol asked=rewrite outcome=timed-out", "model=gpt-6-luna asked=rewrite outcome=answered"],

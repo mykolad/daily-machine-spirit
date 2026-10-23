@@ -19,6 +19,9 @@ internal sealed record WordsDocument
 
     public string? HereticalTruth { get; init; }
 
+    /// <summary>Written from the words, so it may hold an erased one too.</summary>
+    public string? Ailment { get; init; }
+
     public string? Detail { get; init; }
 
     public string? Resembles { get; init; }
@@ -39,6 +42,7 @@ internal sealed record WordsDocument
         Keep("/title", Title);
         Keep("/text", Text);
         Keep("/hereticalTruth", HereticalTruth);
+        Keep("/ailment", Ailment);
         Keep("/detail", Detail);
         Keep("/resembles", Resembles);
         Keep("/note", Note);

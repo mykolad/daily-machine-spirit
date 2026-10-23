@@ -83,7 +83,7 @@ public sealed class Amendments
     // ones, and the Scribe who amended it has read it.
     private static Draft WithNewWords(Draft draft, RiteContent words) => draft with
     {
-        Writing = draft.Writing with { Title = words.Title, Text = words.Text, HereticalTruth = words.HereticalTruth, Edited = true },
+        Writing = draft.Writing with { Title = words.Title, Text = words.Text, HereticalTruth = words.HereticalTruth, Ailment = Some(words.Ailment), Edited = true },
         Similarity = None,
         Augury = None,
         Tags = None,

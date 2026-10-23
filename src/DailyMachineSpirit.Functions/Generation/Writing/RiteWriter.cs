@@ -68,6 +68,7 @@ public sealed class RiteWriter
                     Title = written.Content.Title,
                     Text = written.Content.Text,
                     HereticalTruth = written.Content.HereticalTruth,
+                    Ailment = Some(written.Content.Ailment),
                     GeneratedByModel = written.Model,
                     GeneratedAtUtc = time.GetUtcNow().UtcDateTime,
                 },

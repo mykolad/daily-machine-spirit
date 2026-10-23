@@ -158,6 +158,7 @@ public static partial class ScriptoriumPage
         .resembles { margin: 0 0 12px; padding: 8px 12px; border-left: 4px solid #f0b45a; background: #241c12; border-radius: 8px; color: #ede3cf; }
         .text { font: 400 19px/1.55 "EB Garamond", serif; margin: 0 0 12px; }
         .truth { background: #141c1f; border: 1px solid #2e4248; border-radius: 16px; padding: 12px 16px; color: #dbe6e8; margin: 0 0 12px; }
+        .ailment { margin: 0 0 12px; color: #cdbd9e; }
         .truth-label { display: block; font: 500 14px "JetBrains Mono", monospace; letter-spacing: .14em; text-transform: uppercase; color: #8cc4ae; }
         code { font-family: "JetBrains Mono", monospace; font-size: .9em; background: #0b1214; color: #f0d58c; padding: 1px 6px; border-radius: 6px; }
         .text code { background: #2b2117; color: #f0d58c; }
@@ -312,6 +313,9 @@ public static partial class ScriptoriumPage
             {Label("truth", "Heretical Truth")}
             <textarea id="amend-truth" name="truth" rows="3" maxlength="{RiteWriting.MaxHereticalTruthLength}" aria-describedby="amend-code-hint"{Marked("truth")} required>{Encode(words.HereticalTruth)}</textarea>
             <p class="hint" id="amend-code-hint">Commands, flags and file names go in `backticks`, as the Machine Spirit writes them.</p>
+            {Label("ailment", "Ailment")}
+            <p class="hint" id="amend-ailment-hint">The trouble it's for, as a developer would describe it, without its cause or fix: what the rites API is matched on.</p>
+            <textarea id="amend-ailment" name="ailment" rows="2" maxlength="{RiteWriting.MaxAilmentLength}" aria-describedby="amend-ailment-hint"{Marked("ailment")} required>{Encode(words.Ailment)}</textarea>
             <label for="amend-note">Note</label>
             <p class="hint" id="amend-note-hint">Why it needs amending. Needed to ask for a rewrite, which follows it; the Augury learns from it too.</p>
             <textarea id="amend-note" name="note" rows="3" maxlength="{ScribeDecision.MaxNoteLength}" aria-describedby="amend-note-hint">{Encode(note)}</textarea>
@@ -342,6 +346,10 @@ public static partial class ScriptoriumPage
         if (after.HereticalTruth != before.HereticalTruth)
         {
             fields.Add("truth");
+        }
+        if (after.Ailment != before.Ailment)
+        {
+            fields.Add("ailment");
         }
         return fields;
     }
@@ -402,6 +410,7 @@ public static partial class ScriptoriumPage
         }
         html.Append($"""<p class="text">{WithCode(draft.Writing.Text)}</p>""");
         html.Append($"""<p class="truth"><span class="truth-label">Heretical Truth</span> {WithCode(draft.Writing.HereticalTruth)}</p>""");
+        html.Append(Ailment(draft.Writing));
     }
 
     // One form per draft, so its note goes with the button pressed. The note is folded away: most decisions go without one.
@@ -620,6 +629,12 @@ public static partial class ScriptoriumPage
 
     // The rites put commands and file names in `backticks`.
     private static string WithCode(string text) => InlineCode().Replace(Encode(text), "<code>$1</code>");
+
+    // The trouble the rite is for, which the rites API serves; a draft written before ailments shows none until the backfill.
+    private static string Ailment(RiteWriting writing)
+        => writing.Ailment.Match(
+            Some: ailment => $"""<p class="ailment"><span class="truth-label">Ailment</span> {WithCode(ailment)}</p>""",
+            None: () => string.Empty);
 
     [GeneratedRegex("`([^`]+)`")]
     private static partial Regex InlineCode();

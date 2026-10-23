@@ -1,0 +1,46 @@
+using System.Net;
+using System.Text.Json;
+using DailyMachineSpirit.Data.Entities;
+using LanguageExt;
+using LanguageExt.Common;
+using Microsoft.Azure.Cosmos;
+using static DailyMachineSpirit.Data.Repositories.CosmosCalls;
+using static LanguageExt.Prelude;
+
+namespace DailyMachineSpirit.Data.Repositories;
+
+public sealed class AilmentRepository : IAilmentRepository
+{
+    private readonly Container container;
+
+    public AilmentRepository(Container container)
+    {
+        this.container = container;
+    }
+
+    // Burned drafts too: a Scribe may restore one. A published draft's words live on in its rite.
+    public Task<Either<Error, List<WordsWithoutAilment>>> GetWithout(CancellationToken cancellationToken)
+        => Attempt(async () => (await container.Query<WordsWithoutAilmentDocument>(
+            new QueryDefinition(
+                "SELECT c.id, c._etag, c.type, c.kind, c.title, c.text, c.hereticalTruth FROM c " +
+                "WHERE ((c.type = @rite) OR (c.type = @draft AND c.state != @published)) AND (NOT IS_DEFINED(c.ailment) OR IS_NULL(c.ailment))")
+                .WithParameter("@rite", RiteDocument.RiteType)
+                .WithParameter("@draft", DraftDocument.DraftType)
+                .WithParameter("@published", JsonNamingPolicy.CamelCase.ConvertName(nameof(DraftState.Published))),
+            cancellationToken)).Select(document => document.ToWords()).ToList());
+
+    public Task<Either<Error, Unit>> Save(WordsWithoutAilment words, string ailment, CancellationToken cancellationToken)
+        => AttemptEither(async () =>
+        {
+            try
+            {
+                await container.PatchItemAsync<object>(words.DocumentId, SharedPartitionKey, [PatchOperation.Set("/ailment", ailment)],
+                    new PatchItemRequestOptions { IfMatchEtag = words.Version, EnableContentResponseOnWrite = false }, cancellationToken);
+                return Right<Error, Unit>(unit);
+            }
+            catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.PreconditionFailed)
+            {
+                return ScriptoriumRepository.ChangedMeanwhile;
+            }
+        });
+}

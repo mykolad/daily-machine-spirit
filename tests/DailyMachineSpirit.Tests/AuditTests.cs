@@ -78,7 +78,7 @@ public sealed class AuditTests : IAsyncLifetime
         var amendable = Ok(await testbed.Amendments().FindWaiting(draft.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Not amendable."));
 
         Ok(await testbed.Amendments().SaveAndJudgeAgain(draft.Id, amendable.ETag,
-            new RiteContent("Litany of the Warm Cache", "O Machine Spirit, warm the cache.", "A warm cache was read before."), "", Tester, CancellationToken.None));
+            new RiteContent("Litany of the Warm Cache", "O Machine Spirit, warm the cache.", "A warm cache was read before.", "The build is slow after the cache is cleared."), "", Tester, CancellationToken.None));
 
         var entry = (await Entries()).Single(found => found.Action == AuditAction.Amend);
         Assert.Equal((Tester, AuditAction.Amend, "Litany of the Warm Cache", Some("was “Litany of the Cold Cache”")), (entry.Actor, entry.Action, entry.Title, entry.Detail));
