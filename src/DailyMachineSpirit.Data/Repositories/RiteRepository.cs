@@ -39,6 +39,12 @@ public class RiteRepository : IRiteRepository
                 .WithParameter("@type", RiteDocument.RiteType),
             cancellationToken)).Select(document => document.ToRite()).ToList());
 
+    public Task<Either<Error, List<Rite>>> GetAllPublished(CancellationToken cancellationToken)
+        => Attempt(async () => (await container.Query<RiteDocument>(
+            new QueryDefinition("SELECT * FROM c WHERE c.type = @type ORDER BY c.number DESC")
+                .WithParameter("@type", RiteDocument.RiteType),
+            cancellationToken)).Select(document => document.ToRite()).ToList());
+
     public Task<Either<Error, List<Rite>>> GetByNumbers(IReadOnlyCollection<int> numbers, CancellationToken cancellationToken)
         => Attempt(async () => numbers.Count == 0
             ? []

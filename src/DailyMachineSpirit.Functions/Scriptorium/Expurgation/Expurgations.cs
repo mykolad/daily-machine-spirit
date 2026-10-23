@@ -5,6 +5,7 @@ using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Caching;
 using DailyMachineSpirit.Functions.Pages;
+using DailyMachineSpirit.Functions.Snapshot;
 using LanguageExt;
 using LanguageExt.Common;
 using static LanguageExt.Prelude;
@@ -34,13 +35,15 @@ public sealed partial class Expurgations
     private readonly IRiteRepository rites;
     private readonly IExpurgationRepository copies;
     private readonly IPageCache pages;
+    private readonly RiteSnapshots snapshots;
     private readonly TimeProvider time;
 
-    public Expurgations(IRiteRepository rites, IExpurgationRepository copies, IPageCache pages, TimeProvider time)
+    public Expurgations(IRiteRepository rites, IExpurgationRepository copies, IPageCache pages, RiteSnapshots snapshots, TimeProvider time)
     {
         this.rites = rites;
         this.copies = copies;
         this.pages = pages;
+        this.snapshots = snapshots;
         this.time = time;
     }
 
@@ -71,6 +74,8 @@ public sealed partial class Expurgations
         if (erased.Exists(rite => rite.IsSome))
         {
             await pages.Purge([Paths.Today, Paths.Rite(number), Paths.SearchIndex, Paths.RitesApi, Paths.HereticalTruthApi(number)], cancellationToken);
+            // The fallback's copy (#112) mustn't keep the erased words.
+            await snapshots.Write(cancellationToken);
         }
         return erased;
     }

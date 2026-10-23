@@ -7,11 +7,14 @@ param vaultName string
 param aiAccountName string
 param cosmosAccountName string
 param databaseName string
+param snapshotAccountName string
+param snapshotContainerName string
 
 var roles = {
   storageBlobDataOwner: 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b'
   storageQueueDataContributor: '974c5e8b-45b9-4653-ba55-5f855dd0fb88'
   storageTableDataContributor: '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
+  storageBlobDataContributor: 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
   keyVaultSecretsUser: '4633458b-17de-408a-b874-0445c86b69e6'
   cognitiveServicesOpenAiUser: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
 }
@@ -91,5 +94,30 @@ resource data 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-11-
     principalId: principalId
     roleDefinitionId: '${cosmos.id}/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002'
     scope: '${cosmos.id}/dbs/${databaseName}'
+  }
+}
+
+resource snapshotAccount 'Microsoft.Storage/storageAccounts@2024-01-01' existing = {
+  name: snapshotAccountName
+}
+
+resource snapshotBlobs 'Microsoft.Storage/storageAccounts/blobServices@2024-01-01' existing = {
+  parent: snapshotAccount
+  name: 'default'
+}
+
+resource snapshotContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2024-01-01' existing = {
+  parent: snapshotBlobs
+  name: snapshotContainerName
+}
+
+// The rites' snapshot (#112): this environment's container only, so neither environment can touch the other's copy.
+resource snapshotWriter 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: snapshotContainer
+  name: guid(snapshotContainer.id, principalId, roles.storageBlobDataContributor)
+  properties: {
+    principalId: principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roles.storageBlobDataContributor)
   }
 }

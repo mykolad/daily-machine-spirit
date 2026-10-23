@@ -121,6 +121,14 @@ skills/                           — Consult the Machine Spirit, a skill that p
 - **Entra ID only** for Cosmos DB: the app's managed identity in Azure, your `az login` locally
   (`CosmosClients.Create`); the account's keys stay off. The account, databases, container, role assignments and the
   app's settings are all created by the Bicep in `infra/`, never by the app (its data-plane role can't create them). Settings: `Cosmos:Endpoint`, `Cosmos:Database`.
+- **Read-only when Cosmos DB is down** (#112): every published rite is copied, whole, to one blob per environment in a
+  storage account outside the app's region (`machinespiritsnapshots`, North Europe, `infra/`), written by
+  `RiteSnapshots` after a new rite and an erasure, and every six hours (`WriteRiteSnapshot`) for votes, tags and
+  ailments. `IRiteRepository` is `RitesWithFallback` over `RiteRepository`: a read Cosmos DB fails is answered from the
+  snapshot (`SnapshotRites`, which answers every query as Cosmos DB does, search too), and so is every read for a
+  minute after, without waiting on Cosmos DB; the snapshot is loaded once and kept ten minutes. So the pages, search and
+  the rites API keep working; voting, sign-in and the Scriptorium don't, and saving always goes to Cosmos DB. Setting:
+  `RiteSnapshot:ContainerUri`; without it (a local run) nothing is copied, and a Cosmos DB failure is the read's.
 - **Telemetry: OpenTelemetry to Grafana Cloud.** The app (`Program.cs`) exports its logs, traces and metrics over OTLP
   wherever `OTEL_EXPORTER_OTLP_ENDPOINT` is set; `infra/` sets it, with the token's header from the vault. The Functions
   host doesn't export (no `telemetryMode` in `host.json`): its request spans carry visitors' user agents. So a failure

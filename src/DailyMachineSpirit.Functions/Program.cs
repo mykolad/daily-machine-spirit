@@ -11,6 +11,7 @@ using DailyMachineSpirit.Functions.Scriptorium;
 using DailyMachineSpirit.Functions.Scriptorium.Expurgation;
 using DailyMachineSpirit.Functions.Scriptorium.Naming;
 using DailyMachineSpirit.Functions.Scriptorium.SignIn;
+using DailyMachineSpirit.Functions.Snapshot;
 using DailyMachineSpirit.Functions.Tags;
 using DailyMachineSpirit.Functions.Telemetry;
 using DailyMachineSpirit.Functions.Voters;
@@ -20,6 +21,7 @@ using Microsoft.Azure.Functions.Worker.OpenTelemetry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
@@ -73,7 +75,16 @@ var cosmos = builder.Configuration.GetSection(CosmosOptions.SectionName).Get<Cos
 builder.Services.AddSingleton(_ => CosmosClients.Create(cosmos));
 builder.Services.AddSingleton(services =>
     services.GetRequiredService<CosmosClient>().GetContainer(cosmos.Database, RiteRepository.ContainerName));
-builder.Services.AddSingleton<IRiteRepository, RiteRepository>();
+// The rites read from Cosmos DB, or from their snapshot outside the region while Cosmos DB doesn't answer (#112).
+var snapshot = builder.Configuration.GetSection(RiteSnapshotOptions.SectionName).Get<RiteSnapshotOptions>() ?? new RiteSnapshotOptions();
+builder.Services.AddSingleton<IRiteSnapshotStore>(_ => snapshot.ContainerUri.Length > 0
+    ? new BlobRiteSnapshotStore(new Uri(snapshot.ContainerUri))
+    : new NoRiteSnapshot());
+builder.Services.AddSingleton<RiteRepository>();
+builder.Services.AddSingleton<IRiteRepository>(services => new RitesWithFallback(
+    services.GetRequiredService<RiteRepository>(), services.GetRequiredService<IRiteSnapshotStore>(),
+    services.GetRequiredService<TimeProvider>(), services.GetRequiredService<ILogger<RitesWithFallback>>()));
+builder.Services.AddSingleton<RiteSnapshots>();
 builder.Services.AddSingleton<IDraftRepository, DraftRepository>();
 builder.Services.AddSingleton<IScriptoriumRepository, ScriptoriumRepository>();
 builder.Services.AddSingleton<IAuditRepository, AuditRepository>();

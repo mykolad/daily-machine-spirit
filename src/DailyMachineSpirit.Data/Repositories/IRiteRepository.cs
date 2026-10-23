@@ -11,6 +11,9 @@ public interface IRiteRepository
 
     Task<Either<Error, List<Rite>>> GetNewest(int count, CancellationToken cancellationToken);
 
+    /// <summary>Every published rite, whole, by number: what the snapshot keeps (<see cref="IRiteSnapshotStore"/>).</summary>
+    Task<Either<Error, List<Rite>>> GetAllPublished(CancellationToken cancellationToken);
+
     /// <summary>The rites with these numbers, in no particular order; numbers without a rite are left out.</summary>
     Task<Either<Error, List<Rite>>> GetByNumbers(IReadOnlyCollection<int> numbers, CancellationToken cancellationToken);
 

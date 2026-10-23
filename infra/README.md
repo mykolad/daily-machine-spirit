@@ -18,6 +18,7 @@ change to them reaches production at once. Production is live since #50.
 | Storage | `machinespiritprod`, `machinespiritstaging` | the Functions host's storage; keys off |
 | Functions app | `machinespirit-app`, `machinespirit-app-staging` | Flex Consumption, .NET 10 isolated, 512 MB instances, at most 10; staging admits only the owner's IP, production only Cloudflare |
 | GitHub identities | `machinespirit-github-staging`, `-production`, `-infrastructure` | OIDC from this repository's GitHub environments of the same names |
+| The rites' snapshot (#112) | `machinespiritsnapshots`, in North Europe (`snapshotLocation`): containers `rites-staging`, `rites-production` | Every published rite, as one blob per environment, which its app reads while Cosmos DB doesn't answer. Outside Sweden Central, so the copy outlives an outage there; each app may write only its own container |
 
 Each app has its own managed identity, with access to its own database, vault and storage, and to the models. Nothing in
 Azure is reached with a key or a password: account keys are off, and so is basic-auth publishing, so deploys sign in with

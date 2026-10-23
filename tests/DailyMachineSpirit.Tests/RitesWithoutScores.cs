@@ -21,6 +21,8 @@ public sealed class RitesWithoutScores : IRiteRepository
     public Task<Either<Error, List<Rite>>> GetNewest(int count, CancellationToken cancellationToken)
         => rites.GetNewest(count, cancellationToken);
 
+    public Task<Either<Error, List<Rite>>> GetAllPublished(CancellationToken cancellationToken) => rites.GetAllPublished(cancellationToken);
+
     public Task<Either<Error, List<Rite>>> GetByNumbers(IReadOnlyCollection<int> numbers, CancellationToken cancellationToken)
         => rites.GetByNumbers(numbers, cancellationToken);
 

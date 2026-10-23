@@ -8,6 +8,7 @@ using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Scriptorium;
 using DailyMachineSpirit.Functions.Scriptorium.Expurgation;
 using DailyMachineSpirit.Functions.Scriptorium.Naming;
+using DailyMachineSpirit.Functions.Snapshot;
 using LanguageExt;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -140,7 +141,11 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public ScribeNaming ScribeNaming() => new(ScribeNames, Time);
 
-    public Expurgations Expurgations(IExpurgationRepository copies, IPageCache pages) => new(Rites, copies, pages, Time);
+    public InMemoryRiteSnapshot Snapshot { get; } = new();
+
+    public RiteSnapshots Snapshots() => new(Rites, Snapshot, NullLogger<RiteSnapshots>.Instance);
+
+    public Expurgations Expurgations(IExpurgationRepository copies, IPageCache pages) => new(Rites, copies, pages, Snapshots(), Time);
 
     /// <summary>Every stored document as JSON, to check what's kept anywhere.</summary>
     public async Task<List<string>> AllDocuments()
