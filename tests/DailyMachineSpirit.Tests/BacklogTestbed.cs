@@ -127,7 +127,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
             NullLogger<BacklogRefiller>.Instance);
     }
 
-    public DailyRitePublisher Publisher() => new(Rites, Drafts, Scriptorium, Refiller(), Options.Create(Settings.Augury), Time, Probe.Metrics, NullLogger<DailyRitePublisher>.Instance);
+    public DailyRitePublisher Publisher() => new(Rites, new SnapshotFollowingPublishing(Rites, Snapshots()), Drafts, Scriptorium, Refiller(), Options.Create(Settings.Augury), Time, Probe.Metrics, NullLogger<DailyRitePublisher>.Instance);
 
     public Scribes Scribes() => new(Drafts, Rites, Scriptorium, Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages),
         Options.Create(Settings.Backlog with { DraftsWaiting = BacklogSize }), Time);

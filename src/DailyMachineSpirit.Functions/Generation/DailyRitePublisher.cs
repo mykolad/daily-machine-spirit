@@ -16,6 +16,7 @@ namespace DailyMachineSpirit.Functions.Generation;
 public sealed class DailyRitePublisher
 {
     private readonly IRiteRepository rites;
+    private readonly IRitePublishing publishing;
     private readonly IDraftRepository drafts;
     private readonly IScriptoriumRepository scriptorium;
     private readonly BacklogRefiller refiller;
@@ -26,6 +27,7 @@ public sealed class DailyRitePublisher
 
     public DailyRitePublisher(
         IRiteRepository rites,
+        IRitePublishing publishing,
         IDraftRepository drafts,
         IScriptoriumRepository scriptorium,
         BacklogRefiller refiller,
@@ -35,6 +37,7 @@ public sealed class DailyRitePublisher
         ILogger<DailyRitePublisher> logger)
     {
         this.rites = rites;
+        this.publishing = publishing;
         this.drafts = drafts;
         this.scriptorium = scriptorium;
         this.refiller = refiller;
@@ -56,7 +59,7 @@ public sealed class DailyRitePublisher
     private async Task<Either<Error, PublishedRite>> Publish(DateOnly today, CancellationToken cancellationToken)
     {
         var published = await NextDraft(cancellationToken)
-            .BindAsync(draft => rites.Publish(draft.Id, today, cancellationToken));
+            .BindAsync(draft => publishing.Publish(draft.Id, today, cancellationToken));
         return await published.MatchAsync(
             RightAsync: rite =>
             {

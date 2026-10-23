@@ -45,9 +45,6 @@ public sealed class RitesWithoutScores : IRiteRepository
 
     public Task<Either<Error, Rite>> Add(Rite rite, CancellationToken cancellationToken) => rites.Add(rite, cancellationToken);
 
-    public Task<Either<Error, Rite>> Publish(Guid draftId, DateOnly publishedOnUtc, CancellationToken cancellationToken)
-        => rites.Publish(draftId, publishedOnUtc, cancellationToken);
-
     public Task<Either<Error, Unit>> SaveScores(DateOnly publishedOnUtc, RiteSimilarity similarity, CancellationToken cancellationToken)
         => rites.SaveScores(publishedOnUtc, similarity, cancellationToken);
 

@@ -9,7 +9,7 @@ using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Data.Repositories;
 
-public class RiteRepository : IRiteRepository
+public class RiteRepository : IRiteRepository, IRitePublishing
 {
     public const string ContainerName = "rites";
     public const string PartitionKeyPath = "/partition";

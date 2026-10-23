@@ -1,7 +1,6 @@
 using DailyMachineSpirit.Functions.Caching;
 using DailyMachineSpirit.Functions.Generation;
 using DailyMachineSpirit.Functions.Pages;
-using DailyMachineSpirit.Functions.Snapshot;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 
@@ -15,14 +14,12 @@ public sealed class DailyRiteFunction
 
     private readonly DailyRitePublisher publisher;
     private readonly IPageCache pages;
-    private readonly RiteSnapshots snapshots;
     private readonly ILogger<DailyRiteFunction> logger;
 
-    public DailyRiteFunction(DailyRitePublisher publisher, IPageCache pages, RiteSnapshots snapshots, ILogger<DailyRiteFunction> logger)
+    public DailyRiteFunction(DailyRitePublisher publisher, IPageCache pages, ILogger<DailyRiteFunction> logger)
     {
         this.publisher = publisher;
         this.pages = pages;
-        this.snapshots = snapshots;
         this.logger = logger;
     }
 
@@ -37,8 +34,6 @@ public sealed class DailyRiteFunction
         var result = await publisher.PublishToday(cancellationToken);
         if (result.Exists(published => published.IsNew))
         {
-            // The fallback's copy (#112) first: a page purged while Cosmos DB fails is filled from it.
-            await snapshots.Write(cancellationToken);
             // Today showed yesterday's rite (or the slumbering page), and the search field's index and the rites API
             // lacked the new one: all are kept at the edge until purged.
             await pages.Purge([Paths.Today, Paths.SearchIndex, Paths.RitesApi], cancellationToken);

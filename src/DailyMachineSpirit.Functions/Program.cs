@@ -87,6 +87,9 @@ builder.Services.AddSingleton<IRiteReader>(services => new RitesWithFallback(
     services.GetRequiredService<RiteRepository>(), services.GetRequiredService<IRiteSnapshotStore>(),
     services.GetRequiredService<TimeProvider>(), services.GetRequiredService<ILogger<RitesWithFallback>>()));
 builder.Services.AddSingleton<RiteSnapshots>();
+// A new rite is followed by the rites' snapshot, so the fallback has it too.
+builder.Services.AddSingleton<IRitePublishing>(services => new SnapshotFollowingPublishing(
+    services.GetRequiredService<RiteRepository>(), services.GetRequiredService<RiteSnapshots>()));
 builder.Services.AddSingleton<IDraftRepository, DraftRepository>();
 builder.Services.AddSingleton<IScriptoriumRepository, ScriptoriumRepository>();
 builder.Services.AddSingleton<IAuditRepository, AuditRepository>();

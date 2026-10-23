@@ -200,5 +200,5 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
         await Assert.ThrowsAnyAsync<Exception>(() => Function().Run(new TimerInfo(), CancellationToken.None));
     }
 
-    private DailyRiteFunction Function() => new(testbed.Publisher(), pages, testbed.Snapshots(), NullLogger<DailyRiteFunction>.Instance);
+    private DailyRiteFunction Function() => new(testbed.Publisher(), pages, NullLogger<DailyRiteFunction>.Instance);
 }
