@@ -73,9 +73,10 @@ public sealed partial class Expurgations
         }
         if (erased.Exists(rite => rite.IsSome))
         {
-            await pages.Purge([Paths.Today, Paths.Rite(number), Paths.SearchIndex, Paths.RitesApi, Paths.HereticalTruthApi(number)], cancellationToken);
-            // The fallback's copy (#112) mustn't keep the erased words.
+            // The fallback's copy (#112) first, without the erased words: a page purged while Cosmos DB fails is filled
+            // from it.
             await snapshots.Write(cancellationToken);
+            await pages.Purge([Paths.Today, Paths.Rite(number), Paths.SearchIndex, Paths.RitesApi, Paths.HereticalTruthApi(number)], cancellationToken);
         }
         return erased;
     }

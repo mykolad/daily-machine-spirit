@@ -6,13 +6,23 @@ namespace DailyMachineSpirit.Data.Repositories;
 
 /// <summary>
 /// A copy of every published rite kept outside Cosmos DB (#112), which the site reads from when Cosmos DB doesn't
-/// answer (<see cref="RitesWithFallback"/>).
+/// answer (<see cref="RitesWithFallback"/>). Each saved copy has a version, so a copy taken earlier can't replace one
+/// taken later, and a reader can tell its copy is old.
 /// </summary>
 public interface IRiteSnapshotStore
 {
-    /// <summary>Replaces the copy with these rites.</summary>
-    Task<Either<Error, Unit>> Save(IReadOnlyList<Rite> rites, CancellationToken cancellationToken);
+    /// <summary>Another copy was saved since <c>replacing</c> was read: what was read to save may be older than it.</summary>
+    static readonly Error ChangedMeanwhile = Error.New("The rites' snapshot was saved again meanwhile.");
 
-    /// <summary>The rites as last saved; None when no copy was ever saved, or none is kept (a local run).</summary>
-    Task<Either<Error, Option<List<Rite>>>> Load(CancellationToken cancellationToken);
+    /// <summary>The version of the copy as last saved; None when none was ever saved, or none is kept.</summary>
+    Task<Either<Error, Option<string>>> Version(CancellationToken cancellationToken);
+
+    /// <summary>The copy as last saved, with its version.</summary>
+    Task<Either<Error, Option<RiteSnapshot>>> Load(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Replaces the copy with these rites, only if it's still the version read before reading them (None: there was
+    /// none), else <see cref="ChangedMeanwhile"/>.
+    /// </summary>
+    Task<Either<Error, Unit>> Save(IReadOnlyList<Rite> rites, Option<string> replacing, CancellationToken cancellationToken);
 }

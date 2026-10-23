@@ -8,9 +8,9 @@ namespace DailyMachineSpirit.Data.Repositories;
 
 /// <summary>
 /// The rites from Cosmos DB, or from their snapshot when Cosmos DB doesn't answer (#112): the site stays readable, its
-/// pages, search and rites API, while nothing can be saved. After a failed read, the next minute's reads go to the
-/// snapshot without waiting on Cosmos DB again; a read that fails the snapshot too gets Cosmos DB's error. Saving always
-/// goes to Cosmos DB.
+/// pages, search and rites API, while nothing can be saved. After a failed read that the snapshot could answer, the next
+/// minute's reads go to the snapshot without waiting on Cosmos DB again; with no snapshot, the failure is the read's, and
+/// the next read tries Cosmos DB. Saving always goes to Cosmos DB.
 /// </summary>
 public sealed class RitesWithFallback : IRiteRepository
 {
@@ -18,16 +18,14 @@ public sealed class RitesWithFallback : IRiteRepository
     // site writes again soon after it's back.
     private static readonly TimeSpan TrustAgainAfter = TimeSpan.FromMinutes(1);
 
-    // The snapshot changes a few times a day; reading it once per outage, and again now and then, is enough.
-    private static readonly TimeSpan SnapshotKeptFor = TimeSpan.FromMinutes(10);
-
     private readonly IRiteRepository rites;
     private readonly IRiteSnapshotStore snapshots;
     private readonly TimeProvider time;
     private readonly ILogger<RitesWithFallback> logger;
     private readonly object gate = new();
+    private readonly SemaphoreSlim loading = new(1, 1);
     private Option<DateTimeOffset> failedAt;
-    private Option<(SnapshotRites Rites, DateTimeOffset LoadedAt)> loaded;
+    private Option<(SnapshotRites Rites, string Version)> loaded;
 
     public RitesWithFallback(IRiteRepository rites, IRiteSnapshotStore snapshots, TimeProvider time, ILogger<RitesWithFallback> logger)
     {
@@ -93,7 +91,6 @@ public sealed class RitesWithFallback : IRiteRepository
 
     private async Task<Either<Error, T>> Read<T>(Func<IRiteRepository, Task<Either<Error, T>>> read, CancellationToken cancellationToken)
     {
-        var failure = Option<Error>.None;
         if (!Distrusted())
         {
             var answer = await read(rites);
@@ -101,15 +98,20 @@ public sealed class RitesWithFallback : IRiteRepository
             {
                 return answer;
             }
-            failure = answer.Swap().ToOption();
+            var failure = answer.Match(Right: _ => Error.New("Cosmos DB failed."), Left: error => error);
+            // Kept away from Cosmos DB only while there's a copy to read instead: without one, the next read tries it again.
+            var snapshot = await Snapshot(cancellationToken);
+            if (snapshot.IsNone)
+            {
+                return failure;
+            }
             Distrust(failure);
+            return await read(snapshot.IfNone(new SnapshotRites([])));
         }
-        var snapshot = await Snapshot(cancellationToken);
-        return await snapshot.Match(
+        return await (await Snapshot(cancellationToken)).Match(
             Some: read,
-            None: () => Task.FromResult(failure.Match(
-                Some: error => Left<Error, T>(error),
-                None: () => Left<Error, T>(Error.New("Cosmos DB failed a moment ago, and the rites' snapshot can't be read.")))));
+            // The copy went meanwhile: Cosmos DB, rather than nothing.
+            None: () => read(rites));
     }
 
     private bool Distrusted()
@@ -120,42 +122,44 @@ public sealed class RitesWithFallback : IRiteRepository
         }
     }
 
-    private void Distrust(Option<Error> failure)
+    private void Distrust(Error failure)
     {
         lock (gate)
         {
             failedAt = Some(time.GetUtcNow());
         }
-        failure.IfSome(error => logger.LogWarning(error.ToException(),
-            "Cosmos DB didn't answer, so the rites are read from their snapshot for a minute: {Reason}", error.Message));
+        logger.LogWarning(failure.ToException(), "Cosmos DB didn't answer, so the rites are read from their snapshot for a minute: {Reason}", failure.Message);
     }
 
-    // The snapshot as last loaded while it's fresh, else loaded again; None when there's none to read.
+    // The copy as kept, if it's still the version saved; else the saved one, loaded once however many reads ask at once.
+    // Asking for the version costs a small request per read, only while Cosmos DB is down: a copy saved since (an
+    // erasure's) is never missed.
     private async Task<Option<SnapshotRites>> Snapshot(CancellationToken cancellationToken)
     {
-        lock (gate)
+        await loading.WaitAsync(cancellationToken);
+        try
         {
-            var now = time.GetUtcNow();
-            var fresh = loaded.Filter(kept => now - kept.LoadedAt < SnapshotKeptFor).Map(kept => kept.Rites);
-            if (fresh.IsSome)
+            var saved = (await snapshots.Version(cancellationToken)).Match(Right: version => version, Left: _ => None);
+            var kept = loaded.Filter(copy => saved.Exists(version => version == copy.Version));
+            if (kept.IsSome)
             {
-                return fresh;
+                return kept.Map(copy => copy.Rites);
             }
-        }
-        return (await snapshots.Load(cancellationToken)).Match(
-            Right: found => found.Map(read =>
-            {
-                var snapshot = new SnapshotRites(read);
-                lock (gate)
+            return (await snapshots.Load(cancellationToken)).Match(
+                Right: found =>
                 {
-                    loaded = Some((snapshot, time.GetUtcNow()));
-                }
-                return snapshot;
-            }),
-            Left: error =>
-            {
-                logger.LogError(error.ToException(), "The rites' snapshot couldn't be read either: {Reason}", error.Message);
-                return None;
-            });
+                    loaded = found.Map(snapshot => (new SnapshotRites(snapshot.Rites), snapshot.Version));
+                    return loaded.Map(kept => kept.Rites);
+                },
+                Left: error =>
+                {
+                    logger.LogError(error.ToException(), "The rites' snapshot couldn't be read either: {Reason}", error.Message);
+                    return Option<SnapshotRites>.None;
+                });
+        }
+        finally
+        {
+            loading.Release();
+        }
     }
 }

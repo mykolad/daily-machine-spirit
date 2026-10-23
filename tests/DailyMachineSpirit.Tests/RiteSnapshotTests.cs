@@ -66,8 +66,8 @@ public sealed class RiteSnapshotTests : IAsyncLifetime
         Assert.Equal(SnapshotRites.ReadOnly, Failed(await copy.GetUntagged(CancellationToken.None)));
     }
 
-    // Cosmos DB down: the pages' reads come from the snapshot, which is loaded once rather than for every read, and again
-    // once it's ten minutes old.
+    // Cosmos DB down: the pages' reads come from the snapshot, loaded once and kept while it's the version saved; a
+    // minute later, Cosmos DB is asked again, and still failing, the same copy answers.
     [Fact]
     public async Task WhileCosmosFails_ReadsComeFromTheSnapshot()
     {
@@ -83,10 +83,10 @@ public sealed class RiteSnapshotTests : IAsyncLifetime
         Assert.Equal([4, 3], Numbers(newest));
         Assert.Equal([3, 1], Numbers(found));
         Assert.Equal([1], Numbers(later));
-        Assert.Equal(2, snapshot.Loads);
+        Assert.Equal(1, snapshot.Loads);
     }
 
-    // Cosmos DB answering: the snapshot isn't even read; and a failure a minute old no longer keeps reads from Cosmos DB.
+    // Cosmos DB answering: the snapshot isn't even read.
     [Fact]
     public async Task WhileCosmosAnswers_ReadsComeFromIt()
     {
@@ -133,7 +133,7 @@ public sealed class RiteSnapshotTests : IAsyncLifetime
         var written = Ok(await Snapshots(Rites).Write(CancellationToken.None));
 
         Assert.Equal(4, written);
-        Assert.Equal([4, 3, 2, 1], snapshot.Saved.IfNone([]).Select(rite => rite.Number));
+        Assert.Equal([4, 3, 2, 1], snapshot.SavedRites.Select(rite => rite.Number));
     }
 
     [Fact]
@@ -145,6 +145,81 @@ public sealed class RiteSnapshotTests : IAsyncLifetime
         Assert.True(snapshot.Saved.IsNone);
     }
 
+    // A write that read the rites before an erasure, and saves after the erasure's own write: it must not put the erased
+    // words back. It's refused, reads the rites again, and saves those.
+    [Fact]
+    public async Task Write_ThatAnotherWriteOvertook_ReadsTheRitesAgain()
+    {
+        await AddRites();
+        var writes = Snapshots(Rites);
+        snapshot.BeforeNextSave = Some<Func<Task>>(async () =>
+        {
+            await Add(Day.AddDays(1), "The Rite of 5", "Text of 5.", None, None);
+            Ok(await writes.Write(CancellationToken.None));
+        });
+
+        var written = Ok(await writes.Write(CancellationToken.None));
+
+        Assert.Equal(5, written);
+        Assert.Equal([5, 4, 3, 2, 1], snapshot.SavedRites.Select(rite => rite.Number));
+    }
+
+    // Without a copy to read, a failure doesn't keep the next reads from Cosmos DB, which may already be back.
+    [Fact]
+    public async Task WithoutASnapshot_TheNextReadTriesCosmosAgain()
+    {
+        await AddRites();
+        var cosmosDb = new SwitchableRites(Missing);
+        var rites = Fallback(cosmosDb);
+
+        var failed = await rites.GetNewest(1, CancellationToken.None);
+        cosmosDb.Current = Rites;
+        var recovered = await rites.GetNewest(1, CancellationToken.None);
+
+        Assert.True(failed.IsLeft);
+        Assert.Equal([4], Numbers(recovered));
+    }
+
+    // Read from during one outage, then written again (an erasure) while Cosmos DB was back: the next outage reads the new
+    // copy, not the one kept from before.
+    [Fact]
+    public async Task ACopySavedSince_IsReadInsteadOfTheOneKept()
+    {
+        await AddRites();
+        Ok(await Snapshots(Rites).Write(CancellationToken.None));
+        var cosmosDb = new SwitchableRites(Missing);
+        var rites = Fallback(cosmosDb);
+        Assert.Equal(4, Ok(await rites.GetDays(CancellationToken.None)).Count);
+
+        cosmosDb.Current = Rites;
+        time.Advance(TimeSpan.FromMinutes(2));
+        await Add(Day.AddDays(1), "The Rite of 5", "Text of 5.", None, None);
+        Ok(await Snapshots(Rites).Write(CancellationToken.None));
+        cosmosDb.Current = Missing;
+        var days = await rites.GetDays(CancellationToken.None);
+
+        Assert.Equal([5, 4, 3, 2, 1], Ok(days).Select(day => day.Number));
+        Assert.Equal(2, snapshot.Loads);
+    }
+
+    // The first reads of an outage arrive together: the copy is loaded once, and the minute after asks Cosmos DB nothing.
+    [Fact]
+    public async Task ReadsAtOnce_LoadTheCopyOnce()
+    {
+        await AddRites();
+        Ok(await Snapshots(Rites).Write(CancellationToken.None));
+        var cosmosDb = new SwitchableRites(Missing);
+        var rites = Fallback(cosmosDb);
+        Assert.True((await rites.GetNewest(1, CancellationToken.None)).IsRight);
+        var asked = cosmosDb.Reads;
+
+        var answers = await Task.WhenAll(Enumerable.Range(0, 10).Select(_ => rites.GetNewest(1, CancellationToken.None)));
+
+        Assert.All(answers, answer => Assert.Equal([4], Numbers(answer)));
+        Assert.Equal(1, snapshot.Loads);
+        Assert.Equal(asked, cosmosDb.Reads);
+    }
+
     [Fact]
     public async Task TheTimer_WritesTheSnapshot()
     {
@@ -152,7 +227,7 @@ public sealed class RiteSnapshotTests : IAsyncLifetime
 
         await new RiteSnapshotFunction(Snapshots(Rites)).Run(new Microsoft.Azure.Functions.Worker.TimerInfo(), CancellationToken.None);
 
-        Assert.Equal(4, snapshot.Saved.IfNone([]).Count);
+        Assert.Equal(4, snapshot.SavedRites.Count);
     }
 
     private RiteRepository Rites => new(cosmos.Container, NullLogger<RiteRepository>.Instance);

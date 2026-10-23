@@ -37,11 +37,11 @@ public sealed class DailyRiteFunction
         var result = await publisher.PublishToday(cancellationToken);
         if (result.Exists(published => published.IsNew))
         {
+            // The fallback's copy (#112) first: a page purged while Cosmos DB fails is filled from it.
+            await snapshots.Write(cancellationToken);
             // Today showed yesterday's rite (or the slumbering page), and the search field's index and the rites API
             // lacked the new one: all are kept at the edge until purged.
             await pages.Purge([Paths.Today, Paths.SearchIndex, Paths.RitesApi], cancellationToken);
-            // The fallback's copy (#112) shows the new rite too.
-            await snapshots.Write(cancellationToken);
         }
         return result.Match(
             Right: published =>

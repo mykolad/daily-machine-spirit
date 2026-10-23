@@ -165,7 +165,7 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
         Assert.Equal("Next up", (await testbed.PublishedOn(Today)).Writing.Title);
         Assert.Equal(RefillBacklogFunction.AfterPublishing, message);
         // The fallback's copy (#112) has it too.
-        Assert.Equal(["Next up"], testbed.Snapshot.Saved.IfNone([]).Select(rite => rite.Writing.Title));
+        Assert.Equal(["Next up"], testbed.Snapshot.SavedRites.Select(rite => rite.Writing.Title));
     }
 
     // Today showed the rite before, and the search field's index lacked the new one, both kept at the edge until purged.
