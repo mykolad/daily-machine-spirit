@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
+using DailyMachineSpirit.Functions.Generation.Precepts;
 using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Scriptorium;
 using LanguageExt;
@@ -17,7 +18,8 @@ public sealed class AmendmentsTests : IAsyncLifetime
     private static readonly RiteContent Sharper = new(
         "The Litany of the Warm Cache",
         "O Machine Spirit, warm thy cache, that `npm ci` may find it full.",
-        "`npm ci` deletes `node_modules` first: only a cache outside it survives.");
+        "`npm ci` deletes `node_modules` first: only a cache outside it survives.",
+        "A clean install throws away the cache every time.");
 
     private readonly BacklogTestbed testbed = new();
 
@@ -47,6 +49,23 @@ public sealed class AmendmentsTests : IAsyncLifetime
         var decision = Assert.Single(Ok(await testbed.Scribes().View(CancellationToken.None)).Decisions);
         Assert.Equal((ScribeAction.Amend, "Litany of the Cold Cache", Some("The truth was wrong.")), (decision.Action, decision.Title, decision.Note));
         Assert.Equal(Some(0.2f), decision.AuguryQuality);
+    }
+
+    // Only the ailment amended: the decision keeps the old one, so a note on correcting it reaches distillation with the
+    // words it's about.
+    [Fact]
+    public async Task Save_OfTheAilmentAlone_KeepsTheOldOneWithTheDecision_ForDistilling()
+    {
+        var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
+        var amendable = Ok(await testbed.Amendments().FindWaiting(draft.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Not amendable."));
+        var words = Words(draft) with { Ailment = "A build that slows down after every clean install." };
+
+        Ok(await testbed.Amendments().SaveAndJudgeAgain(draft.Id, amendable.ETag, words, "The ailment gave the fix away.", BacklogTestbed.Tester, CancellationToken.None));
+
+        Assert.Equal(Some(words.Ailment), Assert.Single(await testbed.Waiting()).Writing.Ailment);
+        var decision = Assert.Single(Ok(await testbed.Scribes().View(CancellationToken.None)).Decisions);
+        Assert.Equal(draft.Writing.Ailment, decision.Ailment);
+        Assert.Contains("The build is slow every time the cache is cleared.", PreceptPrompt.Request([decision], [], []));
     }
 
     // The mark said the old words repeated a rite; the Scribe who amended them has read them.
@@ -162,7 +181,7 @@ public sealed class AmendmentsTests : IAsyncLifetime
     public async Task Rewrite_AsksTheWriter_WithTheNote_AndSavesNothing()
     {
         var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
-        testbed.Models.Answers(Sol, FakeChatClients.Answer(Sharper.Title, Sharper.Text, Sharper.HereticalTruth));
+        testbed.Models.Answers(Sol, FakeChatClients.Answer(Sharper.Title, Sharper.Text, Sharper.HereticalTruth, Sharper.Ailment));
 
         var rewritten = Ok(await testbed.Amendments().ProposeRewrite(draft.Id, Words(draft), "Name the real fix: `npm ci`.", CancellationToken.None));
 
@@ -185,5 +204,6 @@ public sealed class AmendmentsTests : IAsyncLifetime
         Assert.Empty(testbed.Models.Requests);
     }
 
-    private static RiteContent Words(Draft draft) => new(draft.Writing.Title, draft.Writing.Text, draft.Writing.HereticalTruth);
+    private static RiteContent Words(Draft draft)
+        => new(draft.Writing.Title, draft.Writing.Text, draft.Writing.HereticalTruth, draft.Writing.Ailment.IfNone(string.Empty));
 }

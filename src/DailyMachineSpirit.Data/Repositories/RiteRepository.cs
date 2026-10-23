@@ -78,7 +78,7 @@ public class RiteRepository : IRiteRepository
     public Task<Either<Error, List<UnrevealedRite>>> GetAllUnrevealed(CancellationToken cancellationToken)
         => Attempt(async () => (await container.Query<UnrevealedRiteDocument>(
             new QueryDefinition(
-                "SELECT c.number, c.publishedOnUtc, c.kind, c.title, c.text, c.tags FROM c WHERE c.type = @type ORDER BY c.number DESC")
+                "SELECT c.number, c.publishedOnUtc, c.kind, c.title, c.text, c.ailment, c.tags FROM c WHERE c.type = @type ORDER BY c.number DESC")
                 .WithParameter("@type", RiteDocument.RiteType),
             cancellationToken)).Select(document => document.ToUnrevealedRite()).ToList());
 

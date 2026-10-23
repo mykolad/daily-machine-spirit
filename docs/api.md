@@ -26,7 +26,7 @@ As on the site, each rite's **Heretical Truth** stays sealed until it's asked fo
       "kind": "ritual",
       "title": "The Rite of Re-Run",
       "text": "When the trial fails, press Re-run thrice, intoning `it passed locally`.",
-      "ailment": "",
+      "ailment": "A test that fails, then passes when the build runs again.",
       "subjects": [{ "key": "testing", "label": "Testing" }],
       "url": "https://dailymachinespirit.fyi/r/12"
     }
@@ -41,7 +41,7 @@ As on the site, each rite's **Heretical Truth** stays sealed until it's asked fo
 - `title`, `text`: as published. Commands, flags and file names are in `backticks`. A word erased from a rite (as if lost
   to time) is an emoji, there as on the site.
 - `ailment`: optional. The trouble the rite is for, in a line, without its fix ("a test that fails at random and passes
-  when re-run"): the best thing to match a trouble on. Empty when the rite has none, as every rite does for now.
+  when re-run"): the best thing to match a trouble on. Optional: empty for a rite that has none yet.
 - `subjects`: what it's filed under, from the site's own vocabulary; `key` is the subject's page
   (`/tags/<key>`). Empty for a rite filed under nothing.
 - `url`: the rite's page, where its Heretical Truth is a click away.

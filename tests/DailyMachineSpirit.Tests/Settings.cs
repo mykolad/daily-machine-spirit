@@ -26,6 +26,8 @@ public static class Settings
 
     public static DuplicateRiteCheckOptions DuplicateRiteCheck => Section<DuplicateRiteCheckOptions>(DuplicateRiteCheckOptions.SectionName);
 
+    public static AilmentWritingOptions AilmentWriting => Section<AilmentWritingOptions>(AilmentWritingOptions.SectionName);
+
     public static PreceptDistillingOptions PreceptDistilling => Section<PreceptDistillingOptions>(PreceptDistillingOptions.SectionName);
 
     public static PreceptCheckOptions PreceptCheck => Section<PreceptCheckOptions>(PreceptCheckOptions.SectionName);

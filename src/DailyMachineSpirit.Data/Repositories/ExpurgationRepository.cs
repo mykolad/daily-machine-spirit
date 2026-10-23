@@ -26,7 +26,7 @@ public sealed class ExpurgationRepository : IExpurgationRepository
         => Attempt(async () =>
         {
             var rites = await Words(
-                new QueryDefinition("SELECT c.id, c._etag, c.title, c.text, c.hereticalTruth FROM c WHERE c.type = @type AND c.number = @number")
+                new QueryDefinition("SELECT c.id, c._etag, c.title, c.text, c.hereticalTruth, c.ailment FROM c WHERE c.type = @type AND c.number = @number")
                     .WithParameter("@type", RiteDocument.RiteType)
                     .WithParameter("@number", number),
                 cancellationToken);
@@ -63,13 +63,13 @@ public sealed class ExpurgationRepository : IExpurgationRepository
     private async Task<KeptWords> CopiesOf(WordsDocument rite, int number, CancellationToken cancellationToken)
     {
         var drafts = await Words(
-            new QueryDefinition("SELECT c.id, c._etag, c.title, c.text, c.hereticalTruth FROM c WHERE c.type = @type AND c.publishedOnUtc = @day")
+            new QueryDefinition("SELECT c.id, c._etag, c.title, c.text, c.hereticalTruth, c.ailment FROM c WHERE c.type = @type AND c.publishedOnUtc = @day")
                 .WithParameter("@type", DraftDocument.DraftType)
                 .WithParameter("@day", rite.Id),
             cancellationToken);
         var draftIds = drafts.Select(draft => draft.Id).ToList();
         var decisions = await Words(
-            new QueryDefinition("SELECT c.id, c._etag, c.title, c.text, c.hereticalTruth, c.note FROM c WHERE c.type = @type AND ARRAY_CONTAINS(@drafts, c.draftId)")
+            new QueryDefinition("SELECT c.id, c._etag, c.title, c.text, c.hereticalTruth, c.ailment, c.note FROM c WHERE c.type = @type AND ARRAY_CONTAINS(@drafts, c.draftId)")
                 .WithParameter("@type", ScribeDecisionDocument.DecisionType)
                 .WithParameter("@drafts", draftIds),
             cancellationToken);
