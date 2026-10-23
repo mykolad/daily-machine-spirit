@@ -26,7 +26,7 @@ public static class RitePage
         {
             cards.Append($"""
                 <li><a class="more-card" href="{Paths.Rite(other.Number)}">
-                <span class="kind">{(other.Writing.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL")} · {Html.ShortDate(other.PublishedOnUtc)}</span>
+                <span class="kind">{(other.Writing.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL")} · {ImperialDate.InALink(other.PublishedOnUtc, "more-date")}</span>
                 <span class="more-title">{Html.Encode(other.Writing.Title)}</span>
                 <span class="row-first">{Html.WithInlineCode(Html.FirstLine(other.Writing.Text))}</span>
                 </a></li>

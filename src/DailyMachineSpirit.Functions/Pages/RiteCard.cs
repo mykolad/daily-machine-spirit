@@ -55,7 +55,7 @@ public static class RiteCard
             <div class="parchment-body">
             <p class="kicker">A {kind} · NO. {rite.Number}</p>
             <{heading} class="rite-title" id="rite-title">{Html.Encode(rite.Writing.Title)}</{heading}>
-            <time class="rite-date" datetime="{Html.IsoDate(rite.PublishedOnUtc)}">{Html.LongDate(rite.PublishedOnUtc)}</time>
+            {ImperialDate.WithTheDay(rite.PublishedOnUtc, "rite-day", "rite-date")}
             {Svg.RubricDivider}
             <p class="prayer">{Prayer(rite.Writing.Text)}</p>
             <div class="colophon">

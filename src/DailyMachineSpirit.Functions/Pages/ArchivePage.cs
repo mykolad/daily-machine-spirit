@@ -27,7 +27,7 @@ public static class ArchivePage
             ? Description
             : $"""<span class="sub-wide">{Description}</span><span class="sub-narrow">{Rites(listed.Count)}, newest first.</span>""";
         var since = days.LastOrNone().Match(
-            Some: oldest => ArchiveSheet.Note("Since", $"""<p class="margin-since">{Html.LongDate(oldest.PublishedOnUtc)}</p>"""),
+            Some: oldest => ArchiveSheet.Note("Since", $"""<p class="margin-since">{ImperialDate.WithTheDay(oldest.PublishedOnUtc, "since-day", "since-date")}</p>"""),
             None: () => string.Empty);
         var left = $"""
             <aside class="marginalia" aria-label="About the Archive">
