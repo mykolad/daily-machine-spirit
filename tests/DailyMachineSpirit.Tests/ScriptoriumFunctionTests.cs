@@ -233,7 +233,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         var html = Html(await Function().Ashes(Get(""), CancellationToken.None), 200);
 
-        Assert.Contains("Nothing has been consigned to the flames.", html);
+        Assert.Contains("The Ashes are cold. Nothing has been burned.", html);
     }
 
     // The page shows the newest; the tab counts them all, so the page says how many more there are.
@@ -271,10 +271,85 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
 
         var html = Html(await Function().Ashes(Get($"?rite={first.Id:D}"), CancellationToken.None), 200);
 
-        Assert.Contains("Burned longer ago</h2>", html);
-        Assert.Contains($"""<article class="rite ash acted" id="rite-{first.Id:D}" """, html);
+        Assert.Contains("Burned longer ago<span class=\"group-count\">1</span></h2>", html);
+        Assert.Contains($"""<article class="rite row ash acted" id="rite-{first.Id:D}" """, html);
         Assert.Contains($"/scriptorium/drafts/{first.Id:D}/restore", html);
         Assert.Contains($"The {Settings.ScriptoriumPages.AshesShown} burned most recently, of {Settings.ScriptoriumPages.AshesShown + 1}.", html);
+    }
+
+    // Grouped by the day they burned, each says who burned it, from where and why, and the reason rides along for the
+    // script's Undo of a restore.
+    [Fact]
+    public async Task Ashes_GroupTheRitesByTheDayTheyBurned_SayingWhoBurnedEach_FromWhereAndWhy()
+    {
+        var reasoned = await testbed.AddDraft("Too narrow", 0.9f);
+        var silent = await testbed.AddDraft("Unexplained", 0.5f);
+        var function = Function();
+        await function.Decide(Post("Too specific"), reasoned.Id, "burn", CancellationToken.None);
+        testbed.Time.Advance(TimeSpan.FromDays(1));
+        await function.Decide(Post(""), silent.Id, "burn", CancellationToken.None);
+
+        var html = Html(await function.Ashes(Get(""), CancellationToken.None), 200);
+
+        Assert.True(html.IndexOf("Burned Thu 8 Oct<span class=\"group-count\">1</span>", StringComparison.Ordinal)
+            < html.IndexOf("Burned Wed 7 Oct<span class=\"group-count\">1</span>", StringComparison.Ordinal));
+        Assert.Contains($"""<article class="rite row ash" id="rite-{reasoned.Id:D}" aria-labelledby="title-{reasoned.Id:D}" data-reason="Too specific">""", html);
+        Assert.Contains("""<span class="from">from #1</span>""", html);
+        Assert.Contains("""<span class="reason-said"><span class="visually-hidden">Why it burned: </span>“Too specific”</span>""", html);
+        Assert.Contains($"""Burned by A Scribe on staging from #1 · <a href="/scriptorium/record?draft={reasoned.Id:D}">its record</a>""", html);
+        Assert.Contains($"""Burned by A Scribe on staging from #1 · no reason given · <a href="/scriptorium/record?draft={silent.Id:D}">its record</a>""", html);
+        Assert.Contains("Signed in as <strong>", html);
+    }
+
+    [Fact]
+    public async Task Ashes_NarrowedToASubject_WithoutItsRites_SaySo()
+    {
+        var draft = await testbed.AddDraft("Burned", 0.5f);
+        Ok(await testbed.Scribes().Burn(draft.Id, "", BacklogTestbed.Tester, CancellationToken.None));
+
+        var html = Html(await Function().Ashes(Get("?subject=caches"), CancellationToken.None), 200);
+
+        Assert.Contains("No Caches rites in the Ashes.", html);
+        Assert.Contains("""<a class="chip" href="/scriptorium/ashes">All<span class="chip-count">1</span></a>""", html);
+    }
+
+    // Restored from the Ashes, the Scribe stays there, told where the rite went; the Undo burns it again for the same
+    // reason, back among the Ashes, marked.
+    [Fact]
+    public async Task Restore_FromTheAshes_ComesBackToThem_AndBurningAgainKeepsTheReason()
+    {
+        var draft = await testbed.AddDraft("Second chance", 0.5f);
+        var function = Function();
+        await function.Decide(Post("Too specific"), draft.Id, "burn", CancellationToken.None);
+
+        var restored = await function.Decide(Post("application/x-www-form-urlencoded", "page=ashes&note="), draft.Id, "restore", CancellationToken.None);
+
+        Assert.Equal($"/scriptorium/ashes?done=restore&rite={draft.Id:D}", Assert.IsType<RedirectResult>(restored.Result).Url);
+        var html = Html(await function.Ashes(Following(restored.Result), CancellationToken.None), 200);
+        Assert.Contains($"""<span data-undoable>“Second chance” returned to the Augury’s order. <a href="/scriptorium?rite={draft.Id:D}#rite-{draft.Id:D}">See it in the calendar</a>.</span>""", html);
+        Assert.DoesNotContain($"id=\"rite-{draft.Id:D}\"", html);
+        Assert.True(Ok(await testbed.Drafts.Get(draft.Id, CancellationToken.None)).Exists(waiting => waiting.BurnReason.IsNone));
+
+        var burned = await function.Decide(Post("application/x-www-form-urlencoded", "page=ashes&note=Too+specific"), draft.Id, "burn", CancellationToken.None);
+
+        Assert.Equal($"/scriptorium/ashes?done=burn-last&rite={draft.Id:D}#rite-{draft.Id:D}", Assert.IsType<RedirectResult>(burned.Result).Url);
+        var again = Html(await function.Ashes(Following(burned.Result), CancellationToken.None), 200);
+        Assert.Contains("“Second chance” is back in the Ashes.", again);
+        Assert.Contains($"""<article class="rite row ash acted" id="rite-{draft.Id:D}" aria-labelledby="title-{draft.Id:D}" data-reason="Too specific">""", again);
+    }
+
+    [Fact]
+    public async Task Restore_FromTheAshes_OfARiteAnotherScribeRestored_SaysSoThere()
+    {
+        var draft = await testbed.AddDraft("Twice", 0.5f);
+        var function = Function();
+        await function.Decide(Post(""), draft.Id, "burn", CancellationToken.None);
+        await function.Decide(Post("application/x-www-form-urlencoded", "page=ashes&note="), draft.Id, "restore", CancellationToken.None);
+
+        var response = await function.Decide(Post("application/x-www-form-urlencoded", "page=ashes&note="), draft.Id, "restore", CancellationToken.None);
+
+        Assert.Equal($"/scriptorium/ashes?done=changed&rite={draft.Id:D}", Assert.IsType<RedirectResult>(response.Result).Url);
+        Assert.Contains("Another Scribe restored or burned it meanwhile.", Html(await function.Ashes(Following(response.Result), CancellationToken.None), 200));
     }
 
     [Fact]
@@ -414,7 +489,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Contains($"""<span data-undoable>Consigned “Burned” to the flames.</span><span data-undoable> <a href="{link}">Restore it from the Ashes</a>.</span>""", html);
         Assert.DoesNotContain("acted\" id=", html);
         var ashes = Html(await function.Ashes(Get(new Uri(new Uri("https://dailymachinespirit.fyi"), link).Query), CancellationToken.None), 200);
-        Assert.Contains($"""<article class="rite ash acted" id="rite-{burned.Id:D}" """, ashes);
+        Assert.Contains($"""<article class="rite row ash acted" id="rite-{burned.Id:D}" """, ashes);
     }
 
     // So the Scribe's eye finds where it went, with or without the script that slides it there.
@@ -919,7 +994,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var html = Html(await Function().Page(Following(response.Result), CancellationToken.None), 200);
         Assert.Matches("Judged “Litany of the Cold Cache” again, \\d+%: the Augury places it for ", html);
         Assert.Contains($"""A Scribe on staging judged <a href="/scriptorium/record?draft={unjudged.Id:D}">“Litany of the Cold Cache”</a> again""", ScriptoriumPage.RenderRecord(
-            Ok(await testbed.Audit.GetHistory(unjudged.Id, CancellationToken.None)), [], LanguageExt.Prelude.None, LanguageExt.Prelude.None));
+            Ok(await testbed.Audit.GetHistory(unjudged.Id, CancellationToken.None)), [], LanguageExt.Prelude.None, LanguageExt.Prelude.None, LanguageExt.Prelude.None));
     }
 
     [Fact]
