@@ -26,6 +26,9 @@ public interface IRiteSnapshotStore
     /// </summary>
     Task<Either<Error, Unit>> Save(IReadOnlyList<Rite> rites, Option<string> replacing, CancellationToken cancellationToken);
 
-    /// <summary>Takes the copy away, so nothing falls back on it until the next save.</summary>
+    /// <summary>
+    /// Takes the copy away, so nothing falls back on it until the next save: <see cref="Load"/> finds none, while the
+    /// version changes, so a save begun before is refused.
+    /// </summary>
     Task<Either<Error, Unit>> Discard(CancellationToken cancellationToken);
 }

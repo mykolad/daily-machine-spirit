@@ -7,19 +7,26 @@ using static LanguageExt.Prelude;
 namespace DailyMachineSpirit.Tests;
 
 /// <summary>
-/// The rites' snapshot kept in memory, each save a new version: what was saved last, how many times it was loaded, and a
-/// way to save another copy just before a save, as another instance would.
+/// The rites' snapshot kept in memory, as the blob store keeps it: each save and each discard a new version, a discarded
+/// copy found by no reader. It can fail a save, hold version checks, and save another copy just before a save, as
+/// another instance would.
 /// </summary>
 public sealed class InMemoryRiteSnapshot : IRiteSnapshotStore
 {
-    private int saves;
+    private int versions;
+    private int checking;
 
     public Option<RiteSnapshot> Saved { get; private set; }
 
-    /// <summary>The rites as last saved; none before the first save.</summary>
+    public Option<string> CurrentVersion { get; private set; }
+
+    /// <summary>The rites as last saved; none before the first save, or after a discard.</summary>
     public List<Rite> SavedRites => Saved.Map(saved => saved.Rites).IfNone([]);
 
     public int Loads { get; private set; }
+
+    /// <summary>The most version checks that were under way at once.</summary>
+    public int MostChecksAtOnce { get; private set; }
 
     /// <summary>The next save fails, as a storage outage would.</summary>
     public bool FailNextSave { get; set; }
@@ -27,8 +34,20 @@ public sealed class InMemoryRiteSnapshot : IRiteSnapshotStore
     /// <summary>Runs once, just before the next save checks its version.</summary>
     public Option<Func<Task>> BeforeNextSave { get; set; }
 
-    public Task<Either<Error, Option<string>>> Version(CancellationToken cancellationToken)
-        => Task.FromResult(Right<Error, Option<string>>(Saved.Map(saved => saved.Version)));
+    /// <summary>Version checks wait for this, as a slow storage account keeps them waiting.</summary>
+    public Option<Task> HoldVersionChecks { get; set; }
+
+    public async Task<Either<Error, Option<string>>> Version(CancellationToken cancellationToken)
+    {
+        var now = Interlocked.Increment(ref checking);
+        lock (this)
+        {
+            MostChecksAtOnce = Math.Max(MostChecksAtOnce, now);
+        }
+        await HoldVersionChecks.IfNone(Task.CompletedTask);
+        Interlocked.Decrement(ref checking);
+        return CurrentVersion;
+    }
 
     public Task<Either<Error, Option<RiteSnapshot>>> Load(CancellationToken cancellationToken)
     {
@@ -46,16 +65,18 @@ public sealed class InMemoryRiteSnapshot : IRiteSnapshotStore
         var meanwhile = BeforeNextSave;
         BeforeNextSave = None;
         await meanwhile.Match(Some: save => save(), None: () => Task.CompletedTask);
-        if (Saved.Map(saved => saved.Version) != replacing)
+        if (CurrentVersion != replacing)
         {
             return IRiteSnapshotStore.ChangedMeanwhile;
         }
-        Saved = Some(new RiteSnapshot(rites.ToList(), $"v{++saves}"));
+        CurrentVersion = Some($"v{++versions}");
+        Saved = Some(new RiteSnapshot(rites.ToList(), CurrentVersion.IfNone(string.Empty)));
         return unit;
     }
 
     public Task<Either<Error, Unit>> Discard(CancellationToken cancellationToken)
     {
+        CurrentVersion = Some($"v{++versions}");
         Saved = None;
         return Task.FromResult(Right<Error, Unit>(unit));
     }

@@ -157,24 +157,34 @@ public sealed class RitesWithFallback : IRiteReader
         }
     }
     // The copy as kept, if it's still the version saved; else the saved one, loaded once however many reads ask at once.
-    // Asking for the version costs a small request per read, only while Cosmos DB is down: a copy saved since (an
-    // erasure's) is never missed.
+    // Asking for the version costs a small request per read, only while Cosmos DB is down, made by each read at once (not
+    // behind the gate): a copy saved since (an erasure's) is never missed, and only a download waits its turn.
     private async Task<Option<SnapshotRites>> Snapshot(CancellationToken cancellationToken)
     {
+        var saved = (await snapshots.Version(cancellationToken)).Match(Right: version => version, Left: _ => None);
+        var kept = Kept(saved);
+        if (kept.IsSome)
+        {
+            return kept;
+        }
         await loading.WaitAsync(cancellationToken);
         try
         {
-            var saved = (await snapshots.Version(cancellationToken)).Match(Right: version => version, Left: _ => None);
-            var kept = loaded.Filter(copy => saved.Exists(version => version == copy.Version));
+            // Another read may have loaded that version while this one waited.
+            kept = Kept(saved);
             if (kept.IsSome)
             {
-                return kept.Map(copy => copy.Rites);
+                return kept;
             }
             return (await snapshots.Load(cancellationToken)).Match(
                 Right: found =>
                 {
-                    loaded = found.Map(snapshot => (new SnapshotRites(snapshot.Rites), snapshot.Version));
-                    return loaded.Map(kept => kept.Rites);
+                    var copy = found.Map(snapshot => (Rites: new SnapshotRites(snapshot.Rites), snapshot.Version));
+                    lock (gate)
+                    {
+                        loaded = copy;
+                    }
+                    return copy.Map(fresh => fresh.Rites);
                 },
                 Left: error =>
                 {
@@ -185,6 +195,14 @@ public sealed class RitesWithFallback : IRiteReader
         finally
         {
             loading.Release();
+        }
+    }
+
+    private Option<SnapshotRites> Kept(Option<string> saved)
+    {
+        lock (gate)
+        {
+            return loaded.Filter(copy => saved.Exists(version => version == copy.Version)).Map(copy => copy.Rites);
         }
     }
 }

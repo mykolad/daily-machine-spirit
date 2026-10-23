@@ -50,7 +50,9 @@ public sealed class BlobRiteSnapshotStore : IRiteSnapshotStore
             {
                 var content = await blob.DownloadContentAsync(cancellationToken);
                 var snapshot = content.Value.Content.ToObjectFromJson<RiteSnapshotDocument>(Json) ?? new RiteSnapshotDocument();
-                return Some(new RiteSnapshot(snapshot.Rites.Select(document => document.ToRite()).ToList(), content.Value.Details.ETag.ToString()));
+                return snapshot.Discarded
+                    ? Option<RiteSnapshot>.None
+                    : Some(new RiteSnapshot(snapshot.Rites.Select(document => document.ToRite()).ToList(), content.Value.Details.ETag.ToString()));
             }
             catch (RequestFailedException ex) when (ex.Status == (int)HttpStatusCode.NotFound)
             {
@@ -81,10 +83,13 @@ public sealed class BlobRiteSnapshotStore : IRiteSnapshotStore
             }
         });
 
+    // A marker, not a deletion: a write that read no copy would otherwise create one with the rites it read, perhaps
+    // before the erasure; over the marker, its version check fails and it reads them again.
     public Task<Either<Error, Unit>> Discard(CancellationToken cancellationToken)
         => Attempt(async () =>
         {
-            await blob.DeleteIfExistsAsync(cancellationToken: cancellationToken);
+            var discarded = new RiteSnapshotDocument { WrittenAtUtc = DateTime.UtcNow, Discarded = true };
+            await blob.UploadAsync(BinaryData.FromObjectAsJson(discarded, Json), overwrite: true, cancellationToken);
             return unit;
         });
 }

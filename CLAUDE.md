@@ -126,7 +126,8 @@ skills/                           — Consult the Machine Spirit, a skill that p
   `RiteSnapshots` after a new rite and an erasure (before their pages are purged), and every six hours
   (`WriteRiteSnapshot`) for votes, tags and ailments. Each copy has a version (the blob's ETag): a write saves only over
   the version it read before reading the rites, else reads them again, so an older copy never replaces an erasure's; an
-  erasure whose copy can't be written takes the copy away. The public readers (the pages, the search index, the rites
+  erasure whose copy can't be written (within 30 seconds of its own, whatever the request does) leaves a "discarded"
+  marker, which readers find no copy in and writers still have to match. The public readers (the pages, the search index, the rites
   API) take `IRiteReader`, which is `RitesWithFallback` over `RiteRepository`: a read Cosmos DB fails is answered from the
   snapshot (`SnapshotRites`, which answers every query as Cosmos DB does, search too), and so is every read for a minute
   after, then one read per instance asks Cosmos DB again while the others keep reading the copy. The copy is loaded once

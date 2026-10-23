@@ -144,7 +144,7 @@ public sealed class RiteSnapshotTests : IAsyncLifetime
         Ok(await Snapshots(Rites).Write(CancellationToken.None));
         snapshot.FailNextSave = true;
 
-        await Snapshots(Rites).WriteOrDiscard(CancellationToken.None);
+        await Snapshots(Rites).WriteOrDiscard();
 
         Assert.True(snapshot.Saved.IsNone);
     }
@@ -242,6 +242,41 @@ public sealed class RiteSnapshotTests : IAsyncLifetime
         Assert.All(answers, answer => Assert.Equal([4], Numbers(answer)));
         Assert.Equal(1, snapshot.Loads);
         Assert.Equal(asked, cosmosDb.Reads);
+    }
+
+    // A first write read no copy, then the rites; meanwhile an erasure's write failed and took the copy away. Finishing,
+    // the first write mustn't put back the rites it read, perhaps before the erasure: the discard changed the version.
+    [Fact]
+    public async Task AWriteBegunBeforeADiscard_IsRefused_AndReadsTheRitesAgain()
+    {
+        await AddRites();
+        snapshot.BeforeNextSave = Some<Func<Task>>(() => snapshot.Discard(CancellationToken.None));
+
+        var written = await Snapshots(Rites).Write(CancellationToken.None);
+
+        // Refused once, then written again from the rites read anew.
+        Assert.Equal(4, Ok(written));
+        Assert.Equal(4, snapshot.SavedRites.Count);
+    }
+
+    // Reads at once while the storage account is slow: their version checks run side by side, not one after another.
+    [Fact]
+    public async Task VersionChecks_RunSideBySide()
+    {
+        await AddRites();
+        Ok(await Snapshots(Rites).Write(CancellationToken.None));
+        var rites = Fallback(Missing);
+        Assert.True((await rites.GetNewest(1, CancellationToken.None)).IsRight);
+        var held = new TaskCompletionSource();
+        snapshot.HoldVersionChecks = Some(held.Task);
+
+        var reads = Enumerable.Range(0, 5).Select(_ => rites.GetNewest(1, CancellationToken.None)).ToList();
+        held.SetResult();
+        var answers = await Task.WhenAll(reads);
+
+        Assert.All(answers, answer => Assert.Equal([4], Numbers(answer)));
+        Assert.Equal(5, snapshot.MostChecksAtOnce);
+        Assert.Equal(1, snapshot.Loads);
     }
 
     [Fact]

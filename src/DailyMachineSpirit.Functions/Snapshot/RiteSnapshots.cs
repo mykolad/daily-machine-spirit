@@ -15,6 +15,9 @@ public sealed class RiteSnapshots
     // Each try reads the rites again: a copy saved meanwhile (an erasure's) may be newer than what this one read.
     private const int Tries = 3;
 
+    // How long following an erasure may take, whatever the request that erased does meanwhile.
+    private static readonly TimeSpan CleanupTime = TimeSpan.FromSeconds(30);
+
     private readonly IRiteRepository rites;
     private readonly IRiteSnapshotStore store;
     private readonly ILogger<RiteSnapshots> logger;
@@ -40,15 +43,17 @@ public sealed class RiteSnapshots
 
     /// <summary>
     /// Writes the snapshot after an erasure, or if that fails, takes the copy away: an old copy would hold the erased words,
-    /// which a fallback would show again. Without a copy there's no fallback until the next write (every six hours).
+    /// which a fallback would show again. Without a copy there's no fallback until the next write (every six hours). It
+    /// runs to the end even if the request that erased is cancelled meanwhile: the erasure is saved already.
     /// </summary>
-    public async Task WriteOrDiscard(CancellationToken cancellationToken)
+    public async Task WriteOrDiscard()
     {
-        if ((await Write(cancellationToken)).IsRight)
+        using var cleanup = new CancellationTokenSource(CleanupTime);
+        if ((await Write(cleanup.Token)).IsRight)
         {
             return;
         }
-        (await store.Discard(cancellationToken)).IfLeft(error => logger.LogError(error.ToException(),
+        (await store.Discard(cleanup.Token)).IfLeft(error => logger.LogError(error.ToException(),
             "The rites' snapshot couldn't be written after an erasure, nor taken away: it may hold the erased words until the next write: {Reason}",
             error.Message));
     }
