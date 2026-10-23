@@ -81,6 +81,7 @@ builder.Services.AddSingleton<IExpurgationRepository, ExpurgationRepository>();
 builder.Services.AddSingleton<IPreceptRepository, PreceptRepository>();
 builder.Services.AddSingleton<IScribeNameRepository, ScribeNameRepository>();
 builder.Services.AddSingleton<IVoteRepository, VoteRepository>();
+builder.Services.AddSingleton<IBurnRepository, BurnRepository>();
 builder.Services.AddSingleton<IAilmentRepository, AilmentRepository>();
 
 // The daily rite and the backlog. Created only when the timer or a refill runs, so HTTP functions start without the generation settings.
@@ -101,6 +102,8 @@ builder.Services.AddTransient<IQualityJudge, RubricJudge>();
 builder.Services.AddTransient<IRiteJudge, RiteJudge>();
 // Tags the rites judged before tags existed, once per start (nothing left after the first).
 builder.Services.AddHostedService<TagBackfill>();
+// Gives the drafts burned before a draft kept its burn's details the Record's, once per start.
+builder.Services.AddHostedService<BurnBackfill>();
 builder.Services.AddHostedService<AilmentBackfill>();
 builder.Services.AddTransient<RiteWriter>();
 builder.Services.AddTransient<DuplicateCheck>();

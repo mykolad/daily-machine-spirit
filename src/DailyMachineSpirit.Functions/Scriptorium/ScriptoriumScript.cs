@@ -1,11 +1,11 @@
 namespace DailyMachineSpirit.Functions.Scriptorium;
 
 /// <summary>
-/// The calendar's script, on top of its forms and links. It folds every rite but the next to publish into its row, and
-/// asks why before a burn, then offers to undo it. An action is posted in the background and the new calendar takes the
-/// old one's place, every rite that moved sliding from where it was, so a Scribe sees what changed; a subject's chip
-/// loads the calendar narrowed to it the same way. Without it (or when anything goes wrong) the forms and links work as
-/// they are: post, redirect, a new page, every rite open.
+/// The script of the calendar and the Ashes, on top of their forms and links. It folds every rite but the next to
+/// publish into its row, asks why before a burn, and offers to undo a burn on the calendar or a restore in the Ashes. An
+/// action is posted in the background and the new page takes the old one's place, every rite that moved sliding from
+/// where it was, so a Scribe sees what changed; a subject's chip loads the page narrowed to it the same way. Without it
+/// (or when anything goes wrong) the forms and links work as they are: post, redirect, a new page, every rite open.
 /// </summary>
 public static class ScriptoriumScript
 {
@@ -29,7 +29,7 @@ public static class ScriptoriumScript
             try { sessionStorage.setItem(openKey, JSON.stringify([...opened])); } catch { /* the session forgets */ }
           };
           const cards = () => [...main.querySelectorAll('article.row')];
-          const titleOf = (card) => card.querySelector('h4')?.textContent ?? '';
+          const titleOf = (card) => card.querySelector('.row-title')?.textContent ?? '';
           const fold = (card, open) => {
             const body = card.querySelector('.body');
             const toggle = card.querySelector('.expand');
@@ -68,18 +68,21 @@ public static class ScriptoriumScript
             }
           };
 
-          // After a burn, a few seconds to undo it: never gone while the pointer or focus is on it.
+          // After a burn or a restore, a few seconds to undo it: never gone while the pointer or focus is on it. A burn
+          // undoing a restore takes the reason the rite burned for before.
           const hideToast = () => {
             clearTimeout(toastTimer);
             toasts?.replaceChildren();
           };
-          const showToast = ({ id, title }) => {
+          const showToast = ({ action, text, note }) => {
             const template = document.getElementById('undo-toast');
             if (!toasts || !(template instanceof HTMLTemplateElement)) return;
             const toast = template.content.firstElementChild.cloneNode(true);
-            toast.querySelector('.toast-text').textContent = `“${title}” was consigned to the flames.`;
+            toast.querySelector('.toast-text').textContent = text;
             const form = toast.querySelector('form');
-            form.setAttribute('action', `/scriptorium/drafts/${id}/restore`);
+            form.setAttribute('action', action);
+            const reason = form.querySelector('input[name=note]');
+            if (reason) reason.value = note;
             const later = () => {
               clearTimeout(toastTimer);
               toastTimer = setTimeout(() => (toast.matches(':hover, :focus-within') ? later() : hideToast()), 7000);
@@ -90,10 +93,10 @@ public static class ScriptoriumScript
             later();
           };
 
-          // Where each rite is, by its id, measured from the top of the calendar's section: the status message above it
+          // Where each rite is, by its id, measured from the top of the rites (data-rows): the status message above them
           // appearing or changing length moves every rite down, which isn't a move worth showing.
           const positions = () => {
-            const from = document.querySelector('#main section').getBoundingClientRect().top;
+            const from = document.querySelector('#main [data-rows]').getBoundingClientRect().top;
             return new Map(cards().map((card) => [card.id, card.getBoundingClientRect().top - from]));
           };
           // What a button does: its formaction, or its form's action (Summon, handing the order back to the Augury, Undo).
@@ -153,12 +156,12 @@ public static class ScriptoriumScript
 
           // Loads the calendar from the address (an action's answer, or a subject's) in place of the one shown. Rites
           // arriving from a summon come in without moving focus or the page.
-          const load = async (url, init, { pressed, card, burning, arriving }) => {
+          const load = async (url, init, { pressed, card, undoing, arriving }) => {
             busy = true;
             main.setAttribute('aria-busy', 'true');
             const before = positions();
-            // Where a burned rite stood among the rites shown, for focus. Not its neighbour: the Augury orders what's
-            // left anew, so the rite after it before the burn needn't be the one in its place after.
+            // Where a rite that leaves the page (burned, restored) stood among the rites shown, for focus. Not its
+            // neighbour: the Augury orders what's left anew, so the rite after it before needn't be the one in its place.
             const place = card ? cards().indexOf(card) : -1;
             try {
               const response = await fetch(url, init);
@@ -198,15 +201,15 @@ public static class ScriptoriumScript
               }
 
               const acted = main.querySelector('.acted');
-              // A burn counts only when the server says it burned: refused (a note too long), or the rite gone meanwhile
-              // (published at midnight), the rite isn't in the Ashes and there's nothing to undo.
+              // An action counts only when the server says it happened: refused (a note too long), or the rite gone
+              // meanwhile (published at midnight, restored by another Scribe), there's nothing to undo.
               const done = new URL(response.url).searchParams.get('done');
-              const burned = done === 'burn' || done === 'burn-last';
-              history.replaceState(null, '', response.url + (acted && !burned ? `#${acted.id}` : ''));
-              if (burned && burning) {
-                // The Undo says it, in place of the message's own words and its way back from the Ashes.
+              const gone = card !== null && !document.getElementById(card.id);
+              history.replaceState(null, '', response.url + (acted ? `#${acted.id}` : ''));
+              if (undoing?.done.includes(done)) {
+                // The Undo says it, in place of the message's own words and its way to where the rite went.
                 status.querySelectorAll('[data-undoable]').forEach((said) => said.remove());
-                showToast(burning);
+                showToast(undoing);
               }
 
               if (fresh.dataset.summoning) watchForRites(Number(fresh.dataset.summoning));
@@ -236,20 +239,20 @@ public static class ScriptoriumScript
                 return;
               }
 
-              // Focus stays where the Scribe is working: the same button on the rite, else its first one. After a burn,
-              // the rite now in the burned one's place (the last, when it was the last), so the page doesn't jump away
-              // from it. A subject's chip keeps it on the chips. Never a button the new calendar disabled (Summon, while
-              // its rites are written): focus there would be lost, so the status takes it.
+              // Focus stays where the Scribe is working: the same button on the rite, else its first one. When the rite
+              // left the page (burned, restored), the rite now in its place (the last, when it was the last), so the page
+              // doesn't jump away from it. A subject's chip keeps it on the chips. Never a button the new page disabled
+              // (Summon, while its rites are written): focus there would be lost, so the status takes it.
               const rows = cards();
-              const neighbour = burned && place >= 0 ? rows[place] ?? rows.at(-1) ?? null : null;
+              const neighbour = gone && place >= 0 ? rows[place] ?? rows.at(-1) ?? null : null;
               const again = !pressed ? main.querySelector('.subjects [aria-current]')
-                : burned ? firstButton(neighbour)
+                : gone ? firstButton(neighbour)
                 : [...main.querySelectorAll('button:not(:disabled)')].find((other) => actionOf(other) === pressed) ?? firstButton(acted);
               status.tabIndex = -1;
               (again ?? status).focus({ preventScroll: true });
               // Once the rite has arrived, it's brought into view. Not awaited: a hidden tab pauses the slide, and the
               // page mustn't stay busy until it's shown again.
-              const shownCard = burned ? neighbour : again && acted;
+              const shownCard = gone ? neighbour : again && acted;
               if (pressed) {
                 arrived.then(() => {
                   // A rite taller than the window can't be shown whole, and 'nearest' leaves it where it is: then its
@@ -262,7 +265,7 @@ public static class ScriptoriumScript
             } catch {
               // Whether the action happened isn't known (Cloudflare Access may want a new sign-in, or the network
               // failed): the page as it is now says. Rites that failed to arrive only wait for the next look.
-              if (!arriving) location.assign(pressed ? '/scriptorium' : url);
+              if (!arriving) location.assign(pressed ? location.pathname : url);
             } finally {
               main.removeAttribute('aria-busy');
               busy = false;
@@ -318,7 +321,7 @@ public static class ScriptoriumScript
                   if (watch !== watches) return;
                   if (response.ok && waiting > Number(main.dataset.waiting) && !busy && sameSubject) {
                     lastArrival = Date.now();
-                    await load(url.href, {}, { pressed: null, card: null, burning: null, arriving: true });
+                    await load(url.href, {}, { pressed: null, card: null, undoing: null, arriving: true });
                   }
                 } catch { /* the next look tries again */ }
               }
@@ -348,13 +351,18 @@ public static class ScriptoriumScript
             if (!card && subject && !body.has('subject')) body.set('subject', subject);
             // The reason in the Scribe's own words, else the one picked; none is needed, and then the note written for
             // the Augury goes with the burn.
-            let burning = null;
+            // What the toast offers to undo, once the server says it happened: a burn is undone by restoring the rite, a
+            // restore (the Ashes) by burning it again for the reason it burned for.
+            let undoing = null;
+            const rite = card?.id.slice('rite-'.length);
             if (card && confirming) {
               const panel = card.querySelector('.burn-panel');
               const picked = panel.querySelector('.reason[aria-pressed=true]')?.textContent ?? '';
               const reason = panel.querySelector('.reason-text').value.trim() || picked;
               if (reason) body.set('note', reason);
-              burning = { id: card.id.slice('rite-'.length), title: titleOf(card) };
+              undoing = { done: ['burn', 'burn-last'], action: `/scriptorium/drafts/${rite}/restore`, text: `“${titleOf(card)}” was consigned to the flames.`, note: '' };
+            } else if (card && pressed?.endsWith('/restore')) {
+              undoing = { done: ['restore'], action: `/scriptorium/drafts/${rite}/burn`, text: `“${titleOf(card)}” returned to the Augury’s order.`, note: card.dataset.reason ?? '' };
             }
             // Under way, the button says so: it can't be pressed again, and the pointer shows it's working (a summon's
             // request can take seconds). The new calendar brings its own buttons.
@@ -365,7 +373,7 @@ public static class ScriptoriumScript
             hideToast();
             // Not the button's formAction: without the attribute, that's the page's own address (Summon's and the
             // Augury's buttons have none).
-            load(pressed, { method: 'POST', body }, { pressed, card, burning });
+            load(pressed, { method: 'POST', body }, { pressed, card, undoing });
           });
 
           main.addEventListener('click', (event) => {
@@ -375,7 +383,7 @@ public static class ScriptoriumScript
             if (chip) {
               if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
               event.preventDefault();
-              if (!busy) load(chip.href, {}, { pressed: null, card: null, burning: null });
+              if (!busy) load(chip.href, {}, { pressed: null, card: null, undoing: null });
               return;
             }
             // Every rite shown, opened or folded, remembered as one opened or folded by hand; the next stays open.

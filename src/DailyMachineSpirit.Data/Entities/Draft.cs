@@ -25,6 +25,18 @@ public sealed record Draft
 
     public Option<DateTime> BurnedAtUtc { get; init; }
 
+    /// <summary>
+    /// Who burned it (a Scribe's Access id), while it's burned. None for a burn the Record has no entry for: older than
+    /// the Record.
+    /// </summary>
+    public Option<string> BurnedBy { get; init; }
+
+    /// <summary>Its place in the calendar when it was burned (1 is next), while it's burned.</summary>
+    public Option<int> BurnedFromPlace { get; init; }
+
+    /// <summary>Why it was burned, while it's burned: the Scribe's note, if they wrote one.</summary>
+    public Option<string> BurnReason { get; init; }
+
     /// <summary>The title of the rite it repeats, when it still did after being written again: for the Scribes to judge.</summary>
     public Option<string> Resembles { get; init; }
 
