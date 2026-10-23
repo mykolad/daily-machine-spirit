@@ -6,4 +6,5 @@ namespace DailyMachineSpirit.Functions.Generation.Writing;
 public sealed record RiteContent(
     [property: Description("The rite's name, like \"The Rite of Re-Run\".")] string Title,
     [property: Description("The prayer or ritual itself, in solemn liturgical language.")] string Text,
-    [property: Description("What really happens and what would fix it, in plain modern English.")] string HereticalTruth);
+    [property: Description("What really happens and what would fix it, in plain modern English.")] string HereticalTruth,
+    [property: Description("The trouble the rite is for, as a developer would describe it, without its cause or fix.")] string Ailment);

@@ -60,6 +60,8 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
 
         Assert.Contains("""<p class="subjects" role="group" aria-label="Filter by subject"><a class="chip" href="/scriptorium" aria-current="true">All<span class="chip-count">3</span></a><a class="chip" href="/scriptorium?subject=caches">Caches<span class="chip-count">2</span></a><a class="chip" href="/scriptorium?subject=infrastructure">Infrastructure<span class="chip-count">1</span></a></p>""", html);
         Assert.Contains("""Forgotten Names</h4><p class="tags"><span class="visually-hidden">Filed under </span><span class="tag">Infrastructure</span><span class="tag">Caches</span></p>""", html);
+        // And the trouble each is for, which the rites API matches on (#115).
+        Assert.Contains("""<p class="ailment"><span class="truth-label">Ailment</span> The build is slow every time the cache is cleared.</p>""", html);
     }
 
     // Narrowed to a subject, each order shows that subject's rites in their own places, and says how many of its own
@@ -140,7 +142,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var calendar = Html(await function.Page(Get("?subject=caches"), CancellationToken.None), 200);
         var page = Html(await function.AmendPage(Get("?subject=caches"), cold.Id, CancellationToken.None), 200);
         var saved = await function.Decide(Post("application/x-www-form-urlencoded",
-            $"etag={Uri.EscapeDataString(await ETag(cold))}&title=Warm&text=O%20Machine%20Spirit&truth=A%20warm%20cache&note=&subject=caches"),
+            $"etag={Uri.EscapeDataString(await ETag(cold))}&title=Warm&text=O%20Machine%20Spirit&truth=A%20warm%20cache&ailment=A%20slow%20build&note=&subject=caches"),
             cold.Id, "amend", CancellationToken.None);
 
         Assert.Contains($"""href="/scriptorium/drafts/{cold.Id:D}/amend?subject=caches">""", calendar);
@@ -295,6 +297,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
             < html.IndexOf("Burned Wed 7 Oct<span class=\"group-count\">1</span>", StringComparison.Ordinal));
         Assert.Contains($"""<article class="rite row ash" id="rite-{reasoned.Id:D}" aria-labelledby="title-{reasoned.Id:D}" data-reason="Too specific">""", html);
         Assert.Contains("""<span class="from">from #1</span>""", html);
+        Assert.Contains("""<p class="ailment"><span class="truth-label">Ailment</span> The build is slow every time the cache is cleared.</p>""", html);
         Assert.Contains("""<span class="reason-said"><span class="visually-hidden">Why it burned: </span>“Too specific”</span>""", html);
         Assert.Contains($"""Burned by A Scribe on staging · <a href="/scriptorium/record?draft={reasoned.Id:D}">its record</a>""", html);
         Assert.Contains($"""Burned by A Scribe on staging · no reason given · <a href="/scriptorium/record?draft={silent.Id:D}">its record</a>""", html);
@@ -959,7 +962,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
 
         Assert.Contains("""<input type="text" id="amend-title" name="title" value="Litany of the Cold Cache" """, html);
         Assert.Contains("""<input type="hidden" name="etag" value=""", html);
-        Assert.Contains($"""formaction="/scriptorium/drafts/{draft.Id:D}/rewrite" data-needs-note""", html);
+        Assert.Contains($"""formaction="/scriptorium/drafts/{draft.Id:D}/rewrite" formnovalidate data-needs-note""", html);
         Assert.Contains(SlowActionScript.Js, html);
         Assert.DoesNotContain(ScriptoriumScript.Js, html);
         Assert.Contains("""data-needs-note data-in-place data-slow="The Machine Spirit is rewriting it… usually a few seconds, at most a minute and a half." data-busy-label="Rewriting…">""", html);
@@ -1021,7 +1024,8 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
         var text = Lines(RiteWriting.MaxTextLength);
         var truth = Lines(RiteWriting.MaxHereticalTruthLength);
-        var form = string.Join("&", new[] { ("etag", await ETag(draft)), ("title", "The Long Litany"), ("text", text), ("truth", truth), ("note", "") }
+        var ailment = Lines(RiteWriting.MaxAilmentLength);
+        var form = string.Join("&", new[] { ("etag", await ETag(draft)), ("title", "The Long Litany"), ("text", text), ("truth", truth), ("ailment", ailment), ("note", "") }
             .Select(field => $"{field.Item1}={Uri.EscapeDataString(field.Item2)}"));
 
         var response = await Function().Decide(Post("application/x-www-form-urlencoded", form), draft.Id, "amend", CancellationToken.None);
@@ -1119,6 +1123,10 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Contains("""<textarea id="amend-text" name="text" rows="6" maxlength="2000" class="changed" autofocus required>""", html);
         Assert.Contains("""<label for="amend-title">Title</label>""", html);
         Assert.Contains("""<label for="amend-truth">Heretical Truth</label>""", html);
+        // A rewrite can supply an ailment an older draft lacks: the empty required field mustn't block asking for one.
+        Assert.Contains("""formaction="/scriptorium/drafts/""", html);
+        Assert.Matches("formaction=\"/scriptorium/drafts/[^\"]+/rewrite\" formnovalidate", html);
+        Assert.Contains("""<label for="amend-ailment">Ailment<span class="changed-mark"> · rewritten</span></label>""", html);
         Assert.Single(Regex.Matches(html, "class=\"changed\" autofocus"));
     }
 
@@ -1212,6 +1220,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
             ("title", title),
             ("text", "O Machine Spirit, warm thy cache."),
             ("truth", "A warm cache is one that was read before."),
+            ("ailment", "The build is slow after the cache is cleared."),
             ("note", note),
         }.Select(field => $"{field.Item1}={Uri.EscapeDataString(field.Item2)}")));
 

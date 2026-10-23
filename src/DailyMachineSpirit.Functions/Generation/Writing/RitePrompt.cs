@@ -10,6 +10,7 @@ public static class RitePrompt
     public const int TitleLength = 50;
     public const int TextLength = 400;
     public const int HereticalTruthLength = 250;
+    public const int AilmentLength = 120;
 
     /// <param name="precepts">The Scribes' Precepts (#12), learned from what they chose and burned.</param>
     public static string Instructions(RiteKind kind, IReadOnlyList<TakenRite> taken, IReadOnlyList<string> precepts)
@@ -33,6 +34,10 @@ public static class RitePrompt
         sb.AppendLine("Then write the HERETICAL TRUTH: one or two plain, technically accurate sentences on what really happens and");
         sb.AppendLine("what would actually fix it, in general terms (two steps racing each other, a stale cache, a missing check),");
         sb.AppendLine("not a specific command. No mysticism there: that contrast is the point.");
+        sb.AppendLine();
+        sb.AppendLine("Last, write the AILMENT: the trouble the rite is for, in a line, as a developer would put it when asking for help.");
+        sb.AppendLine("Never its cause or its fix: the Heretical Truth stays sealed until the reader asks for it, and the ailment is what");
+        sb.AppendLine("a reader's own trouble is matched against.");
         sb.AppendLine();
         sb.AppendLine("Rules:");
         foreach (var rule in RiteRules.For(kind))
@@ -72,7 +77,7 @@ public static class RitePrompt
     /// </summary>
     public static string Rewrite(RiteKind kind, RiteContent words, string note)
     {
-        var rite = JsonSerializer.Serialize(new { words.Title, words.Text, words.HereticalTruth });
+        var rite = JsonSerializer.Serialize(new { words.Title, words.Text, words.HereticalTruth, words.Ailment });
         var said = JsonSerializer.Serialize(note);
         return $"""
             A Scribe of the Scriptorium has read this {(kind == RiteKind.Prayer ? "prayer" : "ritual")} and wants it rewritten.

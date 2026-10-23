@@ -164,9 +164,11 @@ public static partial class ScriptoriumPage
         .resembles { margin: 0 0 12px; padding: 8px 12px; border-left: 4px solid #f0b45a; background: #241c12; border-radius: 8px; color: #ede3cf; }
         .text { font: 400 19px/1.55 "EB Garamond", serif; margin: 0 0 12px; }
         .truth { background: #141c1f; border: 1px solid #2e4248; border-radius: 16px; padding: 12px 16px; color: #dbe6e8; margin: 0 0 12px; }
+        .ailment { background: #211a12; border: 1px solid #5a4630; border-radius: 16px; padding: 12px 16px; color: #ede3cf; margin: 0 0 12px; }
         .truth-label { display: block; font: 500 14px "JetBrains Mono", monospace; letter-spacing: .14em; text-transform: uppercase; color: #8cc4ae; }
+        .ailment .truth-label { color: #c9a25a; }
         code { font-family: "JetBrains Mono", monospace; font-size: .9em; background: #0b1214; color: #f0d58c; padding: 1px 6px; border-radius: 6px; }
-        .text code { background: #2b2117; color: #f0d58c; }
+        .text code, .ailment code { background: #2b2117; color: #f0d58c; }
         .meta, .when, .optional { color: #b6a98f; }
         .meta { margin: 0 0 12px; font-size: 15px; }
         .tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
@@ -278,12 +280,15 @@ public static partial class ScriptoriumPage
             {Label("truth", "Heretical Truth")}
             <textarea id="amend-truth" name="truth" rows="3" maxlength="{RiteWriting.MaxHereticalTruthLength}" aria-describedby="amend-code-hint"{Marked("truth")} required>{Encode(words.HereticalTruth)}</textarea>
             <p class="hint" id="amend-code-hint">Commands, flags and file names go in `backticks`, as the Machine Spirit writes them.</p>
+            {Label("ailment", "Ailment")}
+            <p class="hint" id="amend-ailment-hint">The trouble it's for, as a developer would describe it, without its cause or fix: what the rites API is matched on.</p>
+            <textarea id="amend-ailment" name="ailment" rows="2" maxlength="{RiteWriting.MaxAilmentLength}" aria-describedby="amend-ailment-hint"{Marked("ailment")} required>{Encode(words.Ailment)}</textarea>
             <label for="amend-note">Note</label>
             <p class="hint" id="amend-note-hint">Why it needs amending. Needed to ask for a rewrite, which follows it; the Augury learns from it too.</p>
             <textarea id="amend-note" name="note" rows="3" maxlength="{ScribeDecision.MaxNoteLength}" aria-describedby="amend-note-hint">{Encode(note)}</textarea>
             <div class="buttons">
             <button class="primary">{ScriptoriumIcons.Save}Save the Amendment</button>
-            <button class="secondary" formaction="/scriptorium/drafts/{id}/rewrite" data-needs-note data-in-place data-slow="{Encode(Rewriting)}" data-busy-label="Rewriting…">{ScriptoriumIcons.Summon}Ask the Machine Spirit to Rewrite</button>
+            <button class="secondary" formaction="/scriptorium/drafts/{id}/rewrite" formnovalidate data-needs-note data-in-place data-slow="{Encode(Rewriting)}" data-busy-label="Rewriting…">{ScriptoriumIcons.Summon}Ask the Machine Spirit to Rewrite</button>
             <a class="button-link" href="/scriptorium{subject.Map(tag => $"?subject={tag.Key}").IfNone(string.Empty)}#rite-{id}">Leave It as It Was</a>
             </div>
             </form>
@@ -308,6 +313,10 @@ public static partial class ScriptoriumPage
         if (after.HereticalTruth != before.HereticalTruth)
         {
             fields.Add("truth");
+        }
+        if (after.Ailment != before.Ailment)
+        {
+            fields.Add("ailment");
         }
         return fields;
     }
@@ -548,6 +557,12 @@ public static partial class ScriptoriumPage
 
     // The rites put commands and file names in `backticks`.
     private static string WithCode(string text) => InlineCode().Replace(Encode(text), "<code>$1</code>");
+
+    // The trouble the rite is for, which the rites API serves; a draft written before ailments shows none until the backfill.
+    private static string Ailment(RiteWriting writing)
+        => writing.Ailment.Match(
+            Some: ailment => $"""<p class="ailment"><span class="truth-label">Ailment</span> {WithCode(ailment)}</p>""",
+            None: () => string.Empty);
 
     [GeneratedRegex("`([^`]+)`")]
     private static partial Regex InlineCode();

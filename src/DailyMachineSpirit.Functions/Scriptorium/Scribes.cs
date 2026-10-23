@@ -247,6 +247,7 @@ public sealed class Scribes
             Title = draft.Writing.Title,
             Text = draft.Writing.Text,
             HereticalTruth = draft.Writing.HereticalTruth,
+            Ailment = draft.Writing.Ailment,
             CalendarPlace = places.Map(found => found.CalendarPlace),
             AuguryPlace = places.Map(found => found.AuguryPlace),
             AuguryRankedByQuality = places.Exists(found => found.AuguryRankedByQuality),

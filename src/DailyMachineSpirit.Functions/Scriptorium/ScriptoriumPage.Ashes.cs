@@ -108,6 +108,7 @@ public static partial class ScriptoriumPage
             <div class="body" id="body-{id}">
             <p class="text">{WithCode(draft.Writing.Text)}</p>
             <p class="truth"><span class="truth-label">Heretical Truth</span> {WithCode(draft.Writing.HereticalTruth)}</p>
+            {Ailment(draft.Writing)}
             <p class="meta">{BurnMeta(draft, names)}</p>
             <details class="note-fold">
             <summary>{ScriptoriumIcons.Add}Add a note for the Augury</summary>

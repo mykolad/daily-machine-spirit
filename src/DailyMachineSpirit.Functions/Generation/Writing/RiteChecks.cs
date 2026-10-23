@@ -41,21 +41,23 @@ public static class RiteChecks
             Title = answer.Title.Replace("`", "").Trim(),
             Text = answer.Text.Trim(),
             HereticalTruth = answer.HereticalTruth.Trim(),
+            Ailment = answer.Ailment.Trim(),
         };
-        if (content.Title.Length == 0 || content.Text.Length == 0 || content.HereticalTruth.Length == 0)
+        if (content.Title.Length == 0 || content.Text.Length == 0 || content.HereticalTruth.Length == 0 || content.Ailment.Length == 0)
         {
             return Error.New("The answer has an empty field.");
         }
 
         if (content.Title.Length > RiteWriting.MaxTitleLength
             || content.Text.Length > RiteWriting.MaxTextLength
-            || content.HereticalTruth.Length > RiteWriting.MaxHereticalTruthLength)
+            || content.HereticalTruth.Length > RiteWriting.MaxHereticalTruthLength
+            || content.Ailment.Length > RiteWriting.MaxAilmentLength)
         {
             return Error.New(
-                $"The answer is too long: title {content.Title.Length}, text {content.Text.Length}, heretical truth {content.HereticalTruth.Length} characters.");
+                $"The answer is too long: title {content.Title.Length}, text {content.Text.Length}, heretical truth {content.HereticalTruth.Length}, ailment {content.Ailment.Length} characters.");
         }
 
-        var everything = $"{content.Title}\n{content.Text}\n{content.HereticalTruth}";
+        var everything = $"{content.Title}\n{content.Text}\n{content.HereticalTruth}\n{content.Ailment}";
         var forbidden = ForbiddenNames.Where(name => everything.Contains(name, StringComparison.OrdinalIgnoreCase)).ToList();
         if (forbidden.Count > 0)
         {
@@ -66,19 +68,47 @@ public static class RiteChecks
         {
             return Error.New($"The answer names what the far future forgot: {string.Join(", ", forgotten)}.");
         }
-        // A prayer may call on the Omnissiah once; a heading, a Heretical Truth or a ritual never names it.
+        // A prayer may call on the Omnissiah once; a heading, a Heretical Truth, an ailment or a ritual never names it.
         var allowedInText = kind == RiteKind.Prayer ? 1 : 0;
-        if (Occurrences(content.Title, Omnissiah) + Occurrences(content.HereticalTruth, Omnissiah) > 0
+        if (Occurrences(content.Title, Omnissiah) + Occurrences(content.HereticalTruth, Omnissiah) + Occurrences(content.Ailment, Omnissiah) > 0
             || Occurrences(content.Text, Omnissiah) > allowedInText)
         {
             return Error.New($"The answer names the {Omnissiah} where it isn't allowed: only once, in a prayer's text.");
         }
 
         // The pages show `backticked` words as code: a command written as plain words would read as prose.
-        return new[] { content.Text, content.HereticalTruth }.Select(UnquotedCode.Find).Somes().HeadOrNone()
+        return new[] { content.Text, content.HereticalTruth, content.Ailment }.Select(UnquotedCode.Find).Somes().HeadOrNone()
             .Match<Either<Error, RiteContent>>(
                 Some: code => Error.New($"The answer has code outside backticks: {code}."),
                 None: () => content);
+    }
+
+    /// <summary>
+    /// An ailment written alone, for words written before rites had one (<see cref="AilmentWriter"/>), trimmed, or why it
+    /// can't be one: the rules the ailment in <see cref="Check"/> follows. The words it's for passed the checks of their day.
+    /// </summary>
+    public static Either<Error, string> CheckAilment(string answer)
+    {
+        var ailment = answer.Trim();
+        if (ailment.Length == 0)
+        {
+            return Error.New("The ailment is empty.");
+        }
+        if (ailment.Length > RiteWriting.MaxAilmentLength)
+        {
+            return Error.New($"The ailment is too long: {ailment.Length} characters.");
+        }
+        if (ForbiddenNames.Any(name => ailment.Contains(name, StringComparison.OrdinalIgnoreCase)) || Occurrences(ailment, Omnissiah) > 0)
+        {
+            return Error.New("The ailment uses a forbidden name.");
+        }
+        if (ForgottenWords.IsMatch(ailment))
+        {
+            return Error.New("The ailment names what the far future forgot.");
+        }
+        return UnquotedCode.Find(ailment).Match<Either<Error, string>>(
+            Some: code => Error.New($"The ailment has code outside backticks: {code}."),
+            None: () => ailment);
     }
 
     private static int Occurrences(string text, string word)

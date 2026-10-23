@@ -208,6 +208,7 @@ public static partial class ScriptoriumPage
             <div class="body" id="body-{id}">
             <p class="text">{WithCode(draft.Writing.Text)}</p>
             <p class="truth"><span class="truth-label">Heretical Truth</span> {WithCode(draft.Writing.HereticalTruth)}</p>
+            {Ailment(draft.Writing)}
             <p class="meta">{Meta(entry, place, names)}</p>
             """);
         // Written again and again, it still repeated a rite: the Scribes decide whether it's new enough.
