@@ -52,6 +52,7 @@ public static class PreceptPrompt
             decision.Title,
             decision.Text,
             decision.HereticalTruth,
+            Ailment = decision.Ailment.MatchUnsafe(ailment => ailment, () => null),
             CalendarPlace = decision.CalendarPlace.MatchUnsafe(place => (int?)place, () => null),
             AuguryPlace = decision.AuguryPlace.MatchUnsafe(place => (int?)place, () => null),
             AuguryQuality = decision.AuguryQuality.MatchUnsafe(quality => (float?)MathF.Round(quality, 2), () => null),

@@ -81,11 +81,13 @@ builder.Services.AddSingleton<IExpurgationRepository, ExpurgationRepository>();
 builder.Services.AddSingleton<IPreceptRepository, PreceptRepository>();
 builder.Services.AddSingleton<IScribeNameRepository, ScribeNameRepository>();
 builder.Services.AddSingleton<IVoteRepository, VoteRepository>();
+builder.Services.AddSingleton<IAilmentRepository, AilmentRepository>();
 
 // The daily rite and the backlog. Created only when the timer or a refill runs, so HTTP functions start without the generation settings.
 Tuned<RiteWritingOptions>(RiteWritingOptions.SectionName);
 Tuned<BacklogOptions>(BacklogOptions.SectionName);
 Tuned<DuplicateRiteCheckOptions>(DuplicateRiteCheckOptions.SectionName);
+Tuned<AilmentWritingOptions>(AilmentWritingOptions.SectionName);
 Tuned<PreceptDistillingOptions>(PreceptDistillingOptions.SectionName);
 Tuned<PreceptCheckOptions>(PreceptCheckOptions.SectionName);
 Tuned<AuguryOptions>(AuguryOptions.SectionName);
@@ -99,8 +101,10 @@ builder.Services.AddTransient<IQualityJudge, RubricJudge>();
 builder.Services.AddTransient<IRiteJudge, RiteJudge>();
 // Tags the rites judged before tags existed, once per start (nothing left after the first).
 builder.Services.AddHostedService<TagBackfill>();
+builder.Services.AddHostedService<AilmentBackfill>();
 builder.Services.AddTransient<RiteWriter>();
 builder.Services.AddTransient<DuplicateCheck>();
+builder.Services.AddTransient<AilmentWriter>();
 builder.Services.AddTransient<DraftJudging>();
 builder.Services.AddTransient<BacklogRefiller>();
 builder.Services.AddTransient<DailyRitePublisher>();

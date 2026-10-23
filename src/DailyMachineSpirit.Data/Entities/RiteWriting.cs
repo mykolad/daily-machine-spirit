@@ -1,3 +1,5 @@
+using LanguageExt;
+
 namespace DailyMachineSpirit.Data.Entities;
 
 /// <summary>What a model wrote for a rite, and which model wrote it, when: a draft's, kept as is when it's published.</summary>
@@ -7,6 +9,7 @@ public sealed record RiteWriting
     public const int MaxTitleLength = 120;
     public const int MaxTextLength = 2000;
     public const int MaxHereticalTruthLength = 1000;
+    public const int MaxAilmentLength = 300;
 
     public RiteKind Kind { get; init; }
 
@@ -16,6 +19,12 @@ public sealed record RiteWriting
     public string Text { get; init; } = string.Empty;
 
     public string HereticalTruth { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The trouble the rite is for, in a line, without its fix ("a test that fails at random and passes when re-run"): what
+    /// a client of the rites API matches a user's trouble on. None until <c>AilmentBackfill</c> writes one.
+    /// </summary>
+    public Option<string> Ailment { get; init; }
 
     public string GeneratedByModel { get; init; } = string.Empty;
 

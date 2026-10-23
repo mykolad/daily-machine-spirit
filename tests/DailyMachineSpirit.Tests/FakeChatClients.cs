@@ -16,7 +16,10 @@ public sealed class FakeChatClients : IChatClients
     public List<(string Model, List<ChatMessage> Messages)> Requests { get; } = [];
 
     public static string Answer(string title, string text, string hereticalTruth)
-        => System.Text.Json.JsonSerializer.Serialize(new { title, text, hereticalTruth });
+        => Answer(title, text, hereticalTruth, "A build that fails, then passes when it runs again.");
+
+    public static string Answer(string title, string text, string hereticalTruth, string ailment)
+        => System.Text.Json.JsonSerializer.Serialize(new { title, text, hereticalTruth, ailment });
 
     public FakeChatClients Answers(string model, params string[] texts)
         => Then(model, texts.Select<string, Func<Task<string>>>(text => () => Task.FromResult(text)));

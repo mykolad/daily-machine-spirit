@@ -1,4 +1,5 @@
 using DailyMachineSpirit.Data.Entities;
+using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Data.Repositories;
 
@@ -15,8 +16,10 @@ internal sealed record UnrevealedRiteDocument
 
     public string Text { get; init; } = string.Empty;
 
+    public string? Ailment { get; init; }
+
     // Null for a rite judged before tags existed, or never judged: the JSON serializer doesn't know Option.
     public string[]? Tags { get; init; }
 
-    public UnrevealedRite ToUnrevealedRite() => new(Number, PublishedOnUtc, Kind, Title, Text, Tags ?? []);
+    public UnrevealedRite ToUnrevealedRite() => new(Number, PublishedOnUtc, Kind, Title, Text, Optional(Ailment), Tags ?? []);
 }
