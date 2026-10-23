@@ -9,7 +9,7 @@ using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Data.Repositories;
 
-public class RiteRepository : IRiteRepository
+public class RiteRepository : IRiteRepository, IRitePublishing
 {
     public const string ContainerName = "rites";
     public const string PartitionKeyPath = "/partition";
@@ -36,6 +36,12 @@ public class RiteRepository : IRiteRepository
         => Attempt(async () => (await container.Query<RiteDocument>(
             new QueryDefinition("SELECT TOP @count * FROM c WHERE c.type = @type ORDER BY c.publishedOnUtc DESC")
                 .WithParameter("@count", count)
+                .WithParameter("@type", RiteDocument.RiteType),
+            cancellationToken)).Select(document => document.ToRite()).ToList());
+
+    public Task<Either<Error, List<Rite>>> GetAllPublished(CancellationToken cancellationToken)
+        => Attempt(async () => (await container.Query<RiteDocument>(
+            new QueryDefinition("SELECT * FROM c WHERE c.type = @type ORDER BY c.number DESC")
                 .WithParameter("@type", RiteDocument.RiteType),
             cancellationToken)).Select(document => document.ToRite()).ToList());
 

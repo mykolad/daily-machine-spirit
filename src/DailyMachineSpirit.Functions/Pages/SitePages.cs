@@ -23,12 +23,12 @@ public sealed class SitePages
 {
     public const string CatchAllName = "ZzToday";
 
-    private readonly IRiteRepository rites;
+    private readonly IRiteReader rites;
     private readonly IOptions<PublicPagesOptions> options;
     private readonly TimeProvider time;
     private readonly ILogger<SitePages> logger;
 
-    public SitePages(IRiteRepository rites, IOptions<PublicPagesOptions> options, TimeProvider time, ILogger<SitePages> logger)
+    public SitePages(IRiteReader rites, IOptions<PublicPagesOptions> options, TimeProvider time, ILogger<SitePages> logger)
     {
         this.rites = rites;
         this.options = options;

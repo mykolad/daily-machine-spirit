@@ -21,6 +21,8 @@ public sealed class RitesWithoutScores : IRiteRepository
     public Task<Either<Error, List<Rite>>> GetNewest(int count, CancellationToken cancellationToken)
         => rites.GetNewest(count, cancellationToken);
 
+    public Task<Either<Error, List<Rite>>> GetAllPublished(CancellationToken cancellationToken) => rites.GetAllPublished(cancellationToken);
+
     public Task<Either<Error, List<Rite>>> GetByNumbers(IReadOnlyCollection<int> numbers, CancellationToken cancellationToken)
         => rites.GetByNumbers(numbers, cancellationToken);
 
@@ -42,9 +44,6 @@ public sealed class RitesWithoutScores : IRiteRepository
     public Task<Either<Error, Option<string>>> GetHereticalTruth(int number, CancellationToken cancellationToken) => rites.GetHereticalTruth(number, cancellationToken);
 
     public Task<Either<Error, Rite>> Add(Rite rite, CancellationToken cancellationToken) => rites.Add(rite, cancellationToken);
-
-    public Task<Either<Error, Rite>> Publish(Guid draftId, DateOnly publishedOnUtc, CancellationToken cancellationToken)
-        => rites.Publish(draftId, publishedOnUtc, cancellationToken);
 
     public Task<Either<Error, Unit>> SaveScores(DateOnly publishedOnUtc, RiteSimilarity similarity, CancellationToken cancellationToken)
         => rites.SaveScores(publishedOnUtc, similarity, cancellationToken);
