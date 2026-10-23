@@ -54,10 +54,4 @@ public sealed class RitesWithoutScores : IRiteRepository
 
     public Task<Either<Error, List<Rite>>> GetTaggedOlderThan(string tag, int number, int count, CancellationToken cancellationToken)
         => rites.GetTaggedOlderThan(tag, number, count, cancellationToken);
-
-    public Task<Either<Error, List<Rite>>> GetUntagged(CancellationToken cancellationToken)
-        => rites.GetUntagged(cancellationToken);
-
-    public Task<Either<Error, Unit>> SaveTags(DateOnly publishedOnUtc, string[] tags, CancellationToken cancellationToken)
-        => rites.SaveTags(publishedOnUtc, tags, cancellationToken);
 }

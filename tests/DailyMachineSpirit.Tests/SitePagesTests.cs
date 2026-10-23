@@ -774,8 +774,10 @@ public sealed class SitePagesTests : IAsyncLifetime
         }
     }
 
+    // As a rite judged with these tags has them: only judging writes a rite's tags.
     private async Task Tag(DateOnly day, params string[] tags)
-        => Ok(await Repository.SaveTags(day, tags, CancellationToken.None));
+        => await cosmos.Container.PatchItemAsync<RiteDocument>(RiteDocument.IdFor(day), CosmosCalls.SharedPartitionKey,
+            [Microsoft.Azure.Cosmos.PatchOperation.Set("/tags", tags)]);
 
     private async Task Add(DateOnly day, string title)
         => Ok(await Repository.Add(new Rite

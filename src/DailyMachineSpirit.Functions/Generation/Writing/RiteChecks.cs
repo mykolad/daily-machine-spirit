@@ -83,34 +83,6 @@ public static class RiteChecks
                 None: () => content);
     }
 
-    /// <summary>
-    /// An ailment written alone, for words written before rites had one (<see cref="AilmentWriter"/>), trimmed, or why it
-    /// can't be one: the rules the ailment in <see cref="Check"/> follows. The words it's for passed the checks of their day.
-    /// </summary>
-    public static Either<Error, string> CheckAilment(string answer)
-    {
-        var ailment = answer.Trim();
-        if (ailment.Length == 0)
-        {
-            return Error.New("The ailment is empty.");
-        }
-        if (ailment.Length > RiteWriting.MaxAilmentLength)
-        {
-            return Error.New($"The ailment is too long: {ailment.Length} characters.");
-        }
-        if (ForbiddenNames.Any(name => ailment.Contains(name, StringComparison.OrdinalIgnoreCase)) || Occurrences(ailment, Omnissiah) > 0)
-        {
-            return Error.New("The ailment uses a forbidden name.");
-        }
-        if (ForgottenWords.IsMatch(ailment))
-        {
-            return Error.New("The ailment names what the far future forgot.");
-        }
-        return UnquotedCode.Find(ailment).Match<Either<Error, string>>(
-            Some: code => Error.New($"The ailment has code outside backticks: {code}."),
-            None: () => ailment);
-    }
-
     private static int Occurrences(string text, string word)
     {
         var count = 0;

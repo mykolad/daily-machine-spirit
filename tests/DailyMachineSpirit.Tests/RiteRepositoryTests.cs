@@ -190,25 +190,6 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task GetUntagged_FindsScoredRitesWithoutTags_UntilTheirTagsAreSaved()
-    {
-        var scored = await AddOrFail(MakeRite(new DateOnly(2026, 10, 5), "Scored"));
-        await AddOrFail(MakeRite(new DateOnly(2026, 10, 6), "Unscored"));
-        var judged = await AddOrFail(MakeRite(new DateOnly(2026, 10, 7), "Judged with none") with { Tags = new string[0] });
-        var similarity = new RiteSimilarity { ScoresGeneratorVersion = "jev/q1", Scores = [1f], CreatedAtUtc = new DateTime(2026, 10, 5, 0, 1, 0, DateTimeKind.Utc) };
-        Ok(await Repository.SaveScores(scored.PublishedOnUtc, similarity, CancellationToken.None));
-        Ok(await Repository.SaveScores(judged.PublishedOnUtc, similarity, CancellationToken.None));
-
-        var untagged = Ok(await Repository.GetUntagged(CancellationToken.None));
-        Ok(await Repository.SaveTags(scored.PublishedOnUtc, ["data"], CancellationToken.None));
-        var afterwards = Ok(await Repository.GetUntagged(CancellationToken.None));
-
-        Assert.Equal([scored.Number], untagged.Select(rite => rite.Number));
-        Assert.Empty(afterwards);
-        Assert.Equal(Some(new[] { "data" }), Ok(await Repository.GetByNumbers([scored.Number], CancellationToken.None))[0].Tags);
-    }
-
-    [Fact]
     public async Task Search_FindsRitesHoldingEveryWord_InAnyPart_IgnoringCase_NewestFirst()
     {
         var inTitle = await AddOrFail(MakeRite(new DateOnly(2026, 10, 5), "The Litany of the Warm CACHE"));
@@ -293,8 +274,6 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
         Assert.True((await missing.SaveScores(date, new RiteSimilarity(), CancellationToken.None)).IsLeft);
         Assert.True((await missing.GetScoresByRiteNumber("jev/v1", CancellationToken.None)).IsLeft);
         Assert.True((await missing.GetTaggedOlderThan("caches", int.MaxValue, 6, CancellationToken.None)).IsLeft);
-        Assert.True((await missing.GetUntagged(CancellationToken.None)).IsLeft);
-        Assert.True((await missing.SaveTags(date, ["caches"], CancellationToken.None)).IsLeft);
         Assert.True((await missing.SearchOlderThan(["cache"], None, int.MaxValue, 6, CancellationToken.None)).IsLeft);
         Assert.True((await missing.FindDaysAndTags(["cache"], None, CancellationToken.None)).IsLeft);
         Assert.True((await missing.GetDays(CancellationToken.None)).IsLeft);

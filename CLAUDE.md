@@ -26,7 +26,7 @@ chatbots, and they're about habits any developer knows, not one tool's commands 
 src/DailyMachineSpirit.Functions  — the Functions app (HTTP, timer and queue functions)
   Generation/                     — the backlog and the daily rite: Writing/, Chat/ (models), Judging/ (Jev, the rubric), Precepts/
   Pages/                          — the public pages, rendered on the server (Today, the archive, a rite's page)
-  Tags/                           — the tags' vocabulary, and tagging the rites judged before tags existed
+  Tags/                           — the tags' vocabulary
 src/DailyMachineSpirit.Data       — Cosmos DB: entities, documents, repositories
 tests/DailyMachineSpirit.Tests    — xUnit tests (the repository tests run against the Cosmos DB emulator)
 tests/DailyMachineSpirit.SmokeTests — xUnit tests of a deployed app over HTTP (each deployment runs them)
@@ -196,11 +196,7 @@ skills/                           — Consult the Machine Spirit, a skill that p
     Jev's come from its topic answer (`JevTags`): the topics at 0.25 or more, the likeliest first, at most two, never
     "other", at no extra cost. The rite card, the archive's rows and the Scriptorium's drafts show them; a row's
     title link covers the row, so its tag links can sit inside it.
-    - **Rites judged before tags existed** get theirs from their stored scores when the app starts (`TagBackfill`,
-      through `IRiteJudge.TagsFrom`); after the first start there's nothing left to tag. Scores the judge can't read
-      stay untagged.
-    - **Changing how tags are given** (another threshold) applies to new drafts. To retag older ones, remove their
-      `tags` and restart the app.
+    - **Changing how tags are given** (another threshold) applies to drafts judged from then on; the rest keep theirs.
   - **Search** (`/archive?q=`, #7): the Archive filtered to the rites holding every word typed (at most 6, quotes
     ignored) in their title, text or Heretical Truth, ignoring case, newest first, Today's too. Each row marks the words
     (`Highlight`) and shows the words around the first match in the text (`RowLine`); a rite found by its truth alone
@@ -232,8 +228,8 @@ skills/                           — Consult the Machine Spirit, a skill that p
 - **The rites API** (`GET /api/v1/rites`, `Api/RitesFunction`, #101): every published rite (number, day, kind, words,
   ailment, subjects and page), for clients outside the site, such as the skill in `skills/`. Each Heretical Truth stays
   sealed, as on the site, until a client asks for that rite's (`/api/v1/rites/{number}/heretical-truth`). The ailment
-  (the trouble a rite is for, without its fix, #115) is written with the rite (below); empty in the API for one that has
-  none yet. Unlike the search
+  (the trouble a rite is for, without its fix, #115) is written with the rite (below); empty in the API for one without.
+  Unlike the search
   index, which only the site's own script reads, it's a contract: documented in `docs/api.md`, versioned in its path,
   its types (`PublishedRite`, `PublishedRites`, `RevealedTruth`) named for what they serve and kept as they are, so a breaking change is
   a `v2` beside it. Read-only, open to any site's page (`Access-Control-Allow-Origin: *`), and nothing about the caller
@@ -314,11 +310,6 @@ skills/                           — Consult the Machine Spirit, a skill that p
     Scribe amends it with the words. The rites API serves it, so a client matches a user's trouble on it without seeing
     the sealed truth; the Scriptorium's cards show it, the public pages don't. Written from the words, it may repeat a
     word the Expurgator erases, so an erasure replaces that word in the ailment too.
-    - **Words written before rites had one** get theirs when the app starts (`AilmentBackfill`, `AilmentWriter`:
-      `gpt-6-luna`, `AilmentWriting` in `machine-spirit.jsonc`, `RiteChecks.CheckAilment`): published rites and
-      unpublished drafts, burned ones too. Each is saved only to the words it was read with (their ETag, so an
-      amendment, an erasure or a vote meanwhile wins, and the next start tries again), and the rites API is purged if a
-      rite got one. After the first start there's nothing left.
   - **Judging:** an `IRiteJudge` judges each draft (`RiteJudge`, swappable like the models), asking two judges at once, each behind its own interface, so either can be swapped alone:
     - **Jev** (`JevJudge`, an `ISimilarityJudge`): its similarity scores for "More rites", and the tags. Off, a draft has neither.
     - **The rubric judge** (`RubricJudge`, an `IQualityJudge`, #10): the Augury's quality. The model that didn't write the draft
@@ -340,7 +331,7 @@ skills/                           — Consult the Machine Spirit, a skill that p
   - **Settings:** `AzureOpenAI:Endpoint` (the models are reached as the managed identity), `Jev:ApiKey` (a Key Vault
     reference in Azure; empty turns Jev off).
   - **Tuning: `machine-spirit.jsonc`** (in the Functions project, copied with the app): every value worth tuning, in one
-    file with a section per thing it tunes (`RiteWriting`, `Backlog`, `DuplicateRiteCheck`, `AilmentWriting`, `PreceptDistilling`,
+    file with a section per thing it tunes (`RiteWriting`, `Backlog`, `DuplicateRiteCheck`, `PreceptDistilling`,
     `PreceptCheck`, `ScribeNameSuggestions`, `Augury`, `QualityJudging`, `Jev`, `PagePurging`, `PublicPages`, `ScriptoriumPages`), each
     bound to an options class next to its code. Both environments use it as it is; an app setting of the same name
     would override a value, but none needs to, so infra/ keeps only what differs between them. Each model call has a
@@ -503,9 +494,8 @@ skills/                           — Consult the Machine Spirit, a skill that p
     a message naming the rite and linking to it in the calendar.
     - **Who burned it, from where and why** are kept on the draft while it's burned (`BurnedBy`, `BurnedFromPlace`,
       `BurnReason`: the Record's actor, the decision's place and note, saved in the burn's batch), so the page needs no
-      join with the Record; a restore clears them, as it clears `BurnedAtUtc`. Drafts burned before they were kept get
-      them from the Record when the app starts (`BurnBackfill`, `IBurnRepository`); a burn older than the Record says
-      "a Scribe" and no place. They're written as null when unknown, so a draft missing them is one still to fill.
+      join with the Record; a restore clears them, as it clears `BurnedAtUtc`. A burn older than the Record says "a Scribe"
+      and no place.
   - **Tabs** (`TabCounting`): the Calendar (`/scriptorium`), the Ashes (`/scriptorium/ashes`), the Precepts and the
     Record each start with the tab bar, every tab saying what its page holds: the anointed rites and those in the Augury's order ("4/16", said in words to a screen
     reader), the burned ones, the

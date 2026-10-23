@@ -58,9 +58,4 @@ public interface IRiteRepository
 
     /// <summary>At most <paramref name="count"/> rites with this tag, the newest first.</summary>
     Task<Either<Error, List<Rite>>> GetTaggedOlderThan(string tag, int number, int count, CancellationToken cancellationToken);
-
-    /// <summary>The rites judged before tags existed: with scores, without tags.</summary>
-    Task<Either<Error, List<Rite>>> GetUntagged(CancellationToken cancellationToken);
-
-    Task<Either<Error, Unit>> SaveTags(DateOnly publishedOnUtc, string[] tags, CancellationToken cancellationToken);
 }

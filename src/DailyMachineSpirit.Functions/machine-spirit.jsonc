@@ -34,12 +34,6 @@
     "Patience": { "TimePerTry": "00:01:00" }
   },
 
-  // Writing the ailment of a rite or draft written before rites had one, once, when the app starts (#115).
-  "AilmentWriting": {
-    "Model": "gpt-6-luna",
-    "Patience": { "TimePerTry": "00:00:30" }
-  },
-
   // Distilling the Precepts from the Scribes' judgments, weekly or when a Scribe asks (and waits).
   "PreceptDistilling": {
     "Models": [ "gpt-6-sol", "gpt-6-luna" ],

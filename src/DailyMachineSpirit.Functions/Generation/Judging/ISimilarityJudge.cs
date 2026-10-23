@@ -15,7 +15,4 @@ public interface ISimilarityJudge
     Task<Either<Error, Draft>> Judge(Draft draft, CancellationToken cancellationToken);
 
     bool NeedsJudging(Draft draft);
-
-    /// <summary>The tags for scores this judge gave; None for scores it can't read (another judge's).</summary>
-    Option<string[]> TagsFrom(RiteSimilarity similarity);
 }

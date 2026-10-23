@@ -20,10 +20,4 @@ public interface IRiteJudge
     /// part.
     /// </summary>
     Task<Either<Error, Draft>> Judge(Draft draft, CancellationToken cancellationToken);
-
-    /// <summary>
-    /// The tags for scores this judge gave, as <see cref="Judge"/> does; None for scores it can't read (another judge's,
-    /// or other questions'). For rites judged before tags existed (<see cref="Tags.TagBackfill"/>).
-    /// </summary>
-    Option<string[]> TagsFrom(RiteSimilarity similarity);
 }

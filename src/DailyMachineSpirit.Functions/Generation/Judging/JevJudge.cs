@@ -77,7 +77,7 @@ public sealed class JevJudge : ISimilarityJudge
                 Scores = [.. Probabilities(topic, JevQuestions.Topics), .. Probabilities(act, JevQuestions.Acts)],
                 CreatedAtUtc = time.GetUtcNow().UtcDateTime,
             };
-            return draft with { Similarity = similarity, Tags = TagsFrom(similarity) };
+            return draft with { Similarity = similarity, Tags = JevTags.From(similarity, options.Value) };
         }
         // An outage, a timeout or an answer that isn't JSON. Only the caller's own cancellation throws.
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
@@ -91,8 +91,6 @@ public sealed class JevJudge : ISimilarityJudge
     public bool NeedsJudging(Draft draft)
         => options.Value.Enabled
             && !draft.Similarity.Exists(scores => scores.ScoresGeneratorVersion == JevQuestions.Version(options.Value.Model));
-
-    public Option<string[]> TagsFrom(RiteSimilarity similarity) => JevTags.From(similarity, options.Value);
 
     private static object Question(string instructions, IReadOnlyList<KeyValuePair<string, string>> options)
         => new { type = "choice", instructions, criteria = options.ToDictionary(o => o.Key, o => o.Value) };

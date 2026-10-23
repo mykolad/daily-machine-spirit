@@ -31,7 +31,7 @@ public class SettingsTests
     {
         object[] sections =
         [
-            Settings.RiteWriting, Settings.Backlog, Settings.DuplicateRiteCheck, Settings.AilmentWriting, Settings.PreceptDistilling, Settings.PreceptCheck,
+            Settings.RiteWriting, Settings.Backlog, Settings.DuplicateRiteCheck, Settings.PreceptDistilling, Settings.PreceptCheck,
             Settings.ScribeNameSuggestions, Settings.Augury, Settings.QualityJudging, Settings.Jev, Settings.PagePurging, Settings.PublicPages, Settings.ScriptoriumPages,
         ];
 
@@ -59,7 +59,6 @@ public class SettingsTests
     [InlineData("RiteWriting:Patience", "TriesPerModel PauseBetweenTries")]
     [InlineData("RiteWriting:PatienceWhileTheScribeWaits", "TriesPerModel TimePerTry")]
     [InlineData("DuplicateRiteCheck:Patience", "TimePerTry")]
-    [InlineData("AilmentWriting:Patience", "TimePerTry")]
     [InlineData("PreceptDistilling:Patience", "TriesPerModel TimePerTry")]
     [InlineData("PreceptCheck:Patience", "TimeInAll")]
     [InlineData("ScribeNameSuggestions:Patience", "TimePerTry")]

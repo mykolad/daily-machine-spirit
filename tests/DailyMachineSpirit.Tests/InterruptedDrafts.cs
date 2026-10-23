@@ -36,12 +36,6 @@ public sealed class InterruptedDrafts : IDraftRepository
         return waiting;
     }
 
-    public Task<Either<Error, List<Draft>>> GetUntagged(CancellationToken cancellationToken)
-        => inner.GetUntagged(cancellationToken);
-
-    public Task<Either<Error, Unit>> SaveTags(Guid draftId, string[] tags, CancellationToken cancellationToken)
-        => inner.SaveTags(draftId, tags, cancellationToken);
-
     public Task<Either<Error, Unit>> SaveJudgmentIfUnchanged(Draft judged, string etag, AuditEntry audit, CancellationToken cancellationToken)
         => inner.SaveJudgmentIfUnchanged(judged, etag, audit, cancellationToken);
 }
@@ -67,12 +61,6 @@ public sealed class DraftsFailingAfterFirstRead : IDraftRepository
 
     public async Task<Either<Error, List<Draft>>> GetWaiting(CancellationToken cancellationToken)
         => ++reads == 1 ? await inner.GetWaiting(cancellationToken) : Error.New("Cosmos is down.");
-
-    public Task<Either<Error, List<Draft>>> GetUntagged(CancellationToken cancellationToken)
-        => inner.GetUntagged(cancellationToken);
-
-    public Task<Either<Error, Unit>> SaveTags(Guid draftId, string[] tags, CancellationToken cancellationToken)
-        => inner.SaveTags(draftId, tags, cancellationToken);
 
     public Task<Either<Error, Unit>> SaveJudgmentIfUnchanged(Draft judged, string etag, AuditEntry audit, CancellationToken cancellationToken)
         => inner.SaveJudgmentIfUnchanged(judged, etag, audit, cancellationToken);

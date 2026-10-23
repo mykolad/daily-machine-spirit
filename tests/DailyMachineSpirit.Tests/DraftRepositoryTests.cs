@@ -64,24 +64,6 @@ public sealed class DraftRepositoryTests : IAsyncLifetime
         Assert.Empty(Ok(await Drafts.GetWaiting(CancellationToken.None)));
     }
 
-    // Whatever their state: a published draft's tags are as useful to the Augury's lessons as a waiting one's.
-    [Fact]
-    public async Task GetUntagged_FindsScoredDraftsWithoutTags_UntilTheirTagsAreSaved()
-    {
-        var scores = new RiteSimilarity { ScoresGeneratorVersion = "jev/q1", Scores = [1f], CreatedAtUtc = DateTime.UtcNow };
-        var untagged = Ok(await Drafts.Add(MakeDraft("Scored") with { Similarity = scores }, CancellationToken.None));
-        Ok(await Drafts.Add(MakeDraft("Unscored"), CancellationToken.None));
-        Ok(await Drafts.Add(MakeDraft("Tagged") with { Similarity = scores, Tags = new string[0] }, CancellationToken.None));
-
-        var found = Ok(await Drafts.GetUntagged(CancellationToken.None));
-        Ok(await Drafts.SaveTags(untagged.Id, ["ai"], CancellationToken.None));
-        var afterwards = Ok(await Drafts.GetUntagged(CancellationToken.None));
-
-        Assert.Equal([untagged.Id], found.Select(draft => draft.Id));
-        Assert.Empty(afterwards);
-        Assert.Equal(Some(new[] { "ai" }), Ok(await Drafts.Get(untagged.Id, CancellationToken.None)).Bind(draft => draft.Tags));
-    }
-
     [Fact]
     public async Task Publish_TheSameDraftAgain_IsDraftNotWaiting()
     {
