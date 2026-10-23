@@ -93,7 +93,7 @@ public sealed class DraftJudgingTests : IAsyncLifetime
         testbed.QualityJudgesFail(Settings.QualityJudging.ScoresPerDraft);
         var amendable = Ok(await testbed.Amendments().FindWaiting(unjudged.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Not amendable."));
         Ok(await testbed.Amendments().SaveAndJudgeAgain(unjudged.Id, amendable.ETag,
-            new("Litany of the Warm Cache", "O Machine Spirit, warm thy cache.", "A warm cache was read before."), "", Tester, CancellationToken.None));
+            new("Litany of the Warm Cache", "O Machine Spirit, warm thy cache.", "A warm cache was read before.", "The build is slow after the cache is cleared."), "", Tester, CancellationToken.None));
 
         var stale = await testbed.Drafts.SaveJudgmentIfUnchanged(
             unjudged with { Augury = new Augury { Quality = 0.8f, JudgedBy = "old words" } }, read, Entry(unjudged), CancellationToken.None);

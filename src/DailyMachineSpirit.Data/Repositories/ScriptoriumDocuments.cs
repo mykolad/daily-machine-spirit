@@ -43,6 +43,8 @@ internal sealed record ScribeDecisionDocument
 
     public string HereticalTruth { get; init; } = string.Empty;
 
+    public string? Ailment { get; init; }
+
     // Null when missing: the JSON serializer doesn't know Option.
     public int? CalendarPlace { get; init; }
 
@@ -67,6 +69,7 @@ internal sealed record ScribeDecisionDocument
         Title = decision.Title,
         Text = decision.Text,
         HereticalTruth = decision.HereticalTruth,
+        Ailment = decision.Ailment.OrNull(),
         CalendarPlace = decision.CalendarPlace.OrNullable(),
         CalendarPlaceAfter = decision.CalendarPlaceAfter.OrNullable(),
         AuguryPlace = decision.AuguryPlace.OrNullable(),
@@ -85,6 +88,7 @@ internal sealed record ScribeDecisionDocument
         Title = Title,
         Text = Text,
         HereticalTruth = HereticalTruth,
+        Ailment = Optional(Ailment),
         CalendarPlace = Optional(CalendarPlace),
         CalendarPlaceAfter = Optional(CalendarPlaceAfter),
         AuguryPlace = Optional(AuguryPlace),

@@ -24,6 +24,9 @@ internal sealed record DraftDocument
 
     public string HereticalTruth { get; init; } = string.Empty;
 
+    // Null until AilmentBackfill writes one.
+    public string? Ailment { get; init; }
+
     public string GeneratedByModel { get; init; } = string.Empty;
 
     public DateTime GeneratedAtUtc { get; init; }
@@ -53,6 +56,7 @@ internal sealed record DraftDocument
         Title = draft.Writing.Title,
         Text = draft.Writing.Text,
         HereticalTruth = draft.Writing.HereticalTruth,
+        Ailment = draft.Writing.Ailment.OrNull(),
         GeneratedByModel = draft.Writing.GeneratedByModel,
         GeneratedAtUtc = Utc.From(draft.Writing.GeneratedAtUtc),
         Edited = draft.Writing.Edited,
@@ -74,6 +78,7 @@ internal sealed record DraftDocument
             Title = Title,
             Text = Text,
             HereticalTruth = HereticalTruth,
+            Ailment = Optional(Ailment),
             GeneratedByModel = GeneratedByModel,
             GeneratedAtUtc = GeneratedAtUtc,
             Edited = Edited,

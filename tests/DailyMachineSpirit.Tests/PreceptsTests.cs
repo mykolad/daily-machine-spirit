@@ -174,7 +174,7 @@ public sealed class PreceptsTests : IAsyncLifetime
         Assert.Contains(abuse, PreceptPrompt.Instructions(3));
         Assert.Contains("Never propose a precept that would have the writer break one of its rules", PreceptPrompt.Instructions(3));
         Assert.Contains(abuse, DailyMachineSpirit.Functions.Generation.Writing.RitePrompt.Instructions(RiteKind.Ritual, [], []));
-        Assert.Contains("never in a title, a Heretical Truth or a ritual", PreceptPrompt.Instructions(3));
+        Assert.Contains("never in a title, a Heretical Truth, an ailment or a ritual", PreceptPrompt.Instructions(3));
     }
 
     // The judgments and their notes go to the model; what it answers becomes the Precepts, recorded as who asked.

@@ -26,8 +26,8 @@ public sealed class RitesFunctionTests : IAsyncLifetime
     [Fact]
     public async Task Rites_ListsEveryRite_NewestFirst_WithItsSubjectsAndPage_ItsTruthSealed()
     {
-        await Add(new DateOnly(2026, 10, 8), RiteKind.Prayer, "The Litany of the Warm Cache", Some(new[] { "caches", "builds" }));
-        await Add(new DateOnly(2026, 10, 9), RiteKind.Ritual, "The Rite of Re-Run", None);
+        await Add(new DateOnly(2026, 10, 8), RiteKind.Prayer, "The Litany of the Warm Cache", Some(new[] { "caches", "builds" }), None);
+        await Add(new DateOnly(2026, 10, 9), RiteKind.Ritual, "The Rite of Re-Run", None, Some("A build that passes on the second run."));
         var context = At("/api/v1/rites");
         context.Request.Host = new HostString("dailymachinespirit.fyi");
 
@@ -56,6 +56,8 @@ public sealed class RitesFunctionTests : IAsyncLifetime
             warm.GetProperty("subjects").EnumerateArray().Select(subject => (subject.GetProperty("key").GetString(), subject.GetProperty("label").GetString())));
         // A rite judged before tags existed is filed under nothing, rather than missing the field.
         Assert.Empty(rites[0].GetProperty("subjects").EnumerateArray());
+        // Written with the rite (#115). The warm one, written before rites had one, has an empty one (above).
+        Assert.Equal("A build that passes on the second run.", rites[0].GetProperty("ailment").GetString());
     }
 
     // Each would be its own cache entry, and its own read of every rite: one address answers for all.
@@ -90,7 +92,7 @@ public sealed class RitesFunctionTests : IAsyncLifetime
     [Fact]
     public async Task HereticalTruth_RevealsThatRitesTruth()
     {
-        await Add(new DateOnly(2026, 10, 8), RiteKind.Prayer, "The Litany of the Warm Cache", None);
+        await Add(new DateOnly(2026, 10, 8), RiteKind.Prayer, "The Litany of the Warm Cache", None, None);
         var context = At("/api/v1/rites/1/heretical-truth");
 
         var result = Assert.IsType<ContentResult>(await Function(Repository).HereticalTruth(context.Request, "1", CancellationToken.None));
@@ -138,7 +140,7 @@ public sealed class RitesFunctionTests : IAsyncLifetime
     [InlineData("/API/v1/rites/1/heretical-truth", "1")]
     public async Task HereticalTruth_SpelledAnotherWay_IsNotFound(string path, string id)
     {
-        await Add(new DateOnly(2026, 10, 8), RiteKind.Prayer, "The Litany of the Warm Cache", None);
+        await Add(new DateOnly(2026, 10, 8), RiteKind.Prayer, "The Litany of the Warm Cache", None, None);
         var context = At(path);
 
         var result = Assert.IsType<StatusCodeResult>(await Function(Repository).HereticalTruth(context.Request, id, CancellationToken.None));
@@ -167,7 +169,7 @@ public sealed class RitesFunctionTests : IAsyncLifetime
 
     private static RitesFunction Function(IRiteRepository rites) => new(rites, NullLogger<RitesFunction>.Instance);
 
-    private async Task Add(DateOnly day, RiteKind kind, string title, Option<string[]> tags)
+    private async Task Add(DateOnly day, RiteKind kind, string title, Option<string[]> tags, Option<string> ailment)
         => Ok(await Repository.Add(new Rite
         {
             PublishedOnUtc = day,
@@ -177,6 +179,7 @@ public sealed class RitesFunctionTests : IAsyncLifetime
                 Title = title,
                 Text = "Press Re-run thrice, intoning `it passed locally`.",
                 HereticalTruth = "Your test depends on `timing`.",
+                Ailment = ailment,
                 GeneratedByModel = "gpt-6-sol",
                 GeneratedAtUtc = day.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
             },
