@@ -32,15 +32,17 @@ public sealed class AilmentRepository : IAilmentRepository
     public Task<Either<Error, Unit>> Save(WordsWithoutAilment words, string ailment, CancellationToken cancellationToken)
         => AttemptEither(async () =>
         {
-            try
+            // A batch, since a single patch doesn't honour If-Match: only a batch's patch is refused for another version.
+            using var response = await container.CreateTransactionalBatch(SharedPartitionKey)
+                .PatchItem(words.DocumentId, [PatchOperation.Set("/ailment", ailment)],
+                    new TransactionalBatchPatchItemRequestOptions { IfMatchEtag = words.Version })
+                .ExecuteAsync(cancellationToken);
+            if (response.IsSuccessStatusCode)
             {
-                await container.PatchItemAsync<object>(words.DocumentId, SharedPartitionKey, [PatchOperation.Set("/ailment", ailment)],
-                    new PatchItemRequestOptions { IfMatchEtag = words.Version, EnableContentResponseOnWrite = false }, cancellationToken);
                 return Right<Error, Unit>(unit);
             }
-            catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.PreconditionFailed)
-            {
-                return ScriptoriumRepository.ChangedMeanwhile;
-            }
+            return response.Any(result => result.StatusCode == HttpStatusCode.PreconditionFailed)
+                ? ScriptoriumRepository.ChangedMeanwhile
+                : Error.New($"Saving the ailment failed: {response.StatusCode}. {response.ErrorMessage}");
         });
 }
