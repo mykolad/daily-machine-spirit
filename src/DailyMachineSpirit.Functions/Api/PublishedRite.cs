@@ -8,8 +8,8 @@ namespace DailyMachineSpirit.Functions.Api;
 /// <param name="Kind">"prayer" or "ritual".</param>
 /// <param name="Text">As written, commands and file names in `backticks`.</param>
 /// <param name="Ailment">
-/// The trouble the rite is for, in a line, without its fix: what a client matches a user's trouble on. Optional, and
-/// empty until rites have one.
+/// The trouble the rite is for, in a line, without its fix: what a client matches a user's trouble on. Optional: empty
+/// for a rite that has none yet.
 /// </param>
 /// <param name="Url">Its page, "https://dailymachinespirit.fyi/r/12".</param>
 public sealed record PublishedRite(
