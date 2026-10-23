@@ -385,7 +385,7 @@ skills/                           — Consult the Machine Spirit, a skill that p
       offers Undo, right after the message and kept until another change (no time limit): the precept deleted last is
       kept with its place, and the rejection a full list let go of (`PreceptBook.LastDeleted`), until any other change,
       a distillation's too. Undo puts it back where it was, as it was, its words no longer barred from a distillation
-      (recorded as `RestorePrecept`). The distil panel says
+      (recorded as an `AddPrecept`, "put back after a delete", which a rolled-back app still reads). The distil panel says
       when the next weekly run is (`NextDistillation`), and the agreement table folds months without a judgment into
       one row ("May–Sep 2026").
     - **Within the writer's rules** (#86, `PreceptCheck`): `gpt-6-luna`, then `gpt-6-sol` if it fails

@@ -157,7 +157,6 @@ public sealed class AuditTests : IAsyncLifetime
     [InlineData(AuditAction.PinPrecept, "pinned the precept “Litany”")]
     [InlineData(AuditAction.UnpinPrecept, "unpinned the precept “Litany”")]
     [InlineData(AuditAction.DeletePrecept, "deleted the precept “Litany”")]
-    [InlineData(AuditAction.RestorePrecept, "restored the precept “Litany”")]
     public void TheRecord_SaysWhatEachActionDid(AuditAction action, string did)
     {
         var entry = new AuditEntry { Id = Guid.NewGuid(), Actor = Tester, Action = action, Title = "Litany", RiteNumber = Some(7) };

@@ -199,7 +199,7 @@ public static partial class ScriptoriumPage
             <h2 id="agreement-heading">Do the Scribes Agree with the Augury?</h2>
             <p>How many of the Augury's top {AgreementTrend.TopPickPlaces} picks the Scribes burned, and how far they moved
             drafts from the places it gave them. When both stay low, the Augury can be left to choose on its own.</p>
-            <div class="agreement-card">
+            <div class="agreement-card" tabindex="0" role="region" aria-labelledby="agreement-heading">
             <table class="agreement">
             <thead><tr><th scope="col">Month</th><th scope="col" class="number">Judgments</th>
             <th scope="col" class="number">Top picks burned</th><th scope="col" class="number">Moved, on average</th></tr></thead>

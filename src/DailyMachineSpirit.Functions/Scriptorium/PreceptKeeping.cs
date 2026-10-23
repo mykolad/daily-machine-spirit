@@ -23,6 +23,9 @@ public sealed class PreceptKeeping
 
     public static readonly Error Unchecked = Error.New("The rules couldn't be checked just now.");
 
+    /// <summary>What the Record says of a precept an Undo put back: added again, where it was.</summary>
+    public const string PutBack = "put back after a delete";
+
     private readonly IPreceptRepository precepts;
     private readonly PreceptCheck check;
     private readonly TimeProvider time;
@@ -109,7 +112,8 @@ public sealed class PreceptKeeping
                             Rejected = [.. WithoutFirst(book.Rejected, deleted.Precept.Text), .. deleted.LetGo],
                             LastDeleted = None,
                         },
-                            Audit(scribe, AuditAction.RestorePrecept, deleted.Precept.Text, None))))
+                            // Recorded as an addition, which any version of the app reads: a rollback mustn't break the Record.
+                            Audit(scribe, AuditAction.AddPrecept, deleted.Precept.Text, Some(PutBack)))))
                 .BindAsync(changed => precepts.Save(read, PinnedFirst(changed.Item1), changed.Item2, cancellationToken)));
 
     // Any other change forgets the last delete: an Undo is offered only straight after it.

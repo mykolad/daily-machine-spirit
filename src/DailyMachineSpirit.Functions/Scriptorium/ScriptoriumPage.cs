@@ -652,7 +652,6 @@ public static partial class ScriptoriumPage
             AuditAction.PinPrecept => $"pinned the precept {rite}",
             AuditAction.UnpinPrecept => $"unpinned the precept {rite}",
             AuditAction.DeletePrecept => $"deleted the precept {rite}",
-            AuditAction.RestorePrecept => $"restored the precept {rite}",
             AuditAction.JudgeAgain => $"judged {rite} again",
             AuditAction.ChooseName => $"chose the name {rite}",
             AuditAction.Expurgate => $"erased words from {rite}{entry.RiteNumber.Map(number => $" (NO. {number})").IfNone(string.Empty)}",

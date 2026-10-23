@@ -267,6 +267,9 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         Assert.Equal(["First.", "Middle.", "Last."], book.Precepts.Select(precept => precept.Text));
         Assert.Equal(PreceptOrigin.Written, book.Precepts[1].Origin);
         Assert.DoesNotContain("Middle.", book.Rejected);
+        // An addition in the Record, which an older version of the app reads too.
+        var putBack = Assert.Single(Ok(await testbed.Audit.GetNewest(20, CancellationToken.None)), entry => entry.Detail == Some(PreceptKeeping.PutBack));
+        Assert.Equal((AuditAction.AddPrecept, "Middle."), (putBack.Action, putBack.Title));
         Assert.Equal("/scriptorium/precepts?done=changed", RedirectedTo(await function.Change(Form(await Seen()), middle, "restore", CancellationToken.None)));
 
         await function.Change(Form(await Seen()), middle, "delete", CancellationToken.None);

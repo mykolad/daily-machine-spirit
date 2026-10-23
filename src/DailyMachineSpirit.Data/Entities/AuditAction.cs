@@ -27,9 +27,6 @@ public enum AuditAction
     UnpinPrecept,
     DeletePrecept,
 
-    // A deleted precept put back by the Undo that follows the delete.
-    RestorePrecept,
-
     // A waiting draft judging couldn't score, judged again: by a refill (the Machine Spirit) or a Scribe.
     JudgeAgain,
 

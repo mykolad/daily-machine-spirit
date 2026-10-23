@@ -222,5 +222,7 @@ and candles behind it, and the recent rites under Today.
   a delete, so a keyboard or a screen reader could lose it before reaching it (WCAG 2.2.1). It stays until another
   change ends it anyway, and comes right after the status message in the page's order, so it's reached first. The
   status message doesn't say the delete again.
-- **The table scrolls in its own card** on a narrow screen, rather than the page. Months without a judgment share one
+- **The table scrolls in its own card** on a narrow screen, rather than the page. The card is a region named by the
+  table's heading, with a tab stop, so a keyboard can scroll it where the browser doesn't make it focusable itself
+  (Safari). Months without a judgment share one
   row, its "No judgments" spanning the figures' columns.
