@@ -19,7 +19,7 @@ internal sealed record WordsDocument
 
     public string? HereticalTruth { get; init; }
 
-    /// <summary>Written from the words, so it may hold an erased one too.</summary>
+    /// <summary>Written from the title and text, so it may repeat a word erased there: the erasure replaces it here too.</summary>
     public string? Ailment { get; init; }
 
     public string? Detail { get; init; }

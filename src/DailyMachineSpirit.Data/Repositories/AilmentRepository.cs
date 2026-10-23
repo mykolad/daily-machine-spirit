@@ -19,7 +19,7 @@ public sealed class AilmentRepository : IAilmentRepository
     }
 
     // Burned drafts too: a Scribe may restore one. A published draft's words live on in its rite.
-    public Task<Either<Error, List<WordsWithoutAilment>>> GetWithout(CancellationToken cancellationToken)
+    public Task<Either<Error, List<WordsWithoutAilment>>> GetRitesAndUnpublishedDraftsWithoutAilment(CancellationToken cancellationToken)
         => Attempt(async () => (await container.Query<WordsWithoutAilmentDocument>(
             new QueryDefinition(
                 "SELECT c.id, c._etag, c.type, c.kind, c.title, c.text, c.hereticalTruth FROM c " +
@@ -29,9 +29,10 @@ public sealed class AilmentRepository : IAilmentRepository
                 .WithParameter("@published", JsonNamingPolicy.CamelCase.ConvertName(nameof(DraftState.Published))),
             cancellationToken)).Select(document => document.ToWords()).ToList());
 
-    public Task<Either<Error, Unit>> Save(WordsWithoutAilment words, string ailment, CancellationToken cancellationToken)
+    public Task<Either<Error, Unit>> SaveIfUnchangedSinceRead(WordsWithoutAilment words, string ailment, CancellationToken cancellationToken)
         => AttemptEither(async () =>
         {
+            // Older words could hold what an amendment or an erasure took out, and so could an ailment written from them.
             // A batch, since a single patch doesn't honour If-Match: only a batch's patch is refused for another version.
             using var response = await container.CreateTransactionalBatch(SharedPartitionKey)
                 .PatchItem(words.DocumentId, [PatchOperation.Set("/ailment", ailment)],

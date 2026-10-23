@@ -305,8 +305,8 @@ skills/                           — Consult the Machine Spirit, a skill that p
   - **The ailment** (#115, `RiteWriting.Ailment`): the trouble a rite is for, in a line, as a developer would put it
     when asking for help, never its cause or fix. The writer writes it with the rite, under the same checks, and a
     Scribe amends it with the words. The rites API serves it, so a client matches a user's trouble on it without seeing
-    the sealed truth; the Scriptorium's cards show it, the public pages don't. Written from the words, it can hold an
-    erased word, so an erasure replaces each wherever it appears there too.
+    the sealed truth; the Scriptorium's cards show it, the public pages don't. Written from the words, it may repeat a
+    word the Expurgator erases, so an erasure replaces that word in the ailment too.
     - **Words written before rites had one** get theirs when the app starts (`AilmentBackfill`, `AilmentWriter`:
       `gpt-6-luna`, `AilmentWriting` in `machine-spirit.jsonc`, `RiteChecks.CheckAilment`): published rites and
       unpublished drafts, burned ones too. Each is saved only to the words it was read with (their ETag, so an

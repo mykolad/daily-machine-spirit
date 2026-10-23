@@ -71,14 +71,14 @@ public sealed class AilmentBackfillTests : IAsyncLifetime
     // Amended between the read and the save: an ailment written from the old words could hold an erased one, or describe
     // words that are gone. The amendment's ailment stays.
     [Fact]
-    public async Task Save_WhenTheWordsChangedMeanwhile_LeavesThemAsTheyAre()
+    public async Task SaveIfUnchangedSinceRead_WhenTheWordsChangedMeanwhile_LeavesThemAsTheyAre()
     {
         var draft = await AddDraft(DraftState.Waiting, None);
-        var read = Assert.Single(Ok(await Ailments.GetWithout(CancellationToken.None)));
+        var read = Assert.Single(Ok(await Ailments.GetRitesAndUnpublishedDraftsWithoutAilment(CancellationToken.None)));
         var amended = draft with { Writing = draft.Writing with { Title = "Amended", Ailment = Some("A Scribe's own ailment.") } };
         await cosmos.Container.UpsertItemAsync(DraftDocument.From(amended), CosmosCalls.SharedPartitionKey);
 
-        var saved = await Ailments.Save(read, "Written from the old words.", CancellationToken.None);
+        var saved = await Ailments.SaveIfUnchangedSinceRead(read, "Written from the old words.", CancellationToken.None);
 
         saved.Match(Right: _ => Assert.Fail("The ailment was saved over the amendment."), Left: error => Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, error));
         Assert.Equal(Some("A Scribe's own ailment."), Ok(await Drafts.Get(draft.Id, CancellationToken.None)).Bind(found => found.Writing.Ailment));
@@ -95,7 +95,7 @@ public sealed class AilmentBackfillTests : IAsyncLifetime
         var written = Ok(await Backfill().Run(CancellationToken.None));
 
         Assert.Equal(1, written);
-        Assert.Single(Ok(await Ailments.GetWithout(CancellationToken.None)));
+        Assert.Single(Ok(await Ailments.GetRitesAndUnpublishedDraftsWithoutAilment(CancellationToken.None)));
     }
 
     [Fact]

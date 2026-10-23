@@ -31,14 +31,14 @@ public sealed class AilmentBackfill : BackgroundService
 
     /// <summary>How many rites and drafts got their ailment.</summary>
     public async Task<Either<Error, int>> Run(CancellationToken cancellationToken)
-        => await (await ailments.GetWithout(cancellationToken)).MapAsync(async without =>
+        => await (await ailments.GetRitesAndUnpublishedDraftsWithoutAilment(cancellationToken)).MapAsync(async without =>
         {
             var written = 0;
             var published = false;
             foreach (var words in without)
             {
                 var saved = await writer.Write(words, cancellationToken)
-                    .BindAsync(ailment => ailments.Save(words, ailment, cancellationToken));
+                    .BindAsync(ailment => ailments.SaveIfUnchangedSinceRead(words, ailment, cancellationToken));
                 saved.Match(
                     Right: _ =>
                     {

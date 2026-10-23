@@ -77,7 +77,7 @@ public sealed class ExpurgationTests : IAsyncLifetime
         Assert.Equal("The Litany of the 💀 Cache", reads.Title);
         Assert.Equal("O Machine Spirit, 🦴 thy cache, that `npm ci` may find it full.", reads.Text);
         Assert.Equal(Amended.HereticalTruth, reads.HereticalTruth);
-        // Written from the words, so it may hold an erased one: replaced wherever it appears (#115).
+        // The ailment repeats "Warm", erased from the title, so it is replaced there too (#115).
         Assert.Equal(Some("The build is slow until the cache is 💀 again."), reads.Ailment);
         Assert.Equal(Some(reads.Title), erased.Map(rite => rite.Writing.Title));
         // The title's Warm is gone from every copy; the truth keeps its own "warm", which wasn't chosen.

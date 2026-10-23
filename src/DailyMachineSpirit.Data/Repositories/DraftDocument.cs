@@ -24,7 +24,7 @@ internal sealed record DraftDocument
 
     public string HereticalTruth { get; init; } = string.Empty;
 
-    // Null for words written before rites had one.
+    // Null until AilmentBackfill writes one.
     public string? Ailment { get; init; }
 
     public string GeneratedByModel { get; init; } = string.Empty;
