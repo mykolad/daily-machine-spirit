@@ -44,9 +44,15 @@ public sealed class InMemoryRiteSnapshot : IRiteSnapshotStore
         {
             MostChecksAtOnce = Math.Max(MostChecksAtOnce, now);
         }
-        await HoldVersionChecks.IfNone(Task.CompletedTask);
-        Interlocked.Decrement(ref checking);
-        return CurrentVersion;
+        try
+        {
+            await HoldVersionChecks.IfNone(Task.CompletedTask).WaitAsync(cancellationToken);
+            return CurrentVersion;
+        }
+        finally
+        {
+            Interlocked.Decrement(ref checking);
+        }
     }
 
     public Task<Either<Error, Option<RiteSnapshot>>> Load(CancellationToken cancellationToken)

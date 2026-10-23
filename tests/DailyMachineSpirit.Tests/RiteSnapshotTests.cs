@@ -244,6 +244,22 @@ public sealed class RiteSnapshotTests : IAsyncLifetime
         Assert.Equal(asked, cosmosDb.Reads);
     }
 
+    // The rewrite after an erasure runs out of time (a storage account that hangs): the copy is still taken away, and
+    // nothing escapes to skip what the erasure does next.
+    [Fact]
+    public async Task WriteOrDiscard_WhenTheWriteRunsOutOfTime_StillTakesTheCopyAway()
+    {
+        await AddRites();
+        Ok(await Snapshots(Rites).Write(CancellationToken.None));
+        snapshot.HoldVersionChecks = Some(new TaskCompletionSource().Task);
+
+        var following = Snapshots(Rites).WriteOrDiscard();
+        time.Advance(TimeSpan.FromSeconds(21));
+        await following;
+
+        Assert.True(snapshot.Saved.IsNone);
+    }
+
     // A first write read no copy, then the rites; meanwhile an erasure's write failed and took the copy away. Finishing,
     // the first write mustn't put back the rites it read, perhaps before the erasure: the discard changed the version.
     [Fact]
@@ -295,7 +311,7 @@ public sealed class RiteSnapshotTests : IAsyncLifetime
 
     private RitesWithFallback Fallback(IRiteRepository rites) => new(rites, snapshot, time, NullLogger<RitesWithFallback>.Instance);
 
-    private RiteSnapshots Snapshots(IRiteRepository rites) => new(rites, snapshot, NullLogger<RiteSnapshots>.Instance);
+    private RiteSnapshots Snapshots(IRiteRepository rites) => new(rites, snapshot, time, NullLogger<RiteSnapshots>.Instance);
 
     private static List<int> Numbers(Either<Error, List<Rite>> rites) => Ok(rites).Select(rite => rite.Number).ToList();
 

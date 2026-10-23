@@ -143,7 +143,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public InMemoryRiteSnapshot Snapshot { get; } = new();
 
-    public RiteSnapshots Snapshots() => new(Rites, Snapshot, NullLogger<RiteSnapshots>.Instance);
+    public RiteSnapshots Snapshots() => new(Rites, Snapshot, Time, NullLogger<RiteSnapshots>.Instance);
 
     public Expurgations Expurgations(IExpurgationRepository copies, IPageCache pages) => new(Rites, copies, pages, Snapshots(), Time);
 
