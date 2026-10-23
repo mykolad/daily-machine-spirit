@@ -10,24 +10,25 @@ namespace DailyMachineSpirit.Data.Repositories;
 /// The rites from Cosmos DB, or from their snapshot when Cosmos DB doesn't answer (#112): the site stays readable, its
 /// pages, search and rites API, while nothing can be saved. After a failed read that the snapshot could answer, the next
 /// minute's reads go to the snapshot without waiting on Cosmos DB again; with no snapshot, the failure is the read's, and
-/// the next read tries Cosmos DB. Saving always goes to Cosmos DB.
+/// the next read tries Cosmos DB. Nothing is saved through it: what saves reads <see cref="IRiteRepository"/>.
 /// </summary>
-public sealed class RitesWithFallback : IRiteRepository
+public sealed class RitesWithFallback : IRiteReader
 {
     // Long enough that a page's few reads don't each wait for Cosmos DB's timeout while it's down, short enough that the
     // site writes again soon after it's back.
     private static readonly TimeSpan TrustAgainAfter = TimeSpan.FromMinutes(1);
 
-    private readonly IRiteRepository rites;
+    private readonly IRiteReader rites;
     private readonly IRiteSnapshotStore snapshots;
     private readonly TimeProvider time;
     private readonly ILogger<RitesWithFallback> logger;
     private readonly object gate = new();
     private readonly SemaphoreSlim loading = new(1, 1);
     private Option<DateTimeOffset> failedAt;
+    private bool probing;
     private Option<(SnapshotRites Rites, string Version)> loaded;
 
-    public RitesWithFallback(IRiteRepository rites, IRiteSnapshotStore snapshots, TimeProvider time, ILogger<RitesWithFallback> logger)
+    public RitesWithFallback(IRiteReader rites, IRiteSnapshotStore snapshots, TimeProvider time, ILogger<RitesWithFallback> logger)
     {
         this.rites = rites;
         this.snapshots = snapshots;
@@ -75,27 +76,22 @@ public sealed class RitesWithFallback : IRiteRepository
     public Task<Either<Error, List<Rite>>> GetTaggedOlderThan(string tag, int number, int count, CancellationToken cancellationToken)
         => Read(source => source.GetTaggedOlderThan(tag, number, count, cancellationToken), cancellationToken);
 
-    // Read to be saved to: only from Cosmos DB.
-    public Task<Either<Error, List<Rite>>> GetUntagged(CancellationToken cancellationToken) => rites.GetUntagged(cancellationToken);
-
-    public Task<Either<Error, Rite>> Add(Rite rite, CancellationToken cancellationToken) => rites.Add(rite, cancellationToken);
-
-    public Task<Either<Error, Rite>> Publish(Guid draftId, DateOnly publishedOnUtc, CancellationToken cancellationToken)
-        => rites.Publish(draftId, publishedOnUtc, cancellationToken);
-
-    public Task<Either<Error, Unit>> SaveScores(DateOnly publishedOnUtc, RiteSimilarity similarity, CancellationToken cancellationToken)
-        => rites.SaveScores(publishedOnUtc, similarity, cancellationToken);
-
-    public Task<Either<Error, Unit>> SaveTags(DateOnly publishedOnUtc, string[] tags, CancellationToken cancellationToken)
-        => rites.SaveTags(publishedOnUtc, tags, cancellationToken);
-
-    private async Task<Either<Error, T>> Read<T>(Func<IRiteRepository, Task<Either<Error, T>>> read, CancellationToken cancellationToken)
+    private async Task<Either<Error, T>> Read<T>(Func<IRiteReader, Task<Either<Error, T>>> read, CancellationToken cancellationToken)
     {
-        if (!Distrusted())
+        var route = Route();
+        if (route == Source.Copy)
+        {
+            return await (await Snapshot(cancellationToken)).Match(
+                Some: read,
+                // The copy went meanwhile: Cosmos DB, rather than nothing.
+                None: () => read(rites));
+        }
+        try
         {
             var answer = await read(rites);
             if (answer.IsRight)
             {
+                Trust();
                 return answer;
             }
             var failure = answer.Match(Right: _ => Error.New("Cosmos DB failed."), Left: error => error);
@@ -108,17 +104,39 @@ public sealed class RitesWithFallback : IRiteRepository
             Distrust(failure);
             return await read(snapshot.IfNone(new SnapshotRites([])));
         }
-        return await (await Snapshot(cancellationToken)).Match(
-            Some: read,
-            // The copy went meanwhile: Cosmos DB, rather than nothing.
-            None: () => read(rites));
+        finally
+        {
+            if (route == Source.Probe)
+            {
+                EndProbe();
+            }
+        }
     }
 
-    private bool Distrusted()
+    // Within a minute of a failure, the copy. After it, one read per instance asks Cosmos DB again (the probe) while the
+    // others keep reading the copy, so a page doesn't wait on Cosmos DB's timeout each time the minute ends.
+    private Source Route()
     {
         lock (gate)
         {
-            return failedAt.Exists(at => time.GetUtcNow() - at < TrustAgainAfter);
+            if (failedAt.IsNone)
+            {
+                return Source.Cosmos;
+            }
+            if (failedAt.Exists(at => time.GetUtcNow() - at < TrustAgainAfter) || probing)
+            {
+                return Source.Copy;
+            }
+            probing = true;
+            return Source.Probe;
+        }
+    }
+
+    private void Trust()
+    {
+        lock (gate)
+        {
+            failedAt = None;
         }
     }
 
@@ -131,6 +149,13 @@ public sealed class RitesWithFallback : IRiteRepository
         logger.LogWarning(failure.ToException(), "Cosmos DB didn't answer, so the rites are read from their snapshot for a minute: {Reason}", failure.Message);
     }
 
+    private void EndProbe()
+    {
+        lock (gate)
+        {
+            probing = false;
+        }
+    }
     // The copy as kept, if it's still the version saved; else the saved one, loaded once however many reads ask at once.
     // Asking for the version costs a small request per read, only while Cosmos DB is down: a copy saved since (an
     // erasure's) is never missed.

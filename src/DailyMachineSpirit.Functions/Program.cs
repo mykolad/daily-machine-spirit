@@ -80,8 +80,10 @@ var snapshot = builder.Configuration.GetSection(RiteSnapshotOptions.SectionName)
 builder.Services.AddSingleton<IRiteSnapshotStore>(_ => snapshot.ContainerUri.Length > 0
     ? new BlobRiteSnapshotStore(new Uri(snapshot.ContainerUri))
     : new NoRiteSnapshot());
+// What saves reads Cosmos DB alone; the public pages, search and the rites API read through the fallback.
 builder.Services.AddSingleton<RiteRepository>();
-builder.Services.AddSingleton<IRiteRepository>(services => new RitesWithFallback(
+builder.Services.AddSingleton<IRiteRepository>(services => services.GetRequiredService<RiteRepository>());
+builder.Services.AddSingleton<IRiteReader>(services => new RitesWithFallback(
     services.GetRequiredService<RiteRepository>(), services.GetRequiredService<IRiteSnapshotStore>(),
     services.GetRequiredService<TimeProvider>(), services.GetRequiredService<ILogger<RitesWithFallback>>()));
 builder.Services.AddSingleton<RiteSnapshots>();

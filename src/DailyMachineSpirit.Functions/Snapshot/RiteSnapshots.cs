@@ -38,6 +38,21 @@ public sealed class RiteSnapshots
         return written;
     }
 
+    /// <summary>
+    /// Writes the snapshot after an erasure, or if that fails, takes the copy away: an old copy would hold the erased words,
+    /// which a fallback would show again. Without a copy there's no fallback until the next write (every six hours).
+    /// </summary>
+    public async Task WriteOrDiscard(CancellationToken cancellationToken)
+    {
+        if ((await Write(cancellationToken)).IsRight)
+        {
+            return;
+        }
+        (await store.Discard(cancellationToken)).IfLeft(error => logger.LogError(error.ToException(),
+            "The rites' snapshot couldn't be written after an erasure, nor taken away: it may hold the erased words until the next write: {Reason}",
+            error.Message));
+    }
+
     // The copy's version is read before the rites, so a copy saved after this read the rites is never replaced by it.
     private async Task<Either<Error, int>> WriteOnce(CancellationToken cancellationToken)
         => await (await store.Version(cancellationToken)).BindAsync(async replacing =>

@@ -123,12 +123,17 @@ skills/                           — Consult the Machine Spirit, a skill that p
   app's settings are all created by the Bicep in `infra/`, never by the app (its data-plane role can't create them). Settings: `Cosmos:Endpoint`, `Cosmos:Database`.
 - **Read-only when Cosmos DB is down** (#112): every published rite is copied, whole, to one blob per environment in a
   storage account outside the app's region (`machinespiritsnapshots`, North Europe, `infra/`), written by
-  `RiteSnapshots` after a new rite and an erasure, and every six hours (`WriteRiteSnapshot`) for votes, tags and
-  ailments. `IRiteRepository` is `RitesWithFallback` over `RiteRepository`: a read Cosmos DB fails is answered from the
-  snapshot (`SnapshotRites`, which answers every query as Cosmos DB does, search too), and so is every read for a
-  minute after, without waiting on Cosmos DB; the snapshot is loaded once and kept ten minutes. So the pages, search and
-  the rites API keep working; voting, sign-in and the Scriptorium don't, and saving always goes to Cosmos DB. Setting:
-  `RiteSnapshot:ContainerUri`; without it (a local run) nothing is copied, and a Cosmos DB failure is the read's.
+  `RiteSnapshots` after a new rite and an erasure (before their pages are purged), and every six hours
+  (`WriteRiteSnapshot`) for votes, tags and ailments. Each copy has a version (the blob's ETag): a write saves only over
+  the version it read before reading the rites, else reads them again, so an older copy never replaces an erasure's; an
+  erasure whose copy can't be written takes the copy away. The public readers (the pages, the search index, the rites
+  API) take `IRiteReader`, which is `RitesWithFallback` over `RiteRepository`: a read Cosmos DB fails is answered from the
+  snapshot (`SnapshotRites`, which answers every query as Cosmos DB does, search too), and so is every read for a minute
+  after, then one read per instance asks Cosmos DB again while the others keep reading the copy. The copy is loaded once
+  and kept while it's the version saved. Without a copy, the failure is the read's, and the next read tries Cosmos DB.
+  What saves (publishing, refilling, the Scribes, the backfills) takes `IRiteRepository` and reads Cosmos DB alone. So
+  the pages, search and the rites API keep working; voting, sign-in and the Scriptorium don't. Setting:
+  `RiteSnapshot:ContainerUri`; without it (a local run) nothing is copied.
 - **Telemetry: OpenTelemetry to Grafana Cloud.** The app (`Program.cs`) exports its logs, traces and metrics over OTLP
   wherever `OTEL_EXPORTER_OTLP_ENDPOINT` is set; `infra/` sets it, with the token's header from the vault. The Functions
   host doesn't export (no `telemetryMode` in `host.json`): its request spans carry visitors' user agents. So a failure

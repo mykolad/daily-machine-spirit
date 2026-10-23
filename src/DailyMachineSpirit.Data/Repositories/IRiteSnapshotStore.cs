@@ -25,4 +25,7 @@ public interface IRiteSnapshotStore
     /// none), else <see cref="ChangedMeanwhile"/>.
     /// </summary>
     Task<Either<Error, Unit>> Save(IReadOnlyList<Rite> rites, Option<string> replacing, CancellationToken cancellationToken);
+
+    /// <summary>Takes the copy away, so nothing falls back on it until the next save.</summary>
+    Task<Either<Error, Unit>> Discard(CancellationToken cancellationToken);
 }

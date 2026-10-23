@@ -21,6 +21,9 @@ public sealed class InMemoryRiteSnapshot : IRiteSnapshotStore
 
     public int Loads { get; private set; }
 
+    /// <summary>The next save fails, as a storage outage would.</summary>
+    public bool FailNextSave { get; set; }
+
     /// <summary>Runs once, just before the next save checks its version.</summary>
     public Option<Func<Task>> BeforeNextSave { get; set; }
 
@@ -35,6 +38,11 @@ public sealed class InMemoryRiteSnapshot : IRiteSnapshotStore
 
     public async Task<Either<Error, Unit>> Save(IReadOnlyList<Rite> rites, Option<string> replacing, CancellationToken cancellationToken)
     {
+        if (FailNextSave)
+        {
+            FailNextSave = false;
+            return Error.New("The storage account didn't answer.");
+        }
         var meanwhile = BeforeNextSave;
         BeforeNextSave = None;
         await meanwhile.Match(Some: save => save(), None: () => Task.CompletedTask);
@@ -44,5 +52,11 @@ public sealed class InMemoryRiteSnapshot : IRiteSnapshotStore
         }
         Saved = Some(new RiteSnapshot(rites.ToList(), $"v{++saves}"));
         return unit;
+    }
+
+    public Task<Either<Error, Unit>> Discard(CancellationToken cancellationToken)
+    {
+        Saved = None;
+        return Task.FromResult(Right<Error, Unit>(unit));
     }
 }

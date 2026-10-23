@@ -33,7 +33,7 @@ public sealed class RiteSnapshotTests : IAsyncLifetime
         var copy = new SnapshotRites(Ok(await Rites.GetAllPublished(CancellationToken.None)));
         var none = CancellationToken.None;
 
-        foreach (var source in new IRiteRepository[] { Rites, copy })
+        foreach (var source in new IRiteReader[] { Rites, copy })
         {
             Assert.Equal([4, 3, 2], Numbers(await source.GetNewest(3, none)));
             Assert.Equal([4, 3, 2, 1], Numbers(await source.GetAllPublished(none)));
@@ -54,17 +54,6 @@ public sealed class RiteSnapshotTests : IAsyncLifetime
         }
     }
 
-    [Fact]
-    public async Task TheSnapshot_SavesNothing()
-    {
-        var copy = new SnapshotRites([]);
-
-        Assert.Equal(SnapshotRites.ReadOnly, Failed(await copy.SaveTags(Day, ["caches"], CancellationToken.None)));
-        Assert.Equal(SnapshotRites.ReadOnly, Failed(await copy.Add(new Rite(), CancellationToken.None)));
-        Assert.Equal(SnapshotRites.ReadOnly, Failed(await copy.Publish(Guid.NewGuid(), Day, CancellationToken.None)));
-        Assert.Equal(SnapshotRites.ReadOnly, Failed(await copy.SaveScores(Day, new RiteSimilarity(), CancellationToken.None)));
-        Assert.Equal(SnapshotRites.ReadOnly, Failed(await copy.GetUntagged(CancellationToken.None)));
-    }
 
     // Cosmos DB down: the pages' reads come from the snapshot, loaded once and kept while it's the version saved; a
     // minute later, Cosmos DB is asked again, and still failing, the same copy answers.
@@ -109,20 +98,55 @@ public sealed class RiteSnapshotTests : IAsyncLifetime
         Assert.True((await rites.GetDays(CancellationToken.None)).IsLeft);
     }
 
-    // Saving and the reads that lead to saving never use the copy.
+    // What saves reads Cosmos DB alone: a copy hours old would leave a new rite out of duplicate checks, or out of the
+    // calendar's order. Only the public readers get the fallback, which can't save anything.
     [Fact]
-    public async Task Saving_AlwaysGoesToCosmos()
+    public void WhatSaves_ReadsCosmosAlone()
+    {
+        Type[] saving = [typeof(Functions.Generation.BacklogRefiller), typeof(Functions.Generation.DailyRitePublisher),
+            typeof(Functions.Scriptorium.Scribes), typeof(Functions.Scriptorium.Expurgation.Expurgations),
+            typeof(Functions.Tags.TagBackfill), typeof(RiteSnapshots)];
+
+        Assert.False(typeof(IRiteRepository).IsAssignableFrom(typeof(RitesWithFallback)));
+        Assert.All(saving, type => Assert.Contains(type.GetConstructors().Single().GetParameters(), parameter => parameter.ParameterType == typeof(IRiteRepository)));
+        Assert.All(saving, type => Assert.DoesNotContain(type.GetConstructors().Single().GetParameters(), parameter => parameter.ParameterType == typeof(IRiteReader)));
+    }
+
+    // When the minute is up and Cosmos DB is still slow to fail, one read asks it again; the others keep reading the copy
+    // meanwhile rather than each waiting for Cosmos DB's timeout.
+    [Fact]
+    public async Task AfterTheMinute_OneReadAsksCosmosAgain_TheOthersReadTheCopy()
     {
         await AddRites();
         Ok(await Snapshots(Rites).Write(CancellationToken.None));
-        var rites = Fallback(Missing);
+        var cosmosDb = new SwitchableRites(Missing);
+        var rites = Fallback(cosmosDb);
+        Assert.True((await rites.GetNewest(1, CancellationToken.None)).IsRight);
+        time.Advance(TimeSpan.FromMinutes(2));
+        var held = new TaskCompletionSource();
+        cosmosDb.Hold = Some(held.Task);
+        var asked = cosmosDb.Reads;
 
-        Assert.True((await rites.GetUntagged(CancellationToken.None)).IsLeft);
-        Assert.True((await rites.SaveTags(Day, ["caches"], CancellationToken.None)).IsLeft);
-        Assert.True((await rites.SaveScores(Day, new RiteSimilarity(), CancellationToken.None)).IsLeft);
-        Assert.True((await rites.Add(new Rite { PublishedOnUtc = Day.AddDays(1) }, CancellationToken.None)).IsLeft);
-        Assert.True((await rites.Publish(Guid.NewGuid(), Day.AddDays(1), CancellationToken.None)).IsLeft);
-        Assert.True((await rites.GetAllPublished(CancellationToken.None)).IsLeft);
+        var probe = rites.GetNewest(1, CancellationToken.None);
+        var others = await Task.WhenAll(Enumerable.Range(0, 5).Select(_ => rites.GetNewest(1, CancellationToken.None)));
+        held.SetResult();
+
+        Assert.All(others, answer => Assert.Equal([4], Numbers(answer)));
+        Assert.Equal([4], Numbers(await probe));
+        Assert.Equal(asked + 1, cosmosDb.Reads);
+    }
+
+    // After an erasure, a copy that couldn't be written again mustn't stay with the erased words: it's taken away.
+    [Fact]
+    public async Task WriteOrDiscard_WhenTheWriteFails_TakesTheCopyAway()
+    {
+        await AddRites();
+        Ok(await Snapshots(Rites).Write(CancellationToken.None));
+        snapshot.FailNextSave = true;
+
+        await Snapshots(Rites).WriteOrDiscard(CancellationToken.None);
+
+        Assert.True(snapshot.Saved.IsNone);
     }
 
     [Fact]

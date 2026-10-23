@@ -80,4 +80,11 @@ public sealed class BlobRiteSnapshotStore : IRiteSnapshotStore
                 return IRiteSnapshotStore.ChangedMeanwhile;
             }
         });
+
+    public Task<Either<Error, Unit>> Discard(CancellationToken cancellationToken)
+        => Attempt(async () =>
+        {
+            await blob.DeleteIfExistsAsync(cancellationToken: cancellationToken);
+            return unit;
+        });
 }

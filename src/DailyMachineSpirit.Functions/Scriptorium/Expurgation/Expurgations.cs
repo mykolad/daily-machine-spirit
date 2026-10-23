@@ -75,7 +75,7 @@ public sealed partial class Expurgations
         {
             // The fallback's copy (#112) first, without the erased words: a page purged while Cosmos DB fails is filled
             // from it.
-            await snapshots.Write(cancellationToken);
+            await snapshots.WriteOrDiscard(cancellationToken);
             await pages.Purge([Paths.Today, Paths.Rite(number), Paths.SearchIndex, Paths.RitesApi, Paths.HereticalTruthApi(number)], cancellationToken);
         }
         return erased;

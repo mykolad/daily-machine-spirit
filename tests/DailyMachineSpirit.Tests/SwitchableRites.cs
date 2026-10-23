@@ -15,6 +15,9 @@ public sealed class SwitchableRites : IRiteRepository
 
     public IRiteRepository Current { get; set; }
 
+    /// <summary>A read waits for this before reaching the current repository, as a slow Cosmos DB keeps it waiting.</summary>
+    public Option<Task> Hold { get; set; }
+
     /// <summary>How many reads reached the current repository.</summary>
     public int Reads { get; private set; }
 
@@ -68,9 +71,10 @@ public sealed class SwitchableRites : IRiteRepository
     public Task<Either<Error, Unit>> SaveTags(DateOnly publishedOnUtc, string[] tags, CancellationToken cancellationToken)
         => Current.SaveTags(publishedOnUtc, tags, cancellationToken);
 
-    private Task<T> Counted<T>(Func<Task<T>> read)
+    private async Task<T> Counted<T>(Func<Task<T>> read)
     {
         Reads++;
-        return read();
+        await Hold.IfNone(Task.CompletedTask);
+        return await read();
     }
 }

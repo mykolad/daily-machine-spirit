@@ -19,10 +19,10 @@ public sealed class SearchIndexFunction
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
-    private readonly IRiteRepository rites;
+    private readonly IRiteReader rites;
     private readonly ILogger<SearchIndexFunction> logger;
 
-    public SearchIndexFunction(IRiteRepository rites, ILogger<SearchIndexFunction> logger)
+    public SearchIndexFunction(IRiteReader rites, ILogger<SearchIndexFunction> logger)
     {
         this.rites = rites;
         this.logger = logger;
