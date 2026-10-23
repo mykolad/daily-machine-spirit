@@ -49,7 +49,7 @@ public sealed class SnapshotRites : IRiteReader
 
     public Task<Either<Error, List<UnrevealedRite>>> GetAllUnrevealed(CancellationToken cancellationToken)
         => Answer(rites.Select(rite => new UnrevealedRite(
-            rite.Number, rite.PublishedOnUtc, rite.Writing.Kind, rite.Writing.Title, rite.Writing.Text, rite.Tags.IfNone([]))).ToList());
+            rite.Number, rite.PublishedOnUtc, rite.Writing.Kind, rite.Writing.Title, rite.Writing.Text, rite.Writing.Ailment, rite.Tags.IfNone([]))).ToList());
 
     public Task<Either<Error, Option<string>>> GetHereticalTruth(int number, CancellationToken cancellationToken)
         => Answer(rites.Where(rite => rite.Number == number).Select(rite => rite.Writing.HereticalTruth).HeadOrNone());
