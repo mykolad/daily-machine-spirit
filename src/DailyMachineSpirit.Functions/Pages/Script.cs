@@ -398,6 +398,14 @@ public static class Script
             status.setAttribute('role', 'status');
             box.append(status);
             const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            // A rite's day as the pages show it (ImperialDate.Of): the thousandths of its year passed at its midnight, its
+            // year within the millennium, and the millennium.
+            const imperialOf = (year, month, day) => {
+              const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+              const passed = (Date.UTC(year, month - 1, day) - Date.UTC(year, 0, 1)) / 86_400_000;
+              const three = (number) => String(number).padStart(3, '0');
+              return `0 ${three(Math.floor(passed * 1000 / (leap ? 366 : 365)))} ${three(year % 1000)}.M${Math.floor(year / 1000) + 1}`;
+            };
             let rites;
             let typing;
             let active = -1;
@@ -533,9 +541,17 @@ public static class Script
                   : filed.length > 0 ? `No rite mentions ${quoted}` : `Nothing found for ${quoted}`;
                 none.hidden = found.length > 0 || filed.length > 0;
                 showFound(subjectOptions, found.slice(0, 5).map((rite) => {
-                  const [, month, day] = rite.day.split('-').map(Number);
-                  return optionOf(`search-option-${rite.number}`, `/r/${rite.number}`, marked(rite.title, words, false),
-                    `${rite.kind === 'prayer' ? 'Prayer' : 'Ritual'} · ${day} ${monthNames[month - 1]}`);
+                  const [year, month, day] = rite.day.split('-').map(Number);
+                  const meta = document.createDocumentFragment();
+                  const shown = document.createElement('span');
+                  shown.setAttribute('aria-hidden', 'true');
+                  shown.textContent = imperialOf(year, month, day);
+                  const said = document.createElement('span');
+                  said.className = 'sr-only';
+                  said.textContent = `${day} ${monthNames[month - 1]} ${year}`;
+                  shown.title = said.textContent;
+                  meta.append(`${rite.kind === 'prayer' ? 'Prayer' : 'Ritual'} · `, shown, said);
+                  return optionOf(`search-option-${rite.number}`, `/r/${rite.number}`, marked(rite.title, words, false), meta);
                 }));
                 status.textContent = announced(label.textContent);
               } catch {
@@ -624,6 +640,49 @@ public static class Script
           };
           // Ticked at once too: a cached page may have been rendered up to an hour ago.
           if (document.querySelector('[data-countdown]')) { tick(); setInterval(tick, 30000); }
+
+          // An Imperial date's day as we reckon it shows while the pointer is on it or it has focus (the stylesheet); a
+          // tap shows or hides it too, for a touch screen, and a tap elsewhere hides it. Escape hides any, until the
+          // pointer leaves or focus moves on (WCAG 1.4.13). Listened for on the document, since the Archive's search swaps
+          // its margins, "Since" with them, for new ones.
+          const dateOf = (target) => (target instanceof Element ? target.closest('.imperial') : null);
+          const showing = (date) => date.matches('[data-open], :hover, :has(.imperial-date:focus-visible)') && !date.hasAttribute('data-dismissed');
+          // Pressing a date shows its day, or hides it when it shows, whether a press, the pointer or focus showed it. A
+          // touch screen keeps :hover after a tap, so there only the press itself counts.
+          document.addEventListener('click', (event) => {
+            const pressed = event.target instanceof Element && event.target.closest('.imperial-date') ? dateOf(event.target) : null;
+            document.querySelectorAll('.imperial').forEach((date) => {
+              if (date !== pressed) {
+                // Dismissed, not only closed: a touch screen keeps :hover on the date tapped before.
+                if (showing(date)) date.setAttribute('data-dismissed', '');
+                date.removeAttribute('data-open');
+              } else if (event.pointerType === 'touch' ? date.hasAttribute('data-open') : showing(date)) {
+                date.removeAttribute('data-open');
+                date.setAttribute('data-dismissed', '');
+              } else {
+                date.setAttribute('data-open', '');
+                date.removeAttribute('data-dismissed');
+              }
+            });
+          });
+          document.addEventListener('focusout', (event) => {
+            const date = dateOf(event.target);
+            date?.removeAttribute('data-open');
+            date?.removeAttribute('data-dismissed');
+          });
+          document.addEventListener('mouseout', (event) => {
+            const date = dateOf(event.target);
+            if (date && !date.contains(event.relatedTarget)) date.removeAttribute('data-dismissed');
+          });
+          // Only a day showing is dismissed: one hidden now must still show when focus or the pointer comes to it.
+          document.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape') return;
+            document.querySelectorAll('.imperial').forEach((date) => {
+              if (!showing(date)) return;
+              date.removeAttribute('data-open');
+              date.setAttribute('data-dismissed', '');
+            });
+          });
         })();
         """;
 }
