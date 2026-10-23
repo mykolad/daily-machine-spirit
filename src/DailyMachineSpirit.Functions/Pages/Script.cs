@@ -653,6 +653,8 @@ public static class Script
             const pressed = event.target instanceof Element && event.target.closest('.imperial-date') ? dateOf(event.target) : null;
             document.querySelectorAll('.imperial').forEach((date) => {
               if (date !== pressed) {
+                // Dismissed, not only closed: a touch screen keeps :hover on the date tapped before.
+                if (showing(date)) date.setAttribute('data-dismissed', '');
                 date.removeAttribute('data-open');
               } else if (event.pointerType === 'touch' ? date.hasAttribute('data-open') : showing(date)) {
                 date.removeAttribute('data-open');
