@@ -28,10 +28,10 @@ public sealed class RitesFunction
     // `|| true` or "won't" finds them. It's served as JSON, never put into a page's HTML, which the escaping guards.
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
-    private readonly IRiteRepository rites;
+    private readonly IRiteReader rites;
     private readonly ILogger<RitesFunction> logger;
 
-    public RitesFunction(IRiteRepository rites, ILogger<RitesFunction> logger)
+    public RitesFunction(IRiteReader rites, ILogger<RitesFunction> logger)
     {
         this.rites = rites;
         this.logger = logger;

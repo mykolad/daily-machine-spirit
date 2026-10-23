@@ -82,6 +82,8 @@ public sealed class ExpurgationTests : IAsyncLifetime
         Assert.Equal(Some(reads.Title), erased.Map(rite => rite.Writing.Title));
         // The title's Warm is gone from every copy; the truth keeps its own "warm", which wasn't chosen.
         Assert.All(await testbed.AllDocuments(), document => Assert.DoesNotContain("Warm", document));
+        // As does the fallback's copy (#112), rewritten after the erasure.
+        Assert.Equal(["The Litany of the 💀 Cache"], testbed.Snapshot.SavedRites.Select(rite => rite.Writing.Title));
         Assert.Equal(Some("The Litany of the 💀 Cache"), Ok(await testbed.Drafts.Get(resembling.Id, CancellationToken.None)).Bind(draft => draft.Resembles));
         var entry = Assert.Single(Ok(await testbed.Audit.GetNewest(20, CancellationToken.None)), entry => entry.Action == AuditAction.Expurgate);
         Assert.Equal((Expurgator, Some(number), "The Litany of the 💀 Cache"), (entry.Actor, entry.RiteNumber, entry.Title));

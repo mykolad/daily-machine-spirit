@@ -31,12 +31,15 @@ public static class CosmosClients
         CosmosClientTelemetryOptions = new CosmosClientTelemetryOptions { DisableDistributedTracing = false },
         CustomHandlers = { new CosmosMetricsHandler() },
         // System.Text.Json, like the rest of the app, rather than the SDK's default Newtonsoft.Json.
-        UseSystemTextJsonSerializerWithOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
-        {
-            Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
-            // A stored document can still say "title": null. By default that would put a null into a non-nullable
-            // string; this makes reading it fail right here instead.
-            RespectNullableAnnotations = true,
-        },
+        UseSystemTextJsonSerializerWithOptions = DocumentJson(),
+    };
+
+    /// <summary>How the documents are written as JSON: in Cosmos DB, and in the rites' snapshot (<c>RiteSnapshotDocument</c>).</summary>
+    internal static JsonSerializerOptions DocumentJson() => new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
+        // A stored document can still say "title": null. By default that would put a null into a non-nullable string;
+        // this makes reading it fail right here instead.
+        RespectNullableAnnotations = true,
     };
 }

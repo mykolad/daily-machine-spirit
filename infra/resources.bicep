@@ -14,6 +14,9 @@ param githubSubjectPrefix string = 'repo:mykolad@2202717/daily-machine-spirit@14
 // first, and production's are left as they are (nothing deleted, nothing updated). The shared resources above (the
 // models, Cosmos DB, the infrastructure identity) are deployed either way, and production uses them too.
 param deployProduction bool = false
+// Where the rites' snapshot is kept (#112): outside the app's region, so an outage there leaves the copy readable, and
+// outside North Europe, the second region planned for the app (#113), so the copy outlives an outage of either.
+param snapshotLocation string = 'germanywestcentral'
 
 var roles = {
   cognitiveServicesOpenAiUser: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
@@ -145,6 +148,29 @@ resource ownerData 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@202
   }
 }
 
+// The rites' snapshot (#112): every published rite as one blob per environment, which the app reads while Cosmos DB
+// doesn't answer. Outside the app's region, so the copy outlives an outage there. Each environment's container and the
+// app's right to write it are in modules/environment.bicep.
+resource snapshots 'Microsoft.Storage/storageAccounts@2024-01-01' = {
+  name: '${prefix}snapshots'
+  location: snapshotLocation
+  kind: 'StorageV2'
+  sku: {
+    name: 'Standard_LRS'
+  }
+  properties: {
+    allowSharedKeyAccess: false
+    allowBlobPublicAccess: false
+    minimumTlsVersion: 'TLS1_2'
+    supportsHttpsTrafficOnly: true
+  }
+}
+
+resource snapshotBlobs 'Microsoft.Storage/storageAccounts/blobServices@2024-01-01' = {
+  parent: snapshots
+  name: 'default'
+}
+
 // What the infrastructure workflow logs in as to deploy this file. Owner of this resource group only, because the file
 // assigns roles; the "infrastructure" GitHub environment controls when it can be used.
 resource infrastructureDeployer 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
@@ -171,6 +197,8 @@ module infrastructureDeployerOwner 'modules/resourceGroupOwner.bicep' = {
 
 module staging 'modules/environment.bicep' = {
   name: 'staging'
+  // The snapshot's blob service holds each environment's container.
+  dependsOn: [snapshotBlobs]
   params: {
     location: location
     prefix: prefix
@@ -195,11 +223,13 @@ module staging 'modules/environment.bicep' = {
     cloudflareSiteUrl: ''
     appServicePrincipalId: appServicePrincipalId
     smokeTestsVote: true
+    snapshotAccountName: snapshots.name
   }
 }
 
 module production 'modules/environment.bicep' = if (deployProduction) {
   name: 'production'
+  dependsOn: [snapshotBlobs]
   params: {
     location: location
     prefix: prefix
@@ -226,6 +256,7 @@ module production 'modules/environment.bicep' = if (deployProduction) {
     appServicePrincipalId: appServicePrincipalId
     // A test vote would show in the public counts.
     smokeTestsVote: false
+    snapshotAccountName: snapshots.name
   }
 }
 

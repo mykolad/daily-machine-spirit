@@ -8,6 +8,7 @@ using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Scriptorium;
 using DailyMachineSpirit.Functions.Scriptorium.Expurgation;
 using DailyMachineSpirit.Functions.Scriptorium.Naming;
+using DailyMachineSpirit.Functions.Snapshot;
 using LanguageExt;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -126,7 +127,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
             NullLogger<BacklogRefiller>.Instance);
     }
 
-    public DailyRitePublisher Publisher() => new(Rites, Drafts, Scriptorium, Refiller(), Options.Create(Settings.Augury), Time, Probe.Metrics, NullLogger<DailyRitePublisher>.Instance);
+    public DailyRitePublisher Publisher() => new(Rites, new SnapshotFollowingPublishing(Rites, Snapshots()), Drafts, Scriptorium, Refiller(), Options.Create(Settings.Augury), Time, Probe.Metrics, NullLogger<DailyRitePublisher>.Instance);
 
     public Scribes Scribes() => new(Drafts, Rites, Scriptorium, Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages),
         Options.Create(Settings.Backlog with { DraftsWaiting = BacklogSize }), Time);
@@ -151,9 +152,13 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public ScribeNaming ScribeNaming() => new(ScribeNames, Time);
 
+    public InMemoryRiteSnapshot Snapshot { get; } = new();
+
+    public RiteSnapshots Snapshots() => new(Rites, Snapshot, Time, NullLogger<RiteSnapshots>.Instance);
+
     public NamesShown NamesShown() => new(ScribeNaming(), NullLogger<NamesShown>.Instance);
 
-    public Expurgations Expurgations(IExpurgationRepository copies, IPageCache pages) => new(Rites, copies, pages, Time);
+    public Expurgations Expurgations(IExpurgationRepository copies, IPageCache pages) => new(Rites, new SnapshotFollowingErasures(copies, Snapshots()), pages, Time);
 
     /// <summary>Every stored document as JSON, to check what's kept anywhere.</summary>
     public async Task<List<string>> AllDocuments()

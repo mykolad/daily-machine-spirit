@@ -41,6 +41,8 @@ param cloudflareZoneId string
 param cloudflareSiteUrl string
 @description('Whether the smoke tests vote as a test voter here, reading the session secret as the GitHub deploy identity. Never in production, whose counts are public.')
 param smokeTestsVote bool
+@description('The storage account outside the app region that keeps the snapshot of the rites (#112), where this environment has a container of its own.')
+param snapshotAccountName string
 
 var keyVaultSecretsOfficer = 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7'
 var keyVaultSecretsUser = '4633458b-17de-408a-b874-0445c86b69e6'
@@ -158,6 +160,21 @@ resource deployments 'Microsoft.Storage/storageAccounts/blobServices/containers@
   name: deploymentContainer
 }
 
+resource snapshotAccount 'Microsoft.Storage/storageAccounts@2024-01-01' existing = {
+  name: snapshotAccountName
+}
+
+resource snapshotBlobs 'Microsoft.Storage/storageAccounts/blobServices@2024-01-01' existing = {
+  parent: snapshotAccount
+  name: 'default'
+}
+
+// This environment's copy of its rites (#112), which its app writes and reads back while Cosmos DB doesn't answer.
+resource snapshotContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2024-01-01' = {
+  parent: snapshotBlobs
+  name: 'rites-${environmentName}'
+}
+
 resource queues 'Microsoft.Storage/storageAccounts/queueServices@2024-01-01' = {
   parent: storage
   name: 'default'
@@ -226,6 +243,11 @@ resource app 'Microsoft.Web/sites@2024-04-01' = {
         {
           name: 'AzureWebJobsStorage__accountName'
           value: storage.name
+        }
+        // Outside the region (resources.bicep): the copy the app reads while Cosmos DB doesn't answer (#112).
+        {
+          name: 'RiteSnapshot__ContainerUri'
+          value: '${snapshotAccount.properties.primaryEndpoints.blob}${snapshotContainer.name}'
         }
         {
           name: 'Cosmos__Endpoint'
@@ -344,6 +366,8 @@ module appAccess 'appAccess.bicep' = {
     aiAccountName: ai.name
     cosmosAccountName: cosmos.name
     databaseName: database.name
+    snapshotAccountName: snapshotAccount.name
+    snapshotContainerName: snapshotContainer.name
   }
 }
 

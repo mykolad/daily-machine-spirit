@@ -11,6 +11,7 @@ using DailyMachineSpirit.Functions.Scriptorium;
 using DailyMachineSpirit.Functions.Scriptorium.Expurgation;
 using DailyMachineSpirit.Functions.Scriptorium.Naming;
 using DailyMachineSpirit.Functions.Scriptorium.SignIn;
+using DailyMachineSpirit.Functions.Snapshot;
 using DailyMachineSpirit.Functions.Tags;
 using DailyMachineSpirit.Functions.Telemetry;
 using DailyMachineSpirit.Functions.Voters;
@@ -81,11 +82,28 @@ var cosmos = builder.Configuration.GetSection(CosmosOptions.SectionName).Get<Cos
 builder.Services.AddSingleton(_ => CosmosClients.Create(cosmos));
 builder.Services.AddSingleton(services =>
     services.GetRequiredService<CosmosClient>().GetContainer(cosmos.Database, RiteRepository.ContainerName));
-builder.Services.AddSingleton<IRiteRepository, RiteRepository>();
+// The rites read from Cosmos DB, or from their snapshot outside the region while Cosmos DB doesn't answer (#112).
+var snapshot = builder.Configuration.GetSection(RiteSnapshotOptions.SectionName).Get<RiteSnapshotOptions>() ?? new RiteSnapshotOptions();
+builder.Services.AddSingleton<IRiteSnapshotStore>(_ => snapshot.ContainerUri.Length > 0
+    ? new BlobRiteSnapshotStore(new Uri(snapshot.ContainerUri))
+    : new NoRiteSnapshot());
+// What saves reads Cosmos DB alone; the public pages, search and the rites API read through the fallback.
+builder.Services.AddSingleton<RiteRepository>();
+builder.Services.AddSingleton<IRiteRepository>(services => services.GetRequiredService<RiteRepository>());
+builder.Services.AddSingleton<IRiteReader>(services => new RitesWithFallback(
+    services.GetRequiredService<RiteRepository>(), services.GetRequiredService<IRiteSnapshotStore>(),
+    services.GetRequiredService<TimeProvider>(), services.GetRequiredService<ILogger<RitesWithFallback>>()));
+builder.Services.AddSingleton<RiteSnapshots>();
+// A new rite is followed by the rites' snapshot, so the fallback has it too.
+builder.Services.AddSingleton<IRitePublishing>(services => new SnapshotFollowingPublishing(
+    services.GetRequiredService<RiteRepository>(), services.GetRequiredService<RiteSnapshots>()));
 builder.Services.AddSingleton<IDraftRepository, DraftRepository>();
 builder.Services.AddSingleton<IScriptoriumRepository, ScriptoriumRepository>();
 builder.Services.AddSingleton<IAuditRepository, AuditRepository>();
-builder.Services.AddSingleton<IExpurgationRepository, ExpurgationRepository>();
+// An erasure is followed by the rites' snapshot, so the fallback never shows the erased words.
+builder.Services.AddSingleton<ExpurgationRepository>();
+builder.Services.AddSingleton<IExpurgationRepository>(services => new SnapshotFollowingErasures(
+    services.GetRequiredService<ExpurgationRepository>(), services.GetRequiredService<RiteSnapshots>()));
 builder.Services.AddSingleton<IPreceptRepository, PreceptRepository>();
 builder.Services.AddSingleton<IScribeNameRepository, ScribeNameRepository>();
 builder.Services.AddSingleton<IVoteRepository, VoteRepository>();
