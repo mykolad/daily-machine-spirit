@@ -296,8 +296,8 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Contains($"""<article class="rite row ash" id="rite-{reasoned.Id:D}" aria-labelledby="title-{reasoned.Id:D}" data-reason="Too specific">""", html);
         Assert.Contains("""<span class="from">from #1</span>""", html);
         Assert.Contains("""<span class="reason-said"><span class="visually-hidden">Why it burned: </span>“Too specific”</span>""", html);
-        Assert.Contains($"""Burned by A Scribe on staging from #1 · <a href="/scriptorium/record?draft={reasoned.Id:D}">its record</a>""", html);
-        Assert.Contains($"""Burned by A Scribe on staging from #1 · no reason given · <a href="/scriptorium/record?draft={silent.Id:D}">its record</a>""", html);
+        Assert.Contains($"""Burned by A Scribe on staging · <a href="/scriptorium/record?draft={reasoned.Id:D}">its record</a>""", html);
+        Assert.Contains($"""Burned by A Scribe on staging · no reason given · <a href="/scriptorium/record?draft={silent.Id:D}">its record</a>""", html);
         Assert.Contains("Signed in as <strong>", html);
     }
 

@@ -119,12 +119,12 @@ public static partial class ScriptoriumPage
             """);
     }
 
-    // Who burned it and from where, as the Record has it; a burn older than the Record says neither. The reason is under
-    // the title, so only its absence is said here.
+    // Who burned it, as the Record has it; a burn older than the Record says "a Scribe". The place and the reason are in
+    // the row, so only the reason's absence is said here.
     private static string BurnMeta(Draft draft, IReadOnlyList<ScribeName> names)
     {
         var by = draft.BurnedBy.Map(scribe => Encode(ScribeNames.Of(scribe, names))).IfNone("a Scribe");
-        var parts = new List<string> { $"Burned by {by}{draft.BurnedFromPlace.Map(place => $" from #{place}").IfNone(string.Empty)}" };
+        var parts = new List<string> { $"Burned by {by}" };
         if (draft.BurnReason.IsNone)
         {
             parts.Add("no reason given");
