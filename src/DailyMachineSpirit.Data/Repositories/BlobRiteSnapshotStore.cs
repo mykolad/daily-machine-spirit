@@ -60,7 +60,7 @@ public sealed class BlobRiteSnapshotStore : IRiteSnapshotStore
             }
         });
 
-    public Task<Either<Error, Unit>> Save(IReadOnlyList<Rite> rites, Option<string> replacing, CancellationToken cancellationToken)
+    public Task<Either<Error, Unit>> SaveIfStillVersion(IReadOnlyList<Rite> rites, Option<string> versionRead, CancellationToken cancellationToken)
         => AttemptEither(async () =>
         {
             var snapshot = new RiteSnapshotDocument
@@ -69,7 +69,7 @@ public sealed class BlobRiteSnapshotStore : IRiteSnapshotStore
                 Rites = rites.Select(rite => RiteDocument.From(rite, rite.Number)).ToList(),
             };
             // Only over the copy read before the rites were: a copy saved meanwhile may hold newer words (an erasure).
-            var conditions = replacing.Match(
+            var conditions = versionRead.Match(
                 Some: version => new BlobRequestConditions { IfMatch = new ETag(version) },
                 None: () => new BlobRequestConditions { IfNoneMatch = ETag.All });
             try

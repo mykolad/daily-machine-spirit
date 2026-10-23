@@ -61,7 +61,7 @@ public sealed class InMemoryRiteSnapshot : IRiteSnapshotStore
         return Task.FromResult(Right<Error, Option<RiteSnapshot>>(Saved));
     }
 
-    public async Task<Either<Error, Unit>> Save(IReadOnlyList<Rite> rites, Option<string> replacing, CancellationToken cancellationToken)
+    public async Task<Either<Error, Unit>> SaveIfStillVersion(IReadOnlyList<Rite> rites, Option<string> versionRead, CancellationToken cancellationToken)
     {
         if (FailNextSave)
         {
@@ -71,7 +71,7 @@ public sealed class InMemoryRiteSnapshot : IRiteSnapshotStore
         var meanwhile = BeforeNextSave;
         BeforeNextSave = None;
         await meanwhile.Match(Some: save => save(), None: () => Task.CompletedTask);
-        if (CurrentVersion != replacing)
+        if (CurrentVersion != versionRead)
         {
             return IRiteSnapshotStore.ChangedMeanwhile;
         }

@@ -77,7 +77,7 @@ public sealed class RiteSnapshots
 
     // The copy's version is read before the rites, so a copy saved after this read the rites is never replaced by it.
     private async Task<Either<Error, int>> WriteOnce(CancellationToken cancellationToken)
-        => await (await store.Version(cancellationToken)).BindAsync(async replacing =>
+        => await (await store.Version(cancellationToken)).BindAsync(async versionRead =>
             await (await rites.GetAllPublished(cancellationToken))
-                .BindAsync(all => store.Save(all, replacing, cancellationToken).MapAsync(_ => all.Count)));
+                .BindAsync(all => store.SaveIfStillVersion(all, versionRead, cancellationToken).MapAsync(_ => all.Count)));
 }

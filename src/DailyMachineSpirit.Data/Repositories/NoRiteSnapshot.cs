@@ -14,7 +14,7 @@ public sealed class NoRiteSnapshot : IRiteSnapshotStore
     public Task<Either<Error, Option<RiteSnapshot>>> Load(CancellationToken cancellationToken)
         => Task.FromResult(Right<Error, Option<RiteSnapshot>>(None));
 
-    public Task<Either<Error, Unit>> Save(IReadOnlyList<Rite> rites, Option<string> replacing, CancellationToken cancellationToken)
+    public Task<Either<Error, Unit>> SaveIfStillVersion(IReadOnlyList<Rite> rites, Option<string> versionRead, CancellationToken cancellationToken)
         => Task.FromResult(Right<Error, Unit>(unit));
 
     public Task<Either<Error, Unit>> Discard(CancellationToken cancellationToken) => Task.FromResult(Right<Error, Unit>(unit));
