@@ -54,7 +54,6 @@ public sealed class RiteSnapshotTests : IAsyncLifetime
         }
     }
 
-
     // Cosmos DB down: the pages' reads come from the snapshot, loaded once and kept while it's the version saved; a
     // minute later, Cosmos DB is asked again, and still failing, the same copy answers.
     [Fact]

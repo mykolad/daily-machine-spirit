@@ -156,6 +156,7 @@ public sealed class RitesWithFallback : IRiteReader
             probing = false;
         }
     }
+
     // The copy as kept, if it's still the version saved; else the saved one, loaded once however many reads ask at once.
     // Asking for the version costs a small request per read, only while Cosmos DB is down, made by each read at once (not
     // behind the gate): a copy saved since (an erasure's) is never missed, and only a download waits its turn.

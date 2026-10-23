@@ -90,7 +90,10 @@ builder.Services.AddSingleton<RiteSnapshots>();
 builder.Services.AddSingleton<IDraftRepository, DraftRepository>();
 builder.Services.AddSingleton<IScriptoriumRepository, ScriptoriumRepository>();
 builder.Services.AddSingleton<IAuditRepository, AuditRepository>();
-builder.Services.AddSingleton<IExpurgationRepository, ExpurgationRepository>();
+// An erasure is followed by the rites' snapshot, so the fallback never shows the erased words.
+builder.Services.AddSingleton<ExpurgationRepository>();
+builder.Services.AddSingleton<IExpurgationRepository>(services => new SnapshotFollowingErasures(
+    services.GetRequiredService<ExpurgationRepository>(), services.GetRequiredService<RiteSnapshots>()));
 builder.Services.AddSingleton<IPreceptRepository, PreceptRepository>();
 builder.Services.AddSingleton<IScribeNameRepository, ScribeNameRepository>();
 builder.Services.AddSingleton<IVoteRepository, VoteRepository>();
