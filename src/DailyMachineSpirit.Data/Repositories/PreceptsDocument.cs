@@ -14,11 +14,17 @@ internal sealed record PreceptsDocument
 
     public string Type { get; init; } = "precepts";
 
-    public List<Precept> Precepts { get; init; } = [];
+    public List<PreceptDocument> Precepts { get; init; } = [];
 
     public List<string> Rejected { get; init; } = [];
 
-    // Null until the first distillation: the JSON serializer doesn't know Option.
+    // Null when nothing waits to be undone, and until the first distillation: the JSON serializer doesn't know Option.
+    public PreceptDocument? LastDeleted { get; init; }
+
+    public int? LastDeletedPlace { get; init; }
+
+    public string? LastDeletedLetGo { get; init; }
+
     public DateTime? DistilledAtUtc { get; init; }
 
     public int? DistilledFrom { get; init; }
@@ -27,8 +33,11 @@ internal sealed record PreceptsDocument
 
     public static PreceptsDocument From(PreceptBook book) => new()
     {
-        Precepts = book.Precepts,
+        Precepts = book.Precepts.Select(PreceptDocument.From).ToList(),
         Rejected = book.Rejected,
+        LastDeleted = book.LastDeleted.Map(deleted => PreceptDocument.From(deleted.Precept)).OrNull(),
+        LastDeletedPlace = book.LastDeleted.Map(deleted => deleted.Place).OrNullable(),
+        LastDeletedLetGo = book.LastDeleted.Bind(deleted => deleted.LetGo).OrNull(),
         DistilledAtUtc = book.DistilledAtUtc.Map(Utc.From).OrNullable(),
         DistilledFrom = book.DistilledFrom.OrNullable(),
         NewestJudgmentReadUtc = book.NewestJudgmentReadUtc.Map(Utc.From).OrNullable(),
@@ -36,8 +45,9 @@ internal sealed record PreceptsDocument
 
     public PreceptBook ToBook() => new()
     {
-        Precepts = Precepts,
+        Precepts = Precepts.Select(precept => precept.ToPrecept()).ToList(),
         Rejected = Rejected,
+        LastDeleted = Optional(LastDeleted).Map(deleted => new DeletedPrecept(deleted.ToPrecept(), LastDeletedPlace ?? 0, Optional(LastDeletedLetGo))),
         DistilledAtUtc = Optional(DistilledAtUtc),
         DistilledFrom = Optional(DistilledFrom),
         NewestJudgmentReadUtc = Optional(NewestJudgmentReadUtc),

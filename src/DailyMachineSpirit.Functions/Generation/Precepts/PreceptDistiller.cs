@@ -124,6 +124,8 @@ public sealed class PreceptDistiller
                     DistilledAtUtc = time.GetUtcNow().UtcDateTime,
                     DistilledFrom = decisions.Count,
                     NewestJudgmentReadUtc = decisions.Max(decision => decision.DecidedAtUtc),
+                    // A distillation is a change like any other: the last delete can no longer be undone.
+                    LastDeleted = None,
                 }));
     }
 

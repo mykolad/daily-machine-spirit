@@ -221,6 +221,27 @@ and candles behind it, and the recent rites under Today.
   nothing in the margins to read: there's nothing it would say there that it doesn't say already. The
   candles and traces are hidden from screen readers, and the flames stop under reduced motion.
 
+## The Precepts (the Scriptorium redesign, step 2)
+
+- **The numerals are decoration:** the list is an `<ol>`, so a screen reader already counts the precepts; the Roman
+  numerals are `aria-hidden`. It says `role="list"`, since Safari drops the semantics of a list styled without markers.
+- **The icon buttons name their precept,** with visually hidden text ("Delete: Prefer the real fix."), as the
+  calendar's arrows do. Each is 44 by 44 pixels, and their tooltips (`title`) say what they do.
+- **Pin is a toggle with one name,** "Pin, so distilling keeps it", and `aria-pressed` says whether it's pinned. The
+  handoff changed the label to "Unpin" when pinned; a toggle whose name changes as well as its state reads twice
+  over. The tooltip still says "Unpin…" to the pointer.
+- **Editing doesn't hang on the click:** clicking the words is a shortcut for the pointer. The pencil is the way for
+  a keyboard and a screen reader, and without the script it's a link to the page with the words open. Escape or
+  Cancel closes the words unsaved, and focus goes back to the pencil.
+- **Undo after a delete has no time limit:** the handoff's toast faded after seven seconds, but the page reloads after
+  a delete, so a keyboard or a screen reader could lose it before reaching it (WCAG 2.2.1). It stays until another
+  change ends it anyway, and comes right after the status message in the page's order, so it's reached first. The
+  status message doesn't say the delete again.
+- **The table scrolls in its own card** on a narrow screen, rather than the page. The card is a region named by the
+  table's heading, with a tab stop, so a keyboard can scroll it where the browser doesn't make it focusable itself
+  (Safari). Months without a judgment share one
+  row, its "No judgments" spanning the figures' columns.
+
 ## Imperial dates
 
 - **The day as we reckon it is a toggletip, not a hover-only tooltip.** The Imperial date ("0 805 026.M3") on the rite

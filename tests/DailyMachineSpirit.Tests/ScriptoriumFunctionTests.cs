@@ -193,7 +193,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var function = Function();
         var precepts = new PreceptsFunction(testbed.PreceptKeeping(), testbed.Distiller(),
             new AgreementTrend(testbed.Scriptorium, Options.Create(Settings.ScriptoriumPages), testbed.Time), testbed.Tabs(),
-            new EveryoneIsScribeSignIn(), NullLogger<PreceptsFunction>.Instance);
+            testbed.NamesShown(), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<PreceptsFunction>.Instance);
 
         var pages = new Dictionary<string, string>
         {

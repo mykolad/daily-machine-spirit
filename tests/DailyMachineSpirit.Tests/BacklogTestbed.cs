@@ -156,6 +156,8 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public RiteSnapshots Snapshots() => new(Rites, Snapshot, Time, NullLogger<RiteSnapshots>.Instance);
 
+    public NamesShown NamesShown() => new(ScribeNaming(), NullLogger<NamesShown>.Instance);
+
     public Expurgations Expurgations(IExpurgationRepository copies, IPageCache pages) => new(Rites, copies, pages, Snapshots(), Time);
 
     /// <summary>Every stored document as JSON, to check what's kept anywhere.</summary>
