@@ -372,16 +372,18 @@ public static partial class ScriptoriumPage
     /// first draft to its publishing.
     /// </summary>
     /// <param name="names">The names the Scribes chose (#84); the others show by the end of their ids.</param>
+    /// <param name="found">That draft as it is now, to lead to it; none when it can't be read.</param>
     /// <param name="name">How the Record shows the Scribe looking; none when the names can't be read.</param>
     public static string RenderRecord(
-        IReadOnlyList<AuditEntry> entries, IReadOnlyList<ScribeName> names, Option<TabCounts> counts, Option<Guid> draft, Option<NameInTheRecord> name)
+        IReadOnlyList<AuditEntry> entries, IReadOnlyList<ScribeName> names, Option<TabCounts> counts, Option<Guid> draft, Option<Draft> found,
+        Option<NameInTheRecord> name)
     {
         var html = new StringBuilder();
         Head(html, "The Record", TabBar(ScriptoriumTab.Record, counts), Identity(name));
         html.Append("""<main id="main">""");
         Heading(html, "The Record",
             "Every change to the calendar, the rites and the Precepts, and who made it, newest first: the Scribes' actions and the Machine Spirit's own.");
-        draft.IfSome(_ => html.Append("""<p>One rite's record. <a href="/scriptorium/record">The whole record</a></p>"""));
+        draft.IfSome(_ => html.Append($"""<p>One rite's record.{found.Bind(rite => WhereItIs(rite, entries)).Map(link => $" {link} ·").IfNone(string.Empty)} <a href="/scriptorium/record">The whole record</a></p>"""));
         if (entries.Count == 0)
         {
             html.Append("<p>Nothing is recorded yet.</p>");
@@ -595,6 +597,20 @@ public static partial class ScriptoriumPage
             _ => $"published {rite}{entry.RiteNumber.Map(number => $" as NO. {number}").IfNone(string.Empty)}",
         };
         return what + entry.Detail.Map(detail => $""" <span class="when">({Encode(detail)})</span>""").IfNone(string.Empty);
+    }
+
+    // Where one rite's record leads to the rite itself: its card in the calendar or the Ashes, opened and marked, or its
+    // page once published (its number is in the publish entry). None for a draft published before the Record kept numbers.
+    private static Option<string> WhereItIs(Draft draft, IReadOnlyList<AuditEntry> entries)
+    {
+        var id = draft.Id.ToString("D");
+        return draft.State switch
+        {
+            DraftState.Waiting => Some($"""<a href="/scriptorium?rite={id}#rite-{id}">See it in the calendar</a>"""),
+            DraftState.Burned => Some($"""<a href="/scriptorium/ashes?rite={id}#rite-{id}">See it in the Ashes</a>"""),
+            _ => entries.Where(entry => entry.Action == AuditAction.Publish).Bind(entry => entry.RiteNumber.ToSeq()).HeadOrNone()
+                .Map(number => $"""<a href="/r/{number}">Read it, NO. {number}</a>"""),
+        };
     }
 
     private static string When(DateTime atUtc) => atUtc.ToString("ddd d MMM, HH:mm 'UTC'", CultureInfo.InvariantCulture);

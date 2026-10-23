@@ -40,7 +40,7 @@ public sealed class ScribeNamingTests : IAsyncLifetime
 
         Assert.Equal(Some("Magos Ferrum"), Ok(await naming.NameOf(Ferrum, CancellationToken.None)));
         var html = ScriptoriumPage.RenderRecord(
-            Ok(await testbed.Audit.GetNewest(10, CancellationToken.None)), Ok(await naming.All(CancellationToken.None)), None, None, None);
+            Ok(await testbed.Audit.GetNewest(10, CancellationToken.None)), Ok(await naming.All(CancellationToken.None)), None, None, None, None);
         Assert.Contains("Magos Ferrum summoned new rites", html);
         Assert.Contains("Magos Ferrum chose the name “Magos Ferrum” <span class=\"when\">(was “Brother Ferrum”)</span>", html);
         Assert.Contains("Magos Ferrum chose the name “Brother Ferrum”</li>", html);

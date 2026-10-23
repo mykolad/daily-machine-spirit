@@ -149,6 +149,13 @@ skills/                           — Consult the Machine Spirit, a skill that p
     the order of their functions' names, first match wins, so the catch-all's name sorts last (`ZzToday`): any other
     route whose function's name sorted after it would never be reached (`FunctionRoutesTests`).
   - Everything a model wrote goes through `Html.Encode` (`Html.WithInlineCode` for text with `backticks`).
+  - **Imperial dates** (`ImperialDate`): a rite's day is shown as the far future reckons it, "0 805 026.M3" (a check
+    number, the thousandths of the year passed at the rite's midnight, the year within its millennium, the
+    millennium), on the rite card, the Archive's rows and its "Since", Today's recent rites, More rites and the nav
+    search's suggestions (the script reckons them the same way). The day as we reckon it is a toggletip on the rite
+    card and "Since" (shown while the pointer is on it or it has focus, or once tapped; Escape hides it), and inside a
+    link, where a button can't be, it's said to a screen reader and in the `title`. A screen reader always hears it.
+    Countdowns, "00:00 UTC", the Archive's months and the Scriptorium keep our reckoning; the API keeps ISO days.
   - Every focusable control sits on the dark background, where the amber focus ring shows, except on the Archive's
     parchment sheet, whose rows, field and tag links get a red ring (`docs/design/accessibility.md`).
   - **More rites** (a rite's own page): the three rites whose similarity scores are closest (cosine, `RelatedRites`),
@@ -418,7 +425,8 @@ skills/                           — Consult the Machine Spirit, a skill that p
       judged drafts count: without a quality, the Augury places a draft by age alone. When
       both stay low, the Augury can be left to choose on its own.
   - **The Record** (`/scriptorium/record`, #9): who changed what, newest first, the last 100; `?draft=` gives one
-    draft's whole history. An `AuditEntry` (documents of type `audit`) is saved in the same batch as each change, so
+    draft's whole history, with the way to it as it is now: its card in the calendar or the Ashes (opened, marked and
+    scrolled to), or its page once published. An `AuditEntry` (documents of type `audit`) is saved in the same batch as each change, so
     there's no change without its entry: the Scribes' actions, and the Machine Spirit's own (each draft it writes, each
     rite it publishes). Only Summon, which stores nothing itself, saves its entry alone, and goes ahead if that fails.
     - **Who:** a Scribe is their Access id (the token's `sub`), never their email; on staging, with no sign-in, every
