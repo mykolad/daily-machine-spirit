@@ -40,6 +40,11 @@ public static partial class ScriptoriumPage
         var status = refused.Map(precept => Encode($"Not saved: {precept.Reason} {WhereTheWordsAre(precept, book)}"))
             | (undoable.IsSome ? None : outcome.Map(PreceptStatus));
         html.Append($"""<p class="status" role="status" id="precepts-status">{status.IfNone(string.Empty)}</p>""");
+        // Straight after the message, so the keyboard and a screen reader reach it first, and it stays until another
+        // change, which ends it anyway: a time limit would take it away before some could reach it (WCAG 2.2.1).
+        undoable.IfSome(deleted => html.Append($"""
+            <div class="toasts"><div class="toast"><span class="toast-text">Precept deleted.</span><form method="post" action="/scriptorium/precepts/{deleted.Precept.Id:D}/restore">{version}<button class="undo" title="Puts the precept back where it was">{ScriptoriumIcons.Undo}Undo</button></form></div></div>
+            """));
         DistilPanel(html, book, shown.NowUtc);
 
         if (book.Precepts.Count == 0)
@@ -60,9 +65,6 @@ public static partial class ScriptoriumPage
         html.Append("</ol>");
         Agreement(html, trend);
         html.Append("</main>");
-        undoable.IfSome(deleted => html.Append($"""
-            <div class="toasts" role="status"><div class="toast" data-fades><span class="toast-text">Precept deleted.</span><form method="post" action="/scriptorium/precepts/{deleted.Precept.Id:D}/restore">{version}<button class="undo" title="Puts the precept back where it was">{ScriptoriumIcons.Undo}Undo</button></form></div></div>
-            """));
         Footer(html, Some(SlowActionScript.Js + PreceptsScript.Js));
         return html.ToString();
     }

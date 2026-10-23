@@ -23,6 +23,8 @@ internal sealed record PreceptsDocument
 
     public int? LastDeletedPlace { get; init; }
 
+    public string? LastDeletedLetGo { get; init; }
+
     public DateTime? DistilledAtUtc { get; init; }
 
     public int? DistilledFrom { get; init; }
@@ -35,6 +37,7 @@ internal sealed record PreceptsDocument
         Rejected = book.Rejected,
         LastDeleted = book.LastDeleted.Map(deleted => PreceptDocument.From(deleted.Precept)).OrNull(),
         LastDeletedPlace = book.LastDeleted.Map(deleted => deleted.Place).OrNullable(),
+        LastDeletedLetGo = book.LastDeleted.Bind(deleted => deleted.LetGo).OrNull(),
         DistilledAtUtc = book.DistilledAtUtc.Map(Utc.From).OrNullable(),
         DistilledFrom = book.DistilledFrom.OrNullable(),
         NewestJudgmentReadUtc = book.NewestJudgmentReadUtc.Map(Utc.From).OrNullable(),
@@ -44,7 +47,7 @@ internal sealed record PreceptsDocument
     {
         Precepts = Precepts.Select(precept => precept.ToPrecept()).ToList(),
         Rejected = Rejected,
-        LastDeleted = Optional(LastDeleted).Map(deleted => new DeletedPrecept(deleted.ToPrecept(), LastDeletedPlace ?? 0)),
+        LastDeleted = Optional(LastDeleted).Map(deleted => new DeletedPrecept(deleted.ToPrecept(), LastDeletedPlace ?? 0, Optional(LastDeletedLetGo))),
         DistilledAtUtc = Optional(DistilledAtUtc),
         DistilledFrom = Optional(DistilledFrom),
         NewestJudgmentReadUtc = Optional(NewestJudgmentReadUtc),

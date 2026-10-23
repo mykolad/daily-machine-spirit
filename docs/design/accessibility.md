@@ -218,7 +218,9 @@ and candles behind it, and the recent rites under Today.
 - **Editing doesn't hang on the click:** clicking the words is a shortcut for the pointer. The pencil is the way for
   a keyboard and a screen reader, and without the script it's a link to the page with the words open. Escape or
   Cancel closes the words unsaved, and focus goes back to the pencil.
-- **Undo after a delete** is a toast in a `role="status"` region. It waits while the pointer or focus is on it
-  (WCAG 2.2.1), and without the script it stays. The status message doesn't say the delete again.
+- **Undo after a delete has no time limit:** the handoff's toast faded after seven seconds, but the page reloads after
+  a delete, so a keyboard or a screen reader could lose it before reaching it (WCAG 2.2.1). It stays until another
+  change ends it anyway, and comes right after the status message in the page's order, so it's reached first. The
+  status message doesn't say the delete again.
 - **The table scrolls in its own card** on a narrow screen, rather than the page. Months without a judgment share one
   row, its "No judgments" spanning the figures' columns.

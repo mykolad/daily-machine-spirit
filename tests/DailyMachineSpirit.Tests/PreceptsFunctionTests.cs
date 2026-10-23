@@ -257,7 +257,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         await function.Change(Form(await Seen()), middle, "delete", CancellationToken.None);
         var html = Html(await function.Page(Get($"?done=delete&precept={middle:D}"), CancellationToken.None), 200);
 
-        Assert.Contains($"""<div class="toast" data-fades><span class="toast-text">Precept deleted.</span><form method="post" action="/scriptorium/precepts/{middle:D}/restore">""", html);
+        Assert.Contains($"""<div class="toast"><span class="toast-text">Precept deleted.</span><form method="post" action="/scriptorium/precepts/{middle:D}/restore">""", html);
         Assert.Contains("""<p class="status" role="status" id="precepts-status"></p>""", html);
         Assert.Contains("Middle.", Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Rejected);
 
@@ -273,6 +273,25 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         await function.Change(Form(await Seen()), first, "unpin", CancellationToken.None);
         Assert.Equal("/scriptorium/precepts?done=changed", RedirectedTo(await function.Change(Form(await Seen()), middle, "restore", CancellationToken.None)));
         Assert.Equal(["Last.", "First."], Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts.Select(precept => precept.Text));
+    }
+
+    // With the deleted precepts remembered already as many as are kept, the delete lets the oldest go; Undo remembers it
+    // again, so a distillation still may not propose it.
+    [Fact]
+    public async Task Undo_WithAFullListOfDeletedPrecepts_RemembersTheOneTheDeleteLetGo()
+    {
+        var function = Function();
+        var precept = Ok(await testbed.PreceptKeeping().AddPinned("Kept.", Tester, CancellationToken.None));
+        var rejected = Enumerable.Range(1, PreceptBook.RejectedKept).Select(n => $"Rejected {n}.").ToList();
+        var read = Ok(await testbed.Precepts.Get(CancellationToken.None));
+        Ok(await testbed.Precepts.Save(read, read.Book with { Rejected = rejected },
+            new AuditEntry { Id = Guid.NewGuid(), Actor = Tester, Action = AuditAction.DeletePrecept }, CancellationToken.None));
+
+        await function.Change(Form(await Seen()), precept, "delete", CancellationToken.None);
+        Assert.DoesNotContain($"Rejected {PreceptBook.RejectedKept}.", Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Rejected);
+        await function.Change(Form(await Seen()), precept, "restore", CancellationToken.None);
+
+        Assert.Equal(rejected, Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Rejected);
     }
 
     // A distillation since the delete is a change like any other: the page shown after it offers no Undo, and an Undo

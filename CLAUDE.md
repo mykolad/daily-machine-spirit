@@ -382,9 +382,10 @@ skills/                           — Consult the Machine Spirit, a skill that p
       pinned by one; precepts kept before that say "A Scribe's words"), with three icon buttons: Pin (`aria-pressed`),
       Edit and Delete. Edit opens the words in place (`PreceptsScript`; a click on the words does too), and without the
       script the pencil is a link to `?edit=<id>`, the page with those words open. A delete takes effect at once, and
-      offers Undo (a toast that fades after seven seconds, never under the pointer or focus): the precept deleted last
-      is kept with its place (`PreceptBook.LastDeleted`) until any other change, and Undo puts it back where it was,
-      as it was, its words no longer barred from a distillation (recorded as `RestorePrecept`). The distil panel says
+      offers Undo, right after the message and kept until another change (no time limit): the precept deleted last is
+      kept with its place, and the rejection a full list let go of (`PreceptBook.LastDeleted`), until any other change,
+      a distillation's too. Undo puts it back where it was, as it was, its words no longer barred from a distillation
+      (recorded as `RestorePrecept`). The distil panel says
       when the next weekly run is (`NextDistillation`), and the agreement table folds months without a judgment into
       one row ("May–Sep 2026").
     - **Within the writer's rules** (#86, `PreceptCheck`): `gpt-6-luna`, then `gpt-6-sol` if it fails

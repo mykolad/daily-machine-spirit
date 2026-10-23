@@ -84,7 +84,9 @@ public sealed class PreceptKeeping
             {
                 Precepts = book.Precepts.Where(precept => precept.Id != preceptId).ToList(),
                 Rejected = [found.Text, .. book.Rejected.Take(PreceptBook.RejectedKept - 1)],
-                LastDeleted = new DeletedPrecept(found, book.Precepts.IndexOf(found)),
+                // The rejection a full list let go of, to be remembered again if the delete is undone.
+                LastDeleted = new DeletedPrecept(found, book.Precepts.IndexOf(found),
+                    book.Rejected.Count >= PreceptBook.RejectedKept ? Optional(book.Rejected[PreceptBook.RejectedKept - 1]) : None),
             },
                 Audit(scribe, AuditAction.DeletePrecept, found.Text, None))),
             Some(etag),
@@ -104,7 +106,7 @@ public sealed class PreceptKeeping
                         : (book with
                         {
                             Precepts = [.. book.Precepts.Take(deleted.Place), deleted.Precept, .. book.Precepts.Skip(deleted.Place)],
-                            Rejected = WithoutFirst(book.Rejected, deleted.Precept.Text),
+                            Rejected = [.. WithoutFirst(book.Rejected, deleted.Precept.Text), .. deleted.LetGo],
                             LastDeleted = None,
                         },
                             Audit(scribe, AuditAction.RestorePrecept, deleted.Precept.Text, None))))

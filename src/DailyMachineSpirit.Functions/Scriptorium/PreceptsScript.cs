@@ -2,8 +2,8 @@ namespace DailyMachineSpirit.Functions.Scriptorium;
 
 /// <summary>
 /// The Precepts' script, on top of their forms and links: a precept's words open to edit in place (its pencil, or a
-/// click on the words), Add the Precept waits for words, and the Undo after a delete fades after seven seconds. Without
-/// it, the pencil is a link to the page with those words open (<c>?edit=</c>), and the Undo stays.
+/// click on the words), and Add the Precept waits for words. Without it, the pencil is a link to the page with those
+/// words open (<c>?edit=</c>).
 /// </summary>
 public static class PreceptsScript
 {
@@ -60,19 +60,6 @@ public static class PreceptsScript
             const wait = () => { add.disabled = field.value.trim() === ''; };
             field.addEventListener('input', wait);
             wait();
-          }
-
-          // Never gone while the pointer or focus is on it (WCAG 2.2.1).
-          const toast = document.querySelector('.toast[data-fades]');
-          if (toast) {
-            let timer = 0;
-            const later = () => {
-              clearTimeout(timer);
-              timer = setTimeout(() => (toast.matches(':hover, :focus-within') ? later() : toast.remove()), 7000);
-            };
-            toast.addEventListener('mouseleave', later);
-            toast.addEventListener('focusout', later);
-            later();
           }
         })();
         """;
