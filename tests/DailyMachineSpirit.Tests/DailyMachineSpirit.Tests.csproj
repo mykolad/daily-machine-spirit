@@ -19,8 +19,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The synthetic check of Today, so a test can hold it to the page it checks. -->
+    <!-- The checks of Today (the synthetic one, the daily one in GitHub), so a test can hold them to the page they check. -->
     <None Include="..\..\observability\synthetics\todays-rite.js" Link="todays-rite.js" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\.github\workflows\check-todays-rite.yml" Link="check-todays-rite.yml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
