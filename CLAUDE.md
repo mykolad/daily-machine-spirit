@@ -15,8 +15,9 @@ chatbots, and they're about habits any developer knows, not one tool's commands 
 - Tagline: *In the grim darkness of the far future, no one reads the code.* Motto: *Knowledge is lost. The rituals
   remain.* (`Layout.Motto`): under the rite on Today, where it's read, between brass rules (`.epigraph`), and in the
   footer on every other page; Today's footer leaves it out, so it's said once.
-- Everything it runs on in Azure is its own, in one resource group defined in Bicep (`infra/`): the models, a Cosmos DB
-  account, a Key Vault and a Functions app per environment. Only the Grafana Cloud stack is shared, with its own token.
+- Everything it runs on in Azure is its own, in one resource group defined in Bicep (`infra/`): the models, and a
+  Cosmos DB account, a Key Vault and a Functions app per environment (production's account is the free tier's,
+  staging's serverless, #129). Only the Grafana Cloud stack is shared, with its own token.
 - Runs as **one Azure Functions app** (Flex Consumption, .NET 10 isolated worker): a timer generates the daily rite,
   HTTP functions serve the pages and the API. Cloudflare sits in front (`dailymachinespirit.fyi`).
 
@@ -34,6 +35,7 @@ tests/load                        — k6 load tests of the public pages, run by 
 tools/coverage.ps1                — tests + coverage report + the coverage gate (Build and Test runs it)
 tools/grafana-alerts.ps1          — puts the alert rules into Grafana Cloud (observability/README.md)
 tools/grafana-synthetics.ps1      — puts the synthetic check of Today into Grafana Cloud (observability/README.md)
+tools/copy-staging-data.ps1       — copies staging's data to its own Cosmos DB account, once (#129, infra/README.md)
 infra/                            — Bicep for all of Azure (main.bicep); infra/README.md covers what Bicep can't do
 observability/                    — the Grafana dashboards (technical, activity), alerts and synthetic check, and what the app's metrics measure
 docs/api.md                       — the public rites API, a contract with outside clients
@@ -581,7 +583,8 @@ func start
 ```
 
 For anything that reads data, set `Cosmos:Endpoint` and `Cosmos:Database` in `local.settings.json` (e.g. staging's
-database, as your `az login`; never production's). HTTP functions run without storage. The timer also needs `AzureOpenAI:Endpoint` (staging's, with the Cognitive Services OpenAI User role for your
+account, `https://machinespirit-cosmos-staging.documents.azure.com:443/`, and its database `machinespirit-staging`,
+as your `az login`; never production's). HTTP functions run without storage. The timer also needs `AzureOpenAI:Endpoint` (staging's, with the Cognitive Services OpenAI User role for your
 `az login`); `Jev:ApiKey` can stay empty. Timer functions need `AzureWebJobsStorage`: run the Azurite emulator
 (`docker run -p 10000-10002:10000-10002 mcr.microsoft.com/azure-storage/azurite`).
 
