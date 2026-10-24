@@ -29,7 +29,8 @@ public sealed class AuditRepository : IAuditRepository
             new QueryDefinition("SELECT TOP @count * FROM c WHERE c.type = @type ORDER BY c.atUtc DESC").WithParameter("@count", count),
             cancellationToken);
 
-    // Compared as the strings Cosmos DB orders, so written as every entry's time is.
+    // Cosmos DB compares the stored times as text, so the bound is written exactly as they are (SortableUtcConverter's
+    // seven decimals). Written shorter, "…T00:00:00Z" would sort after "…T00:00:00.0000000Z" and let midnight's entries in.
     public Task<Either<Error, List<AuditEntry>>> GetNewestBefore(DateTime beforeUtc, int count, CancellationToken cancellationToken)
         => Entries(
             new QueryDefinition("SELECT TOP @count * FROM c WHERE c.type = @type AND c.atUtc < @before ORDER BY c.atUtc DESC")
