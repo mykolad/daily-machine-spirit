@@ -1016,8 +1016,8 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Equal($"/scriptorium?done=judged&rite={unjudged.Id:D}#rite-{unjudged.Id:D}", Assert.IsType<RedirectResult>(response.Result).Url);
         var html = Html(await Function().Page(Following(response.Result), CancellationToken.None), 200);
         Assert.Matches("Judged “Litany of the Cold Cache” again, \\d+%: the Augury places it for ", html);
-        Assert.Contains($"""A Scribe on staging judged <a href="/scriptorium/record?draft={unjudged.Id:D}">“Litany of the Cold Cache”</a> again""", ScriptoriumPage.RenderRecord(
-            Ok(await testbed.Audit.GetHistory(unjudged.Id, CancellationToken.None)), [], LanguageExt.Prelude.None, LanguageExt.Prelude.None, LanguageExt.Prelude.None, LanguageExt.Prelude.None));
+        Assert.Contains($"""<span class="actor scribe">A Scribe on staging</span> <span class="did">judged <a href="/scriptorium/record?draft={unjudged.Id:D}">“Litany of the Cold Cache”</a> again</span>""",
+            RecordPages.Of(Ok(await testbed.Audit.GetHistory(unjudged.Id, CancellationToken.None)), []));
     }
 
     [Fact]
@@ -1185,13 +1185,37 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         var one = Html(await Function().Record(Get($"?draft={draft.Id:D}"), CancellationToken.None), 200);
 
         var rite = $"""<a href="/scriptorium/record?draft={draft.Id:D}">“Litany of the Cold Cache”</a>""";
-        Assert.Contains($"""A Scribe on staging consigned {rite} to the flames <span class="when">(from #2)</span>""", all);
-        Assert.Contains($"The Machine Spirit wrote {rite}", all);
+        Assert.Contains($"""<span class="badge danger">""", all);
+        Assert.Contains($"""<span class="actor scribe">A Scribe on staging</span> <span class="did">consigned {rite} to the flames</span> <span class="detail">from #2</span>""", all);
+        Assert.Contains($"""<span class="actor spirit">The Machine Spirit</span> <span class="did">wrote {rite}</span>""", all);
         Assert.Contains("“The Rite of Re-Run”", all);
         Assert.Contains("One rite's record.", one);
         Assert.DoesNotContain("“The Rite of Re-Run”", one);
         var calendar = Html(await Function().Page(Get(""), CancellationToken.None), 200);
         Assert.Contains("""<a href="/scriptorium/record">The Record<span class="count">""", calendar);
+    }
+
+    // The address narrows it (an unknown word narrows nothing) and says the day to go on from, the days before it unread.
+    [Fact]
+    public async Task TheRecord_IsNarrowedAndPaged_ByItsAddress()
+    {
+        var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
+        await Function().Decide(Post(""), draft.Id, "burn", CancellationToken.None);
+        var today = DateOnly.FromDateTime(testbed.Time.GetUtcNow().UtcDateTime);
+
+        var burnedByScribes = Html(await Function().Record(Get("?who=scribes&what=burned"), CancellationToken.None), 200);
+        var unknown = Html(await Function().Record(Get("?who=anyone&what=everything"), CancellationToken.None), 200);
+        var fromYesterday = Html(await Function().Record(Get($"?from={today.AddDays(-1):yyyy-MM-dd}"), CancellationToken.None), 200);
+        var fromToday = Html(await Function().Record(Get($"?from={today:yyyy-MM-dd}"), CancellationToken.None), 200);
+        var fromTheLastDay = Html(await Function().Record(Get("?from=9999-12-31"), CancellationToken.None), 200);
+
+        Assert.Contains("consigned", burnedByScribes);
+        Assert.DoesNotContain("<span class=\"did\">wrote", burnedByScribes);
+        Assert.Contains("""<a class="chip" href="/scriptorium/record?who=scribes&amp;what=burned" aria-current="true">""", burnedByScribes);
+        Assert.Contains("""<a class="seg" href="/scriptorium/record" aria-current="true">Everyone""", unknown);
+        Assert.Contains("Nothing is recorded yet.", fromYesterday);
+        Assert.Contains("consigned", fromToday);
+        Assert.Contains("consigned", fromTheLastDay);
     }
 
     [Fact]

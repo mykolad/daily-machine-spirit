@@ -195,9 +195,49 @@ public static partial class ScriptoriumPage
         button:disabled { opacity: .55; cursor: not-allowed; }
         form[data-busy] button:disabled { cursor: progress; }
         .judgments li { background: #1a1612; border-radius: 12px; padding: 10px 14px; }
-        .record { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 8px; }
-        .record li { background: #1a1612; border-radius: 12px; padding: 10px 14px; }
-        .record time { display: block; font: 500 13px "JetBrains Mono", monospace; color: #b6a98f; }
+        .record-filters { display: grid; gap: 10px; margin: 28px 0 0; }
+        .who { display: inline-flex; justify-self: start; flex-wrap: wrap; padding: 3px; border: 1px solid rgba(237,227,207,.16); border-radius: 999px; }
+        .seg { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; min-height: 38px; padding: 7px 14px; border-radius: 999px; font: 600 14px/1.4 Figtree, sans-serif; color: #cdbd9e; text-decoration: none; }
+        .seg:hover { color: #f0d59a; }
+        .seg[aria-current] { background: #c9a25a; color: #100e0b; }
+        .what-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+        .utc { margin: 0; font: 500 13px "JetBrains Mono", monospace; color: #b6a98f; }
+        .record-empty { margin-top: 32px; }
+        .record-day { margin-top: 28px; }
+        .record-day h2 { position: sticky; top: 0; z-index: 1; display: flex; align-items: baseline; gap: 12px; margin: 0; padding: 10px 0; background: #100e0b; font: 700 13px Cinzel, serif; letter-spacing: .16em; text-transform: uppercase; color: #d9b874; }
+        .record { list-style: none; margin: 0; padding: 6px 0; background: #1a1612; border: 1px solid rgba(237,227,207,.1); border-radius: 20px; }
+        .record > li { display: grid; grid-template-columns: 48px 30px minmax(0, 1fr); gap: 2px 12px; align-items: start; padding: 9px 16px 9px 20px; }
+        .record > li > time { font: 500 13px/28px "JetBrains Mono", monospace; color: #b6a98f; }
+        .badge { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 999px; }
+        .badge .icon { width: 15px; height: 15px; stroke-width: 2.2; }
+        .badge.scribe { background: rgba(201,162,90,.15); color: #d9b874; }
+        .badge.spirit { background: rgba(140,196,174,.13); color: #8cc4ae; }
+        .badge.danger { background: rgba(208,96,77,.18); color: #e88a78; }
+        .said { min-width: 0; margin: 0; padding-top: 3px; line-height: 1.45; text-wrap: pretty; color: #cdbd9e; }
+        .actor { font-weight: 600; }
+        .actor.spirit { color: #8cc4ae; }
+        .actor.scribe { color: #d9b874; }
+        .said a { color: #ede3cf; font-weight: 600; text-decoration: none; }
+        .said a:hover { color: #f0d59a; text-decoration: underline; }
+        .said strong { color: #ede3cf; }
+        .detail { margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: rgba(237,227,207,.06); font: 500 12px/1.6 "JetBrains Mono", monospace; color: #cdbd9e; white-space: nowrap; }
+        .detail.augury { color: #8cc4ae; }
+        .detail.long { white-space: normal; overflow-wrap: anywhere; }
+        .run { display: inline; }
+        .run > summary { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; margin-left: 6px; padding: 2px 4px; font: 600 14px Figtree, sans-serif; color: #d9b874; cursor: pointer; list-style: none; }
+        .run > summary::-webkit-details-marker { display: none; }
+        .run > summary:hover { color: #f0d59a; }
+        .run > summary .icon { width: 16px; height: 16px; transition: transform .2s; }
+        .run[open] > summary .icon { transform: rotate(180deg); }
+        .run .hide, .run[open] .show { display: none; }
+        .run[open] .hide { display: inline; }
+        .run-list { list-style: none; margin: 8px 0 2px; padding: 8px 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 14px; background: #141c1f; border: 1px solid #2e4248; border-radius: 14px; }
+        .run-list li { display: grid; grid-template-columns: subgrid; grid-column: 1 / -1; align-items: baseline; }
+        .run-list a { font-size: 15px; font-weight: 400; }
+        .run-list time { font: 500 12px "JetBrains Mono", monospace; color: #b6a98f; }
+        .run-list .augury { font: 500 13px "JetBrains Mono", monospace; color: #8cc4ae; text-align: right; }
+        .older { margin: 24px 0 0; }
+        @media (max-width: 560px) { .record > li { grid-template-columns: 40px 28px minmax(0, 1fr); gap: 2px 8px; padding: 9px 12px; } }
         .record-link { margin: 0 0 16px; }
         .agreement { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 15px; }
         .agreement th, .agreement td { text-align: left; vertical-align: top; padding: 8px 10px 8px 0; border-bottom: 1px solid rgba(237,227,207,.12); }
@@ -367,41 +407,6 @@ public static partial class ScriptoriumPage
         return fields;
     }
 
-    /// <summary>
-    /// The Record (#9): every change to the drafts and rites, and who made it, newest first; or one draft's, from its
-    /// first draft to its publishing.
-    /// </summary>
-    /// <param name="names">The names the Scribes chose (#84); the others show by the end of their ids.</param>
-    /// <param name="found">That draft as it is now, to lead to it; none when it can't be read.</param>
-    /// <param name="name">How the Record shows the Scribe looking; none when the names can't be read.</param>
-    public static string RenderRecord(
-        IReadOnlyList<AuditEntry> entries, IReadOnlyList<ScribeName> names, Option<TabCounts> counts, Option<Guid> draft, Option<Draft> found,
-        Option<NameInTheRecord> name)
-    {
-        var html = new StringBuilder();
-        Head(html, "The Record", TabBar(ScriptoriumTab.Record, counts), Identity(name));
-        html.Append("""<main id="main">""");
-        Heading(html, "The Record",
-            "Every change to the calendar, the rites and the Precepts, and who made it, newest first: the Scribes' actions and the Machine Spirit's own.");
-        draft.IfSome(_ => html.Append($"""<p>One rite's record.{found.Bind(rite => WhereItIs(rite, entries)).Map(link => $" {link} ·").IfNone(string.Empty)} <a href="/scriptorium/record">The whole record</a></p>"""));
-        if (entries.Count == 0)
-        {
-            html.Append("<p>Nothing is recorded yet.</p>");
-        }
-        else
-        {
-            html.Append("""<ol class="record">""");
-            foreach (var entry in entries)
-            {
-                html.Append($"""<li><time datetime="{entry.AtUtc:yyyy-MM-ddTHH:mm:ssZ}">{When(entry.AtUtc)}</time> {Encode(ScribeNames.Of(entry.Actor, names))} {Did(entry)}</li>""");
-            }
-            html.Append("</ol>");
-        }
-        html.Append("</main>");
-        Footer(html, None);
-        return html.ToString();
-    }
-
     // Each button names the rite for screen readers, since every entry has the same buttons.
     private static string Button(string id, string title, string action, string icon, string label, string style)
         => $"""<button title="{Encode(About(action))}" class="{style}" formaction="/scriptorium/drafts/{id}/{action}">{icon}{label}<span class="visually-hidden">: {Encode(title)}</span></button>""";
@@ -566,54 +571,6 @@ public static partial class ScriptoriumPage
         ScribeAction.Restore => "Restored from the ashes",
         _ => "Released to the Augury",
     };
-
-    // What an entry records, after who: the rite (or precept) named by its words then, a rite linking to its own record.
-    private static string Did(AuditEntry entry)
-    {
-        var rite = entry.DraftId.Match(
-            Some: id => $"""<a href="/scriptorium/record?draft={id:D}">“{WithCode(entry.Title)}”</a>""",
-            None: () => $"“{WithCode(entry.Title)}”");
-        var what = entry.Action switch
-        {
-            AuditAction.Anoint => $"anointed {rite}",
-            AuditAction.Exalt => $"exalted {rite}",
-            AuditAction.Humble => $"humbled {rite}",
-            AuditAction.Burn => $"consigned {rite} to the flames",
-            AuditAction.Restore => $"restored {rite} from the ashes",
-            AuditAction.Amend => $"amended {rite}",
-            AuditAction.Summon => "summoned new rites",
-            AuditAction.LetTheAuguryDecide => "let the Augury decide",
-            AuditAction.Release => $"released {rite} to the Augury",
-            AuditAction.Write => $"wrote {rite}",
-            AuditAction.Distil => """distilled <a href="/scriptorium/precepts">the Precepts</a>""",
-            AuditAction.AddPrecept => $"added the precept {rite}",
-            AuditAction.EditPrecept => $"edited the precept {rite}",
-            AuditAction.PinPrecept => $"pinned the precept {rite}",
-            AuditAction.UnpinPrecept => $"unpinned the precept {rite}",
-            AuditAction.DeletePrecept => $"deleted the precept {rite}",
-            AuditAction.JudgeAgain => $"judged {rite} again",
-            AuditAction.ChooseName => $"chose the name {rite}",
-            AuditAction.Expurgate => $"erased words from {rite}{entry.RiteNumber.Map(number => $" (NO. {number})").IfNone(string.Empty)}",
-            _ => $"published {rite}{entry.RiteNumber.Map(number => $" as NO. {number}").IfNone(string.Empty)}",
-        };
-        return what + entry.Detail.Map(detail => $""" <span class="when">({Encode(detail)})</span>""").IfNone(string.Empty);
-    }
-
-    // Where one rite's record leads to the rite itself: its card in the calendar or the Ashes, opened and marked, or its
-    // page once published (its number is in the publish entry). None for a draft published before the Record kept numbers.
-    private static Option<string> WhereItIs(Draft draft, IReadOnlyList<AuditEntry> entries)
-    {
-        var id = draft.Id.ToString("D");
-        return draft.State switch
-        {
-            DraftState.Waiting => Some($"""<a href="/scriptorium?rite={id}#rite-{id}">See it in the calendar</a>"""),
-            DraftState.Burned => Some($"""<a href="/scriptorium/ashes?rite={id}#rite-{id}">See it in the Ashes</a>"""),
-            _ => entries.Where(entry => entry.Action == AuditAction.Publish).Bind(entry => entry.RiteNumber.ToSeq()).HeadOrNone()
-                .Map(number => $"""<a href="/r/{number}">Read it, NO. {number}</a>"""),
-        };
-    }
-
-    private static string When(DateTime atUtc) => atUtc.ToString("ddd d MMM, HH:mm 'UTC'", CultureInfo.InvariantCulture);
 
     private static string Encode(string text) => WebUtility.HtmlEncode(text);
 
