@@ -1,3 +1,4 @@
+using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Generation.Precepts;
 using DailyMachineSpirit.Functions.Scriptorium.Naming;
@@ -59,7 +60,7 @@ public sealed class PreceptsFunction
         {
             return refused;
         }
-        var scribe = (string)looking.Case;
+        var scribe = (ScribeId)looking.Case;
 
         var outcome = Optional(request.Query["done"].ToString()).Filter(done => done.Length > 0);
         var acted = Id(request.Query["precept"].ToString());
@@ -138,7 +139,7 @@ public sealed class PreceptsFunction
 
     // Each change carries the version of the Precepts the Scribe's page showed (etag).
     private async Task<IActionResult> Act(
-        HttpRequest request, Guid preceptId, string action, IFormCollection fields, string scribe, CancellationToken cancellationToken)
+        HttpRequest request, Guid preceptId, string action, IFormCollection fields, ScribeId scribe, CancellationToken cancellationToken)
     {
         var etag = fields["etag"].ToString();
         return action switch
@@ -163,7 +164,7 @@ public sealed class PreceptsFunction
     // Refused for breaking the writer's rules, or because they couldn't be checked: the page again, with the Scribe's
     // words in their field and why (422), rather than a redirect, which couldn't carry them.
     private async Task<IActionResult> Saved(
-        HttpRequest request, string action, Option<Guid> preceptId, string text, Either<Error, Unit> result, string scribe,
+        HttpRequest request, string action, Option<Guid> preceptId, string text, Either<Error, Unit> result, ScribeId scribe,
         CancellationToken cancellationToken)
     {
         var nextStep = result.Case switch
@@ -185,7 +186,7 @@ public sealed class PreceptsFunction
             Left: error => Failed(request, error));
     }
 
-    private async Task<PreceptsShown> Shown(Option<Guid> editing, string scribe, CancellationToken cancellationToken)
+    private async Task<PreceptsShown> Shown(Option<Guid> editing, ScribeId scribe, CancellationToken cancellationToken)
         => new(editing, time.GetUtcNow().UtcDateTime, await names.Of(scribe, cancellationToken), await names.All(cancellationToken));
 
     private static Option<Guid> Id(string text) => Guid.TryParse(text, out var id) ? Some(id) : None;

@@ -20,14 +20,14 @@ public sealed class ScribeNameRepository : IScribeNameRepository
     public Task<Either<Error, StoredScribeNames>> GetAll(CancellationToken cancellationToken)
         => Attempt(async () => (await container.ReadOrNone<ScribeNamesDocument>(ScribeNamesDocument.ScribeNamesId, cancellationToken))
             .Match(
-                Some: found => new StoredScribeNames(found.Document.Names, found.ETag),
+                Some: found => new StoredScribeNames([.. found.Document.Names.Select(name => name.ToName())], found.ETag),
                 None: () => new StoredScribeNames([], None)));
 
     // No ETag: no Scribe had a name yet, and creating the document fails if another just did.
     public Task<Either<Error, Unit>> SaveUnlessChangedSince(StoredScribeNames read, List<ScribeName> changed, AuditEntry audit, CancellationToken cancellationToken)
         => AttemptEither(async () =>
         {
-            var document = new ScribeNamesDocument { Names = changed };
+            var document = new ScribeNamesDocument { Names = [.. changed.Select(ScribeNameDocument.From)] };
             var batch = container.CreateTransactionalBatch(SharedPartitionKey);
             batch = read.ETag.Match(
                 Some: etag => batch.ReplaceItem(document.Id, document, new TransactionalBatchItemRequestOptions { IfMatchEtag = etag }),

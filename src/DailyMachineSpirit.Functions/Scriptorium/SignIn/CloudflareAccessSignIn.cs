@@ -1,3 +1,4 @@
+using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Functions.Telemetry;
 using LanguageExt;
 using LanguageExt.Common;
@@ -56,7 +57,7 @@ public sealed class CloudflareAccessSignIn : IScribeSignIn
     /// The Scribe's Access id (the token's <c>sub</c>), stable for as long as their Access identity is. The record (#9)
     /// keeps it rather than their email.
     /// </summary>
-    public async Task<Option<string>> Scribe(HttpRequest request, CancellationToken cancellationToken)
+    public async Task<Option<ScribeId>> Scribe(HttpRequest request, CancellationToken cancellationToken)
     {
         var token = request.Headers[TokenHeader].ToString();
         if (token.Length == 0)
@@ -78,7 +79,8 @@ public sealed class CloudflareAccessSignIn : IScribeSignIn
         var scribe = validation.ToOption()
             .Filter(result => result.IsValid)
             .Bind(result => Optional(result.Claims.TryGetValue("sub", out var sub) ? sub as string : null))
-            .Filter(sub => sub.Length > 0);
+            .Filter(sub => sub.Length > 0)
+            .Map(sub => new ScribeId(sub));
         if (scribe.IsNone)
         {
             metrics.ScribeRefused(validation.Exists(result => result.IsValid) ? "no-subject" : RefusalReason(validation));

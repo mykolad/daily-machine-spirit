@@ -28,7 +28,7 @@ public sealed class CloudflareAccessSignInTests : IDisposable
 
     [Fact]
     public async Task ATokenFromTheTeam_ForThisApplication_IsAScribe_NamedByTheirAccessId()
-        => Assert.Equal(LanguageExt.Prelude.Some(FakeAccessTeam.ScribeId), await signIn.Scribe(Request(team.ValidToken()), CancellationToken.None));
+        => Assert.Equal(LanguageExt.Prelude.Some(new Data.Entities.ScribeId(FakeAccessTeam.ScribeId)), await signIn.Scribe(Request(team.ValidToken()), CancellationToken.None));
 
     // The record (#9) needs someone to name: a valid token without a subject names nobody.
     [Fact]

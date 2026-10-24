@@ -59,7 +59,7 @@ public sealed class AgreementTrendTests : IAsyncLifetime
             AuguryRankedByQuality = true,
             DecidedAtUtc = testbed.Time.GetUtcNow().UtcDateTime,
         };
-        Ok(await testbed.Scriptorium.SavePlacements(new Placements([], new Dictionary<Guid, string>(), None),
+        Ok(await testbed.Scriptorium.SavePlacements(new Placements([], new Dictionary<Guid, ScribeId>(), None),
             Some(anointing), [], AuditEntries.Of(testbed.Time, Tester, AuditAction.Anoint, None, None), CancellationToken.None));
 
         var months = Ok(await new AgreementTrend(testbed.Scriptorium, Options.Create(Settings.ScriptoriumPages), testbed.Time).Months(CancellationToken.None));

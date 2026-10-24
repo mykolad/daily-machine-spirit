@@ -23,7 +23,7 @@ public sealed record Precept
     /// The Scribe (their Access id) who wrote or amended it, or who pinned a distilled one; None for one the Machine
     /// Spirit's alone, or kept before it was known.
     /// </summary>
-    public Option<string> By { get; init; }
+    public Option<ScribeId> By { get; init; }
 
     /// <summary>Written or edited by a Scribe, rather than as a model distilled it.</summary>
     public bool ByScribe => Origin != PreceptOrigin.Distilled;

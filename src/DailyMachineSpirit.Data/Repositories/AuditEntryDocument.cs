@@ -34,7 +34,7 @@ internal sealed record AuditEntryDocument
     {
         Id = entry.Id.ToString("D"),
         AtUtc = Utc.From(entry.AtUtc),
-        Actor = entry.Actor,
+        Actor = entry.Actor.Id,
         Action = entry.Action,
         DraftId = entry.DraftId.OrNullable(),
         RiteNumber = entry.RiteNumber.OrNullable(),
@@ -46,7 +46,7 @@ internal sealed record AuditEntryDocument
     {
         Id = Guid.Parse(Id),
         AtUtc = AtUtc,
-        Actor = Actor,
+        Actor = Entities.Actor.Stored(Actor),
         Action = Action,
         DraftId = Optional(DraftId),
         RiteNumber = Optional(RiteNumber),

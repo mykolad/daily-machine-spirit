@@ -13,5 +13,5 @@ internal sealed record ScribeNamesDocument
 
     public string Type { get; init; } = "scribe-names";
 
-    public List<ScribeName> Names { get; init; } = [];
+    public List<ScribeNameDocument> Names { get; init; } = [];
 }

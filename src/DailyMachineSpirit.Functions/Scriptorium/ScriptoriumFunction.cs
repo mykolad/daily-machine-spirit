@@ -86,7 +86,7 @@ public sealed class ScriptoriumFunction
         {
             return refused;
         }
-        var scribe = (string)looking.Case;
+        var scribe = (ScribeId)looking.Case;
 
         var outcome = Optional(request.Query["done"].ToString()).Filter(done => done.Length > 0);
         var rite = Optional(request.Query["rite"].ToString()).Bind(text => Guid.TryParse(text, out var id) ? Some(id) : None);
@@ -115,7 +115,7 @@ public sealed class ScriptoriumFunction
         {
             return refused;
         }
-        var scribe = (string)looking.Case;
+        var scribe = (ScribeId)looking.Case;
 
         var outcome = Optional(request.Query["done"].ToString()).Filter(done => done.Length > 0);
         var rite = Optional(request.Query["rite"].ToString()).Bind(text => Guid.TryParse(text, out var id) ? Some(id) : None);
@@ -165,7 +165,7 @@ public sealed class ScriptoriumFunction
         {
             return refused;
         }
-        var scribe = (string)looking.Case;
+        var scribe = (ScribeId)looking.Case;
 
         var draft = Optional(request.Query["draft"].ToString()).Bind(text => Guid.TryParse(text, out var id) ? Some(id) : None);
         // The last day there is has no day after it to read up to: from there, the Record is simply the newest.
@@ -241,13 +241,13 @@ public sealed class ScriptoriumFunction
                 return Answer(request, "augury", None, subject, await scribes.LetTheAuguryDecide(scribe, cancellationToken)).Result;
             });
 
-    private async Task<ScriptoriumResponse> Act(HttpRequest request, Guid draftId, string action, string scribe, CancellationToken cancellationToken)
+    private async Task<ScriptoriumResponse> Act(HttpRequest request, Guid draftId, string action, ScribeId scribe, CancellationToken cancellationToken)
         => await (await ReadForm(request, cancellationToken)).Match(
             Some: fields => Act(request, draftId, action, fields, scribe, cancellationToken),
             None: () => Task.FromResult(new ScriptoriumResponse { Result = new BadRequestResult() }));
 
     private async Task<ScriptoriumResponse> Act(
-        HttpRequest request, Guid draftId, string action, IFormCollection fields, string scribe, CancellationToken cancellationToken)
+        HttpRequest request, Guid draftId, string action, IFormCollection fields, ScribeId scribe, CancellationToken cancellationToken)
     {
         var note = fields["note"].ToString();
         var subject = Subject(fields["subject"].ToString());
@@ -294,7 +294,7 @@ public sealed class ScriptoriumFunction
 
     // Saved and judged again, back to the calendar; refused, the same page again with the Scribe's words and why.
     private async Task<ScriptoriumResponse> Amend(
-        HttpRequest request, Guid draftId, IFormCollection fields, string scribe, Option<Tag> subject, CancellationToken cancellationToken)
+        HttpRequest request, Guid draftId, IFormCollection fields, ScribeId scribe, Option<Tag> subject, CancellationToken cancellationToken)
     {
         var words = Words(fields);
         var note = fields["note"].ToString();

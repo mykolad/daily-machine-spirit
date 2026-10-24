@@ -28,7 +28,7 @@ public class DraftRepository : IDraftRepository
                 {
                     Id = Guid.NewGuid(),
                     AtUtc = DateTime.UtcNow,
-                    Actor = AuditEntry.MachineSpirit,
+                    Actor = Actor.MachineSpirit,
                     Action = AuditAction.Write,
                     DraftId = draft.Id,
                     Title = draft.Writing.Title,

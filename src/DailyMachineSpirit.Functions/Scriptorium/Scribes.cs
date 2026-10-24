@@ -12,7 +12,7 @@ namespace DailyMachineSpirit.Functions.Scriptorium;
 /// A draft in the Liturgical Calendar, as the Scriptorium shows it. <see cref="PlacedBy"/> is the Scribe who placed it
 /// (their Access id), when the order knows.
 /// </summary>
-public sealed record CalendarEntry(Draft Draft, DateOnly PublishesOnUtc, bool PlacedByScribes, Option<string> PlacedBy, int AuguryPlace);
+public sealed record CalendarEntry(Draft Draft, DateOnly PublishesOnUtc, bool PlacedByScribes, Option<ScribeId> PlacedBy, int AuguryPlace);
 
 /// <summary>
 /// <see cref="NowUtc"/> tells whether the first entry goes out at the coming midnight, or is already due, and how long
@@ -99,13 +99,13 @@ public sealed class Scribes
     /// Anoints the draft: it joins the Scribes' order after the drafts anointed before it (first, when none are), so it's
     /// published ahead of every draft the Augury orders, which keeps ordering the rest.
     /// </summary>
-    public Task<Either<Error, Unit>> Anoint(Guid draftId, string note, string scribe, CancellationToken cancellationToken)
+    public Task<Either<Error, Unit>> Anoint(Guid draftId, string note, ScribeId scribe, CancellationToken cancellationToken)
         => Reorder(draftId, ScribeAction.Anoint, note, scribe, (anointed, index) => index >= 0
             ? ScriptoriumRepository.ChangedMeanwhile
             : Right<Error, List<Guid>>([.. anointed, draftId]), cancellationToken);
 
     /// <summary>Moves an anointed draft up one place among the anointed.</summary>
-    public Task<Either<Error, Unit>> Exalt(Guid draftId, string note, string scribe, CancellationToken cancellationToken)
+    public Task<Either<Error, Unit>> Exalt(Guid draftId, string note, ScribeId scribe, CancellationToken cancellationToken)
         => Reorder(draftId, ScribeAction.Exalt, note, scribe, (anointed, index) => index switch
         {
             < 0 => ScriptoriumRepository.ChangedMeanwhile,
@@ -114,7 +114,7 @@ public sealed class Scribes
         }, cancellationToken);
 
     /// <summary>Moves an anointed draft down one place among the anointed.</summary>
-    public Task<Either<Error, Unit>> Humble(Guid draftId, string note, string scribe, CancellationToken cancellationToken)
+    public Task<Either<Error, Unit>> Humble(Guid draftId, string note, ScribeId scribe, CancellationToken cancellationToken)
         => Reorder(draftId, ScribeAction.Humble, note, scribe, (anointed, index) => index switch
         {
             < 0 => ScriptoriumRepository.ChangedMeanwhile,
@@ -123,7 +123,7 @@ public sealed class Scribes
         }, cancellationToken);
 
     /// <summary>Releases an anointed draft from the Scribes' order: the Augury orders it with the rest.</summary>
-    public Task<Either<Error, Unit>> Release(Guid draftId, string note, string scribe, CancellationToken cancellationToken)
+    public Task<Either<Error, Unit>> Release(Guid draftId, string note, ScribeId scribe, CancellationToken cancellationToken)
         => Reorder(draftId, ScribeAction.Release, note, scribe, (anointed, index) => index < 0
             ? ScriptoriumRepository.ChangedMeanwhile
             : Right<Error, List<Guid>>(anointed.Where(id => id != draftId).ToList()), cancellationToken);
@@ -134,7 +134,7 @@ public sealed class Scribes
     /// later one sees none left. None when that count fails: the burn is saved all the same, and the caller can't tell
     /// whether any draft is left.
     /// </summary>
-    public Task<Either<Error, Option<int>>> Burn(Guid draftId, string note, string scribe, CancellationToken cancellationToken)
+    public Task<Either<Error, Option<int>>> Burn(Guid draftId, string note, ScribeId scribe, CancellationToken cancellationToken)
         => Note(note).BindAsync(checkedNote => Calendar(cancellationToken)
             .BindAsync(calendar => calendar.Find(draftId).Match(
                 Some: found => scriptorium
@@ -149,7 +149,7 @@ public sealed class Scribes
                 None: () => Task.FromResult(Left<Error, Option<int>>(ScriptoriumRepository.ChangedMeanwhile)))));
 
     /// <summary>Restores a burned draft, however long ago it burned: it waits again, in the Augury's order.</summary>
-    public Task<Either<Error, Unit>> Restore(Guid draftId, string note, string scribe, CancellationToken cancellationToken)
+    public Task<Either<Error, Unit>> Restore(Guid draftId, string note, ScribeId scribe, CancellationToken cancellationToken)
         => Note(note).BindAsync(checkedNote => drafts.Get(draftId, cancellationToken)
             .BindAsync(stored => scriptorium.GetPlacements(cancellationToken)
                 .BindAsync(placements => stored.Filter(draft => draft.State == DraftState.Burned).Match(
@@ -170,7 +170,7 @@ public sealed class Scribes
         => Calendar(cancellationToken).MapAsync(calendar => Task.FromResult(calendar.Find(draftId).Map(calendar.PlacesOf)));
 
     /// <summary>Forgets the Scribes' order, so the Augury orders every draft.</summary>
-    public Task<Either<Error, Unit>> LetTheAuguryDecide(string scribe, CancellationToken cancellationToken)
+    public Task<Either<Error, Unit>> LetTheAuguryDecide(ScribeId scribe, CancellationToken cancellationToken)
         => scriptorium.GetPlacements(cancellationToken)
             .BindAsync(placements => scriptorium.SavePlacements(placements with { Order = [] }, None, [],
                 AuditEntries.Of(time, scribe, AuditAction.LetTheAuguryDecide, None, None), cancellationToken));
@@ -179,7 +179,7 @@ public sealed class Scribes
     // where the draft is among them (-1 when it isn't). Refused (already at an end, or not anointed), nothing changes,
     // so there's nothing to learn, and the page says why.
     private Task<Either<Error, Unit>> Reorder(
-        Guid draftId, ScribeAction action, string note, string scribe, Func<List<Guid>, int, Either<Error, List<Guid>>> reorder,
+        Guid draftId, ScribeAction action, string note, ScribeId scribe, Func<List<Guid>, int, Either<Error, List<Guid>>> reorder,
         CancellationToken cancellationToken)
         => Note(note).BindAsync(checkedNote => Calendar(cancellationToken)
             .BindAsync(calendar => calendar.Find(draftId).Match(
@@ -207,7 +207,7 @@ public sealed class Scribes
 
     // The new order, and who placed each draft in it: the Scribe who moved it, or who placed it by moving another. One
     // already placed keeps the Scribe who placed it, unless it's the one moved.
-    private static Placements Placed(Placements before, List<Guid> order, Guid moved, string scribe)
+    private static Placements Placed(Placements before, List<Guid> order, Guid moved, ScribeId scribe)
         => before with
         {
             Order = order,
@@ -217,7 +217,7 @@ public sealed class Scribes
                 .ToDictionary(),
         };
 
-    private static Option<string> Placer(Placements placements, Guid draftId)
+    private static Option<ScribeId> Placer(Placements placements, Guid draftId)
         => placements.PlacedBy.TryGetValue(draftId, out var placer) ? Some(placer) : None;
 
     // A burned or restored draft leaves the Scribes' order: a restored one starts again in the Augury's.

@@ -64,7 +64,7 @@ public sealed class AuditTests : IAsyncLifetime
         var rite = Ok(await testbed.Rites.Publish(draft.Id, Today, CancellationToken.None));
 
         var entries = await Entries();
-        Assert.All(entries, entry => Assert.Equal(AuditEntry.MachineSpirit, entry.Actor));
+        Assert.All(entries, entry => Assert.Equal(Actor.MachineSpirit, entry.Actor));
         Assert.Equal(
             [(AuditAction.Publish, Some(rite.Number)), (AuditAction.Write, Option<int>.None)],
             entries.Select(entry => (entry.Action, entry.RiteNumber)));
@@ -145,15 +145,15 @@ public sealed class AuditTests : IAsyncLifetime
         Assert.Contains(record, entry => entry.Action == AuditAction.Write);
     }
 
-    // A Scribe who chose a name is shown by it (#84); one who didn't, by the end of their id.
+    // A Scribe who chose a name is shown by it (#84); one who didn't, by the end of their id. The actors as stored.
     [Theory]
-    [InlineData(AuditEntry.MachineSpirit, "The Machine Spirit")]
-    [InlineData(AuditEntry.StagingScribe, "A Scribe on staging")]
+    [InlineData("machine-spirit", "The Machine Spirit")]
+    [InlineData("staging", "A Scribe on staging")]
     [InlineData("0f7d1c2e-1111-2222-3333-4ab5c6d7e8f9", "A Scribe (…d7e8f9)")]
     [InlineData("1a2b3c4d-0000-0000-0000-000000000000", "Sister Cache")]
-    public void TheRecord_NamesEachActor(string actor, string name)
+    public void TheRecord_NamesEachActor(string stored, string name)
     {
-        Assert.Equal(name, ScribeNames.Of(actor, [new ScribeName("1a2b3c4d-0000-0000-0000-000000000000", "Sister Cache")]));
+        Assert.Equal(name, ScribeNames.Of(Actor.Stored(stored), [new ScribeName(new ScribeId("1a2b3c4d-0000-0000-0000-000000000000"), "Sister Cache")]));
     }
 
     // Each entry reads as a sentence: who, then what they did to which rite or precept.

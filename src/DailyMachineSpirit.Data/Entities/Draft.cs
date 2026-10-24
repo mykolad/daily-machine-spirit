@@ -29,7 +29,7 @@ public sealed record Draft
     /// Who burned it (a Scribe's Access id), while it's burned. None for a burn the Record has no entry for: older than
     /// the Record.
     /// </summary>
-    public Option<string> BurnedBy { get; init; }
+    public Option<ScribeId> BurnedBy { get; init; }
 
     /// <summary>Its place in the calendar when it was burned (1 is next), while it's burned.</summary>
     public Option<int> BurnedFromPlace { get; init; }

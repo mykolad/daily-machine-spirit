@@ -1,3 +1,4 @@
+using DailyMachineSpirit.Data.Entities;
 using LanguageExt;
 using Microsoft.AspNetCore.Http;
 
@@ -11,5 +12,5 @@ namespace DailyMachineSpirit.Functions.Scriptorium.SignIn;
 public interface IScribeSignIn
 {
     /// <summary>The Scribe's id, as the record (#9) keeps it: never a name or an email. None for anyone else.</summary>
-    Task<Option<string>> Scribe(HttpRequest request, CancellationToken cancellationToken);
+    Task<Option<ScribeId>> Scribe(HttpRequest request, CancellationToken cancellationToken);
 }
