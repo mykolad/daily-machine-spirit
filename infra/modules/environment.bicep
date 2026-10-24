@@ -15,6 +15,8 @@ param allowedIp string
 @description('Whether the app admits only Cloudflare (production), whose address ranges are in infra/cloudflare-ips.json.')
 param admitsOnlyCloudflare bool
 param cosmosAccountName string
+// What the database reserves, shared by its container; 0 for a serverless account, which reserves none.
+param databaseThroughput int
 param aiAccountName string
 param ownerPrincipalId string
 param githubSubjectPrefix string
@@ -85,9 +87,7 @@ resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2024-11-15
     resource: {
       id: databaseName
     }
-    options: {
-      throughput: 400
-    }
+    options: databaseThroughput > 0 ? { throughput: databaseThroughput } : {}
   }
 }
 

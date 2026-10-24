@@ -112,8 +112,9 @@ resource ownerModels 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   }
 }
 
-// One free-tier account per subscription: 1000 RU/s and 25 GB free for its lifetime. Each environment's database takes
-// 400 RU/s of it. The free tier can only be chosen when the account is created.
+// One free-tier account per subscription: 1000 RU/s and 25 GB free for its lifetime. Production's database takes
+// 400 RU/s of it, and so would each region it's replicated to (#113), so staging has an account of its own (below). The
+// free tier can only be chosen when the account is created.
 resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' = {
   name: '${prefix}-cosmos'
   location: location
@@ -137,7 +138,34 @@ resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' = {
   }
 }
 
-// The owner reads and writes both databases (local development, the portal's Data Explorer).
+// Staging's own account (#129), serverless: no throughput reserved, only the request units it uses (cents a month, a
+// load test included), and none of the free tier's, which production keeps for its regions. Serverless has one region.
+resource stagingCosmos 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' = {
+  name: '${prefix}-cosmos-staging'
+  location: location
+  kind: 'GlobalDocumentDB'
+  properties: {
+    databaseAccountOfferType: 'Standard'
+    capabilities: [
+      {
+        name: 'EnableServerless'
+      }
+    ]
+    disableLocalAuth: true
+    consistencyPolicy: {
+      defaultConsistencyLevel: 'Session'
+    }
+    locations: [
+      {
+        locationName: location
+        failoverPriority: 0
+        isZoneRedundant: false
+      }
+    ]
+  }
+}
+
+// The owner reads and writes every database (local development, the portal's Data Explorer, copying staging's data).
 resource ownerData 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-11-15' = {
   parent: cosmos
   name: guid(cosmos.id, ownerPrincipalId, 'data-contributor')
@@ -145,6 +173,16 @@ resource ownerData 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@202
     principalId: ownerPrincipalId
     roleDefinitionId: '${cosmos.id}/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002'
     scope: cosmos.id
+  }
+}
+
+resource ownerStagingData 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-11-15' = {
+  parent: stagingCosmos
+  name: guid(stagingCosmos.id, ownerPrincipalId, 'data-contributor')
+  properties: {
+    principalId: ownerPrincipalId
+    roleDefinitionId: '${stagingCosmos.id}/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002'
+    scope: stagingCosmos.id
   }
 }
 
@@ -207,7 +245,9 @@ module staging 'modules/environment.bicep' = {
     storageAccountName: '${prefix}staging'
     allowedIp: stagingAllowedIp
     admitsOnlyCloudflare: false
-    cosmosAccountName: cosmos.name
+    cosmosAccountName: stagingCosmos.name
+    // Serverless (stagingCosmos): no throughput to reserve.
+    databaseThroughput: 0
     aiAccountName: ai.name
     ownerPrincipalId: ownerPrincipalId
     githubSubjectPrefix: githubSubjectPrefix
@@ -239,6 +279,7 @@ module production 'modules/environment.bicep' = if (deployProduction) {
     allowedIp: ''
     admitsOnlyCloudflare: true
     cosmosAccountName: cosmos.name
+    databaseThroughput: 400
     aiAccountName: ai.name
     ownerPrincipalId: ownerPrincipalId
     githubSubjectPrefix: githubSubjectPrefix

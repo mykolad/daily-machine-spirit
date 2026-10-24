@@ -13,7 +13,7 @@ change to them reaches production at once. Production is live since #50.
 |---|---|---|
 | Resource group | `machinespirit-rg` | |
 | AI Services | `machinespirit-ai` | `gpt-6-sol` writes the rites, `gpt-6-luna` is the fallback; keys off |
-| Cosmos DB | `machinespirit-cosmos` | free tier (1000 RU/s, 25 GB for the account's lifetime); databases `machinespirit` and `machinespirit-staging` at 400 RU/s each, container `rites` (partition key `/partition`); keys off |
+| Cosmos DB | `machinespirit-cosmos`, `machinespirit-cosmos-staging` | production's is free tier (1000 RU/s, 25 GB for the account's lifetime), database `machinespirit` at 400 RU/s; staging's is serverless (#129: no throughput reserved, paid by the request), database `machinespirit-staging`; both have container `rites` (partition key `/partition`); keys off |
 | Key Vault | `machinespirit-kv`, `machinespirit-kv-staging` | one per environment, so staging can't read production's secrets |
 | Storage | `machinespiritprod`, `machinespiritstaging` | the Functions host's storage; keys off |
 | Functions app | `machinespirit-app`, `machinespirit-app-staging` | Flex Consumption, .NET 10 isolated, 512 MB instances, at most 10; staging admits only the owner's IP, production only Cloudflare |
@@ -72,6 +72,19 @@ production doesn't reach it. A change to production alone (its domain, its Cloud
 A change to a shared resource takes effect for both in the first step: look at its `what-if` with production in mind.
 
 (In bash, the same with `\` line breaks and `"$owner"`, `"$ip"`.) When your IP changes, deploy again with the new one.
+
+### Moving staging to its own account (#129, once)
+
+Staging's database used to sit on the free-tier account beside production's. The staging deploy above creates
+`machinespirit-cosmos-staging` and points staging's app at it, which starts empty. Then:
+
+1. Copy staging's data across, as your `az login`: `./tools/copy-staging-data.ps1`. It reads staging's database on the
+   shared account and writes every document, as it was, to the new one; it refuses any database not named for staging.
+   Running it again is harmless.
+2. Check staging: Today, the Scriptorium, the Record.
+3. Delete staging's old database from the shared account (Bicep never deletes what it no longer lists), which frees its
+   400 RU/s of the free tier for production's second region (#113):
+   `az cosmosdb sql database delete -a machinespirit-cosmos -g machinespirit-rg -n machinespirit-staging`
 
 ## Secrets
 
