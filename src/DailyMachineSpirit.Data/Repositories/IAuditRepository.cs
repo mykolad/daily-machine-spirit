@@ -16,6 +16,9 @@ public interface IAuditRepository
     /// <summary>The newest entries, newest first.</summary>
     Task<Either<Error, List<AuditEntry>>> GetNewest(int count, CancellationToken cancellationToken);
 
+    /// <summary>The newest entries from before <paramref name="beforeUtc"/>, newest first: the Record's older days.</summary>
+    Task<Either<Error, List<AuditEntry>>> GetNewestBefore(DateTime beforeUtc, int count, CancellationToken cancellationToken);
+
     /// <summary>How many entries the Record holds.</summary>
     Task<Either<Error, int>> Count(CancellationToken cancellationToken);
 

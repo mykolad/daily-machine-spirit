@@ -39,11 +39,10 @@ public sealed class ScribeNamingTests : IAsyncLifetime
         Ok(await naming.Choose(Ferrum, "Magos Ferrum", CancellationToken.None));
 
         Assert.Equal(Some("Magos Ferrum"), Ok(await naming.NameOf(Ferrum, CancellationToken.None)));
-        var html = ScriptoriumPage.RenderRecord(
-            Ok(await testbed.Audit.GetNewest(10, CancellationToken.None)), Ok(await naming.All(CancellationToken.None)), None, None, None, None);
-        Assert.Contains("Magos Ferrum summoned new rites", html);
-        Assert.Contains("Magos Ferrum chose the name “Magos Ferrum” <span class=\"when\">(was “Brother Ferrum”)</span>", html);
-        Assert.Contains("Magos Ferrum chose the name “Brother Ferrum”</li>", html);
+        var html = RecordPages.Of(Ok(await testbed.Audit.GetNewest(10, CancellationToken.None)), Ok(await naming.All(CancellationToken.None)));
+        Assert.Contains("""<span class="actor scribe">Magos Ferrum</span> <span class="did">summoned new rites</span>""", html);
+        Assert.Contains("""<span class="actor scribe">Magos Ferrum</span> <span class="did">chose the name “Magos Ferrum”</span> <span class="detail">was “Brother Ferrum”</span>""", html);
+        Assert.Contains("""<span class="did">chose the name “Brother Ferrum”</span></p>""", html);
     }
 
     // Their own name again changes nothing, so nothing is recorded.

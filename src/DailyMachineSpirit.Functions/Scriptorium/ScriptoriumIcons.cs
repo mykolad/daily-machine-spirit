@@ -59,6 +59,15 @@ public static class ScriptoriumIcons
     public const string Flask =
         """<svg class="icon idle-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2M6.453 15h11.094M8.5 2h7"/></svg>""";
 
+    // The Record's badges for a published rite, a chosen name and an erasure.
+    public const string BookOpen =
+        $"""{Open}<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>""";
+
+    public const string User = $"""{Open}<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>""";
+
+    public const string Eraser =
+        $"""{Open}<path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>""";
+
     public const string Loader = """<svg class="icon busy-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>""";
 
     // The calendar's rows (the Scriptorium redesign): Lucide's chevron-down, to open a rite, and undo-2, after a burn.

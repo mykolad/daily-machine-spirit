@@ -1,3 +1,4 @@
+using System.Globalization;
 using DailyMachineSpirit.Data.Entities;
 using LanguageExt;
 using LanguageExt.Common;
@@ -26,6 +27,15 @@ public sealed class AuditRepository : IAuditRepository
     public Task<Either<Error, List<AuditEntry>>> GetNewest(int count, CancellationToken cancellationToken)
         => Entries(
             new QueryDefinition("SELECT TOP @count * FROM c WHERE c.type = @type ORDER BY c.atUtc DESC").WithParameter("@count", count),
+            cancellationToken);
+
+    // Cosmos DB compares the stored times as text, so the bound is written exactly as they are (SortableUtcConverter's
+    // seven decimals). Written shorter, "…T00:00:00Z" would sort after "…T00:00:00.0000000Z" and let midnight's entries in.
+    public Task<Either<Error, List<AuditEntry>>> GetNewestBefore(DateTime beforeUtc, int count, CancellationToken cancellationToken)
+        => Entries(
+            new QueryDefinition("SELECT TOP @count * FROM c WHERE c.type = @type AND c.atUtc < @before ORDER BY c.atUtc DESC")
+                .WithParameter("@count", count)
+                .WithParameter("@before", Utc.From(beforeUtc).ToString(SortableUtcConverter.Format, CultureInfo.InvariantCulture)),
             cancellationToken);
 
     public Task<Either<Error, int>> Count(CancellationToken cancellationToken)
