@@ -44,4 +44,6 @@ module resources 'resources.bicep' = {
 
 output stagingAppHost string = resources.outputs.stagingAppHost
 output productionAppHost string = resources.outputs.productionAppHost
+output productionStandbyAppHost string = resources.outputs.productionStandbyAppHost
+output productionTrafficManagerHost string = resources.outputs.productionTrafficManagerHost
 output githubClientIds object = resources.outputs.githubClientIds

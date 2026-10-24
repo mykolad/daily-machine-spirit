@@ -13,6 +13,12 @@ public class CosmosOptions
     public string Endpoint { get; set; } = string.Empty;
 
     public string Database { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The region the app runs in, as Cosmos DB names it ("UK South"), so it reads from the replica there (#113)
+    /// and, should that fail, from the nearest other; empty reads from the account's first region (a local run).
+    /// </summary>
+    public string Region { get; set; } = string.Empty;
 }
 
 public static class CosmosClients
@@ -22,7 +28,14 @@ public static class CosmosClients
     /// stay off.
     /// </summary>
     public static CosmosClient Create(CosmosOptions options)
-        => new(options.Endpoint, new DefaultAzureCredential(), ClientOptions());
+    {
+        var clientOptions = ClientOptions();
+        if (options.Region.Length > 0)
+        {
+            clientOptions.ApplicationRegion = options.Region;
+        }
+        return new(options.Endpoint, new DefaultAzureCredential(), clientOptions);
+    }
 
     internal static CosmosClientOptions ClientOptions() => new()
     {

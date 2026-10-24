@@ -19,7 +19,8 @@ chatbots, and they're about habits any developer knows, not one tool's commands 
   Cosmos DB account, a Key Vault and a Functions app per environment (production's account is the free tier's,
   staging's serverless, #129). Only the Grafana Cloud stack is shared, with its own token.
 - Runs as **one Azure Functions app** (Flex Consumption, .NET 10 isolated worker): a timer generates the daily rite,
-  HTTP functions serve the pages and the API. Cloudflare sits in front (`dailymachinespirit.fyi`).
+  HTTP functions serve the pages and the API. Cloudflare sits in front (`dailymachinespirit.fyi`). Production runs it
+  twice: in Sweden Central, and on standby in UK South (#113).
 
 ## Solution layout
 
@@ -122,7 +123,19 @@ skills/                           — Consult the Machine Spirit, a skill that p
   - Timestamps are written as UTC ("Z") and read back as UTC.
 - **Entra ID only** for Cosmos DB: the app's managed identity in Azure, your `az login` locally
   (`CosmosClients.Create`); the account's keys stay off. The account, databases, container, role assignments and the
-  app's settings are all created by the Bicep in `infra/`, never by the app (its data-plane role can't create them). Settings: `Cosmos:Endpoint`, `Cosmos:Database`.
+  app's settings are all created by the Bicep in `infra/`, never by the app (its data-plane role can't create them). Settings: `Cosmos:Endpoint`, `Cosmos:Database`, `Cosmos:Region` (below).
+- **Two regions** (#113, production only): `machinespirit-app` in Sweden Central and a standby,
+  `machinespirit-app-uksouth`, the same package (Deploy Master deploys it last). Cloudflare's origin is Traffic
+  Manager, priority routing: the first app while its `/healthz` answers, else the standby, within two to three minutes
+  either way. Both use the one database: Cosmos DB has a replica in UK South, which the standby reads
+  (`Cosmos:Region`, so the SDK prefers that region and falls back to the nearest other), and moves the writes there by
+  itself if Sweden Central fails, so voting and the Scriptorium keep working too. It doesn't move them back: that's by
+  hand, once Sweden Central recovers (infra/README.md). The free tier counts 400 RU/s per
+  region, which is why staging has an account of its own (#129). The standby shares production's vault and snapshot, and
+  leaves the timers (`DailyRite`, `DistilPrecepts`, `WriteRiteSnapshot`) to the first app, disabled by app settings:
+  each would be safe twice, but a second publishing asks for a second refill, and a second distillation pays the models
+  again. A midnight the first app misses is published when it's back (schedule monitoring). Summon and the refills it
+  asks for work on either, each app with its own queue.
 - **Read-only when Cosmos DB is down** (#112): every published rite is copied, whole, to one blob per environment in a
   storage account outside the app's region (`machinespiritsnapshots`, Germany West Central, `infra/`), written by
   `RiteSnapshots` after a new rite and an erasure, before their pages are purged, and every six hours
@@ -145,7 +158,9 @@ skills/                           — Consult the Machine Spirit, a skill that p
   host doesn't export (no `telemetryMode` in `host.json`): its request spans carry visitors' user agents. So a failure
   the host alone would see must be logged by the code. Each environment is its own service (the app's name), tagged with
   `deployment.environment.name` from `OTEL_RESOURCE_ATTRIBUTES` (`ConfiguredResource`: the Functions worker's defaults
-  would name the slot, "Production", for staging too). There's no Application Insights, so the portal's log stream stays empty: look in Grafana.
+  would name the slot, "Production", for staging too). Production's standby reports as `machinespirit-app` too
+  (`service.name` in the same setting), so the dashboards and alerts count it, and every app says its `cloud.region`.
+  There's no Application Insights, so the portal's log stream stays empty: look in Grafana.
   The site's own metrics (`SiteMetrics`, `CosmosMetricsHandler`) are listed in `observability/README.md`, next to the
   dashboard; their tags never describe a visitor. What the site's people do (a Scribe's action, a reader's vote, sign-in
   or search) is a log line each (`LogCounters`), which the activity dashboard counts: never who, nor what was searched.
@@ -607,8 +622,9 @@ repository tests. For a deployment it also packages the app (the `app` artifact,
 ## Deploying
 
 - **Deploy Master** (`deploy-master.yml`): every push to `master` is built and tested again (it calls Build and Test),
-  and that package is deployed to staging, then, only if staging passed its smoke tests, to production. No approval:
-  staging is the gate, and only `master` may deploy to the `production` environment.
+  and that package is deployed to staging, then, only if staging passed its smoke tests, to production, and once that
+  passed, to production's standby (#113), each smoke-tested on its own address. No approval: staging is the gate, and
+  only `master` may deploy to the `production` environment.
 - **Deploy Branch to Staging** (`deploy-branch-to-staging.yml`): run by hand with a branch name, to try a PR on staging.
   The branch stays there until the next deployment of staging: a merge to `master` while it deploys, or after, puts
   `master` back (Deploy Master waits for the lock, then deploys), so deploy the branch again once Deploy Master's

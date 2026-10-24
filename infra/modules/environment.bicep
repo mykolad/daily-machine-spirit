@@ -1,5 +1,6 @@
-// One environment (staging or production): its Cosmos DB database, Key Vault, storage, Functions app, and the identity
-// GitHub deploys the app with. Each app reaches only its own database, vault and storage.
+// One environment (staging or production): its Cosmos DB database, Key Vault, the identity GitHub deploys the app with,
+// and its Functions app (app.bicep). Each app reaches only its own environment's database, vault and storage.
+// Production has a second app on standby in another region, behind Traffic Manager (#113).
 param location string
 param prefix string
 @allowed(['staging', 'production'])
@@ -45,32 +46,28 @@ param cloudflareSiteUrl string
 param smokeTestsVote bool
 @description('The storage account outside the app region that keeps the snapshot of the rites (#112), where this environment has a container of its own.')
 param snapshotAccountName string
+@description('The region of a second app on standby, which Traffic Manager sends readers to while the first doesn\'t answer (#113); empty for none. The database must have a replica there.')
+param standbyLocation string
+@description('The standby app\'s storage account, by the same rules as storageAccountName; unused without a standby.')
+param standbyStorageAccountName string
 
 var keyVaultSecretsOfficer = 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7'
 var keyVaultSecretsUser = '4633458b-17de-408a-b874-0445c86b69e6'
 var appName = '${prefix}-app${nameSuffix}'
 var databaseName = '${prefix}${nameSuffix}'
-var deploymentContainer = 'deployments'
+var hasStandby = !empty(standbyLocation)
+var standbyAppName = '${appName}-${standbyLocation}'
 // The Grafana Cloud stack's OTLP gateway (its region, not a secret).
 var otlpEndpoint = 'https://otlp-gateway-prod-eu-north-0.grafana.net/otlp'
-// Readers reach production through Cloudflare alone, so its cache and rate limit can't be gone around. Cloudflare
-// publishes its ranges, and a weekly workflow (Check Cloudflare's Addresses) says when they change.
-var cloudflare = loadJsonContent('../cloudflare-ips.json')
-var cloudflareRules = [for (range, index) in concat(cloudflare.ipv4, cloudflare.ipv6): {
-  name: 'cloudflare-${index}'
-  ipAddress: range
-  action: 'Allow'
-  priority: 200 + index
-}]
-var ownerRules = empty(allowedIp) ? [] : [
-  {
-    name: 'owner'
-    ipAddress: '${allowedIp}/32'
-    action: 'Allow'
-    priority: 100
-  }
-]
-var accessRules = concat(ownerRules, admitsOnlyCloudflare ? cloudflareRules : [])
+// Cosmos DB's names for the regions (CosmosOptions.Region), which differ from Azure's locations.
+var cosmosRegions = {
+  swedencentral: 'Sweden Central'
+  uksouth: 'UK South'
+}
+// The timers the standby leaves to the first app, which still runs a midnight it missed once it's back (the host's
+// schedule monitoring). Each is safe twice, guarded by its ETags, but a second publishing would also ask for a second
+// refill, and a second distillation would pay the models again.
+var standbyTimers = ['DailyRite', 'DistilPrecepts', 'WriteRiteSnapshot']
 
 resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' existing = {
   name: cosmosAccountName
@@ -134,32 +131,6 @@ resource ownerSecrets 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   }
 }
 
-// The Functions host's own storage (timer leases, the deployment package). Keys are off: the app uses its identity.
-resource storage 'Microsoft.Storage/storageAccounts@2024-01-01' = {
-  name: storageAccountName
-  location: location
-  kind: 'StorageV2'
-  sku: {
-    name: 'Standard_LRS'
-  }
-  properties: {
-    allowSharedKeyAccess: false
-    allowBlobPublicAccess: false
-    minimumTlsVersion: 'TLS1_2'
-    supportsHttpsTrafficOnly: true
-  }
-}
-
-resource blobs 'Microsoft.Storage/storageAccounts/blobServices@2024-01-01' = {
-  parent: storage
-  name: 'default'
-}
-
-resource deployments 'Microsoft.Storage/storageAccounts/blobServices/containers@2024-01-01' = {
-  parent: blobs
-  name: deploymentContainer
-}
-
 resource snapshotAccount 'Microsoft.Storage/storageAccounts@2024-01-01' existing = {
   name: snapshotAccountName
 }
@@ -175,203 +146,99 @@ resource snapshotContainer 'Microsoft.Storage/storageAccounts/blobServices/conta
   name: 'rites-${environmentName}'
 }
 
-resource queues 'Microsoft.Storage/storageAccounts/queueServices@2024-01-01' = {
-  parent: storage
-  name: 'default'
-}
-
-// Asks for drafts to be written (RefillBacklogFunction.QueueName): after each publishing, and when the Scribes summon.
-resource backlogRefills 'Microsoft.Storage/storageAccounts/queueServices/queues@2024-01-01' = {
-  parent: queues
-  name: 'backlog-refills'
-}
-
-resource plan 'Microsoft.Web/serverfarms@2024-04-01' = {
-  name: '${prefix}-plan${nameSuffix}'
-  location: location
-  kind: 'functionapp'
-  sku: {
-    tier: 'FlexConsumption'
-    name: 'FC1'
+// Every app's settings in this environment, but for the host's storage (app.bicep) and what sets a region apart (below).
+var settings = [
+  // Outside the region (resources.bicep): the copy the app reads while Cosmos DB doesn't answer (#112).
+  {
+    name: 'RiteSnapshot__ContainerUri'
+    value: '${snapshotAccount.properties.primaryEndpoints.blob}${snapshotContainer.name}'
   }
-  properties: {
-    reserved: true
+  {
+    name: 'Cosmos__Endpoint'
+    value: cosmos.properties.documentEndpoint
   }
-}
+  {
+    name: 'Cosmos__Database'
+    value: databaseName
+  }
+  {
+    name: 'AzureOpenAI__Endpoint'
+    value: ai.properties.endpoint
+  }
+  {
+    // Resolved by the app's identity; until the secret is set (infra/README.md), Jev's calls fail and drafts go without its scores.
+    name: 'Jev__ApiKey'
+    value: '@Microsoft.KeyVault(VaultName=${vault.name};SecretName=JevApiKey)'
+  }
+  {
+    name: 'Scriptorium__WithoutSignIn'
+    value: scriptoriumWithoutSignIn ? 'true' : 'false'
+  }
+  {
+    name: 'CloudflareAccess__TeamDomain'
+    value: cloudflareAccessTeamDomain
+  }
+  {
+    name: 'CloudflareAccess__Audience'
+    value: cloudflareAccessAudience
+  }
+  {
+    name: 'CloudflareAccess__ExpurgatorAudience'
+    value: cloudflareAccessExpurgatorAudience
+  }
+  // Readers' sign-in with GitHub, to vote. Until the app and the three secrets exist (infra/README.md), the sign-in
+  // pages don't either.
+  {
+    name: 'GitHub__ClientId'
+    value: signInGitHubClientId
+  }
+  {
+    name: 'GitHub__ClientSecret'
+    value: '@Microsoft.KeyVault(VaultName=${vault.name};SecretName=GitHubClientSecret)'
+  }
+  {
+    name: 'GitHub__CallbackUrl'
+    value: signInCallbackUrl
+  }
+  // Purging pages from Cloudflare's cache when votes or a new rite change them. The token's secret (infra/README.md)
+  // is referenced only where there's a zone, so staging has no reference to a secret that doesn't exist.
+  {
+    name: 'Cloudflare__ZoneId'
+    value: cloudflareZoneId
+  }
+  {
+    name: 'Cloudflare__SiteUrl'
+    value: cloudflareSiteUrl
+  }
+  {
+    name: 'Cloudflare__ApiToken'
+    value: empty(cloudflareZoneId) ? '' : '@Microsoft.KeyVault(VaultName=${vault.name};SecretName=CloudflareApiToken)'
+  }
+  {
+    name: 'Voters__KeySecret'
+    value: '@Microsoft.KeyVault(VaultName=${vault.name};SecretName=VoterKeySecret)'
+  }
+  {
+    name: 'Voters__SessionSecret'
+    value: '@Microsoft.KeyVault(VaultName=${vault.name};SecretName=VoterSessionSecret)'
+  }
+  // Telemetry to Grafana Cloud, read by both the Functions host and the app (Program.cs). The header carries the
+  // stack's token, from the vault (infra/README.md).
+  {
+    name: 'OTEL_EXPORTER_OTLP_ENDPOINT'
+    value: otlpEndpoint
+  }
+  {
+    name: 'OTEL_EXPORTER_OTLP_PROTOCOL'
+    value: 'http/protobuf'
+  }
+  {
+    name: 'OTEL_EXPORTER_OTLP_HEADERS'
+    value: '@Microsoft.KeyVault(VaultName=${vault.name};SecretName=OtlpHeaders)'
+  }
+]
 
-resource app 'Microsoft.Web/sites@2024-04-01' = {
-  name: appName
-  location: location
-  kind: 'functionapp,linux'
-  // Flex Consumption needs the deployment container to exist when the app is created, and the URL below only names it.
-  dependsOn: [deployments]
-  identity: {
-    type: 'SystemAssigned'
-  }
-  properties: {
-    serverFarmId: plan.id
-    httpsOnly: true
-    functionAppConfig: {
-      deployment: {
-        storage: {
-          type: 'blobContainer'
-          value: '${storage.properties.primaryEndpoints.blob}${deploymentContainer}'
-          authentication: {
-            type: 'SystemAssignedIdentity'
-          }
-        }
-      }
-      scaleAndConcurrency: {
-        // The smallest instance, and a cap on scale-out, so a traffic spike can't run up the bill.
-        instanceMemoryMB: 512
-        maximumInstanceCount: 10
-      }
-      runtime: {
-        name: 'dotnet-isolated'
-        version: '10.0'
-      }
-    }
-    siteConfig: {
-      minTlsVersion: '1.2'
-      ftpsState: 'Disabled'
-      ipSecurityRestrictionsDefaultAction: empty(accessRules) ? 'Allow' : 'Deny'
-      ipSecurityRestrictions: accessRules
-      // Deploys go to the SCM site from GitHub's runners, whose addresses change, so the IP rule applies to visitors
-      // only. The SCM site takes Entra ID alone: basic-auth publishing credentials are off (below).
-      scmIpSecurityRestrictionsUseMain: false
-      appSettings: [
-        {
-          name: 'AzureWebJobsStorage__accountName'
-          value: storage.name
-        }
-        // Outside the region (resources.bicep): the copy the app reads while Cosmos DB doesn't answer (#112).
-        {
-          name: 'RiteSnapshot__ContainerUri'
-          value: '${snapshotAccount.properties.primaryEndpoints.blob}${snapshotContainer.name}'
-        }
-        {
-          name: 'Cosmos__Endpoint'
-          value: cosmos.properties.documentEndpoint
-        }
-        {
-          name: 'Cosmos__Database'
-          value: databaseName
-        }
-        {
-          name: 'AzureOpenAI__Endpoint'
-          value: ai.properties.endpoint
-        }
-        {
-          // Resolved by the app's identity; until the secret is set (infra/README.md), Jev's calls fail and drafts go without its scores.
-          name: 'Jev__ApiKey'
-          value: '@Microsoft.KeyVault(VaultName=${vault.name};SecretName=JevApiKey)'
-        }
-        {
-          name: 'Scriptorium__WithoutSignIn'
-          value: scriptoriumWithoutSignIn ? 'true' : 'false'
-        }
-        {
-          name: 'CloudflareAccess__TeamDomain'
-          value: cloudflareAccessTeamDomain
-        }
-        {
-          name: 'CloudflareAccess__Audience'
-          value: cloudflareAccessAudience
-        }
-        {
-          name: 'CloudflareAccess__ExpurgatorAudience'
-          value: cloudflareAccessExpurgatorAudience
-        }
-        // Readers' sign-in with GitHub, to vote. Until the app and the three secrets exist (infra/README.md), the sign-in
-        // pages don't either.
-        {
-          name: 'GitHub__ClientId'
-          value: signInGitHubClientId
-        }
-        {
-          name: 'GitHub__ClientSecret'
-          value: '@Microsoft.KeyVault(VaultName=${vault.name};SecretName=GitHubClientSecret)'
-        }
-        {
-          name: 'GitHub__CallbackUrl'
-          value: signInCallbackUrl
-        }
-        // Purging pages from Cloudflare's cache when votes or a new rite change them. The token's secret (infra/README.md)
-        // is referenced only where there's a zone, so staging has no reference to a secret that doesn't exist.
-        {
-          name: 'Cloudflare__ZoneId'
-          value: cloudflareZoneId
-        }
-        {
-          name: 'Cloudflare__SiteUrl'
-          value: cloudflareSiteUrl
-        }
-        {
-          name: 'Cloudflare__ApiToken'
-          value: empty(cloudflareZoneId) ? '' : '@Microsoft.KeyVault(VaultName=${vault.name};SecretName=CloudflareApiToken)'
-        }
-        {
-          name: 'Voters__KeySecret'
-          value: '@Microsoft.KeyVault(VaultName=${vault.name};SecretName=VoterKeySecret)'
-        }
-        {
-          name: 'Voters__SessionSecret'
-          value: '@Microsoft.KeyVault(VaultName=${vault.name};SecretName=VoterSessionSecret)'
-        }
-        // Telemetry to Grafana Cloud, read by both the Functions host and the app (Program.cs). The header carries the
-        // stack's token, from the vault (infra/README.md).
-        {
-          name: 'OTEL_EXPORTER_OTLP_ENDPOINT'
-          value: otlpEndpoint
-        }
-        {
-          name: 'OTEL_EXPORTER_OTLP_PROTOCOL'
-          value: 'http/protobuf'
-        }
-        {
-          name: 'OTEL_EXPORTER_OTLP_HEADERS'
-          value: '@Microsoft.KeyVault(VaultName=${vault.name};SecretName=OtlpHeaders)'
-        }
-        {
-          name: 'OTEL_RESOURCE_ATTRIBUTES'
-          value: 'deployment.environment.name=${environmentName}'
-        }
-      ]
-    }
-  }
-}
-
-resource noBasicAuthScm 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2024-04-01' = {
-  parent: app
-  name: 'scm'
-  properties: {
-    allow: false
-  }
-}
-
-resource noBasicAuthFtp 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2024-04-01' = {
-  parent: app
-  name: 'ftp'
-  properties: {
-    allow: false
-  }
-}
-
-module appAccess 'appAccess.bicep' = {
-  name: 'app-access${nameSuffix}'
-  params: {
-    principalId: app.identity.principalId
-    storageAccountName: storage.name
-    vaultName: vault.name
-    aiAccountName: ai.name
-    cosmosAccountName: cosmos.name
-    databaseName: database.name
-    snapshotAccountName: snapshotAccount.name
-    snapshotContainerName: snapshotContainer.name
-  }
-}
-
-// What GitHub deploys this app's code as: it can change this app and nothing else.
+// What GitHub deploys the environment's apps as: it can change them and nothing else.
 resource githubDeployer 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: '${prefix}-github-${environmentName}'
   location: location
@@ -404,10 +271,9 @@ resource githubReadsVoterSessionSecret 'Microsoft.Authorization/roleAssignments@
   }
 }
 
-// The domain, through Cloudflare: Cloudflare's Origin CA certificate, imported from the vault and bound to the name.
-// Azure checks the domain's asuid TXT record first, so the DNS comes before this (infra/README.md). The import is done
-// by App Service itself (its Microsoft.Azure.WebSites service principal), not the app's identity. That principal serves
-// every App Service app in the tenant, so it may read this one secret, not the vault's others (the voter keys, tokens).
+// Each app imports the domain's certificate from the vault (app.bicep). The import is done by App Service itself (its
+// Microsoft.Azure.WebSites service principal), not the app's identity. That principal serves every App Service app in
+// the tenant, so it may read this one secret, not the vault's others (the voter keys, tokens).
 resource certificateSecret 'Microsoft.KeyVault/vaults/secrets@2024-11-01' existing = if (!empty(customDomain)) {
   parent: vault
   name: customDomainCertificate
@@ -423,35 +289,122 @@ resource appServiceReadsCertificate 'Microsoft.Authorization/roleAssignments@202
   }
 }
 
-resource domainCertificate 'Microsoft.Web/sites/certificates@2024-11-01' = if (!empty(customDomain)) {
-  parent: app
-  name: customDomainCertificate
-  location: location
+module app 'app.bicep' = {
+  name: 'app${nameSuffix}'
   dependsOn: [appServiceReadsCertificate]
-  properties: {
-    keyVaultId: vault.id
-    keyVaultSecretName: customDomainCertificate
-  }
-}
-
-resource domainBinding 'Microsoft.Web/sites/hostNameBindings@2024-11-01' = if (!empty(customDomain)) {
-  parent: app
-  name: customDomain
-  properties: {
-    siteName: app.name
-    hostNameType: 'Verified'
-    sslState: 'SniEnabled'
-    thumbprint: domainCertificate!.properties.thumbprint
-  }
-}
-
-module githubDeploysApp 'appDeployerAccess.bicep' = {
-  name: 'app-deployer-access${nameSuffix}'
   params: {
-    principalId: githubDeployer.properties.principalId
-    appName: app.name
+    location: location
+    appName: appName
+    planName: '${prefix}-plan${nameSuffix}'
+    storageAccountName: storageAccountName
+    settings: concat(settings, [
+      {
+        name: 'Cosmos__Region'
+        value: cosmosRegions[location]
+      }
+      {
+        name: 'OTEL_RESOURCE_ATTRIBUTES'
+        value: 'deployment.environment.name=${environmentName},cloud.region=${location}'
+      }
+    ])
+    allowedIp: allowedIp
+    admitsOnlyCloudflare: admitsOnlyCloudflare
+    admitsTrafficManager: hasStandby
+    vaultName: vault.name
+    aiAccountName: ai.name
+    cosmosAccountName: cosmos.name
+    databaseName: database.name
+    snapshotAccountName: snapshotAccount.name
+    snapshotContainerName: snapshotContainer.name
+    githubDeployerPrincipalId: githubDeployer.properties.principalId
+    customDomain: customDomain
+    customDomainCertificate: customDomainCertificate
   }
 }
 
-output appHost string = app.properties.defaultHostName
+module standby 'app.bicep' = if (hasStandby) {
+  name: 'app${nameSuffix}-${standbyLocation}'
+  dependsOn: [appServiceReadsCertificate]
+  params: {
+    location: standbyLocation
+    appName: standbyAppName
+    planName: '${prefix}-plan${nameSuffix}-${standbyLocation}'
+    storageAccountName: standbyStorageAccountName
+    settings: concat(settings, [
+      {
+        name: 'Cosmos__Region'
+        value: cosmosRegions[standbyLocation]
+      }
+      // The first app's service name, so the dashboards and alerts count both; cloud.region tells them apart.
+      {
+        name: 'OTEL_RESOURCE_ATTRIBUTES'
+        value: 'deployment.environment.name=${environmentName},cloud.region=${standbyLocation},service.name=${appName}'
+      }
+    ], map(standbyTimers, timer => {
+      name: 'AzureWebJobs.${timer}.Disabled'
+      value: 'true'
+    }))
+    allowedIp: allowedIp
+    admitsOnlyCloudflare: admitsOnlyCloudflare
+    admitsTrafficManager: true
+    vaultName: vault.name
+    aiAccountName: ai.name
+    cosmosAccountName: cosmos.name
+    databaseName: database.name
+    snapshotAccountName: snapshotAccount.name
+    snapshotContainerName: snapshotContainer.name
+    githubDeployerPrincipalId: githubDeployer.properties.principalId
+    customDomain: customDomain
+    customDomainCertificate: customDomainCertificate
+  }
+}
+
+// Where Cloudflare sends readers when there's a standby (infra/README.md, "Outside Azure"): the first app while its
+// /healthz answers, else the standby. Every 30 seconds from Azure's probes, out after 3 failures, and Cloudflare keeps
+// the answer a minute, so a failover takes two to three minutes, as does coming back.
+resource traffic 'Microsoft.Network/trafficmanagerprofiles@2022-04-01' = if (hasStandby) {
+  name: '${prefix}-traffic${nameSuffix}'
+  location: 'global'
+  properties: {
+    profileStatus: 'Enabled'
+    trafficRoutingMethod: 'Priority'
+    dnsConfig: {
+      relativeName: '${prefix}${nameSuffix}'
+      ttl: 60
+    }
+    monitorConfig: {
+      protocol: 'HTTPS'
+      port: 443
+      path: '/healthz'
+      intervalInSeconds: 30
+      timeoutInSeconds: 10
+      toleratedNumberOfFailures: 3
+    }
+    // External endpoints: Traffic Manager takes Azure's own only from App Service plans of Standard and up.
+    endpoints: [
+      {
+        name: location
+        type: 'Microsoft.Network/trafficManagerProfiles/externalEndpoints'
+        properties: {
+          target: app.outputs.appHost
+          endpointStatus: 'Enabled'
+          priority: 1
+        }
+      }
+      {
+        name: standbyLocation
+        type: 'Microsoft.Network/trafficManagerProfiles/externalEndpoints'
+        properties: {
+          target: standby!.outputs.appHost
+          endpointStatus: 'Enabled'
+          priority: 2
+        }
+      }
+    ]
+  }
+}
+
+output appHost string = app.outputs.appHost
+output standbyAppHost string = hasStandby ? standby!.outputs.appHost : ''
+output trafficManagerHost string = hasStandby ? traffic!.properties.dnsConfig.fqdn : ''
 output githubClientId string = githubDeployer.properties.clientId
