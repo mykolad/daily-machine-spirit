@@ -173,6 +173,8 @@ skills/                           — Consult the Machine Spirit, a skill that p
     its beacon to each page on the way out, which loads from `static.cloudflareinsights.com` and reports how fast the
     page loaded. Cloudflare already sees every request; the beacon sets no cookies and Cloudflare doesn't keep the IP.
     The footer says so (`Layout`): turning the beacon off in Cloudflare means taking that line out.
+    Cinzel and EB Garamond wait for their files (`font-display: block`, at most 3 seconds) rather than swap: Cinzel is
+    all capitals, so a fallback drew the headings in lower case, then the page jumped (`Styles.FontFaces`).
   - The tab's icon is the logo's cog, inline in each page (the Scriptorium's too) as an SVG data URI (`Svg.Favicon`):
     no request for it, and browsers don't ask for `/favicon.ico`.
   - Routes: `/` (Today: the newest rite), `/archive` (`?before=<number>` for older pages, which the archive also
