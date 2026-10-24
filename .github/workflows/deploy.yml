@@ -30,6 +30,14 @@ on:
         description: Where the smoke tests read the secret that signs a test voter's cookie, to vote and take the vote back; empty for no voting (production, whose counts are public).
         type: string
         default: ''
+      package:
+        description: Which of the package's apps this is, its folder in the package (publish, the site; connector, the MCP connector).
+        type: string
+        default: publish
+      smoke-tests:
+        description: Which smoke tests check this app (a dotnet test filter); the connector's are its own category.
+        type: string
+        default: Category!=Connector
     outputs:
       smoke:
         description: The smoke tests' outcome (success, failure, or skipped when the run failed before them).
@@ -97,7 +105,7 @@ jobs:
         uses: Azure/functions-action@v1
         with:
           app-name: ${{ inputs.app-name }}
-          package: package/publish
+          package: package/${{ inputs.package }}
           sku: flexconsumption
 
       - name: Let the runner in
@@ -113,7 +121,8 @@ jobs:
         env:
           SMOKE_TEST_BASE_URL: ${{ inputs.base-url }}
           SMOKE_TEST_VERSION: ${{ inputs.version }}
-        run: dotnet test package/smoke-tests/DailyMachineSpirit.SmokeTests.dll --logger "console;verbosity=normal"
+          FILTER: ${{ inputs.smoke-tests }}
+        run: dotnet test package/smoke-tests/DailyMachineSpirit.SmokeTests.dll --filter "$FILTER" --logger "console;verbosity=normal"
 
       # Even when the run fails or is cancelled, and on a deployment that failed before letting its runner in: a rule left
       # by a runner that died goes too.

@@ -134,3 +134,111 @@ jobs:
       base-url: https://machinespirit-app-uksouth.azurewebsites.net
       version: ${{ needs.build-and-test.outputs.version }}
       restricts-addresses: true
+
+  # The MCP connector (#119): its own apps, deployed from the same package (its connector folder) the same way, staging
+  # first, each checked by its own smoke tests (the Connector category). It doesn't wait for the site's deploys, nor
+  # they for it: neither calls the other's code, only the public API.
+  staging-connector:
+    name: staging connector
+    needs: build-and-test
+    concurrency:
+      group: deploy-staging-connector
+      cancel-in-progress: false
+      queue: max
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: staging
+      app-name: machinespirit-mcp-staging
+      base-url: https://machinespirit-mcp-staging.azurewebsites.net
+      version: ${{ needs.build-and-test.outputs.version }}
+      restricts-addresses: true
+      package: connector
+      smoke-tests: Category=Connector
+
+  rollback-staging-connector:
+    name: roll back staging connector
+    needs: [build-and-test, staging-connector]
+    if: ${{ failure() && needs.staging-connector.outputs.smoke == 'failure' }}
+    concurrency:
+      group: deploy-staging-connector
+      cancel-in-progress: false
+      queue: max
+    uses: ./.github/workflows/rollback.yml
+    with:
+      environment: staging
+      app-name: machinespirit-mcp-staging
+      base-url: https://machinespirit-mcp-staging.azurewebsites.net
+      version: ${{ needs.build-and-test.outputs.version }}
+      restricts-addresses: true
+      package: connector
+      smoke-tests: Category=Connector
+
+  production-connector:
+    name: production connector
+    needs: [build-and-test, staging-connector]
+    concurrency:
+      group: deploy-production-connector
+      cancel-in-progress: false
+      queue: max
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: production
+      app-name: machinespirit-mcp
+      base-url: https://machinespirit-mcp.azurewebsites.net
+      version: ${{ needs.build-and-test.outputs.version }}
+      restricts-addresses: true
+      package: connector
+      smoke-tests: Category=Connector
+
+  rollback-production-connector:
+    name: roll back production connector
+    needs: [build-and-test, production-connector]
+    if: ${{ failure() && needs.production-connector.outputs.smoke == 'failure' }}
+    concurrency:
+      group: deploy-production-connector
+      cancel-in-progress: false
+      queue: max
+    uses: ./.github/workflows/rollback.yml
+    with:
+      environment: production
+      app-name: machinespirit-mcp
+      base-url: https://machinespirit-mcp.azurewebsites.net
+      version: ${{ needs.build-and-test.outputs.version }}
+      restricts-addresses: true
+      package: connector
+      smoke-tests: Category=Connector
+
+  production-connector-standby:
+    name: production connector standby
+    needs: [build-and-test, production-connector]
+    concurrency:
+      group: deploy-production-connector-standby
+      cancel-in-progress: false
+      queue: max
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: production
+      app-name: machinespirit-mcp-uksouth
+      base-url: https://machinespirit-mcp-uksouth.azurewebsites.net
+      version: ${{ needs.build-and-test.outputs.version }}
+      restricts-addresses: true
+      package: connector
+      smoke-tests: Category=Connector
+
+  rollback-production-connector-standby:
+    name: roll back production connector standby
+    needs: [build-and-test, production-connector-standby]
+    if: ${{ failure() && needs.production-connector-standby.outputs.smoke == 'failure' }}
+    concurrency:
+      group: deploy-production-connector-standby
+      cancel-in-progress: false
+      queue: max
+    uses: ./.github/workflows/rollback.yml
+    with:
+      environment: production
+      app-name: machinespirit-mcp-uksouth
+      base-url: https://machinespirit-mcp-uksouth.azurewebsites.net
+      version: ${{ needs.build-and-test.outputs.version }}
+      restricts-addresses: true
+      package: connector
+      smoke-tests: Category=Connector

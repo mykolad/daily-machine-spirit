@@ -50,6 +50,13 @@ param snapshotAccountName string
 param standbyLocation string
 @description('The standby app\'s storage account, by the same rules as storageAccountName; unused without a standby.')
 param standbyStorageAccountName string
+@description('The MCP connector\'s storage account (#119), and its standby\'s (unused without a standby), by the same rules as storageAccountName.')
+param connectorStorageAccountName string
+param standbyConnectorStorageAccountName string
+@description('The domain clients reach the connector at, through Cloudflare (production); empty for none.')
+param connectorDomain string
+@description('Where the connector reads the public rites API, e.g. https://dailymachinespirit.fyi/.')
+param ritesApiBaseUrl string
 
 var keyVaultSecretsOfficer = 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7'
 var keyVaultSecretsUser = '4633458b-17de-408a-b874-0445c86b69e6'
@@ -57,6 +64,7 @@ var appName = '${prefix}-app${nameSuffix}'
 var databaseName = '${prefix}${nameSuffix}'
 var hasStandby = !empty(standbyLocation)
 var standbyAppName = '${appName}-${standbyLocation}'
+var connectorAppName = '${prefix}-mcp${nameSuffix}'
 // The Grafana Cloud stack's OTLP gateway (its region, not a secret).
 var otlpEndpoint = 'https://otlp-gateway-prod-eu-north-0.grafana.net/otlp'
 // Cosmos DB's names for the regions (CosmosOptions.Region), which differ from Azure's locations.
@@ -359,52 +367,73 @@ module standby 'app.bicep' = if (hasStandby) {
   }
 }
 
-// Where Cloudflare sends readers when there's a standby (infra/README.md, "Outside Azure"): the first app while its
-// /healthz answers, else the standby. Every 30 seconds from Azure's probes, out after 3 failures, and Cloudflare keeps
-// the answer a minute, so a failover takes two to three minutes, as does coming back.
-resource traffic 'Microsoft.Network/trafficmanagerprofiles@2022-04-01' = if (hasStandby) {
-  name: '${prefix}-traffic${nameSuffix}'
-  location: 'global'
-  properties: {
-    profileStatus: 'Enabled'
-    trafficRoutingMethod: 'Priority'
-    dnsConfig: {
-      relativeName: '${prefix}${nameSuffix}'
-      ttl: 60
-    }
-    monitorConfig: {
-      protocol: 'HTTPS'
-      port: 443
-      path: '/healthz'
-      intervalInSeconds: 30
-      timeoutInSeconds: 10
-      toleratedNumberOfFailures: 3
-    }
-    // External endpoints: Traffic Manager takes Azure's own only from App Service plans of Standard and up.
-    endpoints: [
-      {
-        name: location
-        type: 'Microsoft.Network/trafficManagerProfiles/externalEndpoints'
-        properties: {
-          target: app.outputs.appHost
-          endpointStatus: 'Enabled'
-          priority: 1
-        }
-      }
-      {
-        name: standbyLocation
-        type: 'Microsoft.Network/trafficManagerProfiles/externalEndpoints'
-        properties: {
-          target: standby!.outputs.appHost
-          endpointStatus: 'Enabled'
-          priority: 2
-        }
-      }
-    ]
+module traffic 'trafficManager.bicep' = if (hasStandby) {
+  name: 'traffic${nameSuffix}'
+  params: {
+    name: '${prefix}-traffic${nameSuffix}'
+    relativeName: '${prefix}${nameSuffix}'
+    firstLocation: location
+    firstHost: app.outputs.appHost
+    standbyLocation: standbyLocation
+    standbyHost: standby!.outputs.appHost
+  }
+}
+
+// The MCP connector (#119): an app of its own in each of the environment's regions, reading the public rites API.
+module connector 'connector.bicep' = {
+  name: 'connector${nameSuffix}'
+  dependsOn: [appServiceReadsCertificate]
+  params: {
+    location: location
+    appName: connectorAppName
+    planName: '${prefix}-plan-mcp${nameSuffix}'
+    storageAccountName: connectorStorageAccountName
+    ritesApiBaseUrl: ritesApiBaseUrl
+    allowedIp: allowedIp
+    admitsOnlyCloudflare: admitsOnlyCloudflare
+    admitsTrafficManager: hasStandby
+    githubDeployerPrincipalId: githubDeployer.properties.principalId
+    vaultName: vault.name
+    customDomain: connectorDomain
+    customDomainCertificate: customDomainCertificate
+  }
+}
+
+module standbyConnector 'connector.bicep' = if (hasStandby) {
+  name: 'connector${nameSuffix}-${standbyLocation}'
+  dependsOn: [appServiceReadsCertificate]
+  params: {
+    location: standbyLocation
+    appName: '${connectorAppName}-${standbyLocation}'
+    planName: '${prefix}-plan-mcp${nameSuffix}-${standbyLocation}'
+    storageAccountName: standbyConnectorStorageAccountName
+    ritesApiBaseUrl: ritesApiBaseUrl
+    allowedIp: allowedIp
+    admitsOnlyCloudflare: admitsOnlyCloudflare
+    admitsTrafficManager: true
+    githubDeployerPrincipalId: githubDeployer.properties.principalId
+    vaultName: vault.name
+    customDomain: connectorDomain
+    customDomainCertificate: customDomainCertificate
+  }
+}
+
+module connectorTraffic 'trafficManager.bicep' = if (hasStandby) {
+  name: 'traffic-mcp${nameSuffix}'
+  params: {
+    name: '${prefix}-traffic-mcp${nameSuffix}'
+    relativeName: '${prefix}-mcp${nameSuffix}'
+    firstLocation: location
+    firstHost: connector.outputs.appHost
+    standbyLocation: standbyLocation
+    standbyHost: standbyConnector!.outputs.appHost
   }
 }
 
 output appHost string = app.outputs.appHost
 output standbyAppHost string = hasStandby ? standby!.outputs.appHost : ''
-output trafficManagerHost string = hasStandby ? traffic!.properties.dnsConfig.fqdn : ''
+output trafficManagerHost string = hasStandby ? traffic!.outputs.host : ''
+output connectorHost string = connector.outputs.appHost
+output standbyConnectorHost string = hasStandby ? standbyConnector!.outputs.appHost : ''
+output connectorTrafficManagerHost string = hasStandby ? connectorTraffic!.outputs.host : ''
 output githubClientId string = githubDeployer.properties.clientId

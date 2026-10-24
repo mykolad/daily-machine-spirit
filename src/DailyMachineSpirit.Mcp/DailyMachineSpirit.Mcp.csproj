@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- The MCP connector (#119): an MCP server over the public rites API, which Azure Functions runs as a custom handler
+       in its own Flex Consumption app (host.json). It never references the site's code. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="LanguageExt.Core" Version="4.4.9" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- host.json goes with the app, as the Functions host needs it; the local settings stay on the machine. -->
+    <Content Update="local.settings.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
+    <Content Update="local.settings.example.json" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="DailyMachineSpirit.Tests" />
+  </ItemGroup>
+
+</Project>

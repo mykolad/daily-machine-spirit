@@ -18,6 +18,7 @@ change to them reaches production at once. Production is live since #50.
 | Storage | `machinespiritprod`, `machinespirituksouth`, `machinespiritstaging` | the Functions host's storage, one per app; keys off |
 | Functions app | `machinespirit-app`, `machinespirit-app-uksouth`, `machinespirit-app-staging` | Flex Consumption, .NET 10 isolated, 512 MB instances, at most 10; staging admits only the owner's IP, production only Cloudflare (and Traffic Manager's health checks). `machinespirit-app-uksouth` is production's standby in UK South (#113): the same code, database, vault and snapshot, without the timers |
 | Traffic Manager | `machinespirit-traffic` (`machinespirit.trafficmanager.net`) | production's domain points here (Outside Azure): `machinespirit-app` while its `/healthz` answers, else the standby. Probes every 30 seconds, out after 3 failures, a 60-second TTL: a failover takes two to three minutes, and so does coming back |
+| The MCP connector (#119) | apps `machinespirit-mcp`, `machinespirit-mcp-uksouth` (production's standby), `machinespirit-mcp-staging`, each with its plan and storage (`machinespiritmcp…`); Traffic Manager `machinespirit-traffic-mcp` (`machinespirit-mcp.trafficmanager.net`) | an MCP server over the public rites API (`docs/api.md`), run by the Functions host as a custom handler: apps of its own, so a flood of connector calls never takes the site's instances. No secrets and no data access: only its host's storage. Staging's reads production's public API (staging's own admits only your address) and admits only your address; production's admits Cloudflare and Traffic Manager, at `mcp.dailymachinespirit.fyi` |
 | GitHub identities | `machinespirit-github-staging`, `-production`, `-infrastructure` | OIDC from this repository's GitHub environments of the same names |
 | The rites' snapshot (#112) | `machinespiritsnapshots`, in Germany West Central (`snapshotLocation`): containers `rites-staging`, `rites-production` | Every published rite, as one blob per environment, which its app reads while Cosmos DB doesn't answer. Outside Sweden Central and UK South (production's standby, #113), so the copy outlives an outage of either; each app may write only its own container |
 
@@ -117,6 +118,22 @@ Deploy Master deploys to the standby too, so it must exist before the change tha
    `nslookup machinespirit.trafficmanager.net` names the standby, and the site, the Scriptorium and a vote still work
    (Grafana tells the apps apart by `cloud.region`). Then `az functionapp start` with the same names, and within three
    minutes Traffic Manager names the first app again.
+
+### The MCP connector (#119, once)
+
+The connector's apps come with the infrastructure, and Deploy Master deploys to them, so they must exist before the
+change that adds them is merged. Production's is bound to `mcp.dailymachinespirit.fyi`, which Azure checks first:
+
+1. In Cloudflare's DNS, add a TXT record `asuid.mcp` with the same `customDomainVerificationId` as the site's `asuid`
+   (Outside Azure, DNS): Azure checks a subdomain's own.
+2. From that branch, deploy staging, then production (Later changes).
+3. Merge. Deploy Master deploys the connector to staging, then to production and its standby, each checked by its own
+   smoke tests (the `Connector` category).
+4. Point the connector's address at its Traffic Manager: a proxied CNAME `mcp` → `machinespirit-mcp.trafficmanager.net`.
+5. Rate-limit it (Outside Azure, the rate limit rule), and try it: add `https://mcp.dailymachinespirit.fyi/mcp` as a
+   custom connector in the Claude app, and ask it to consult the Machine Spirit. If Cloudflare challenges the
+   assistant's servers (or the connector's own reads of the API), Bot Fight Mode is the likely cause: on the Free plan
+   no rule can skip it, so it would have to be off.
 
 ## Secrets
 
@@ -268,6 +285,8 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
   - **DNS**: a proxied CNAME `@` → `machinespirit.trafficmanager.net` (Traffic Manager, #113, which names the app that
     answers; before it, `machinespirit-app.azurewebsites.net`), and a TXT record `asuid` with the apps'
     `customDomainVerificationId` (one per subscription), which Azure checks before binding the domain to each app.
+    The MCP connector (#119) has the same pair for its subdomain: a proxied CNAME `mcp` →
+    `machinespirit-mcp.trafficmanager.net`, and a TXT record `asuid.mcp` with the same id.
   - **A Cache Rule** (Caching → Cache Rules), after the purge is set up (Secrets): hostname equals
     `dailymachinespirit.fyi`, and either the URI path doesn't start with `/api/`, `/auth/`, `/scriptorium` or `/healthz`,
     or it equals `/api/search-index` (the search field's index), or it starts with `/api/v1/rites` (the public rites API,
@@ -285,7 +304,10 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
   - **A rate limit rule** (Security → WAF → Rate limiting rules, set up 2026-10-13) for votes and searches (each
     search reads every rite; the Archive's field searches as the reader types, a request per pause), counted by IP, 20
     in 10 seconds, blocked for 10 seconds. The Free plan has one such rule, so every limited path shares it:
-    `(http.request.uri.path wildcard r"/api/rites/*/vote") or (http.request.uri.path eq "/archive")`. Every request to
+    `(http.request.uri.path wildcard r"/api/rites/*/vote") or (http.request.uri.path eq "/archive") or (http.host eq "mcp.dailymachinespirit.fyi")`
+    (the MCP connector, #119, whose calls are POSTs, never cached). An assistant's servers call the connector for many
+    users from few addresses, so if they're refused (429) in normal use, give the connector the limit instead of votes and
+    search, or raise it. Every request to
     the Archive, not only those with `q=`: the app reads the decoded query (`%71=` is `q=` too), and any other query
     string is cached apart, so each new one reads the database. Paging and live search stay far below the limit. With
     `eq`, the `*` would be taken literally, and match nothing. The nav's suggestions are matched in the browser.

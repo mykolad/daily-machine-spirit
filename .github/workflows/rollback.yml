@@ -30,6 +30,14 @@ on:
         description: Where the smoke tests read the secret that signs a test voter's cookie, as in deploy.yml; empty for no voting.
         type: string
         default: ''
+      package:
+        description: Which of the package's apps this is, as in deploy.yml.
+        type: string
+        default: publish
+      smoke-tests:
+        description: Which smoke tests check this app, as in deploy.yml.
+        type: string
+        default: Category!=Connector
 
 permissions:
   contents: read
@@ -82,7 +90,7 @@ jobs:
         uses: Azure/functions-action@v1
         with:
           app-name: ${{ inputs.app-name }}
-          package: last-good/publish
+          package: last-good/${{ inputs.package }}
           sku: flexconsumption
 
       # This job's runner has an address of its own.
@@ -112,8 +120,9 @@ jobs:
           LAST_GOOD: ${{ steps.last-good.outputs.version }}
           SMOKE_TEST_BASE_URL: ${{ inputs.base-url }}
           SMOKE_TEST_VERSION: ${{ steps.last-good.outputs.version }}
+          FILTER: ${{ inputs.smoke-tests }}
         run: |
-          if dotnet test last-good/smoke-tests/DailyMachineSpirit.SmokeTests.dll --logger "console;verbosity=normal"; then
+          if dotnet test last-good/smoke-tests/DailyMachineSpirit.SmokeTests.dll --filter "$FILTER" --logger "console;verbosity=normal"; then
             echo "::error title=Rolled back::$VERSION failed its smoke tests, so $APP runs $LAST_GOOD again."
           else
             echo "::error title=Rollback failed::$APP runs $LAST_GOOD again, but it failed its smoke tests too: check the app."

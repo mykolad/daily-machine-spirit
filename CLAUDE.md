@@ -30,6 +30,7 @@ src/DailyMachineSpirit.Functions  — the Functions app (HTTP, timer and queue f
   Pages/                          — the public pages, rendered on the server (Today, the archive, a rite's page)
   Tags/                           — the tags' vocabulary
 src/DailyMachineSpirit.Data       — Cosmos DB: entities, documents, repositories
+src/DailyMachineSpirit.Mcp        — the MCP connector: the rites API's reads as MCP tools, in apps of its own (#119)
 tests/DailyMachineSpirit.Tests    — xUnit tests (the repository tests run against the Cosmos DB emulator)
 tests/DailyMachineSpirit.SmokeTests — xUnit tests of a deployed app over HTTP (each deployment runs them)
 tests/load                        — k6 load tests of the public pages, run by hand against staging (its README)
@@ -271,7 +272,23 @@ skills/                           — Consult the Machine Spirit, a skill that p
   votes. Kept at Cloudflare until a new rite or an erasure purges it, with the search index (a truth no rite has yet,
   `404`, isn't kept); a query string is redirected to the one address. The skill
   fetches the whole list and lets the user's own model choose, so the trouble never leaves their machine and the site
-  pays for no model. An MCP server, if clients without skills ask, would be a thin read-only layer over it.
+  pays for no model.
+- **The MCP connector** (#119, `src/DailyMachineSpirit.Mcp`, `docs/api.md`): the rites API's two reads as MCP tools
+  (`list_rites`, `reveal_heretical_truth`), for the Claude and ChatGPT apps, whose skills can't reach the site without
+  the domain allowed. Built with the official C# MCP SDK as a small ASP.NET Core app, which the Functions host runs as a
+  custom handler (`host.json`, the `mcp-custom-handler` profile, a preview the `EnableMcpCustomHandlerPreview` flag turns
+  on), in apps of its own (`infra/modules/connector.bicep`): a flood of connector calls has its own instances and
+  ceiling, never the site's. Production's has a standby in UK South behind its own Traffic Manager, as the site has, at
+  `mcp.dailymachinespirit.fyi`.
+  - **Anonymous and stateless:** no sign-in (`defaultAuthorizationLevel: anonymous`), nothing about the caller kept, and
+    no session (`HttpServerSessionMode.Stateless`): every request carries all it needs, so any instance answers it.
+  - **Through the public API:** the tools read `RitesApi:BaseUrl` (the site, through Cloudflare) and pass its answers on
+    as they are, so they keep the API's contract and are served from Cloudflare's copies. No secrets, no database.
+    Staging's reads production's, since staging's own API admits only the owner.
+  - **Failures are answers:** a rite no one published, or the API failing, is the tool's result marked `isError`, in
+    words the assistant can pass on, rather than a protocol error it might paper over with a rite of its own.
+  - **Tests** host it on ASP.NET Core's test server over a fake API (`ConnectorTests`) and call it with the SDK's own
+    client; the smoke tests' `Connector` category calls a deployed one.
 - **Votes** (Blessed / Heresy, `Api/VotesFunction`): one per account per rite, which the reader can switch or
   take back, signed in as below. `POST /api/rites/{number}/vote` with `{"vote": "blessed" | "heresy" | null}`, and
   `GET /api/votes?rites=12` for the page to show the reader's own vote pressed.
@@ -612,6 +629,16 @@ as your `az login`; never production's). HTTP functions run without storage. The
 `az login`); `Jev:ApiKey` can stay empty. Timer functions need `AzureWebJobsStorage`: run the Azurite emulator
 (`docker run -p 10000-10002:10000-10002 mcr.microsoft.com/azure-storage/azurite`).
 
+The MCP connector runs from its build output, where `host.json` names its DLL, and reads production's public API
+(nothing private):
+
+```
+cd src/DailyMachineSpirit.Mcp
+cp local.settings.example.json local.settings.json   # once
+dotnet build
+cd bin/Debug/net10.0 && func start --port 7171      # MCP at http://localhost:7171/mcp
+```
+
 ## Build and Test
 
 `.github/workflows/build-and-test.yml` (**Build and Test**, job `build-and-test`, the required check) runs on every PR,
@@ -624,7 +651,10 @@ repository tests. For a deployment it also packages the app (the `app` artifact,
 - **Deploy Master** (`deploy-master.yml`): every push to `master` is built and tested again (it calls Build and Test),
   and that package is deployed to staging, then, only if staging passed its smoke tests, to production, and once that
   passed, to production's standby (#113), each smoke-tested on its own address. No approval: staging is the gate, and
-  only `master` may deploy to the `production` environment.
+  only `master` may deploy to the `production` environment. The MCP connector (#119) goes the same way, staging, then
+  production, then its standby, from the same package (its `connector` folder; `deploy.yml`'s `package` input), checked
+  by the smoke tests' `Connector` category alone (`smoke-tests`); the site's deploys run every other category. Neither
+  waits for the other.
 - **Deploy Branch to Staging** (`deploy-branch-to-staging.yml`): run by hand with a branch name, to try a PR on staging.
   The branch stays there until the next deployment of staging: a merge to `master` while it deploys, or after, puts
   `master` back (Deploy Master waits for the lock, then deploys), so deploy the branch again once Deploy Master's
