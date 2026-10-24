@@ -36,26 +36,26 @@ public sealed partial class ScribeNaming
         => names.GetAll(cancellationToken).MapAsync(stored => Task.FromResult(stored.Names));
 
     /// <summary>The name the Scribe chose, if any. None on staging, where there's no name to choose.</summary>
-    public Task<Either<Error, Option<string>>> NameOf(string scribe, CancellationToken cancellationToken)
+    public Task<Either<Error, Option<string>>> NameOf(ScribeId scribe, CancellationToken cancellationToken)
         => All(cancellationToken).MapAsync(all => Task.FromResult(
-            all.Where(name => name.AccessId == scribe).Select(name => name.Name).HeadOrNone()));
+            all.Where(name => name.Scribe == scribe).Select(name => name.Name).HeadOrNone()));
 
     /// <summary>
     /// Saves the name for the Scribe and returns it as saved (spaces tidied). Their own name again changes nothing.
     /// </summary>
-    public Task<Either<Error, string>> Choose(string scribe, string typed, CancellationToken cancellationToken)
+    public Task<Either<Error, string>> Choose(ScribeId scribe, string typed, CancellationToken cancellationToken)
         => Acceptable(typed).BindAsync(name => names.GetAll(cancellationToken).BindAsync(read =>
         {
-            var current = read.Names.Where(found => found.AccessId == scribe).HeadOrNone();
+            var current = read.Names.Where(found => found.Scribe == scribe).HeadOrNone();
             if (current.Exists(found => found.Name == name))
             {
                 return Task.FromResult(Right<Error, string>(name));
             }
-            if (read.Names.Exists(found => found.AccessId != scribe && SameName(found.Name, name)))
+            if (read.Names.Exists(found => found.Scribe != scribe && SameName(found.Name, name)))
             {
                 return Task.FromResult(Left<Error, string>(Taken));
             }
-            var changed = read.Names.Where(found => found.AccessId != scribe).Append(new ScribeName(scribe, name)).ToList();
+            var changed = read.Names.Where(found => found.Scribe != scribe).Append(new ScribeName(scribe, name)).ToList();
             var audit = new AuditEntry
             {
                 Id = Guid.NewGuid(),

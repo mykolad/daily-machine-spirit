@@ -46,7 +46,7 @@ public sealed class ScribeNameFunction
         }
 
         var typed = Optional(request.Query["name"].ToString()).Filter(name => name.Length > 0);
-        return await Render(request, (string)looking.Case, Carried(request.Query["s"]), typed, None, StatusCodes.Status200OK, cancellationToken);
+        return await Render(request, (ScribeId)looking.Case, Carried(request.Query["s"]), typed, None, StatusCodes.Status200OK, cancellationToken);
     }
 
     [Function("ScriptoriumNameChoose")]
@@ -63,7 +63,7 @@ public sealed class ScribeNameFunction
             return new BadRequestResult();
         }
 
-        var scribe = (string)acting.Case;
+        var scribe = (ScribeId)acting.Case;
         var typed = fields["name"].ToString();
         return await (await naming.Choose(scribe, typed, cancellationToken)).Match(
             Right: _ =>
@@ -87,7 +87,7 @@ public sealed class ScribeNameFunction
         => suggestions.Select(name => ScribeNaming.Acceptable(name ?? string.Empty)).Rights().Take(suggester.Count).ToList();
 
     private async Task<IActionResult> Render(
-        HttpRequest request, string scribe, List<string> carried, Option<string> typed, Option<string> message, int status, CancellationToken cancellationToken)
+        HttpRequest request, ScribeId scribe, List<string> carried, Option<string> typed, Option<string> message, int status, CancellationToken cancellationToken)
     {
         var all = await naming.All(cancellationToken);
         if (all.Case is Error error)
@@ -96,8 +96,8 @@ public sealed class ScribeNameFunction
         }
 
         var names = (List<ScribeName>)all.Case;
-        var chosen = names.Where(name => name.AccessId == scribe).Select(name => name.Name).HeadOrNone();
-        var takenByOthers = names.Where(name => name.AccessId != scribe).Select(name => name.Name).ToList();
+        var chosen = names.Where(name => name.Scribe == scribe).Select(name => name.Name).HeadOrNone();
+        var takenByOthers = names.Where(name => name.Scribe != scribe).Select(name => name.Name).ToList();
         var suggestions = carried.Count > 0
             ? suggester.StillFree(carried, takenByOthers)
             : await suggester.Suggest(takenByOthers, cancellationToken);

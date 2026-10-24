@@ -47,8 +47,8 @@ public static partial class ScriptoriumPage
         {
             var byWho = shown.Entries.Where(entry => shown.Filter.Who switch
             {
-                RecordActors.Scribes => entry.Actor != AuditEntry.MachineSpirit,
-                RecordActors.MachineSpirit => entry.Actor == AuditEntry.MachineSpirit,
+                RecordActors.Scribes => !entry.Actor.IsMachineSpirit,
+                RecordActors.MachineSpirit => entry.Actor.IsMachineSpirit,
                 _ => true,
             }).ToList();
             var matching = byWho.Where(entry => shown.Filter.What.ForAll(kind => KindOf(entry.Action) == kind)).ToList();
@@ -84,7 +84,7 @@ public static partial class ScriptoriumPage
     // Links, so the filters work without a script, and an address keeps them.
     private static void RecordFilters(StringBuilder html, RecordShown shown, IReadOnlyList<AuditEntry> byWho)
     {
-        var spirit = shown.Entries.Count(entry => entry.Actor == AuditEntry.MachineSpirit);
+        var spirit = shown.Entries.Count(entry => entry.Actor.IsMachineSpirit);
         html.Append("""<div class="record-filters"><div class="who" role="group" aria-label="Who">""");
         foreach (var (who, label, count) in new[]
         {
@@ -164,7 +164,7 @@ public static partial class ScriptoriumPage
     // Coloured by who acted, the Machine Spirit or a Scribe; a burn in the flames' own.
     private static string Badge(AuditEntry entry)
     {
-        var tone = entry.Action == AuditAction.Burn ? "danger" : entry.Actor == AuditEntry.MachineSpirit ? "spirit" : "scribe";
+        var tone = entry.Action == AuditAction.Burn ? "danger" : entry.Actor.IsMachineSpirit ? "spirit" : "scribe";
         var icon = entry.Action switch
         {
             AuditAction.Write or AuditAction.Amend or AuditAction.EditPrecept => ScriptoriumIcons.Pencil,
@@ -189,7 +189,7 @@ public static partial class ScriptoriumPage
     }
 
     private static string Actor(AuditEntry entry, IReadOnlyList<ScribeName> names)
-        => $"""<span class="actor {(entry.Actor == AuditEntry.MachineSpirit ? "spirit" : "scribe")}">{Encode(ScribeNames.Of(entry.Actor, names))}</span>""";
+        => $"""<span class="actor {(entry.Actor.IsMachineSpirit ? "spirit" : "scribe")}">{Encode(ScribeNames.Of(entry.Actor, names))}</span>""";
 
     // What an entry records, after who: the rite (or precept) named by its words then, a rite linking to its own record.
     private static string Did(AuditEntry entry)

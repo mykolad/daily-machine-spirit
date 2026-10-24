@@ -4,7 +4,7 @@ namespace DailyMachineSpirit.Data.Entities;
 /// The name a Scribe chose for the Record (#84), by their Cloudflare Access id: a name or an alias, never an email. Only
 /// the Scribes see it.
 /// </summary>
-public sealed record ScribeName(string AccessId, string Name)
+public sealed record ScribeName(ScribeId Scribe, string Name)
 {
     public const int MaxLength = 40;
 }

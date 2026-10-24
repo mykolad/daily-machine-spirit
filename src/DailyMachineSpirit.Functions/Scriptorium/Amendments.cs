@@ -53,7 +53,7 @@ public sealed class Amendments
 
     /// <param name="etag">The version the Scribe read: changed since, nothing is saved.</param>
     public Task<Either<Error, SavedAmendment>> SaveAndJudgeAgain(
-        Guid draftId, string etag, RiteContent words, string note, string scribe, CancellationToken cancellationToken)
+        Guid draftId, string etag, RiteContent words, string note, ScribeId scribe, CancellationToken cancellationToken)
         => CheckedNote(note).BindAsync(checkedNote => AsTheScribeRead(draftId, etag, cancellationToken)
             .BindAsync(draft => RiteChecks.Check(words, draft.Writing.Kind).MapLeft(Refusal)
                 .BindAsync(checkedWords => scribes.PlacesOf(draft.Id, cancellationToken)
@@ -121,7 +121,7 @@ public sealed class Amendments
     };
 
     // The title it had before, when that changed: the record's line names the rite by its new one.
-    private AuditEntry Audit(string scribe, Draft before, Draft after)
+    private AuditEntry Audit(ScribeId scribe, Draft before, Draft after)
         => AuditEntries.Of(time, scribe, AuditAction.Amend, after, before.Writing.Title == after.Writing.Title
             ? None
             : Some($"was “{before.Writing.Title}”"));

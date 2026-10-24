@@ -68,17 +68,17 @@ public sealed class PreceptDistiller
     }
 
     /// <summary>Distils and saves the Precepts, as a Scribe asked; returns them.</summary>
-    public Task<Either<Error, PreceptBook>> Distil(string scribe, CancellationToken cancellationToken)
-        => Distil(scribe, onlyWhenJudgedSince: false, cancellationToken);
+    public Task<Either<Error, PreceptBook>> Distil(Actor actor, CancellationToken cancellationToken)
+        => Distil(actor, onlyWhenJudgedSince: false, cancellationToken);
 
     /// <summary>
     /// The weekly run's, as the Machine Spirit: only when a rite was judged since the last distillation. The same
     /// judgments would only reword the unpinned precepts, changing the writer's rules for no reason.
     /// </summary>
     public Task<Either<Error, PreceptBook>> DistilIfJudgedSinceLast(CancellationToken cancellationToken)
-        => Distil(AuditEntry.MachineSpirit, onlyWhenJudgedSince: true, cancellationToken);
+        => Distil(Actor.MachineSpirit, onlyWhenJudgedSince: true, cancellationToken);
 
-    private Task<Either<Error, PreceptBook>> Distil(string actor, bool onlyWhenJudgedSince, CancellationToken cancellationToken)
+    private Task<Either<Error, PreceptBook>> Distil(Actor actor, bool onlyWhenJudgedSince, CancellationToken cancellationToken)
         => scriptorium.GetDecisions(options.Value.JudgmentsRead, cancellationToken)
             .BindAsync(decisions => precepts.Get(cancellationToken)
                 .BindAsync(read => (onlyWhenJudgedSince && !JudgedSince(read.Book, decisions)
@@ -219,7 +219,7 @@ public sealed class PreceptDistiller
         return texts.Take(room).ToList();
     }
 
-    private AuditEntry Audit(string actor, PreceptBook book, int judgments) => new()
+    private AuditEntry Audit(Actor actor, PreceptBook book, int judgments) => new()
     {
         Id = Guid.NewGuid(),
         AtUtc = time.GetUtcNow().UtcDateTime,

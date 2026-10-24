@@ -132,7 +132,7 @@ public sealed class BacklogRefiller
         });
         foreach (var draft in waiting.Where(judge.NeedsJudging))
         {
-            (await judging.Judge(draft.Id, AuditEntry.MachineSpirit, cancellationToken))
+            (await judging.Judge(draft.Id, Actor.MachineSpirit, cancellationToken))
                 .IfLeft(error => LogUnlessChangedMeanwhile(draft, error));
         }
     }

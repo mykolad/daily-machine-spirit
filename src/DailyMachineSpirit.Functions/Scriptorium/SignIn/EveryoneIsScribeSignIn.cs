@@ -11,6 +11,6 @@ namespace DailyMachineSpirit.Functions.Scriptorium.SignIn;
 /// </summary>
 public sealed class EveryoneIsScribeSignIn : IScribeSignIn
 {
-    public Task<Option<string>> Scribe(HttpRequest request, CancellationToken cancellationToken)
-        => Task.FromResult(Some(AuditEntry.StagingScribe));
+    public Task<Option<ScribeId>> Scribe(HttpRequest request, CancellationToken cancellationToken)
+        => Task.FromResult(Some(ScribeId.Staging));
 }

@@ -93,7 +93,7 @@ public class ScribeSignInRegistrationTests
         var scribeAsExpurgator = await services.GetRequiredService<ExpurgatorSignIn>().SignIn.Scribe(Request(team.ValidToken()), CancellationToken.None);
         var expurgatorAsScribe = await services.GetRequiredService<IScribeSignIn>().Scribe(Request(expurgatorsToken), CancellationToken.None);
 
-        Assert.Equal(LanguageExt.Prelude.Some(FakeAccessTeam.ScribeId), expurgator);
+        Assert.Equal(LanguageExt.Prelude.Some(new Data.Entities.ScribeId(FakeAccessTeam.ScribeId)), expurgator);
         Assert.True(scribeAsExpurgator.IsNone);
         Assert.True(expurgatorAsScribe.IsNone);
     }

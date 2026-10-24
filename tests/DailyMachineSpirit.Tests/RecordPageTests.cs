@@ -159,5 +159,5 @@ public sealed class RecordPageTests
 
     private static AuditEntry Said(AuditAction action, DateTime atUtc, string detail) => Entry(action, atUtc) with { Detail = Some(detail) };
 
-    private static AuditEntry Spirit(AuditEntry entry) => entry with { Actor = AuditEntry.MachineSpirit };
+    private static AuditEntry Spirit(AuditEntry entry) => entry with { Actor = Actor.MachineSpirit };
 }

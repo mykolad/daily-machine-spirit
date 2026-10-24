@@ -25,8 +25,8 @@ public class ScriptoriumRepository : IScriptoriumRepository
     public Task<Either<Error, Placements>> GetPlacements(CancellationToken cancellationToken)
         => Attempt(async () => (await container.ReadOrNone<PlacementsDocument>(PlacementsDocument.PlacementsId, cancellationToken))
             .Match(
-                Some: found => new Placements(found.Document.Order, found.Document.PlacedBy, found.ETag),
-                None: () => new Placements([], new Dictionary<Guid, string>(), None)));
+                Some: found => new Placements(found.Document.Order, found.Document.PlacedBy.ToDictionary(placed => placed.Key, placed => new ScribeId(placed.Value)), found.ETag),
+                None: () => new Placements([], new Dictionary<Guid, ScribeId>(), None)));
 
     public Task<Either<Error, Unit>> SavePlacements(
         Placements placements, Option<ScribeDecision> decision, IReadOnlyCollection<Guid> mustStillWait, AuditEntry audit, CancellationToken cancellationToken)
@@ -64,7 +64,7 @@ public class ScriptoriumRepository : IScriptoriumRepository
                         {
                             State = to,
                             BurnedAtUtc = burned ? Utc.From(decision.DecidedAtUtc) : null,
-                            BurnedBy = burned ? audit.Actor : null,
+                            BurnedBy = burned ? audit.Actor.Id : null,
                             BurnedFromPlace = burned ? decision.CalendarPlace.OrNullable() : null,
                             BurnReason = burned ? decision.Note.OrNull() : null,
                         };
@@ -134,7 +134,7 @@ public class ScriptoriumRepository : IScriptoriumRepository
         var document = new PlacementsDocument
         {
             Order = placements.Order,
-            PlacedBy = placements.PlacedBy.Where(placed => placements.Order.Contains(placed.Key)).ToDictionary(),
+            PlacedBy = placements.PlacedBy.Where(placed => placements.Order.Contains(placed.Key)).ToDictionary(placed => placed.Key, placed => placed.Value.Value),
         };
         return placements.ETag.Match(
             Some: etag => batch.ReplaceItem(PlacementsDocument.PlacementsId, document,

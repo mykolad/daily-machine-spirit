@@ -37,7 +37,7 @@ public sealed class DraftJudging
     /// recorded.
     /// </summary>
     /// <param name="actor">Who asked, for the record: a Scribe's id, or the Machine Spirit.</param>
-    public Task<Either<Error, Option<Augury>>> Judge(Guid draftId, string actor, CancellationToken cancellationToken)
+    public Task<Either<Error, Option<Augury>>> Judge(Guid draftId, Actor actor, CancellationToken cancellationToken)
         => drafts.GetWithETag(draftId, cancellationToken)
             .BindAsync(found => found
                 .Filter(stored => stored.Draft.State == DraftState.Waiting && judge.NeedsJudging(stored.Draft))
@@ -46,7 +46,7 @@ public sealed class DraftJudging
                     None: () => Task.FromResult(Left<Error, Option<Augury>>(NothingToJudge))));
 
     private async Task<Either<Error, Option<Augury>>> Judged(
-        Draft draft, string etag, string actor, CancellationToken cancellationToken)
+        Draft draft, string etag, Actor actor, CancellationToken cancellationToken)
         => await (await judge.Judge(draft, cancellationToken)).Match(
             Right: judged => judged.Augury.Match(
                 Some: augury => drafts.SaveJudgmentIfUnchanged(judged, etag, Audit(actor, judged, augury), cancellationToken)
@@ -59,7 +59,7 @@ public sealed class DraftJudging
                 return Task.FromResult(Right<Error, Option<Augury>>(None));
             });
 
-    private AuditEntry Audit(string actor, Draft judged, Augury augury) => new()
+    private AuditEntry Audit(Actor actor, Draft judged, Augury augury) => new()
     {
         Id = Guid.NewGuid(),
         AtUtc = time.GetUtcNow().UtcDateTime,
