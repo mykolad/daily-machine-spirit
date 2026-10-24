@@ -21,7 +21,9 @@ public sealed record Actor
     /// <summary>As stored.</summary>
     public string Id { get; }
 
-    public Option<ScribeId> Scribe => Id == MachineSpiritId ? None : Some(new ScribeId(Id));
+    public bool IsMachineSpirit => Id == MachineSpiritId;
+
+    public Option<ScribeId> Scribe => IsMachineSpirit ? None : Some(new ScribeId(Id));
 
     public static Actor Stored(string id) => new(id);
 
