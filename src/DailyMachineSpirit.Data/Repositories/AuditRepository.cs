@@ -1,3 +1,4 @@
+using System.Globalization;
 using DailyMachineSpirit.Data.Entities;
 using LanguageExt;
 using LanguageExt.Common;
@@ -26,6 +27,14 @@ public sealed class AuditRepository : IAuditRepository
     public Task<Either<Error, List<AuditEntry>>> GetNewest(int count, CancellationToken cancellationToken)
         => Entries(
             new QueryDefinition("SELECT TOP @count * FROM c WHERE c.type = @type ORDER BY c.atUtc DESC").WithParameter("@count", count),
+            cancellationToken);
+
+    // Compared as the strings Cosmos DB orders, so written as every entry's time is.
+    public Task<Either<Error, List<AuditEntry>>> GetNewestBefore(DateTime beforeUtc, int count, CancellationToken cancellationToken)
+        => Entries(
+            new QueryDefinition("SELECT TOP @count * FROM c WHERE c.type = @type AND c.atUtc < @before ORDER BY c.atUtc DESC")
+                .WithParameter("@count", count)
+                .WithParameter("@before", Utc.From(beforeUtc).ToString(SortableUtcConverter.Format, CultureInfo.InvariantCulture)),
             cancellationToken);
 
     public Task<Either<Error, int>> Count(CancellationToken cancellationToken)
