@@ -13,14 +13,15 @@ change to them reaches production at once. Production is live since #50.
 |---|---|---|
 | Resource group | `machinespirit-rg` | |
 | AI Services | `machinespirit-ai` | `gpt-6-sol` writes the rites, `gpt-6-luna` is the fallback; keys off |
-| Cosmos DB | `machinespirit-cosmos`, `machinespirit-cosmos-staging` | production's is free tier (1000 RU/s, 25 GB for the account's lifetime), database `machinespirit` at 400 RU/s; staging's is serverless (#129: no throughput reserved, paid by the request), database `machinespirit-staging`; both have container `rites` (partition key `/partition`); keys off |
+| Cosmos DB | `machinespirit-cosmos`, `machinespirit-cosmos-staging` | production's is free tier (1000 RU/s, 25 GB for the account's lifetime), database `machinespirit` at 400 RU/s, in Sweden Central with a replica in North Europe (#113: 800 RU/s in all), which takes the writes if Sweden Central fails; staging's is serverless (#129: no throughput reserved, paid by the request), database `machinespirit-staging`; both have container `rites` (partition key `/partition`); keys off |
 | Key Vault | `machinespirit-kv`, `machinespirit-kv-staging` | one per environment, so staging can't read production's secrets |
-| Storage | `machinespiritprod`, `machinespiritstaging` | the Functions host's storage; keys off |
-| Functions app | `machinespirit-app`, `machinespirit-app-staging` | Flex Consumption, .NET 10 isolated, 512 MB instances, at most 10; staging admits only the owner's IP, production only Cloudflare |
+| Storage | `machinespiritprod`, `machinespiritnortheurope`, `machinespiritstaging` | the Functions host's storage, one per app; keys off |
+| Functions app | `machinespirit-app`, `machinespirit-app-northeurope`, `machinespirit-app-staging` | Flex Consumption, .NET 10 isolated, 512 MB instances, at most 10; staging admits only the owner's IP, production only Cloudflare (and Traffic Manager's health checks). `machinespirit-app-northeurope` is production's standby in North Europe (#113): the same code, database, vault and snapshot, without the timers |
+| Traffic Manager | `machinespirit-traffic` (`machinespirit.trafficmanager.net`) | production's domain points here (Outside Azure): `machinespirit-app` while its `/healthz` answers, else the standby. Probes every 30 seconds, out after 3 failures, a 60-second TTL: a failover takes two to three minutes, and so does coming back |
 | GitHub identities | `machinespirit-github-staging`, `-production`, `-infrastructure` | OIDC from this repository's GitHub environments of the same names |
-| The rites' snapshot (#112) | `machinespiritsnapshots`, in Germany West Central (`snapshotLocation`): containers `rites-staging`, `rites-production` | Every published rite, as one blob per environment, which its app reads while Cosmos DB doesn't answer. Outside Sweden Central and North Europe (the second region planned, #113), so the copy outlives an outage of either; each app may write only its own container |
+| The rites' snapshot (#112) | `machinespiritsnapshots`, in Germany West Central (`snapshotLocation`): containers `rites-staging`, `rites-production` | Every published rite, as one blob per environment, which its app reads while Cosmos DB doesn't answer. Outside Sweden Central and North Europe (production's standby, #113), so the copy outlives an outage of either; each app may write only its own container |
 
-Each app has its own managed identity, with access to its own database, vault and storage, and to the models. Nothing in
+Each app has its own managed identity, with access to its environment's database and vault, its own storage, and the models. Nothing in
 Azure is reached with a key or a password: account keys are off, and so is basic-auth publishing, so deploys sign in with
 Entra ID. The only credentials are for services outside Azure (Jev, Grafana Cloud), and they live in the vaults
 (see Secrets).
@@ -89,6 +90,27 @@ rite, the rite numbers' counter) the copy would overwrite.
 5. Delete staging's old database from the shared account (Bicep never deletes what it no longer lists), which frees its
    400 RU/s of the free tier for production's second region (#113):
    `az cosmosdb sql database delete -a machinespirit-cosmos -g machinespirit-rg -n machinespirit-staging`
+
+### Production's standby in North Europe (#113, once)
+
+Production runs in two regions: `machinespirit-app` in Sweden Central, and a standby, `machinespirit-app-northeurope`,
+which Traffic Manager sends readers to while the first doesn't answer. Both use the one database: Cosmos DB keeps a
+replica in North Europe, which the standby reads (`Cosmos:Region`), and moves the writes there by itself if Sweden
+Central fails, so votes, sign-in and the Scriptorium keep working too. The standby leaves the timers (publishing,
+distilling, the snapshot) to the first app, so they never run twice; a midnight the first app misses is published
+when it's back (the host's schedule monitoring).
+
+Deploy Master deploys to the standby too, so it must exist before the change that adds it is merged:
+
+1. From that branch, deploy with `deployProduction=true` (Later changes). Cosmos DB copies the database to North Europe
+   (a few minutes for its size); the standby starts without code, so Traffic Manager says it's degraded.
+2. Merge. Deploy Master deploys both apps; after its run, Traffic Manager has both online:
+   `az network traffic-manager endpoint list -g machinespirit-rg --profile-name machinespirit-traffic --query "[].{name:name, status:endpointMonitorStatus}" -o table`
+3. Point the domain at Traffic Manager (Outside Azure, DNS).
+4. Try a failover once: `az functionapp stop -g machinespirit-rg -n machinespirit-app`. Within three minutes,
+   `nslookup machinespirit.trafficmanager.net` names the standby, and the site, the Scriptorium and a vote still work
+   (Grafana tells the apps apart by `cloud.region`). Then `az functionapp start` with the same names, and within three
+   minutes Traffic Manager names the first app again.
 
 ## Secrets
 
@@ -207,15 +229,15 @@ It prints `True`. The next request for each page then reaches the app once; brow
 GitHub Actions deploys the app (`.github/workflows/`), signed in as the environment's GitHub identity:
 
 - **Deploy Master**: every merge to `master` is built and tested again, then that package goes to staging, and once
-  staging passes its smoke tests, to production. No approval: staging is the gate, and the `production` environment
-  admits deployments from `master` only.
+  staging passes its smoke tests, to production, then to production's standby (#113). No approval: staging is the
+  gate, and the `production` environment admits deployments from `master` only.
 - **Deploy Branch to Staging**: Actions → Deploy Branch to Staging → Run workflow, with a branch name, to try a PR
   on staging before merging. Staging keeps it until the next deployment.
 
 Each deployment ends with smoke tests (`tests/DailyMachineSpirit.SmokeTests`), and rolls back to the last good master
 if they fail. For them, the workflow briefly adds the runner's address to the app's access rules (`smoke-tests`), since
-staging admits only your address and production only Cloudflare: each GitHub identity is Website Contributor on its own
-app, which is enough.
+staging admits only your address and production only Cloudflare: each GitHub identity is Website Contributor on its
+environment's apps, which is enough.
 
 `https://machinespirit-app-staging.azurewebsites.net/healthz` shows the deployed commit (only from your address).
 Production's, `https://machinespirit-app.azurewebsites.net/healthz`, answers only Cloudflare: through the domain, once it
@@ -237,8 +259,9 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
     (`https://developers.cloudflare.com/ssl/static/origin_ca_rsa_root.pem`), content type `application/x-pkcs12`.
     Bicep imports it into the app (`productionDomain` in `resources.bicep`) and binds the domain. When it nears its
     end, make a new one, set the secret again, and deploy the infrastructure.
-  - **DNS**: a proxied CNAME `@` → `machinespirit-app.azurewebsites.net`, and a TXT record `asuid` with the app's
-    `customDomainVerificationId`, which Azure checks before binding the domain.
+  - **DNS**: a proxied CNAME `@` → `machinespirit.trafficmanager.net` (Traffic Manager, #113, which names the app that
+    answers; before it, `machinespirit-app.azurewebsites.net`), and a TXT record `asuid` with the apps'
+    `customDomainVerificationId` (one per subscription), which Azure checks before binding the domain to each app.
   - **A Cache Rule** (Caching → Cache Rules), after the purge is set up (Secrets): hostname equals
     `dailymachinespirit.fyi`, and either the URI path doesn't start with `/api/`, `/auth/`, `/scriptorium` or `/healthz`,
     or it equals `/api/search-index` (the search field's index), or it starts with `/api/v1/rites` (the public rites API,

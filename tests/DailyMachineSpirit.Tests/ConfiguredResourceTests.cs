@@ -43,14 +43,31 @@ public sealed class ConfiguredResourceTests : IDisposable
     public void TheWorkersDefaultsAlone_NameTheSlot()
         => Assert.Equal("Production", EnvironmentName(telemetry => telemetry.UseFunctionsWorkerDefaults()));
 
+    // Production's standby (#113) reports as the first app, so the dashboards and alerts count both.
+    [Fact]
+    public void TheEnvironmentsOwnSetting_NamesTheService_OverTheApp()
+    {
+        Environment.SetEnvironmentVariable("WEBSITE_SITE_NAME", "machinespirit-app-northeurope");
+        Environment.SetEnvironmentVariable("OTEL_RESOURCE_ATTRIBUTES",
+            "deployment.environment.name=production,cloud.region=northeurope,service.name=machinespirit-app");
+
+        var resource = TelemetryResource(telemetry => telemetry.UseFunctionsWorkerDefaults().KeepConfiguredResourceAttributes());
+
+        Assert.Equal(("machinespirit-app", "northeurope"), (Attribute(resource, "service.name"), Attribute(resource, "cloud.region")));
+    }
+
     private static object EnvironmentName(Action<IOpenTelemetryBuilder> configure)
+        => Attribute(TelemetryResource(configure), "deployment.environment.name");
+
+    private static object Attribute(Resource resource, string key) => resource.Attributes.Single(attribute => attribute.Key == key).Value;
+
+    private static Resource TelemetryResource(Action<IOpenTelemetryBuilder> configure)
     {
         var services = new ServiceCollection();
         var telemetry = services.AddOpenTelemetry();
         configure(telemetry);
         telemetry.WithMetrics(_ => { });
         using var provider = services.BuildServiceProvider();
-        var resource = provider.GetRequiredService<MeterProvider>().GetResource();
-        return resource.Attributes.Single(attribute => attribute.Key == "deployment.environment.name").Value;
+        return provider.GetRequiredService<MeterProvider>().GetResource();
     }
 }

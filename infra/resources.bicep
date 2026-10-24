@@ -14,8 +14,11 @@ param githubSubjectPrefix string = 'repo:mykolad@2202717/daily-machine-spirit@14
 // first, and production's are left as they are (nothing deleted, nothing updated). The shared resources above (the
 // models, Cosmos DB, the infrastructure identity) are deployed either way, and production uses them too.
 param deployProduction bool = false
-// Where the rites' snapshot is kept (#112): outside the app's region, so an outage there leaves the copy readable, and
-// outside North Europe, the second region planned for the app (#113), so the copy outlives an outage of either.
+// Where production's standby app runs (#113), with a replica of its database: Traffic Manager sends readers there while
+// the app in `location` doesn't answer.
+param standbyLocation string = 'northeurope'
+// Where the rites' snapshot is kept (#112): outside both regions the app runs in, so the copy outlives an outage of
+// either.
 param snapshotLocation string = 'germanywestcentral'
 
 var roles = {
@@ -113,8 +116,8 @@ resource ownerModels 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 }
 
 // One free-tier account per subscription: 1000 RU/s and 25 GB free for its lifetime. Production's database takes
-// 400 RU/s of it, and so would each region it's replicated to (#113), so staging has an account of its own (below). The
-// free tier can only be chosen when the account is created.
+// 400 RU/s of it in each region it's in: 800 with the standby's replica (#113), so staging has an account of its own
+// (below). The free tier can only be chosen when the account is created.
 resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' = {
   name: '${prefix}-cosmos'
   location: location
@@ -123,15 +126,22 @@ resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' = {
     databaseAccountOfferType: 'Standard'
     enableFreeTier: true
     disableLocalAuth: true
-    // Azure's default for new accounts; with one region it does nothing, but leaving it out would turn it off.
+    // Writes go to the first region; should it fail, Azure moves them to the replica, and back once it recovers.
     enableAutomaticFailover: true
     consistencyPolicy: {
       defaultConsistencyLevel: 'Session'
     }
+    // The standby's replica (#113), which its app reads (CosmosOptions.Region) and which takes the writes while the
+    // first region's down.
     locations: [
       {
         locationName: location
         failoverPriority: 0
+        isZoneRedundant: false
+      }
+      {
+        locationName: standbyLocation
+        failoverPriority: 1
         isZoneRedundant: false
       }
     ]
@@ -264,6 +274,9 @@ module staging 'modules/environment.bicep' = {
     appServicePrincipalId: appServicePrincipalId
     smokeTestsVote: true
     snapshotAccountName: snapshots.name
+    // One region: serverless has no replicas, and production's standby is enough to try failing over.
+    standbyLocation: ''
+    standbyStorageAccountName: ''
   }
 }
 
@@ -298,11 +311,16 @@ module production 'modules/environment.bicep' = if (deployProduction) {
     // A test vote would show in the public counts.
     smokeTestsVote: false
     snapshotAccountName: snapshots.name
+    standbyLocation: standbyLocation
+    standbyStorageAccountName: '${prefix}${standbyLocation}'
   }
 }
 
 output stagingAppHost string = staging.outputs.appHost
 output productionAppHost string = deployProduction ? production!.outputs.appHost : ''
+output productionStandbyAppHost string = deployProduction ? production!.outputs.standbyAppHost : ''
+// Where Cloudflare's DNS points the domain (infra/README.md, "Outside Azure").
+output productionTrafficManagerHost string = deployProduction ? production!.outputs.trafficManagerHost : ''
 output githubClientIds object = union(
   {
     infrastructure: infrastructureDeployer.properties.clientId
