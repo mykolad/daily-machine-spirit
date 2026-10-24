@@ -21,7 +21,7 @@ public sealed class NamesShown
     }
 
     /// <summary>How the Record shows the Scribe looking, and whether they chose it; none when the names can't be read.</summary>
-    public async Task<Option<NameInTheRecord>> Of(string scribe, CancellationToken cancellationToken)
+    public async Task<Option<NameInTheRecord>> Of(ScribeId scribe, CancellationToken cancellationToken)
         => (await naming.NameOf(scribe, cancellationToken)).Match(
             Right: chosen => Some(new NameInTheRecord(chosen.IfNone(() => ScribeNames.Unnamed(scribe)), chosen.IsSome)),
             Left: error =>

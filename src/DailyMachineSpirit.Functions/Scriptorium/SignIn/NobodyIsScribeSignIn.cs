@@ -1,3 +1,4 @@
+using DailyMachineSpirit.Data.Entities;
 using LanguageExt;
 using Microsoft.AspNetCore.Http;
 
@@ -9,6 +10,6 @@ namespace DailyMachineSpirit.Functions.Scriptorium.SignIn;
 /// </summary>
 public sealed class NobodyIsScribeSignIn : IScribeSignIn
 {
-    public Task<Option<string>> Scribe(HttpRequest request, CancellationToken cancellationToken)
-        => Task.FromResult(Option<string>.None);
+    public Task<Option<ScribeId>> Scribe(HttpRequest request, CancellationToken cancellationToken)
+        => Task.FromResult(Option<ScribeId>.None);
 }

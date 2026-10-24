@@ -27,7 +27,7 @@ internal sealed record PreceptDocument
         Pinned = precept.Pinned,
         ByScribe = precept.ByScribe,
         Origin = precept.Origin,
-        By = precept.By.OrNull(),
+        By = precept.By.Map(scribe => scribe.Value).OrNull(),
     };
 
     public Precept ToPrecept() => new()
@@ -36,6 +36,6 @@ internal sealed record PreceptDocument
         Text = Text,
         Pinned = Pinned,
         Origin = Origin ?? (ByScribe ? PreceptOrigin.ScribesWords : PreceptOrigin.Distilled),
-        By = Optional(By),
+        By = Optional(By).Map(id => new ScribeId(id)),
     };
 }

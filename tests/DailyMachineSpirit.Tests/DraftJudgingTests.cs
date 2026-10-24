@@ -32,7 +32,7 @@ public sealed class DraftJudgingTests : IAsyncLifetime
         Assert.True(saved.Augury.IsSome && saved.Similarity.IsSome && saved.Tags.IsSome);
         Assert.Equal(Some(0.9f), Ok(await testbed.Drafts.Get(judged.Id, CancellationToken.None)).Bind(draft => draft.Augury).Map(augury => augury.Quality));
         var entry = Assert.Single(Ok(await testbed.Audit.GetHistory(unjudged.Id, CancellationToken.None)), found => found.Action == AuditAction.JudgeAgain);
-        Assert.Equal(AuditEntry.MachineSpirit, entry.Actor);
+        Assert.Equal(Actor.MachineSpirit, entry.Actor);
         Assert.StartsWith("the Augury: ", entry.Detail.IfNone(string.Empty));
         Assert.DoesNotContain(Ok(await testbed.Audit.GetHistory(judged.Id, CancellationToken.None)), found => found.Action == AuditAction.JudgeAgain);
     }
@@ -129,7 +129,7 @@ public sealed class DraftJudgingTests : IAsyncLifetime
         var older = draft.Similarity.Map(scores => scores with { ScoresGeneratorVersion = JevQuestions.Version("jev-1.12.0") });
         Ok(await testbed.Drafts.SaveJudgmentIfUnchanged(draft with { Similarity = older }, await ETag(draft), Entry(draft), CancellationToken.None));
 
-        Assert.True(Ok(await testbed.DraftJudging().Judge(draft.Id, AuditEntry.MachineSpirit, CancellationToken.None)).IsSome);
+        Assert.True(Ok(await testbed.DraftJudging().Judge(draft.Id, Actor.MachineSpirit, CancellationToken.None)).IsSome);
 
         var judged = Ok(await testbed.Drafts.Get(draft.Id, CancellationToken.None)).Bind(found => found.Similarity);
         Assert.Equal(Some(JevQuestions.Version(Settings.Jev.Model)), judged.Map(scores => scores.ScoresGeneratorVersion));
@@ -142,16 +142,16 @@ public sealed class DraftJudgingTests : IAsyncLifetime
     {
         var unjudged = await testbed.AddUnjudgedDraft("Litany of the Cold Cache");
         testbed.JevApiKey = "";
-        Assert.True(Ok(await testbed.DraftJudging().Judge(unjudged.Id, AuditEntry.MachineSpirit, CancellationToken.None)).IsSome);
+        Assert.True(Ok(await testbed.DraftJudging().Judge(unjudged.Id, Actor.MachineSpirit, CancellationToken.None)).IsSome);
         Assert.True(Ok(await testbed.Drafts.Get(unjudged.Id, CancellationToken.None)).Bind(draft => draft.Similarity).IsNone);
 
         testbed.JevApiKey = FakeJev.ApiKey;
-        Assert.True(Ok(await testbed.DraftJudging().Judge(unjudged.Id, AuditEntry.MachineSpirit, CancellationToken.None)).IsSome);
+        Assert.True(Ok(await testbed.DraftJudging().Judge(unjudged.Id, Actor.MachineSpirit, CancellationToken.None)).IsSome);
 
         var judged = Ok(await testbed.Drafts.Get(unjudged.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Gone."));
         Assert.True(judged.Similarity.IsSome);
         Assert.Equal(Some(new[] { "builds" }), judged.Tags);
-        Assert.Equal(DraftJudging.NothingToJudge, Failed(await testbed.DraftJudging().Judge(unjudged.Id, AuditEntry.MachineSpirit, CancellationToken.None)));
+        Assert.Equal(DraftJudging.NothingToJudge, Failed(await testbed.DraftJudging().Judge(unjudged.Id, Actor.MachineSpirit, CancellationToken.None)));
     }
 
     private async Task<string> ETag(Draft draft)

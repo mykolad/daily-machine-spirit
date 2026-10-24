@@ -56,7 +56,7 @@ public sealed partial class Expurgations
     /// chosen from, None when there's no such rite. The rite as it reads now, else.
     /// </summary>
     public async Task<Either<Error, Option<Rite>>> Erase(
-        int number, string version, IReadOnlyList<RedactedWord> chosen, string expurgator, CancellationToken cancellationToken)
+        int number, string version, IReadOnlyList<RedactedWord> chosen, ScribeId expurgator, CancellationToken cancellationToken)
     {
         if (chosen.Count == 0)
         {
@@ -94,7 +94,7 @@ public sealed partial class Expurgations
     }
 
     private Task<Either<Error, Option<Rite>>> EraseOnce(
-        int number, string version, IReadOnlyList<RedactedWord> chosen, string expurgator, CancellationToken cancellationToken)
+        int number, string version, IReadOnlyList<RedactedWord> chosen, ScribeId expurgator, CancellationToken cancellationToken)
         => Find(number, cancellationToken).BindAsync(found => found.Match(
             None: () => Task.FromResult(Right<Error, Option<Rite>>(None)),
             Some: rite => rite.Version == version
@@ -102,7 +102,7 @@ public sealed partial class Expurgations
                 : Task.FromResult(Left<Error, Option<Rite>>(WordsChanged))));
 
     private async Task<Either<Error, Option<Rite>>> EraseFrom(
-        Rite rite, IReadOnlyList<RedactedWord> chosen, string expurgator, CancellationToken cancellationToken)
+        Rite rite, IReadOnlyList<RedactedWord> chosen, ScribeId expurgator, CancellationToken cancellationToken)
     {
         if (Redacted(rite.Writing, chosen).Case is not RiteWriting redacted)
         {
@@ -121,7 +121,7 @@ public sealed partial class Expurgations
     }
 
     private async Task<Either<Error, Option<Rite>>> EraseCopies(
-        KeptWords stored, Rite rite, RiteWriting redacted, IReadOnlyList<RedactedWord> chosen, string expurgator,
+        KeptWords stored, Rite rite, RiteWriting redacted, IReadOnlyList<RedactedWord> chosen, ScribeId expurgator,
         CancellationToken cancellationToken)
         => (await copies.Erase(
                 Changed(stored.Copies, rite.Writing, redacted, WordsReplaced(rite.Writing, chosen)),
@@ -171,7 +171,7 @@ public sealed partial class Expurgations
             .ToDictionary(word => word.Text, word => word.Emoji, StringComparer.Ordinal);
 
     // Who, and how many words of which parts: never the words.
-    private AuditEntry Entry(Rite rite, Option<Guid> draftId, RiteWriting redacted, IReadOnlyList<RedactedWord> chosen, string expurgator) => new()
+    private AuditEntry Entry(Rite rite, Option<Guid> draftId, RiteWriting redacted, IReadOnlyList<RedactedWord> chosen, ScribeId expurgator) => new()
     {
         Id = Guid.NewGuid(),
         AtUtc = time.GetUtcNow().UtcDateTime,

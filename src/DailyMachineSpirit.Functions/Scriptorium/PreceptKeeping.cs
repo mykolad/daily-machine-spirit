@@ -44,7 +44,7 @@ public sealed class PreceptKeeping
     public Task<Either<Error, StoredPrecepts>> View(CancellationToken cancellationToken) => precepts.Get(cancellationToken);
 
     /// <summary>The new precept's id.</summary>
-    public Task<Either<Error, Guid>> AddPinned(string text, string scribe, CancellationToken cancellationToken)
+    public Task<Either<Error, Guid>> AddPinned(string text, ScribeId scribe, CancellationToken cancellationToken)
     {
         var id = Guid.NewGuid();
         return WithinTheRules(text, cancellationToken).BindAsync(words => Change(book => book.Precepts.Count >= PreceptBook.MaxPrecepts
@@ -55,7 +55,7 @@ public sealed class PreceptKeeping
             cancellationToken)).MapAsync(_ => Task.FromResult(id));
     }
 
-    public Task<Either<Error, Unit>> EditAndPin(Guid preceptId, string etag, string text, string scribe, CancellationToken cancellationToken)
+    public Task<Either<Error, Unit>> EditAndPin(Guid preceptId, string etag, string text, ScribeId scribe, CancellationToken cancellationToken)
         => WithinTheRules(text, cancellationToken).BindAsync(words => Change(book => Find(book, preceptId).Map(found =>
             (Replace(book, found with { Text = words, Pinned = true, Origin = PreceptOrigin.Amended, By = scribe }),
                 Audit(scribe, AuditAction.EditPrecept, words, Some($"was “{found.Text}”")))),
@@ -63,14 +63,14 @@ public sealed class PreceptKeeping
             cancellationToken));
 
     // A Scribe's words keep saying whose they are; a distilled precept says who pinned it, until it's unpinned.
-    public Task<Either<Error, Unit>> Pin(Guid preceptId, string etag, string scribe, CancellationToken cancellationToken)
+    public Task<Either<Error, Unit>> Pin(Guid preceptId, string etag, ScribeId scribe, CancellationToken cancellationToken)
         => Change(book => Find(book, preceptId).Map(found =>
             (Replace(book, found with { Pinned = true, By = found.ByScribe ? found.By : scribe }),
                 Audit(scribe, AuditAction.PinPrecept, found.Text, None))),
             Some(etag),
             cancellationToken);
 
-    public Task<Either<Error, Unit>> Unpin(Guid preceptId, string etag, string scribe, CancellationToken cancellationToken)
+    public Task<Either<Error, Unit>> Unpin(Guid preceptId, string etag, ScribeId scribe, CancellationToken cancellationToken)
         => Change(book => Find(book, preceptId).Map(found =>
             (Replace(book, found with { Pinned = false, By = found.ByScribe ? found.By : None }),
                 Audit(scribe, AuditAction.UnpinPrecept, found.Text, None))),
@@ -81,7 +81,7 @@ public sealed class PreceptKeeping
     /// Deletes the precept, and remembers its words so a distillation doesn't propose them again. It's kept, with its
     /// place, for <see cref="RestoreDeleted"/>.
     /// </summary>
-    public Task<Either<Error, Unit>> Delete(Guid preceptId, string etag, string scribe, CancellationToken cancellationToken)
+    public Task<Either<Error, Unit>> Delete(Guid preceptId, string etag, ScribeId scribe, CancellationToken cancellationToken)
         => Change(book => Find(book, preceptId).Map(found =>
             (book with
             {
@@ -100,7 +100,7 @@ public sealed class PreceptKeeping
     /// again. Only straight after the delete, on the version it left: any change since is
     /// <see cref="ScriptoriumRepository.ChangedMeanwhile"/>.
     /// </summary>
-    public Task<Either<Error, Unit>> RestoreDeleted(Guid preceptId, string etag, string scribe, CancellationToken cancellationToken)
+    public Task<Either<Error, Unit>> RestoreDeleted(Guid preceptId, string etag, ScribeId scribe, CancellationToken cancellationToken)
         => precepts.Get(cancellationToken)
             .BindAsync(read => Seen(read, Some(etag))
                 .Bind(book => book.LastDeleted.Filter(deleted => deleted.Precept.Id == preceptId).ToEither(ScriptoriumRepository.ChangedMeanwhile)
@@ -177,7 +177,7 @@ public sealed class PreceptKeeping
         return trimmed;
     }
 
-    private AuditEntry Audit(string scribe, AuditAction action, string text, Option<string> detail) => new()
+    private AuditEntry Audit(ScribeId scribe, AuditAction action, string text, Option<string> detail) => new()
     {
         Id = Guid.NewGuid(),
         AtUtc = time.GetUtcNow().UtcDateTime,

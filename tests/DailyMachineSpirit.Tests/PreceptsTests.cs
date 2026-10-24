@@ -219,11 +219,11 @@ public sealed class PreceptsTests : IAsyncLifetime
         var keeping = testbed.PreceptKeeping();
         Ok(await keeping.AddPinned("Keep the Omnissiah out of rituals.", Tester, CancellationToken.None));
         testbed.Models.Answers(Sol, Distilled(RealFix, NoRepeats));
-        var first = Ok(await testbed.Distiller().Distil(AuditEntry.MachineSpirit, CancellationToken.None));
+        var first = Ok(await testbed.Distiller().Distil(Actor.MachineSpirit, CancellationToken.None));
         Ok(await keeping.Delete(first.Precepts.Single(precept => precept.Text == NoRepeats).Id, await Version(), Tester, CancellationToken.None));
         testbed.Models.Answers(Sol, Distilled("keep the omnissiah out of rituals.", "Name the command in backticks."));
 
-        var second = Ok(await testbed.Distiller().Distil(AuditEntry.MachineSpirit, CancellationToken.None));
+        var second = Ok(await testbed.Distiller().Distil(Actor.MachineSpirit, CancellationToken.None));
 
         Assert.Equal(["Keep the Omnissiah out of rituals.", "Name the command in backticks."], second.Precepts.Select(precept => precept.Text));
         var request = Distilling().Last().Messages.Single(message => message.Role == ChatRole.User).Text;

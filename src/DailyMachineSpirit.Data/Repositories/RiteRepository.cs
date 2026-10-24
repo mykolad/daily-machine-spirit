@@ -186,7 +186,7 @@ public class RiteRepository : IRiteRepository, IRitePublishing
             {
                 Id = Guid.NewGuid(),
                 AtUtc = DateTime.UtcNow,
-                Actor = AuditEntry.MachineSpirit,
+                Actor = Actor.MachineSpirit,
                 Action = AuditAction.Publish,
                 DraftId = fromDraft.Map(draft => Guid.Parse(draft.Published.Id)),
                 RiteNumber = number,

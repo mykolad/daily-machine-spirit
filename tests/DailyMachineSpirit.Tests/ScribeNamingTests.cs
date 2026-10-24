@@ -18,8 +18,8 @@ namespace DailyMachineSpirit.Tests;
 /// <summary>The names the Scribes choose for the Record (#84), against the Cosmos DB emulator with fake models.</summary>
 public sealed class ScribeNamingTests : IAsyncLifetime
 {
-    private const string Ferrum = "7335d417-61da-459d-899c-0a1f8f6f0d3b";
-    private const string Cache = "1a2b3c4d-0000-0000-0000-00000000cafe";
+    private static readonly ScribeId Ferrum = new("7335d417-61da-459d-899c-0a1f8f6f0d3b");
+    private static readonly ScribeId Cache = new("1a2b3c4d-0000-0000-0000-00000000cafe");
 
     private readonly BacklogTestbed testbed = new();
 
@@ -84,9 +84,9 @@ public sealed class ScribeNamingTests : IAsyncLifetime
     {
         var naming = testbed.ScribeNaming();
 
-        Ok(await naming.Choose(AuditEntry.StagingScribe, "Brother Ferrum", CancellationToken.None));
+        Ok(await naming.Choose(ScribeId.Staging, "Brother Ferrum", CancellationToken.None));
 
-        Assert.Equal(Some("Brother Ferrum"), Ok(await naming.NameOf(AuditEntry.StagingScribe, CancellationToken.None)));
+        Assert.Equal(Some("Brother Ferrum"), Ok(await naming.NameOf(ScribeId.Staging, CancellationToken.None)));
     }
 
     // Two Scribes choosing at once: the second, saving over a read made before the first's save, is told to try again.
@@ -227,7 +227,7 @@ public sealed class ScribeNamingTests : IAsyncLifetime
     public async Task AnUnnamedScribe_IsAskedToChoose_OnStagingToo()
     {
         var unnamed = Html(await Scriptorium(Ferrum).Page(Get(""), CancellationToken.None), 200);
-        var staging = Html(await Scriptorium(AuditEntry.StagingScribe).Page(Get(""), CancellationToken.None), 200);
+        var staging = Html(await Scriptorium(ScribeId.Staging).Page(Get(""), CancellationToken.None), 200);
 
         Assert.Contains("""Signed in as <strong>A Scribe (…6f0d3b)</strong></span><a href="/scriptorium/name">Choose a name</a>""", unnamed);
         Assert.Contains("""Signed in as <strong>A Scribe on staging</strong></span><a href="/scriptorium/name">Choose a name</a>""", staging);
@@ -244,13 +244,13 @@ public sealed class ScribeNamingTests : IAsyncLifetime
 
     private static string Names(params string[] names) => JsonSerializer.Serialize(new { names });
 
-    private ScribeNameFunction Function(string scribe)
+    private ScribeNameFunction Function(ScribeId scribe)
         => new(testbed.ScribeNaming(), testbed.NameSuggester(), new SignedInScribe(scribe), NullLogger<ScribeNameFunction>.Instance);
 
-    private ScriptoriumFunction Scriptorium(string scribe)
+    private ScriptoriumFunction Scriptorium(ScribeId scribe)
         => new(testbed.Scribes(), testbed.Amendments(), testbed.DraftJudging(), testbed.Audit, testbed.NamesShown(), testbed.Tabs(), Options.Create(Settings.ScriptoriumPages),
             new SignedInScribe(scribe), testbed.Time, NullLogger<ScriptoriumFunction>.Instance);
 
-    private AuditEntry Entry(string scribe)
+    private AuditEntry Entry(ScribeId scribe)
         => new() { Id = Guid.NewGuid(), AtUtc = testbed.Time.GetUtcNow().UtcDateTime, Actor = scribe, Action = AuditAction.ChooseName, Title = "Sister Cache" };
 }

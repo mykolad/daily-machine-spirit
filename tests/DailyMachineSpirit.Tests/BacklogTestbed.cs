@@ -48,7 +48,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
     public const string Namer = "scribe-namer";
 
     /// <summary>The Scribe the tests act as, as an Access id would name them.</summary>
-    public const string Tester = "tester-0123456789";
+    public static readonly ScribeId Tester = new("tester-0123456789");
 
     public static readonly DateOnly Today = new(2026, 10, 7);
 

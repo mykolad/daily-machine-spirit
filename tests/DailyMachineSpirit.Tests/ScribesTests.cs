@@ -58,13 +58,13 @@ public sealed class ScribesTests : IAsyncLifetime
         var good = await testbed.AddDraft("Good", 0.7f);
         await testbed.AddDraft("Fair", 0.4f);
 
-        Ok(await testbed.Scribes().Anoint(good.Id, "", "first-scribe", CancellationToken.None));
-        Ok(await testbed.Scribes().Anoint(excellent.Id, "", "second-scribe", CancellationToken.None));
-        Ok(await testbed.Scribes().Humble(good.Id, "", "third-scribe", CancellationToken.None));
+        Ok(await testbed.Scribes().Anoint(good.Id, "", new ScribeId("first-scribe"), CancellationToken.None));
+        Ok(await testbed.Scribes().Anoint(excellent.Id, "", new ScribeId("second-scribe"), CancellationToken.None));
+        Ok(await testbed.Scribes().Humble(good.Id, "", new ScribeId("third-scribe"), CancellationToken.None));
 
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
         Assert.Equal(["Excellent", "Good", "Fair"], view.Calendar.Select(entry => entry.Draft.Writing.Title));
-        Assert.Equal([Some("second-scribe"), Some("third-scribe"), None], view.Calendar.Select(entry => entry.PlacedBy));
+        Assert.Equal([Some(new ScribeId("second-scribe")), Some(new ScribeId("third-scribe")), None], view.Calendar.Select(entry => entry.PlacedBy));
     }
 
     // A draft burned or published leaves the order, and who placed it with it; the Augury's drafts have no placer.
@@ -98,14 +98,14 @@ public sealed class ScribesTests : IAsyncLifetime
         Ok(await testbed.Scribes().Anoint(excellent.Id, "", BacklogTestbed.Tester, CancellationToken.None));
         Ok(await testbed.Publisher().PublishToday(CancellationToken.None));
 
-        Ok(await testbed.Scribes().Anoint(fair.Id, "", "another-scribe", CancellationToken.None));
+        Ok(await testbed.Scribes().Anoint(fair.Id, "", new ScribeId("another-scribe"), CancellationToken.None));
 
         var placements = Ok(await testbed.Scriptorium.GetPlacements(CancellationToken.None));
         Assert.DoesNotContain(good.Id, placements.Order);
         Assert.DoesNotContain(good.Id, placements.PlacedBy.Keys);
         var view = Ok(await testbed.Scribes().View(CancellationToken.None));
         Assert.Equal(["Excellent", "Fair"], view.Calendar.Select(entry => entry.Draft.Writing.Title));
-        Assert.Equal([Some(BacklogTestbed.Tester), Some("another-scribe")], view.Calendar.Select(entry => entry.PlacedBy));
+        Assert.Equal([Some(BacklogTestbed.Tester), Some(new ScribeId("another-scribe"))], view.Calendar.Select(entry => entry.PlacedBy));
     }
 
     [Fact]

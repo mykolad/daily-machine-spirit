@@ -482,7 +482,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         await AJudgment();
         Ok(await testbed.PreceptKeeping().AddPinned("Prefer the real fix.", Tester, CancellationToken.None));
         testbed.Models.Answers(Sol, Distilled("Name the command."));
-        Ok(await testbed.Distiller().Distil(AuditEntry.MachineSpirit, CancellationToken.None));
+        Ok(await testbed.Distiller().Distil(Actor.MachineSpirit, CancellationToken.None));
 
         var html = ScriptoriumPage.RenderRecord(Ok(await testbed.Audit.GetNewest(10, CancellationToken.None)), [], None, None, None, None);
 
@@ -500,7 +500,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
 
         Assert.Equal("Prefer the real fix.", Ok(await testbed.Precepts.Get(CancellationToken.None)).Book.Precepts.Single().Text);
         Assert.Contains(Ok(await testbed.Audit.GetNewest(10, CancellationToken.None)),
-            entry => entry is { Action: AuditAction.Distil, Actor: AuditEntry.MachineSpirit });
+            entry => entry.Action == AuditAction.Distil && entry.Actor == Actor.MachineSpirit);
     }
 
     // With nothing to learn from, there's nothing to do; a failure fails the run, to be retried.

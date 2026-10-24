@@ -438,7 +438,9 @@ skills/                           — Consult the Machine Spirit, a skill that p
     there's no change without its entry: the Scribes' actions, and the Machine Spirit's own (each draft it writes, each
     rite it publishes). Only Summon, which stores nothing itself, saves its entry alone, and goes ahead if that fails.
     - **Who:** a Scribe is their Access id (the token's `sub`), never their email; on staging, with no sign-in, every
-      Scribe is `staging`; the Machine Spirit is `machine-spirit`. The page shows a Scribe by the name they chose, else
+      Scribe is `staging`; the Machine Spirit is `machine-spirit`. In the code a Scribe is a `ScribeId` and an entry's
+      actor an `Actor` (a Scribe or the Machine Spirit), so no id mixes with other strings (#128); the documents keep
+      them as plain strings. The page shows a Scribe by the name they chose, else
       by the last six characters of their id (`ScribeNames`). The Record keeps ids, so a name shows on past entries too.
     - **Names** (#84, `/scriptorium/name`, `Scriptorium/Naming/`): a Scribe chooses the name the Record shows them by,
       a name or an alias, which only the Scribes see. One `scribe-names` document, by Access id, saved with its record

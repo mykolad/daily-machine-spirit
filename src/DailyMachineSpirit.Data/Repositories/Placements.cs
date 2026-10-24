@@ -1,3 +1,4 @@
+using DailyMachineSpirit.Data.Entities;
 using LanguageExt;
 
 namespace DailyMachineSpirit.Data.Repositories;
@@ -7,4 +8,4 @@ namespace DailyMachineSpirit.Data.Repositories;
 /// detect another Scribe's change. A draft placed before the order kept its Scribes has none in
 /// <see cref="PlacedBy"/>.
 /// </summary>
-public sealed record Placements(List<Guid> Order, IReadOnlyDictionary<Guid, string> PlacedBy, Option<string> ETag);
+public sealed record Placements(List<Guid> Order, IReadOnlyDictionary<Guid, ScribeId> PlacedBy, Option<string> ETag);

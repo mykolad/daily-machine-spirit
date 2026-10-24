@@ -13,7 +13,7 @@ namespace DailyMachineSpirit.Tests;
 /// <summary>Erasing words from a published rite: everywhere the site keeps them, or nowhere.</summary>
 public sealed class ExpurgationTests : IAsyncLifetime
 {
-    private const string Expurgator = "expurgator-0123456789";
+    private static readonly ScribeId Expurgator = new("expurgator-0123456789");
 
     // "The Litany of the Warm Cache": Warm is its title's fifth word. "O Machine Spirit, warm thy cache, ...": warm is the
     // text's fourth.
@@ -183,7 +183,7 @@ public sealed class ExpurgationTests : IAsyncLifetime
         var number = await PublishedAfterAnAmendment();
         var version = Found(await Expurgations().Find(number, CancellationToken.None)).Version;
         var meanwhile = new ErasingMeanwhile(testbed.Expurgation,
-            () => Expurgations().Erase(number, version, [new(RitePart.Title, 5, "📜")], "another-expurgator", CancellationToken.None));
+            () => Expurgations().Erase(number, version, [new(RitePart.Title, 5, "📜")], new ScribeId("another-expurgator"), CancellationToken.None));
 
         var refused = Failed(await testbed.Expurgations(meanwhile, pages).Erase(number, version, WarmInTitleAndText, Expurgator, CancellationToken.None));
 
@@ -246,7 +246,7 @@ public sealed class ExpurgationTests : IAsyncLifetime
             .Select(copy => new WordsKept($"copy-{copy}", "etag", new Dictionary<string, string> { ["/title"] = "💀" }))
             .ToList();
 
-        var refused = Failed(await testbed.Expurgation.Erase(copies, new AuditEntry { Id = Guid.NewGuid() }, CancellationToken.None));
+        var refused = Failed(await testbed.Expurgation.Erase(copies, new AuditEntry { Id = Guid.NewGuid(), Actor = Expurgator }, CancellationToken.None));
 
         Assert.Equal(ExpurgationRepository.TooManyCopies, refused);
     }

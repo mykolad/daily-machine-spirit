@@ -619,7 +619,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
     {
         await testbed.AddDraft("Excellent", 0.95f);
         var good = await testbed.AddDraft("Good", 0.7f);
-        Ok(await testbed.Scriptorium.SavePlacements(new Placements([good.Id], new Dictionary<Guid, string>(), LanguageExt.Prelude.None), LanguageExt.Prelude.None, [],
+        Ok(await testbed.Scriptorium.SavePlacements(new Placements([good.Id], new Dictionary<Guid, ScribeId>(), LanguageExt.Prelude.None), LanguageExt.Prelude.None, [],
             AuditEntries.Of(testbed.Time, BacklogTestbed.Tester, AuditAction.Anoint, LanguageExt.Prelude.None, LanguageExt.Prelude.None), CancellationToken.None));
 
         var html = Html(await Function().Page(Get(""), CancellationToken.None), 200);
@@ -1171,7 +1171,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         await Function().Summon(Post(""), CancellationToken.None);
 
         var entry = Assert.Single(Ok(await testbed.Audit.GetNewest(10, CancellationToken.None)));
-        Assert.Equal((AuditEntry.StagingScribe, AuditAction.Summon), (entry.Actor, entry.Action));
+        Assert.Equal((ScribeId.Staging, AuditAction.Summon), (entry.Actor, entry.Action));
     }
 
     [Fact]
