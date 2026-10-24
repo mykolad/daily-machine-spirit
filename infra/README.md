@@ -76,13 +76,17 @@ A change to a shared resource takes effect for both in the first step: look at i
 ### Moving staging to its own account (#129, once)
 
 Staging's database used to sit on the free-tier account beside production's. The staging deploy above creates
-`machinespirit-cosmos-staging` and points staging's app at it, which starts empty. Then:
+`machinespirit-cosmos-staging` and points staging's app at it, which starts empty. Staging stays stopped from before
+that deploy until its data is copied and checked: anything it wrote to the new account meanwhile (a refill, a midnight
+rite, the rite numbers' counter) the copy would overwrite.
 
-1. Copy staging's data across, as your `az login`: `./tools/copy-staging-data.ps1`. It reads staging's database on the
+1. Stop staging: `az functionapp stop -g machinespirit-rg -n machinespirit-app-staging`.
+2. Deploy staging, as above.
+3. Copy staging's data across, as your `az login`: `./tools/copy-staging-data.ps1`. It reads staging's database on the
    shared account and writes every document, as it was, to the new one; it refuses any database not named for staging.
-   Running it again is harmless.
-2. Check staging: Today, the Scriptorium, the Record.
-3. Delete staging's old database from the shared account (Bicep never deletes what it no longer lists), which frees its
+   While staging is stopped, running it again (if it stopped halfway) writes the same documents over themselves.
+4. Start staging (`az functionapp start …`, the same names) and check it: Today, the Scriptorium, the Record.
+5. Delete staging's old database from the shared account (Bicep never deletes what it no longer lists), which frees its
    400 RU/s of the free tier for production's second region (#113):
    `az cosmosdb sql database delete -a machinespirit-cosmos -g machinespirit-rg -n machinespirit-staging`
 

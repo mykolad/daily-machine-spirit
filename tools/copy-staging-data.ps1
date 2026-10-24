@@ -6,7 +6,7 @@
     Run by hand after the infra deploy that creates staging's account (infra/README.md). It reads every document of
     staging's database on the shared account and writes it, as it was, to the same database on staging's account:
     rites, drafts, the Record, the Precepts, the Scribes' names, votes. Running it again writes the same documents over
-    themselves, so it can be repeated if it stops halfway. It signs in as your `az login` (the owner's data role on both
+    themselves, so it can be repeated if it stops halfway, while staging stays stopped (infra/README.md). It signs in as your `az login` (the owner's data role on both
     accounts, infra/) and reads staging's database alone: it refuses any database or account not named for staging, so
     production's data is never read.
 
