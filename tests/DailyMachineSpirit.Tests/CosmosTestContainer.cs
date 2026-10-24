@@ -18,6 +18,18 @@ public sealed class CosmosTestContainer : IAsyncLifetime
     // The emulator's well-known key, published in its documentation: it protects nothing but the local emulator.
     private const string EmulatorKey = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
 
+    private const string Unreachable =
+        "The Cosmos DB emulator isn't reachable or is still starting. Start it, and wait for http://localhost:8080/ready: " +
+        "docker run -d -p 8081:8081 -p 8080:8080 mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-latest --protocol https";
+
+    private static readonly string Endpoint =
+        Environment.GetEnvironmentVariable(EndpointVariable) is { Length: > 0 } configured ? configured : "https://localhost:8081/";
+
+    // Without these, every test waits out the SDK's retries before failing, hundreds of times over, while the emulator
+    // is down: asked once, briefly, when the run starts, and remembered when a test finds it gone (it crashed meanwhile).
+    private static readonly Lazy<Task<bool>> EmulatorAnswers = new(() => Answers(Endpoint));
+    private static volatile bool emulatorGone;
+
     private readonly CosmosClient client;
     private Option<Database> database = None;
 
@@ -31,8 +43,7 @@ public sealed class CosmosTestContainer : IAsyncLifetime
         {
             ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
         });
-        var endpoint = Environment.GetEnvironmentVariable(EndpointVariable) is { Length: > 0 } configured ? configured : "https://localhost:8081/";
-        client = new CosmosClient(endpoint, EmulatorKey, options);
+        client = new CosmosClient(Endpoint, EmulatorKey, options);
     }
 
     public Container Container => database
@@ -41,18 +52,25 @@ public sealed class CosmosTestContainer : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
+        if (emulatorGone || !await EmulatorAnswers.Value)
+        {
+            throw new InvalidOperationException(Unreachable);
+        }
         Database created;
         try
         {
             created = await client.CreateDatabaseAsync($"test-{Guid.NewGuid():N}");
         }
-        // Nothing listening: HttpRequestException. Still starting up: the SDK's 503.
-        catch (Exception ex) when (ex is HttpRequestException
-            || ex is CosmosException { StatusCode: HttpStatusCode.ServiceUnavailable })
+        // Nothing listening: HttpRequestException, and the tests after this one fail at once. Still starting up: the
+        // SDK's 503, which soon passes.
+        catch (HttpRequestException ex)
         {
-            throw new InvalidOperationException(
-                "The Cosmos DB emulator isn't reachable or is still starting. Start it, and wait for http://localhost:8080/ready: " +
-                "docker run -d -p 8081:8081 -p 8080:8080 mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-latest --protocol https", ex);
+            emulatorGone = true;
+            throw new InvalidOperationException(Unreachable, ex);
+        }
+        catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.ServiceUnavailable)
+        {
+            throw new InvalidOperationException(Unreachable, ex);
         }
         database = created;
         await created.CreateContainerAsync(RiteRepository.ContainerName, RiteRepository.PartitionKeyPath);
@@ -62,5 +80,26 @@ public sealed class CosmosTestContainer : IAsyncLifetime
     {
         await database.IfSomeAsync(created => created.DeleteAsync());
         client.Dispose();
+    }
+
+    // Any answer at all, an error's too, means something listens; only silence within the time means nothing does.
+    private static async Task<bool> Answers(string endpoint)
+    {
+        using var http = new HttpClient(new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+        })
+        {
+            Timeout = TimeSpan.FromSeconds(10),
+        };
+        try
+        {
+            using var answer = await http.GetAsync(endpoint);
+            return true;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            return false;
+        }
     }
 }
