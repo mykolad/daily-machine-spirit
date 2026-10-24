@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -89,6 +90,22 @@ public sealed class SitePagesTests : IAsyncLifetime
         var (_, notFound) = await Today("no-such-page");
 
         Assert.All(new[] { today, notFound }, html => Assert.Contains("""<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg""", html));
+    }
+
+    // The synthetic check of Today (observability/synthetics/todays-rite.js) finds the rite's day by its own pattern: a
+    // change to the rite card that leaves it blind (#124 did) fails here, not as an alert in the night.
+    [Fact]
+    public async Task TheSyntheticCheck_FindsTodaysRiteOnToday()
+    {
+        await Add(Day.AddDays(-1), "Litany of the Clean Cache");
+        await Add(Day, "The Rite of Re-Run");
+        var script = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "todays-rite.js"));
+        var pattern = Regex.Match(script, @"const shown = /(?<pattern>.+)/\.exec").Groups["pattern"].Value;
+
+        var (_, html) = await Today("");
+
+        Assert.NotEmpty(pattern);
+        Assert.Equal(Day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Regex.Match(html, pattern).Groups[1].Value);
     }
 
     [Fact]

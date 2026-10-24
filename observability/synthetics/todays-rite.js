@@ -10,7 +10,9 @@ const minutesOfGraceAfterMidnight = 90;
 
 export default function () {
   const response = http.get('https://dailymachinespirit.fyi/');
-  const shown = /class="rite-date" datetime="(\d{4}-\d{2}-\d{2})"/.exec(response.body || '');
+  // The rite card's own date: the button its day as we reckon it describes (rite-day) holds the <time>. A test holds
+  // this to Today's page (SitePagesTests), so a change to the card can't leave the check blind again.
+  const shown = /aria-describedby="rite-day"><time datetime="(\d{4}-\d{2}-\d{2})"/.exec(response.body || '');
   const now = new Date();
   const today = now.toISOString().slice(0, 10);
   const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);

@@ -19,6 +19,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The synthetic check of Today, so a test can hold it to the page it checks. -->
+    <None Include="..\..\observability\synthetics\todays-rite.js" Link="todays-rite.js" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\DailyMachineSpirit.Data\DailyMachineSpirit.Data.csproj" />
     <ProjectReference Include="..\..\src\DailyMachineSpirit.Functions\DailyMachineSpirit.Functions.csproj" />
   </ItemGroup>
