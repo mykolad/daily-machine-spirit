@@ -62,7 +62,7 @@ var otlpEndpoint = 'https://otlp-gateway-prod-eu-north-0.grafana.net/otlp'
 // Cosmos DB's names for the regions (CosmosOptions.Region), which differ from Azure's locations.
 var cosmosRegions = {
   swedencentral: 'Sweden Central'
-  northeurope: 'North Europe'
+  uksouth: 'UK South'
 }
 // The timers the standby leaves to the first app, which still runs a midnight it missed once it's back (the host's
 // schedule monitoring). Each is safe twice, guarded by its ETags, but a second publishing would also ask for a second

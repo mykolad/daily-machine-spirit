@@ -2,7 +2,7 @@
 
 The app exports its logs, traces and metrics to Grafana Cloud over OTLP (`Program.cs`; the settings come from `infra/`).
 Each environment is its own service, named after its Functions app (`machinespirit-app-staging`). Production's standby in
-North Europe (#113) reports as `machinespirit-app` too, so the dashboards and alerts count it; `cloud.region` tells the
+UK South (#113) reports as `machinespirit-app` too, so the dashboards and alerts count it; `cloud.region` tells the
 two apps apart.
 
 ## The dashboard

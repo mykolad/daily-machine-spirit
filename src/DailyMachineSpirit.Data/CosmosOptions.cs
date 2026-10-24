@@ -15,7 +15,7 @@ public class CosmosOptions
     public string Database { get; set; } = string.Empty;
 
     /// <summary>
-    /// The region the app runs in, as Cosmos DB names it ("North Europe"), so it reads from the replica there (#113)
+    /// The region the app runs in, as Cosmos DB names it ("UK South"), so it reads from the replica there (#113)
     /// and, should that fail, from the nearest other; empty reads from the account's first region (a local run).
     /// </summary>
     public string Region { get; set; } = string.Empty;

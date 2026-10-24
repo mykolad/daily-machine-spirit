@@ -15,8 +15,10 @@ param githubSubjectPrefix string = 'repo:mykolad@2202717/daily-machine-spirit@14
 // models, Cosmos DB, the infrastructure identity) are deployed either way, and production uses them too.
 param deployProduction bool = false
 // Where production's standby app runs (#113), with a replica of its database: Traffic Manager sends readers there while
-// the app in `location` doesn't answer.
-param standbyLocation string = 'northeurope'
+// the app in `location` doesn't answer. Not North Europe or West Europe: Cosmos DB takes no new regions there for this
+// subscription (`az cosmosdb locations list`, isSubscriptionRegionAccessAllowedForRegular). The standby's storage is
+// named prefix + region, so the region's name can be at most 11 letters.
+param standbyLocation string = 'uksouth'
 // Where the rites' snapshot is kept (#112): outside both regions the app runs in, so the copy outlives an outage of
 // either.
 param snapshotLocation string = 'germanywestcentral'

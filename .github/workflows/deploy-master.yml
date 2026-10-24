@@ -4,7 +4,7 @@ name: Deploy Master
 # that package is deployed to staging, smoke-tested, and rolled back if the smoke tests fail (each environment's deploy
 # and rollback are jobs of their own: staging / deploy, staging / rollback). Only when staging passed does the same
 # package go to production, smoke-tested and rolled back the same way: no approval, staging is the gate. Production's
-# standby in North Europe (#113) follows the first app the same way.
+# standby in UK South (#113) follows the first app the same way.
 on:
   push:
     branches: [master]
@@ -102,7 +102,7 @@ jobs:
       version: ${{ needs.build-and-test.outputs.version }}
       restricts-addresses: true
 
-  # Production's standby in North Europe (#113), which Traffic Manager sends readers to while the first app doesn't
+  # Production's standby in UK South (#113), which Traffic Manager sends readers to while the first app doesn't
   # answer: the same package, once the first app passed with it, smoke-tested on its own address.
   production-standby:
     name: production standby
@@ -114,8 +114,8 @@ jobs:
     uses: ./.github/workflows/deploy.yml
     with:
       environment: production
-      app-name: machinespirit-app-northeurope
-      base-url: https://machinespirit-app-northeurope.azurewebsites.net
+      app-name: machinespirit-app-uksouth
+      base-url: https://machinespirit-app-uksouth.azurewebsites.net
       version: ${{ needs.build-and-test.outputs.version }}
       restricts-addresses: true
 
@@ -130,7 +130,7 @@ jobs:
     uses: ./.github/workflows/rollback.yml
     with:
       environment: production
-      app-name: machinespirit-app-northeurope
-      base-url: https://machinespirit-app-northeurope.azurewebsites.net
+      app-name: machinespirit-app-uksouth
+      base-url: https://machinespirit-app-uksouth.azurewebsites.net
       version: ${{ needs.build-and-test.outputs.version }}
       restricts-addresses: true

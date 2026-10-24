@@ -20,7 +20,7 @@ chatbots, and they're about habits any developer knows, not one tool's commands 
   staging's serverless, #129). Only the Grafana Cloud stack is shared, with its own token.
 - Runs as **one Azure Functions app** (Flex Consumption, .NET 10 isolated worker): a timer generates the daily rite,
   HTTP functions serve the pages and the API. Cloudflare sits in front (`dailymachinespirit.fyi`). Production runs it
-  twice: in Sweden Central, and on standby in North Europe (#113).
+  twice: in Sweden Central, and on standby in UK South (#113).
 
 ## Solution layout
 
@@ -125,9 +125,9 @@ skills/                           — Consult the Machine Spirit, a skill that p
   (`CosmosClients.Create`); the account's keys stay off. The account, databases, container, role assignments and the
   app's settings are all created by the Bicep in `infra/`, never by the app (its data-plane role can't create them). Settings: `Cosmos:Endpoint`, `Cosmos:Database`, `Cosmos:Region` (below).
 - **Two regions** (#113, production only): `machinespirit-app` in Sweden Central and a standby,
-  `machinespirit-app-northeurope`, the same package (Deploy Master deploys it last). Cloudflare's origin is Traffic
+  `machinespirit-app-uksouth`, the same package (Deploy Master deploys it last). Cloudflare's origin is Traffic
   Manager, priority routing: the first app while its `/healthz` answers, else the standby, within two to three minutes
-  either way. Both use the one database: Cosmos DB has a replica in North Europe, which the standby reads
+  either way. Both use the one database: Cosmos DB has a replica in UK South, which the standby reads
   (`Cosmos:Region`, so the SDK prefers that region and falls back to the nearest other), and moves the writes there by
   itself if Sweden Central fails, so voting and the Scriptorium keep working too. It doesn't move them back: that's by
   hand, once Sweden Central recovers (infra/README.md). The free tier counts 400 RU/s per

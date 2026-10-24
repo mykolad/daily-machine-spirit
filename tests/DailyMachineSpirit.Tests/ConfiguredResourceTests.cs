@@ -47,13 +47,13 @@ public sealed class ConfiguredResourceTests : IDisposable
     [Fact]
     public void TheEnvironmentsOwnSetting_NamesTheService_OverTheApp()
     {
-        Environment.SetEnvironmentVariable("WEBSITE_SITE_NAME", "machinespirit-app-northeurope");
+        Environment.SetEnvironmentVariable("WEBSITE_SITE_NAME", "machinespirit-app-uksouth");
         Environment.SetEnvironmentVariable("OTEL_RESOURCE_ATTRIBUTES",
-            "deployment.environment.name=production,cloud.region=northeurope,service.name=machinespirit-app");
+            "deployment.environment.name=production,cloud.region=uksouth,service.name=machinespirit-app");
 
         var resource = TelemetryResource(telemetry => telemetry.UseFunctionsWorkerDefaults().KeepConfiguredResourceAttributes());
 
-        Assert.Equal(("machinespirit-app", "northeurope"), (Attribute(resource, "service.name"), Attribute(resource, "cloud.region")));
+        Assert.Equal(("machinespirit-app", "uksouth"), (Attribute(resource, "service.name"), Attribute(resource, "cloud.region")));
     }
 
     private static object EnvironmentName(Action<IOpenTelemetryBuilder> configure)

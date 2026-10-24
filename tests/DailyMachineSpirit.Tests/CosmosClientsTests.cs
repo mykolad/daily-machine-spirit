@@ -12,9 +12,9 @@ public class CosmosClientsTests
     [Fact]
     public void AnAppGivenItsRegion_ReadsThere()
     {
-        using var client = CosmosClients.Create(new CosmosOptions { Endpoint = Endpoint, Region = Regions.NorthEurope });
+        using var client = CosmosClients.Create(new CosmosOptions { Endpoint = Endpoint, Region = Regions.UKSouth });
 
-        Assert.Equal(Regions.NorthEurope, client.ClientOptions.ApplicationRegion);
+        Assert.Equal(Regions.UKSouth, client.ClientOptions.ApplicationRegion);
     }
 
     [Fact]
