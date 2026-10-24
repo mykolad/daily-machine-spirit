@@ -102,7 +102,7 @@ public sealed class RecordPageTests
             Said(AuditAction.Burn, Tuesday, "from #3"),
         ];
 
-        var scribesMoving = Render(entries, new RecordFilter(RecordActors.Scribes, Some(RecordKind.Moved)));
+        var scribesMoving = Render(entries, new RecordFilter(RecordActors.Scribes, Some(RecordKind.Moved), None));
 
         Assert.Contains("""<a class="seg" href="/scriptorium/record?what=moved">Everyone<span class="chip-count">4</span></a>""", scribesMoving);
         Assert.Contains("""<a class="seg" href="/scriptorium/record?who=scribes&amp;what=moved" aria-current="true">Scribes<span class="chip-count">2</span></a>""", scribesMoving);
@@ -110,7 +110,17 @@ public sealed class RecordPageTests
         Assert.DoesNotContain(">Published<", scribesMoving);
         Assert.Contains("exalted", scribesMoving);
         Assert.DoesNotContain("consigned", scribesMoving);
-        Assert.Contains("Nothing in the Record matches.", Render(entries, new RecordFilter(RecordActors.MachineSpirit, Some(RecordKind.Burned))));
+        Assert.Contains("Nothing in the Record matches.", Render(entries, new RecordFilter(RecordActors.MachineSpirit, Some(RecordKind.Burned), None)));
+    }
+
+    // On an older page, the filters narrow its days, as their counts do, rather than jumping back to the newest.
+    [Fact]
+    public void Filters_OnAnOlderPage_KeepItsDay()
+    {
+        var olderPage = Render([Said(AuditAction.Exalt, Tuesday, "from #2 to #1")], new RecordFilter(RecordActors.Everyone, None, Some(new DateOnly(2026, 10, 20))));
+
+        Assert.Contains("""<a class="seg" href="/scriptorium/record?who=scribes&amp;from=2026-10-20">Scribes""", olderPage);
+        Assert.Contains("""<a class="chip" href="/scriptorium/record?what=moved&amp;from=2026-10-20">Moved""", olderPage);
     }
 
     [Fact]
@@ -118,7 +128,7 @@ public sealed class RecordPageTests
         => Assert.Contains("""<a href="/scriptorium/record?who=spirit&amp;from=2026-10-19">Older days →</a>""",
             ScriptoriumPage.RenderRecord(new RecordShown(
                 [Spirit(Entry(AuditAction.Write, Tuesday))], [], None, Option<NameInTheRecord>.None, None, None,
-                new RecordFilter(RecordActors.MachineSpirit, None), Some(new DateOnly(2026, 10, 19)))));
+                new RecordFilter(RecordActors.MachineSpirit, None, None), Some(new DateOnly(2026, 10, 19)))));
 
     // As many read as could be: the oldest day may go on past them, so it's left for the next page, never split.
     [Fact]

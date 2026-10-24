@@ -69,7 +69,7 @@ public static partial class ScriptoriumPage
                 RecordDay(html, day.Key, [.. day], shown.Names);
             }
             shown.OlderFrom.IfSome(day =>
-                html.Append($"""<p class="older"><a href="{RecordAddress(shown.Filter, Some(day))}">Older days →</a></p>"""));
+                html.Append($"""<p class="older"><a href="{RecordAddress(shown.Filter with { From = Some(day) })}">Older days →</a></p>"""));
         }
         html.Append("</main>");
         Footer(html, None);
@@ -94,11 +94,11 @@ public static partial class ScriptoriumPage
         })
         {
             var current = shown.Filter.Who == who ? AriaCurrent : string.Empty;
-            html.Append($"""<a class="seg" href="{RecordAddress(shown.Filter with { Who = who }, None)}"{current}>{label}<span class="chip-count">{count}</span></a>""");
+            html.Append($"""<a class="seg" href="{RecordAddress(shown.Filter with { Who = who })}"{current}>{label}<span class="chip-count">{count}</span></a>""");
         }
         html.Append("""</div><div class="what-row"><div class="subjects" role="group" aria-label="What">""");
         var all = shown.Filter.What.IsNone ? AriaCurrent : string.Empty;
-        html.Append($"""<a class="chip" href="{RecordAddress(shown.Filter with { What = None }, None)}"{all}>All<span class="chip-count">{byWho.Count}</span></a>""");
+        html.Append($"""<a class="chip" href="{RecordAddress(shown.Filter with { What = None })}"{all}>All<span class="chip-count">{byWho.Count}</span></a>""");
         foreach (var (kind, _, label) in Kinds)
         {
             var count = byWho.Count(entry => KindOf(entry.Action) == kind);
@@ -107,7 +107,7 @@ public static partial class ScriptoriumPage
                 continue;
             }
             var current = shown.Filter.What == Some(kind) ? AriaCurrent : string.Empty;
-            html.Append($"""<a class="chip" href="{RecordAddress(shown.Filter with { What = Some(kind) }, None)}"{current}>{Encode(label)}<span class="chip-count">{count}</span></a>""");
+            html.Append($"""<a class="chip" href="{RecordAddress(shown.Filter with { What = Some(kind) })}"{current}>{Encode(label)}<span class="chip-count">{count}</span></a>""");
         }
         html.Append("""</div><p class="utc">All times UTC</p></div></div>""");
     }
@@ -261,7 +261,7 @@ public static partial class ScriptoriumPage
         _ => RecordKind.Other,
     };
 
-    private static string RecordAddress(RecordFilter filter, Option<DateOnly> from)
+    private static string RecordAddress(RecordFilter filter)
     {
         var query = new List<string>();
         if (filter.Who != RecordActors.Everyone)
@@ -269,7 +269,7 @@ public static partial class ScriptoriumPage
             query.Add($"who={(filter.Who == RecordActors.Scribes ? "scribes" : "spirit")}");
         }
         filter.What.IfSome(kind => query.Add($"what={Kinds.First(named => named.Kind == kind).Key}"));
-        from.IfSome(day => query.Add($"from={day:yyyy-MM-dd}"));
+        filter.From.IfSome(day => query.Add($"from={day:yyyy-MM-dd}"));
         return "/scriptorium/record" + (query.Count == 0 ? string.Empty : "?" + string.Join("&amp;", query));
     }
 

@@ -179,7 +179,8 @@ public sealed class ScriptoriumFunction
                 "spirit" => RecordActors.MachineSpirit,
                 _ => RecordActors.Everyone,
             },
-            ScriptoriumPage.RecordKindNamed(request.Query["what"].ToString()));
+            ScriptoriumPage.RecordKindNamed(request.Query["what"].ToString()),
+            from);
         var read = pages.Value.RecordEntriesShown;
         // One draft's record is all of it; the whole Record is read a page of whole days at a time, from the newest or from
         // the day asked for.
