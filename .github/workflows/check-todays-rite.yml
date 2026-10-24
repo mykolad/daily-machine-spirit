@@ -26,7 +26,10 @@ jobs:
           today=$(date -u +%F)
           # A page that doesn't answer at all hides the rite from readers too, so it's reported the same way.
           page=$(curl -sSf -m 30 --retry 3 --retry-all-errors https://dailymachinespirit.fyi/ 2> fetch-error.txt) || page=''
-          if grep -q "class=\"rite-date\" datetime=\"$today\"" <<< "$page"; then
+          # The rite card's own date: the button its day as we reckon it describes (rite-day) holds the <time>. A test
+          # holds this to Today's page (SitePagesTests), as it does the synthetic check's.
+          marker='aria-describedby="rite-day"><time datetime="'
+          if grep -qF "$marker$today\"" <<< "$page"; then
             echo "Today shows the rite for $today." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
@@ -39,7 +42,7 @@ jobs:
           if [ -z "$page" ]; then
             shown="no page at all ($(tr -d '\n' < fetch-error.txt))"
           else
-            shown=$(grep -o 'class="rite-date" datetime="[0-9-]*"' <<< "$page" | grep -o '[0-9]\{4\}-[0-9-]*' || echo 'no rite')
+            shown=$(grep -o "$marker[0-9-]*" <<< "$page" | grep -o '[0-9]\{4\}-[0-9-]*' || echo 'no rite')
           fi
           {
             echo "At 02:00 UTC, Today (https://dailymachinespirit.fyi/) shows $shown, not the rite for $today."

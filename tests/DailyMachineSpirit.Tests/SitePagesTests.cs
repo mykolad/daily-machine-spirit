@@ -108,6 +108,21 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.Equal(Day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Regex.Match(html, pattern).Groups[1].Value);
     }
 
+    // The daily check in GitHub (.github/workflows/check-todays-rite.yml) looks for its marker and the day after it:
+    // blind, it opens an issue saying today has no rite (#134).
+    [Fact]
+    public async Task TheDailyCheck_FindsTodaysRiteOnToday()
+    {
+        await Add(Day, "The Rite of Re-Run");
+        var workflow = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "check-todays-rite.yml"));
+        var marker = Regex.Match(workflow, "marker='(?<marker>[^']+)'").Groups["marker"].Value;
+
+        var (_, html) = await Today("");
+
+        Assert.NotEmpty(marker);
+        Assert.Contains($"{marker}{Day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}\"", html);
+    }
+
     [Fact]
     public async Task Today_ShowsTheNewestRite_WithItsTruthSealed()
     {
