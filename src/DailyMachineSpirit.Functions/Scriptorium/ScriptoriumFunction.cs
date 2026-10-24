@@ -186,7 +186,7 @@ public sealed class ScriptoriumFunction
         // the day asked for.
         var entries = await draft.Match(
             Some: id => audit.GetHistory(id, cancellationToken)
-                .MapAsync(history => Task.FromResult((Entries: (IReadOnlyList<AuditEntry>)history, OlderFrom: Option<DateOnly>.None))),
+                .MapAsync(history => Task.FromResult((Entries: (IReadOnlyList<AuditEntry>)history, OlderDaysFrom: Option<DateOnly>.None))),
             None: () => from.Match(
                     Some: day => audit.GetNewestBefore(day.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc), read, cancellationToken),
                     None: () => audit.GetNewest(read, cancellationToken))
@@ -200,7 +200,7 @@ public sealed class ScriptoriumFunction
             None: () => Option<Draft>.None);
         return entries.Match(
             Right: read => Html(request,
-                ScriptoriumPage.RenderRecord(new RecordShown(read.Entries, names, counts, name, draft, found, filter, read.OlderFrom)),
+                ScriptoriumPage.RenderRecord(new RecordShown(read.Entries, names, counts, name, draft, found, filter, read.OlderDaysFrom)),
                 StatusCodes.Status200OK),
             Left: error => Failed(request, error));
     }

@@ -34,11 +34,11 @@ public static partial class ScriptoriumPage
     public static string RenderRecord(RecordShown shown)
     {
         var html = new StringBuilder();
-        Head(html, "The Record", TabBar(ScriptoriumTab.Record, shown.Counts), Identity(shown.Name));
+        Head(html, "The Record", TabBar(ScriptoriumTab.Record, shown.Counts), Identity(shown.LookingScribesName));
         html.Append("""<main id="main">""");
         Heading(html, "The Record",
             "Every change to the calendar, the rites and the Precepts, and who made it, newest first: the Scribes' actions and the Machine Spirit's own.");
-        shown.Draft.IfSome(_ => html.Append($"""<p>One rite's record.{shown.Found.Bind(rite => WhereItIs(rite, shown.Entries)).Map(link => $" {link} ·").IfNone(string.Empty)} <a href="/scriptorium/record">The whole record</a></p>"""));
+        shown.RecordOfDraft.IfSome(_ => html.Append($"""<p>One rite's record.{shown.DraftAsItIsNow.Bind(rite => WhereItIs(rite, shown.Entries)).Map(link => $" {link} ·").IfNone(string.Empty)} <a href="/scriptorium/record">The whole record</a></p>"""));
         if (shown.Entries.Count == 0)
         {
             html.Append("""<p class="empty record-empty">Nothing is recorded yet.</p>""");
@@ -52,7 +52,7 @@ public static partial class ScriptoriumPage
                 _ => true,
             }).ToList();
             var matching = byWho.Where(entry => shown.Filter.What.ForAll(kind => KindOf(entry.Action) == kind)).ToList();
-            if (shown.Draft.IsSome)
+            if (shown.RecordOfDraft.IsSome)
             {
                 html.Append("""<p class="utc">All times UTC</p>""");
             }
@@ -66,9 +66,9 @@ public static partial class ScriptoriumPage
             }
             foreach (var day in matching.GroupBy(entry => DateOnly.FromDateTime(entry.AtUtc)))
             {
-                RecordDay(html, day.Key, [.. day], shown.Names);
+                RecordDay(html, day.Key, [.. day], shown.ChosenNames);
             }
-            shown.OlderFrom.IfSome(day =>
+            shown.OlderDaysFrom.IfSome(day =>
                 html.Append($"""<p class="older"><a href="{RecordAddress(shown.Filter with { From = Some(day) })}">Older days →</a></p>"""));
         }
         html.Append("</main>");
