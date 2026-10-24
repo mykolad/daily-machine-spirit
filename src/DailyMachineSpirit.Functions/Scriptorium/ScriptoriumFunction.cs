@@ -1,3 +1,4 @@
+using System.Globalization;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Generation.Judging;
@@ -151,7 +152,10 @@ public sealed class ScriptoriumFunction
             Left: error => Failed(request, error));
     }
 
-    /// <summary>The Record (#9): every change and who made it, newest first; <c>?draft=</c> for one draft's.</summary>
+    /// <summary>
+    /// The Record (#9): every change and who made it, newest first, by day (<c>?who=</c>, <c>?what=</c> narrow it,
+    /// <c>?from=</c> goes on from an older day); <c>?draft=</c> for one draft's.
+    /// </summary>
     [Function("ScriptoriumRecord")]
     public async Task<IActionResult> Record(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "scriptorium/record")] HttpRequest request, CancellationToken cancellationToken)
@@ -164,9 +168,29 @@ public sealed class ScriptoriumFunction
         var scribe = (ScribeId)looking.Case;
 
         var draft = Optional(request.Query["draft"].ToString()).Bind(text => Guid.TryParse(text, out var id) ? Some(id) : None);
+        // The last day there is has no day after it to read up to: from there, the Record is simply the newest.
+        var from = Optional(request.Query["from"].ToString())
+            .Bind(text => DateOnly.TryParseExact(text, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var day) ? Some(day) : None)
+            .Filter(day => day < DateOnly.MaxValue);
+        var filter = new RecordFilter(
+            request.Query["who"].ToString() switch
+            {
+                "scribes" => RecordActors.Scribes,
+                "spirit" => RecordActors.MachineSpirit,
+                _ => RecordActors.Everyone,
+            },
+            ScriptoriumPage.RecordKindNamed(request.Query["what"].ToString()),
+            from);
+        var read = pages.Value.RecordEntriesShown;
+        // One draft's record is all of it; the whole Record is read a page of whole days at a time, from the newest or from
+        // the day asked for.
         var entries = await draft.Match(
-            Some: id => audit.GetHistory(id, cancellationToken),
-            None: () => audit.GetNewest(pages.Value.RecordEntriesShown, cancellationToken));
+            Some: id => audit.GetHistory(id, cancellationToken)
+                .MapAsync(history => Task.FromResult((Entries: (IReadOnlyList<AuditEntry>)history, OlderDaysFrom: Option<DateOnly>.None))),
+            None: () => from.Match(
+                    Some: day => audit.GetNewestBefore(day.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc), read, cancellationToken),
+                    None: () => audit.GetNewest(read, cancellationToken))
+                .MapAsync(newest => Task.FromResult(RecordShown.WholeDays(newest, read))));
         var name = await namesShown.Of(scribe, cancellationToken);
         var names = await namesShown.All(cancellationToken);
         var counts = await tabs.Count(cancellationToken);
@@ -175,7 +199,9 @@ public sealed class ScriptoriumFunction
             Some: async id => (await scribes.Find(id, cancellationToken)).IfLeft(Option<Draft>.None),
             None: () => Option<Draft>.None);
         return entries.Match(
-            Right: entries => Html(request, ScriptoriumPage.RenderRecord(entries, names, counts, draft, found, name), StatusCodes.Status200OK),
+            Right: read => Html(request,
+                ScriptoriumPage.RenderRecord(new RecordShown(read.Entries, names, counts, name, draft, found, filter, read.OlderDaysFrom)),
+                StatusCodes.Status200OK),
             Left: error => Failed(request, error));
     }
 

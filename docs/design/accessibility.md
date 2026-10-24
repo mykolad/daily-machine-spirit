@@ -242,6 +242,21 @@ and candles behind it, and the recent rites under Today.
   (Safari). Months without a judgment share one
   row, its "No judgments" spanning the figures' columns.
 
+## The Record (the Scriptorium redesign, step 2)
+
+- **The filters are links,** so they work without the script and a filtered Record can be shared. The chosen ones say
+  `aria-current="true"` (the handoff's buttons said `aria-pressed`, which is for toggles, not places). The kinds start
+  with "All", which the handoff left to clicking the chosen chip again: a link that leads back to every kind is easier
+  to find than one that undoes itself.
+- **A day's heading says what its number counts** ("Tuesday 20 October, 12 entries"), with visually hidden words,
+  where the handoff showed the bare number.
+- **The badges are decoration:** what was done is in the words after them, so their icons are `aria-hidden`, and
+  their colours (who acted, or a burn) are said by the name and the verb too.
+- **A folded run is a `<details>`,** so its Show all and Hide are the browser's own, keyboard and expanded state
+  included, without the script the handoff's button needed. Its summary is at least 24 pixels high (WCAG 2.5.8).
+- **The lists keep their semantics:** the day's entries and a run's rites are lists styled without markers, so they
+  say `role="list"`, as the Precepts do, since Safari drops the semantics otherwise.
+
 ## Imperial dates
 
 - **The day as we reckon it is a toggletip, not a hover-only tooltip.** The Imperial date ("0 805 026.M3") on the rite

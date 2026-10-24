@@ -112,6 +112,23 @@ public sealed class AuditTests : IAsyncLifetime
         Assert.Equal([onTheSecond.AddMilliseconds(500), onTheSecond], (await Entries()).Select(entry => entry.AtUtc));
     }
 
+    // The Record's older days: only what came before the day asked for, newest first, as many as asked.
+    [Fact]
+    public async Task TheNewestBefore_ADay_AreTheDaysBeforeIt()
+    {
+        var midnight = new DateTime(2026, 10, 20, 0, 0, 0, DateTimeKind.Utc);
+        foreach (var at in new[] { midnight.AddDays(-2), midnight.AddDays(-1), midnight.AddTicks(-1), midnight, midnight.AddHours(5) })
+        {
+            Ok(await testbed.Audit.Add(
+                AuditEntries.Of(testbed.Time, Tester, AuditAction.LetTheAuguryDecide, None, None) with { AtUtc = at },
+                CancellationToken.None));
+        }
+
+        var before = Ok(await testbed.Audit.GetNewestBefore(midnight, 2, CancellationToken.None));
+
+        Assert.Equal([midnight.AddTicks(-1), midnight.AddDays(-1)], before.Select(entry => entry.AtUtc));
+    }
+
     // However busy a draft's Scribes were, its record goes back to its writing.
     [Fact]
     public async Task OneDraftsRecord_IsWhole_PastTheRecordsLength()
@@ -150,7 +167,7 @@ public sealed class AuditTests : IAsyncLifetime
     [InlineData(AuditAction.Summon, "summoned new rites")]
     [InlineData(AuditAction.LetTheAuguryDecide, "let the Augury decide")]
     [InlineData(AuditAction.Write, "wrote “Litany”")]
-    [InlineData(AuditAction.Publish, "published “Litany” as NO. 7")]
+    [InlineData(AuditAction.Publish, "published “Litany”")]
     [InlineData(AuditAction.Distil, "distilled <a href=\"/scriptorium/precepts\">the Precepts</a>")]
     [InlineData(AuditAction.AddPrecept, "added the precept “Litany”")]
     [InlineData(AuditAction.EditPrecept, "edited the precept “Litany”")]
@@ -161,11 +178,11 @@ public sealed class AuditTests : IAsyncLifetime
     {
         var entry = new AuditEntry { Id = Guid.NewGuid(), Actor = Tester, Action = action, Title = "Litany", RiteNumber = Some(7) };
 
-        Assert.Contains($"A Scribe (…456789) {did}</li>", ScriptoriumPage.RenderRecord([entry], [], None, None, None, None));
+        Assert.Contains($"""<span class="actor scribe">A Scribe (…456789)</span> <span class="did">{did}</span>""", RecordPages.Of([entry], []));
     }
 
     [Fact]
-    public void AnEmptyRecord_SaysSo() => Assert.Contains("Nothing is recorded yet.", ScriptoriumPage.RenderRecord([], [], None, None, None, None));
+    public void AnEmptyRecord_SaysSo() => Assert.Contains("Nothing is recorded yet.", RecordPages.Of([], []));
 
     private async Task<List<AuditEntry>> Entries() => Ok(await testbed.Audit.GetNewest(50, CancellationToken.None));
 }

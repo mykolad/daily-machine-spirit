@@ -10,7 +10,7 @@ namespace DailyMachineSpirit.Data.Repositories;
 /// </summary>
 internal sealed class SortableUtcConverter : JsonConverter<DateTime>
 {
-    private const string Format = "yyyy-MM-dd'T'HH:mm:ss.fffffff'Z'";
+    internal const string Format = "yyyy-MM-dd'T'HH:mm:ss.fffffff'Z'";
 
     public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         => Utc.From(reader.GetDateTime());
