@@ -129,7 +129,8 @@ skills/                           — Consult the Machine Spirit, a skill that p
   Manager, priority routing: the first app while its `/healthz` answers, else the standby, within two to three minutes
   either way. Both use the one database: Cosmos DB has a replica in North Europe, which the standby reads
   (`Cosmos:Region`, so the SDK prefers that region and falls back to the nearest other), and moves the writes there by
-  itself if Sweden Central fails, so voting and the Scriptorium keep working too. The free tier counts 400 RU/s per
+  itself if Sweden Central fails, so voting and the Scriptorium keep working too. It doesn't move them back: that's by
+  hand, once Sweden Central recovers (infra/README.md). The free tier counts 400 RU/s per
   region, which is why staging has an account of its own (#129). The standby shares production's vault and snapshot, and
   leaves the timers (`DailyRite`, `DistilPrecepts`, `WriteRiteSnapshot`) to the first app, disabled by app settings:
   each would be safe twice, but a second publishing asks for a second refill, and a second distillation pays the models

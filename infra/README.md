@@ -100,6 +100,11 @@ Central fails, so votes, sign-in and the Scriptorium keep working too. The stand
 distilling, the snapshot) to the first app, so they never run twice; a midnight the first app misses is published
 when it's back (the host's schedule monitoring).
 
+Traffic Manager sends readers back to the first app by itself, but Cosmos DB doesn't move the writes back: a recovered
+Sweden Central rejoins as a read region, and both apps keep writing to North Europe, which works, only farther away.
+Once Sweden Central is healthy, and before the next infrastructure deploy (whose `locations` list it first), move them
+back: `az cosmosdb failover-priority-change -g machinespirit-rg -n machinespirit-cosmos --failover-policies swedencentral=0 northeurope=1`.
+
 Deploy Master deploys to the standby too, so it must exist before the change that adds it is merged:
 
 1. From that branch, deploy with `deployProduction=true` (Later changes). Cosmos DB copies the database to North Europe

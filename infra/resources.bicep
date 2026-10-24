@@ -126,7 +126,8 @@ resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' = {
     databaseAccountOfferType: 'Standard'
     enableFreeTier: true
     disableLocalAuth: true
-    // Writes go to the first region; should it fail, Azure moves them to the replica, and back once it recovers.
+    // Writes go to the first region; should it fail, Azure moves them to the replica. They stay there when it recovers,
+    // until moved back by hand (infra/README.md).
     enableAutomaticFailover: true
     consistencyPolicy: {
       defaultConsistencyLevel: 'Session'
