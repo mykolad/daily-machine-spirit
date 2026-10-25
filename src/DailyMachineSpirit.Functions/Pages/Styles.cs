@@ -6,11 +6,14 @@ namespace DailyMachineSpirit.Functions.Pages;
 /// </summary>
 public static class Styles
 {
-    // The site's own copies of the fonts (FontsFunction): variable fonts, one file per family and style.
+    // The site's own copies of the fonts (FontsFunction): variable fonts, one file per family and style. Cinzel and EB
+    // Garamond wait for their files (block, at most 3 seconds) rather than swap: Cinzel is all capitals, so a fallback
+    // serif drew the headings in lower case for a moment, then the page jumped. Both are preloaded (Layout) and come
+    // from Cloudflare's cache, so the wait is short. Figtree's and JetBrains Mono's fallbacks look close enough to swap.
     public const string FontFaces = """
-        @font-face{font-family:Cinzel;font-style:normal;font-weight:400 900;font-display:swap;src:url(/fonts/cinzel.woff2) format('woff2')}
-        @font-face{font-family:'EB Garamond';font-style:normal;font-weight:400 800;font-display:swap;src:url(/fonts/eb-garamond.woff2) format('woff2')}
-        @font-face{font-family:'EB Garamond';font-style:italic;font-weight:400 800;font-display:swap;src:url(/fonts/eb-garamond-italic.woff2) format('woff2')}
+        @font-face{font-family:Cinzel;font-style:normal;font-weight:400 900;font-display:block;src:url(/fonts/cinzel.woff2) format('woff2')}
+        @font-face{font-family:'EB Garamond';font-style:normal;font-weight:400 800;font-display:block;src:url(/fonts/eb-garamond.woff2) format('woff2')}
+        @font-face{font-family:'EB Garamond';font-style:italic;font-weight:400 800;font-display:block;src:url(/fonts/eb-garamond-italic.woff2) format('woff2')}
         @font-face{font-family:Figtree;font-style:normal;font-weight:300 900;font-display:swap;src:url(/fonts/figtree.woff2) format('woff2')}
         @font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:100 800;font-display:swap;src:url(/fonts/jetbrains-mono.woff2) format('woff2')}
         """;
