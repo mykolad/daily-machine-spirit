@@ -14,7 +14,6 @@ using DailyMachineSpirit.Functions.Scriptorium.SignIn;
 using DailyMachineSpirit.Functions.Snapshot;
 using DailyMachineSpirit.Functions.Telemetry;
 using DailyMachineSpirit.Functions.Voters;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Azure.Functions.Worker.OpenTelemetry;
@@ -41,9 +40,10 @@ void Tuned<T>(string section) where T : class
 // ASP.NET Core integration: HTTP functions take HttpRequest and return IActionResult.
 builder.ConfigureFunctionsWebApplication();
 builder.UseMiddleware<InvocationMetricsMiddleware>();
-// Nothing is protected with ASP.NET Core's keys (the voter cookie is signed with its own secret), so they're kept in
-// memory: on the instance's disk, which an instance doesn't keep, they warned at every start.
-builder.Services.AddDataProtection().UseEphemeralDataProtectionProvider();
+// Nothing is protected with ASP.NET Core's keys (the voter cookie is signed with its own secret), yet data protection
+// still loads its key ring at every start and warns that the instance's disk won't keep it. An in-memory provider
+// doesn't stop that (the key ring is loaded anyway), so only its errors show.
+builder.Logging.AddFilter("Microsoft.AspNetCore.DataProtection", LogLevel.Error);
 // The host gives the worker's own server its address (URLS) over the image's HTTP_PORTS, as it should, which ASP.NET Core
 // warned about at every start; errors still show.
 builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Error);
