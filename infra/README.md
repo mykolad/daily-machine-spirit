@@ -140,8 +140,8 @@ change that adds them is merged. Production's is bound to `mcp.dailymachinespiri
    `Accept: application/json, text/event-stream`, body
    `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_rites","arguments":{}}}`; valid when the
    status is 200, the body matches `rites[^ ]{1,8}:[[]` (the tool's text is JSON inside JSON, its quotes escaped as
-   `"`; Grafana's form mangled a regex with backslashes, so this one has none) and doesn't match
-   `"isError":true`. A timeout of 30 seconds: neither region is kept running, so most
+   `"`) and doesn't match `"isError":true`. Grafana's regex validation fails a check when the body matches,
+   unless Invert is ticked: so tick Invert on the first, not on the second. A timeout of 30 seconds: neither region is kept running, so most
    checks wake one (a couple of seconds). It reads the rites API too, so
    it watches both. Each check lands on either region, so a region that's down fails about half of them. Callers
    fare better: Traffic Manager's answer lasts 10 seconds, so a retry after that is an even chance of the other region.
