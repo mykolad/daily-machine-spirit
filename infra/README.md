@@ -17,7 +17,8 @@ change to them reaches production at once. Production is live since #50.
 | Key Vault | `machinespirit-kv`, `machinespirit-kv-staging` | one per environment, so staging can't read production's secrets |
 | Storage | `machinespiritprod`, `machinespirituksouth`, `machinespiritstaging` | the Functions host's storage, one per app; keys off |
 | Functions app | `machinespirit-app`, `machinespirit-app-uksouth`, `machinespirit-app-staging` | Flex Consumption, .NET 10 isolated, 512 MB instances, at most 10; staging admits only the owner's IP, production only Cloudflare (and Traffic Manager's health checks). `machinespirit-app-uksouth` is production's standby in UK South (#113): the same code, database, vault and snapshot, without the timers |
-| Traffic Manager | `machinespirit-traffic` (`machinespirit.trafficmanager.net`) | production's domain points here (Outside Azure): `machinespirit-app` while its `/healthz` answers, else the standby. Probes every 30 seconds, out after 3 failures, a 60-second TTL: a failover takes two to three minutes, and so does coming back |
+| Traffic Manager | `machinespirit-traffic` (`machinespirit.trafficmanager.net`) | production's domain points here (Outside Azure): `machinespirit-app` while its `/healthz` answers, else the standby. Probes every 30 seconds, out after 3 failures, a 60-second TTL: a failover takes two to three minutes, and so does coming back. The standby isn't probed (Always Serve), so it scales to zero; Traffic Manager shows it as "always serve" rather than online |
+| The MCP connector (#119) | apps `machinespirit-mcp`, `machinespirit-mcp-uksouth` (production's second region, serving evenly with the first; neither probed), `machinespirit-mcp-staging`, each with its plan and storage (`machinespiritmcp…`); Traffic Manager `machinespirit-traffic-mcp` (`machinespirit-mcp.trafficmanager.net`) | an MCP server over the public rites API (`docs/api.md`), run by the Functions host as a custom handler: apps of its own, so a flood of connector calls never takes the site's instances. No secrets and no data access: only its host's storage. Staging's reads production's public API (staging's own admits only your address) and admits only your address; production's admits Cloudflare and Traffic Manager, at `mcp.dailymachinespirit.fyi` |
 | GitHub identities | `machinespirit-github-staging`, `-production`, `-infrastructure` | OIDC from this repository's GitHub environments of the same names |
 | The rites' snapshot (#112) | `machinespiritsnapshots`, in Germany West Central (`snapshotLocation`): containers `rites-staging`, `rites-production` | Every published rite, as one blob per environment, which its app reads while Cosmos DB doesn't answer. Outside Sweden Central and UK South (production's standby, #113), so the copy outlives an outage of either; each app may write only its own container |
 
@@ -109,14 +110,42 @@ back: `az cosmosdb failover-priority-change -g machinespirit-rg -n machinespirit
 Deploy Master deploys to the standby too, so it must exist before the change that adds it is merged:
 
 1. From that branch, deploy with `deployProduction=true` (Later changes). Cosmos DB copies the database to UK South
-   (a few minutes for its size); the standby starts without code, so Traffic Manager says it's degraded.
-2. Merge. Deploy Master deploys both apps; after its run, Traffic Manager has both online:
+   (a few minutes for its size); the standby starts without code (Traffic Manager doesn't probe it, so it can't tell).
+2. Merge. Deploy Master deploys both apps; after its run, Traffic Manager has the first online:
    `az network traffic-manager endpoint list -g machinespirit-rg --profile-name machinespirit-traffic --query "[].{name:name, status:endpointMonitorStatus}" -o table`
 3. Point the domain at Traffic Manager (Outside Azure, DNS).
 4. Try a failover once: `az functionapp stop -g machinespirit-rg -n machinespirit-app`. Within three minutes,
    `nslookup machinespirit.trafficmanager.net` names the standby, and the site, the Scriptorium and a vote still work
    (Grafana tells the apps apart by `cloud.region`). Then `az functionapp start` with the same names, and within three
    minutes Traffic Manager names the first app again.
+
+### The MCP connector (#119, once)
+
+The connector's apps come with the infrastructure, and Deploy Master deploys to them, so they must exist before the
+change that adds them is merged. Production's is bound to `mcp.dailymachinespirit.fyi`, which Azure checks first:
+
+1. In Cloudflare's DNS, add a TXT record `asuid.mcp` with the same `customDomainVerificationId` as the site's `asuid`
+   (Outside Azure, DNS): Azure checks a subdomain's own.
+2. From that branch, deploy staging, then production (Later changes).
+3. Merge. Deploy Master deploys the connector to staging, then to production and its standby, each checked by its own
+   smoke tests (the `Connector` category).
+4. Point the connector's address at its Traffic Manager: a proxied CNAME `mcp` → `machinespirit-mcp.trafficmanager.net`.
+5. Rate-limit it (Outside Azure, the rate limit rule), and try it: add `https://mcp.dailymachinespirit.fyi/mcp` as a
+   custom connector in the Claude app, and ask it to consult the Machine Spirit. If Cloudflare challenges the
+   assistant's servers (or the connector's own reads of the API), Bot Fight Mode is the likely cause: on the Free plan
+   no rule can skip it, so it would have to be off.
+6. Watch it: Traffic Manager doesn't probe the connector (Always Serve, so both regions scale to zero), so a Grafana
+   Synthetic Monitoring HTTP check does, as for the site's Today page. Every 15 minutes from Frankfurt and London:
+   `POST https://mcp.dailymachinespirit.fyi/mcp`, headers `Content-Type: application/json` and
+   `Accept: application/json, text/event-stream`, body
+   `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_rites","arguments":{}}}`; valid when the
+   status is 200, the body matches `\\"rites\\"` and doesn't match `"isError":true`. It reads the rites API too, so
+   it watches both. Each check lands on either region, so a region that's down fails about half of them. Callers
+   fare better: Traffic Manager's answer lasts 10 seconds, so a retry after that is an even chance of the other region.
+
+If a region goes down, take it out by hand until it's back:
+`az network traffic-manager endpoint update -g machinespirit-rg --profile-name machinespirit-traffic-mcp --type externalEndpoints -n uksouth --endpoint-status Disabled`
+(or `swedencentral`), and `Enabled` again after.
 
 ## Secrets
 
@@ -268,6 +297,8 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
   - **DNS**: a proxied CNAME `@` → `machinespirit.trafficmanager.net` (Traffic Manager, #113, which names the app that
     answers; before it, `machinespirit-app.azurewebsites.net`), and a TXT record `asuid` with the apps'
     `customDomainVerificationId` (one per subscription), which Azure checks before binding the domain to each app.
+    The MCP connector (#119) has the same pair for its subdomain: a proxied CNAME `mcp` →
+    `machinespirit-mcp.trafficmanager.net`, and a TXT record `asuid.mcp` with the same id.
   - **A Cache Rule** (Caching → Cache Rules), after the purge is set up (Secrets): hostname equals
     `dailymachinespirit.fyi`, and either the URI path doesn't start with `/api/`, `/auth/`, `/scriptorium` or `/healthz`,
     or it equals `/api/search-index` (the search field's index), or it starts with `/api/v1/rites` (the public rites API,
@@ -285,7 +316,10 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
   - **A rate limit rule** (Security → WAF → Rate limiting rules, set up 2026-10-13) for votes and searches (each
     search reads every rite; the Archive's field searches as the reader types, a request per pause), counted by IP, 20
     in 10 seconds, blocked for 10 seconds. The Free plan has one such rule, so every limited path shares it:
-    `(http.request.uri.path wildcard r"/api/rites/*/vote") or (http.request.uri.path eq "/archive")`. Every request to
+    `(http.request.uri.path wildcard r"/api/rites/*/vote") or (http.request.uri.path eq "/archive") or (http.host eq "mcp.dailymachinespirit.fyi")`
+    (the MCP connector, #119, whose calls are POSTs, never cached). An assistant's servers call the connector for many
+    users from few addresses, so if they're refused (429) in normal use, give the connector the limit instead of votes and
+    search, or raise it. Every request to
     the Archive, not only those with `q=`: the app reads the decoded query (`%71=` is `q=` too), and any other query
     string is cached apart, so each new one reads the database. Paging and live search stay far below the limit. With
     `eq`, the `*` would be taken literally, and match nothing. The nav's suggestions are matched in the browser.

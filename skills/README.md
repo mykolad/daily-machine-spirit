@@ -24,7 +24,13 @@ itself, where they aren't found. Run it again to update the skill.
 Then ask, for example, "Consult the Machine Spirit: my cache keeps serving the old page." It needs a way to fetch a URL
 to a file (`curl`, or PowerShell's `Invoke-WebRequest`).
 
-**In the Claude app** (claude.ai, desktop), add the skill's folder as a skill, and add `dailymachinespirit.fyi` to the
+**In the Claude app** (claude.ai, desktop), or in ChatGPT, the simplest way is the **connector**: add a custom
+connector (a remote MCP server) with the address `https://mcp.dailymachinespirit.fyi/mcp`, no sign-in. It gives the
+assistant the rites and their truths (`docs/api.md`, "The MCP connector"), and the tools' descriptions tell it to break
+a seal only when you ask. Then ask as above. Unlike the skill, the connector reads the rites on the site's side: your
+trouble stays in your conversation, never in a request to the site.
+
+To use the skill there instead, add the skill's folder as a skill, and add `dailymachinespirit.fyi` to the
 domains its code may reach (Settings → Capabilities; on a Team or Enterprise plan, an admin does). The app runs the
 skill's commands in a sandbox that reaches only those domains, and its web fetch tool, which the skill falls back to,
 gives a summary of the rites rather than their words: without the domain, the skill can only say it can't reach them.

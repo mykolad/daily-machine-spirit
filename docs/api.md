@@ -66,8 +66,25 @@ As on the site, each rite's **Heretical Truth** stays sealed until it's asked fo
 
 `503` when the rites can't be read just now (not cached): try again later.
 
+## The MCP connector
+
+The same two reads as an MCP server, for assistants that can add a remote connector but can't fetch the API themselves:
+`https://mcp.dailymachinespirit.fyi/mcp` (Streamable HTTP). Like the API: no sign-in, nothing about the caller kept,
+and stateless (every request stands alone, with no session), so any instance answers it.
+
+- **`list_rites`** (no arguments): `/api/v1/rites`'s answer, as it gives it, as the tool's text: every rite, the
+  Heretical Truths sealed.
+- **`reveal_heretical_truth`** (`number`, an integer): `/api/v1/rites/{number}/heretical-truth`'s answer, as it gives
+  it. Its description tells the assistant to call it only once the user agrees to hear the truth.
+
+Both are read-only. A rite no one published, or the API failing, is the tool's answer marked as an error (`isError`),
+in words the assistant can pass on. The tools read the API through Cloudflare, so they're answered from its copies.
+The connector's own code is `src/DailyMachineSpirit.Mcp`; the tools' names and arguments are this contract, as the
+API's fields are.
+
 ## Clients
 
 - **Consult the Machine Spirit** (`skills/consult-the-machine-spirit`): a skill that prescribes a rite for a
   developer's trouble. It fetches the list and lets the user's own model choose, so the trouble never leaves their
   machine, then reveals the rite's Heretical Truth only if the user dares to hear it.
+- **The MCP connector** (above), for the Claude and ChatGPT apps: the same, without a sandbox to allow the domain in.
