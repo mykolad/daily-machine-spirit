@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/DailyMachineSpirit.Data/DailyMachineSpirit.Data.csproj" />
     <Project Path="src/DailyMachineSpirit.Functions/DailyMachineSpirit.Functions.csproj" />
+    <Project Path="src/DailyMachineSpirit.Mcp/DailyMachineSpirit.Mcp.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/DailyMachineSpirit.SmokeTests/DailyMachineSpirit.SmokeTests.csproj" />

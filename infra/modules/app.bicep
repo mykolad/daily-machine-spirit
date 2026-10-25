@@ -1,6 +1,8 @@
 // One Functions app of an environment, in one region: its plan, the host's own storage, the domain through Cloudflare,
 // and what the app and GitHub's deploy identity may reach. Staging has one; production two (#113), in different regions,
 // sharing its database, vault and snapshot.
+import { cloudflareRules, ownerRules, trafficManagerRule } from 'accessRules.bicep'
+
 param location string
 param appName string
 param planName string
@@ -30,34 +32,11 @@ param customDomain string
 param customDomainCertificate string
 
 var deploymentContainer = 'deployments'
-// Readers reach production through Cloudflare alone, so its cache and rate limit can't be gone around. Cloudflare
-// publishes its ranges, and a weekly workflow (Check Cloudflare's Addresses) says when they change.
-var cloudflare = loadJsonContent('../cloudflare-ips.json')
-var cloudflareRules = [for (range, index) in concat(cloudflare.ipv4, cloudflare.ipv6): {
-  name: 'cloudflare-${index}'
-  ipAddress: range
-  action: 'Allow'
-  priority: 200 + index
-}]
-var ownerRules = empty(allowedIp) ? [] : [
-  {
-    name: 'owner'
-    ipAddress: '${allowedIp}/32'
-    action: 'Allow'
-    priority: 100
-  }
-]
-// Its probes come from Azure's own addresses, which the service tag follows, unlike Cloudflare's list.
-var trafficManagerRules = admitsTrafficManager ? [
-  {
-    name: 'traffic-manager'
-    tag: 'ServiceTag'
-    ipAddress: 'AzureTrafficManager'
-    action: 'Allow'
-    priority: 150
-  }
-] : []
-var accessRules = concat(ownerRules, trafficManagerRules, admitsOnlyCloudflare ? cloudflareRules : [])
+var accessRules = concat(
+  ownerRules(allowedIp),
+  admitsTrafficManager ? [trafficManagerRule] : [],
+  admitsOnlyCloudflare ? cloudflareRules : []
+)
 
 resource vault 'Microsoft.KeyVault/vaults@2024-11-01' existing = {
   name: vaultName

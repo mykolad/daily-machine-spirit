@@ -46,4 +46,6 @@ output stagingAppHost string = resources.outputs.stagingAppHost
 output productionAppHost string = resources.outputs.productionAppHost
 output productionStandbyAppHost string = resources.outputs.productionStandbyAppHost
 output productionTrafficManagerHost string = resources.outputs.productionTrafficManagerHost
+output stagingConnectorHost string = resources.outputs.stagingConnectorHost
+output productionConnectorTrafficManagerHost string = resources.outputs.productionConnectorTrafficManagerHost
 output githubClientIds object = resources.outputs.githubClientIds

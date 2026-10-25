@@ -118,6 +118,7 @@ jobs:
         if: ${{ github.event_name != 'pull_request' }}
         run: |
           dotnet publish src/DailyMachineSpirit.Functions -c Release --no-build -o package/publish
+          dotnet publish src/DailyMachineSpirit.Mcp -c Release --no-build -o package/connector
           echo "${{ steps.version.outputs.version }}" > package/version.txt
           dotnet publish tests/DailyMachineSpirit.SmokeTests -c Release --no-build -o package/smoke-tests
 

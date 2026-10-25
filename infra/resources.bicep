@@ -280,6 +280,12 @@ module staging 'modules/environment.bicep' = {
     // One region: serverless has no replicas, and production's standby is enough to try failing over.
     standbyLocation: ''
     standbyStorageAccountName: ''
+    connectorStorageAccountName: '${prefix}mcpstaging'
+    standbyConnectorStorageAccountName: ''
+    connectorDomain: ''
+    // Production's public API: staging's own admits only the owner's address, and a connector's outbound addresses on
+    // Flex Consumption are many and shared. So staging tries the connector's code, on production's rites.
+    ritesApiBaseUrl: 'https://${productionDomain.name}/'
   }
 }
 
@@ -316,6 +322,11 @@ module production 'modules/environment.bicep' = if (deployProduction) {
     snapshotAccountName: snapshots.name
     standbyLocation: standbyLocation
     standbyStorageAccountName: '${prefix}${standbyLocation}'
+    connectorStorageAccountName: '${prefix}mcp'
+    standbyConnectorStorageAccountName: '${prefix}mcp${standbyLocation}'
+    // Covered by the site's Origin CA certificate (*.dailymachinespirit.fyi).
+    connectorDomain: 'mcp.${productionDomain.name}'
+    ritesApiBaseUrl: 'https://${productionDomain.name}/'
   }
 }
 
@@ -324,6 +335,9 @@ output productionAppHost string = deployProduction ? production!.outputs.appHost
 output productionStandbyAppHost string = deployProduction ? production!.outputs.standbyAppHost : ''
 // Where Cloudflare's DNS points the domain (infra/README.md, "Outside Azure").
 output productionTrafficManagerHost string = deployProduction ? production!.outputs.trafficManagerHost : ''
+output stagingConnectorHost string = staging.outputs.connectorHost
+// Where Cloudflare's DNS points the connector's domain (infra/README.md, "The MCP connector").
+output productionConnectorTrafficManagerHost string = deployProduction ? production!.outputs.connectorTrafficManagerHost : ''
 output githubClientIds object = union(
   {
     infrastructure: infrastructureDeployer.properties.clientId

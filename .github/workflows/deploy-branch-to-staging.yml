@@ -60,3 +60,39 @@ jobs:
       version: ${{ needs.build-and-test.outputs.version }}
       restricts-addresses: true
       test-voter-vault: machinespirit-kv-staging
+
+  # Staging's MCP connector (#119), from the same package, as Deploy Master deploys it.
+  staging-connector:
+    name: staging connector
+    needs: build-and-test
+    concurrency:
+      group: deploy-staging-connector
+      cancel-in-progress: false
+      queue: max
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: staging
+      app-name: machinespirit-mcp-staging
+      base-url: https://machinespirit-mcp-staging.azurewebsites.net
+      version: ${{ needs.build-and-test.outputs.version }}
+      restricts-addresses: true
+      package: connector
+      smoke-tests: Category=Connector
+
+  rollback-staging-connector:
+    name: roll back staging connector
+    needs: [build-and-test, staging-connector]
+    if: ${{ failure() && needs.staging-connector.outputs.smoke == 'failure' }}
+    concurrency:
+      group: deploy-staging-connector
+      cancel-in-progress: false
+      queue: max
+    uses: ./.github/workflows/rollback.yml
+    with:
+      environment: staging
+      app-name: machinespirit-mcp-staging
+      base-url: https://machinespirit-mcp-staging.azurewebsites.net
+      version: ${{ needs.build-and-test.outputs.version }}
+      restricts-addresses: true
+      package: connector
+      smoke-tests: Category=Connector
