@@ -8,7 +8,11 @@ param relativeName string
 @description('Priority where the standby must stay idle (the site writes to Cosmos DB in the first region); Weighted where either region answers the same.')
 @allowed(['Priority', 'Weighted'])
 param routing string
-@description('Whether the standby is taken as healthy without probing it, so it can scale to zero: only with Priority, where a failover goes to it anyway.')
+// An endpoint that always serves is taken as healthy without probes, so its app can scale to zero, but Traffic Manager
+// keeps sending callers to it while it's down.
+@description('Whether the first app is taken as healthy without probing it: only where an outage is acceptable until someone disables the endpoint.')
+param firstAlwaysServes bool
+@description('Whether the standby is taken as healthy without probing it, so it can scale to zero.')
 param standbyAlwaysServes bool
 param firstLocation string
 param firstHost string
@@ -43,6 +47,7 @@ resource traffic 'Microsoft.Network/trafficmanagerprofiles@2022-04-01' = {
           endpointStatus: 'Enabled'
           priority: 1
           weight: 1
+          alwaysServe: firstAlwaysServes ? 'Enabled' : 'Disabled'
         }
       }
       {

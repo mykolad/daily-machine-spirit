@@ -282,7 +282,9 @@ skills/                           — Consult the Machine Spirit, a skill that p
   custom handler (`host.json`, the `mcp-custom-handler` profile, a preview the `EnableMcpCustomHandlerPreview` flag turns
   on), in apps of its own (`infra/modules/connector.bicep`): a flood of connector calls has its own instances and
   ceiling, never the site's. Production's runs in Sweden Central and UK South at once, behind its own Traffic Manager
-  (Weighted, evenly: it keeps nothing, so either region answers the same), at `mcp.dailymachinespirit.fyi`.
+  (Weighted, evenly: it keeps nothing, so either region answers the same), at `mcp.dailymachinespirit.fyi`. Neither
+  region is probed (Always Serve): for a few users, probes would cost more than the calls, so both scale to zero, and a
+  region's outage fails about half the calls until its endpoint is disabled by hand. Grafana's synthetic check calls it.
   - **Anonymous and stateless:** no sign-in (`defaultAuthorizationLevel: anonymous`), nothing about the caller kept, and
     no session (`HttpServerSessionMode.Stateless`): every request carries all it needs, so any instance answers it.
   - **Through the public API:** the tools read `RitesApi:BaseUrl` (the site, through Cloudflare) and pass its answers on

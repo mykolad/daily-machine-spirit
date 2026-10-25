@@ -18,7 +18,7 @@ change to them reaches production at once. Production is live since #50.
 | Storage | `machinespiritprod`, `machinespirituksouth`, `machinespiritstaging` | the Functions host's storage, one per app; keys off |
 | Functions app | `machinespirit-app`, `machinespirit-app-uksouth`, `machinespirit-app-staging` | Flex Consumption, .NET 10 isolated, 512 MB instances, at most 10; staging admits only the owner's IP, production only Cloudflare (and Traffic Manager's health checks). `machinespirit-app-uksouth` is production's standby in UK South (#113): the same code, database, vault and snapshot, without the timers |
 | Traffic Manager | `machinespirit-traffic` (`machinespirit.trafficmanager.net`) | production's domain points here (Outside Azure): `machinespirit-app` while its `/healthz` answers, else the standby. Probes every 30 seconds, out after 3 failures, a 60-second TTL: a failover takes two to three minutes, and so does coming back. The standby isn't probed (Always Serve), so it scales to zero; Traffic Manager shows it as "always serve" rather than online |
-| The MCP connector (#119) | apps `machinespirit-mcp`, `machinespirit-mcp-uksouth` (production's second region, serving evenly with the first), `machinespirit-mcp-staging`, each with its plan and storage (`machinespiritmcp…`); Traffic Manager `machinespirit-traffic-mcp` (`machinespirit-mcp.trafficmanager.net`) | an MCP server over the public rites API (`docs/api.md`), run by the Functions host as a custom handler: apps of its own, so a flood of connector calls never takes the site's instances. No secrets and no data access: only its host's storage. Staging's reads production's public API (staging's own admits only your address) and admits only your address; production's admits Cloudflare and Traffic Manager, at `mcp.dailymachinespirit.fyi` |
+| The MCP connector (#119) | apps `machinespirit-mcp`, `machinespirit-mcp-uksouth` (production's second region, serving evenly with the first; neither probed), `machinespirit-mcp-staging`, each with its plan and storage (`machinespiritmcp…`); Traffic Manager `machinespirit-traffic-mcp` (`machinespirit-mcp.trafficmanager.net`) | an MCP server over the public rites API (`docs/api.md`), run by the Functions host as a custom handler: apps of its own, so a flood of connector calls never takes the site's instances. No secrets and no data access: only its host's storage. Staging's reads production's public API (staging's own admits only your address) and admits only your address; production's admits Cloudflare and Traffic Manager, at `mcp.dailymachinespirit.fyi` |
 | GitHub identities | `machinespirit-github-staging`, `-production`, `-infrastructure` | OIDC from this repository's GitHub environments of the same names |
 | The rites' snapshot (#112) | `machinespiritsnapshots`, in Germany West Central (`snapshotLocation`): containers `rites-staging`, `rites-production` | Every published rite, as one blob per environment, which its app reads while Cosmos DB doesn't answer. Outside Sweden Central and UK South (production's standby, #113), so the copy outlives an outage of either; each app may write only its own container |
 
@@ -134,6 +134,17 @@ change that adds them is merged. Production's is bound to `mcp.dailymachinespiri
    custom connector in the Claude app, and ask it to consult the Machine Spirit. If Cloudflare challenges the
    assistant's servers (or the connector's own reads of the API), Bot Fight Mode is the likely cause: on the Free plan
    no rule can skip it, so it would have to be off.
+6. Watch it: Traffic Manager doesn't probe the connector (Always Serve, so both regions scale to zero), so a Grafana
+   Synthetic Monitoring HTTP check does, as for the site's Today page. Every 15 minutes from Frankfurt and London:
+   `POST https://mcp.dailymachinespirit.fyi/mcp`, headers `Content-Type: application/json` and
+   `Accept: application/json, text/event-stream`, body
+   `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_rites","arguments":{}}}`; valid when the
+   status is 200, the body matches `\\"rites\\"` and doesn't match `"isError":true`. It reads the rites API too, so
+   it watches both. Each check lands on either region, so a region that's down fails about half of them.
+
+If a region goes down, take it out by hand until it's back:
+`az network traffic-manager endpoint update -g machinespirit-rg --profile-name machinespirit-traffic-mcp --type externalEndpoints -n uksouth --endpoint-status Disabled`
+(or `swedencentral`), and `Enabled` again after.
 
 ## Secrets
 

@@ -375,6 +375,7 @@ module traffic 'trafficManager.bicep' = if (hasStandby) {
     routing: 'Priority'
     // Probes every 30 seconds kept the standby running for nothing (about as many executions as the first app's, all
     // of them probes). Unprobed, it scales to zero, and a failover goes to it anyway, waking it.
+    firstAlwaysServes: false
     standbyAlwaysServes: true
     firstLocation: location
     firstHost: app.outputs.appHost
@@ -427,10 +428,13 @@ module connectorTraffic 'trafficManager.bicep' = if (hasStandby) {
   params: {
     name: '${prefix}-traffic-mcp${nameSuffix}'
     relativeName: '${prefix}-mcp${nameSuffix}'
-    // Both regions at once: the connector keeps nothing and reads the public API, so either answers the same, and
-    // Traffic Manager's probes keep both running anyway.
+    // Both regions at once: the connector keeps nothing and reads the public API, so either answers the same. Neither
+    // is probed: probes every 30 seconds would cost far more than its few users' calls, so both scale to zero. A
+    // region's outage fails about half the calls until its endpoint is disabled; Grafana's synthetic check shows it
+    // (infra/README.md, "The MCP connector").
     routing: 'Weighted'
-    standbyAlwaysServes: false
+    firstAlwaysServes: true
+    standbyAlwaysServes: true
     firstLocation: location
     firstHost: connector.outputs.appHost
     standbyLocation: standbyLocation
