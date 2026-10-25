@@ -130,7 +130,7 @@ change that adds them is merged. Production's is bound to `mcp.dailymachinespiri
 3. Merge. Deploy Master deploys the connector to staging, then to production and its standby, each checked by its own
    smoke tests (the `Connector` category).
 4. Point the connector's address at its Traffic Manager: a proxied CNAME `mcp` → `machinespirit-mcp.trafficmanager.net`.
-5. Rate-limit it (Outside Azure, the rate limit rule), and try it: add `https://mcp.dailymachinespirit.fyi/mcp` as a
+5. Rate-limit it (Outside Azure, the rate limit rule: a row for the path `/mcp`), and try it: add `https://mcp.dailymachinespirit.fyi/mcp` as a
    custom connector in the Claude app, and ask it to consult the Machine Spirit. If Cloudflare challenges the
    assistant's servers (or the connector's own reads of the API), Bot Fight Mode is the likely cause: on the Free plan
    no rule can skip it, so it would have to be off.
@@ -316,8 +316,9 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
   - **A rate limit rule** (Security → WAF → Rate limiting rules, set up 2026-10-13) for votes and searches (each
     search reads every rite; the Archive's field searches as the reader types, a request per pause), counted by IP, 20
     in 10 seconds, blocked for 10 seconds. The Free plan has one such rule, so every limited path shares it:
-    `(http.request.uri.path wildcard r"/api/rites/*/vote") or (http.request.uri.path eq "/archive") or (http.host eq "mcp.dailymachinespirit.fyi")`
-    (the MCP connector, #119, whose calls are POSTs, never cached). An assistant's servers call the connector for many
+    `(http.request.uri.path wildcard r"/api/rites/*/vote") or (http.request.uri.path eq "/archive") or (http.request.uri.path eq "/mcp")`
+    (the MCP connector, #119, whose calls are POSTs, never cached: matched by its path, as the Free plan's rules can't
+    match a host; the site has no `/mcp`). Not `/search`: it only redirects old links to the Archive. An assistant's servers call the connector for many
     users from few addresses, so if they're refused (429) in normal use, give the connector the limit instead of votes and
     search, or raise it. Every request to
     the Archive, not only those with `q=`: the app reads the decoded query (`%71=` is `q=` too), and any other query
