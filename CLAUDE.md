@@ -280,8 +280,8 @@ skills/                           — Consult the Machine Spirit, a skill that p
   the domain allowed. Built with the official C# MCP SDK as a small ASP.NET Core app, which the Functions host runs as a
   custom handler (`host.json`, the `mcp-custom-handler` profile, a preview the `EnableMcpCustomHandlerPreview` flag turns
   on), in apps of its own (`infra/modules/connector.bicep`): a flood of connector calls has its own instances and
-  ceiling, never the site's. Production's has a standby in UK South behind its own Traffic Manager, as the site has, at
-  `mcp.dailymachinespirit.fyi`.
+  ceiling, never the site's. Production's runs in Sweden Central and UK South at once, behind its own Traffic Manager
+  (Weighted, evenly: it keeps nothing, so either region answers the same), at `mcp.dailymachinespirit.fyi`.
   - **Anonymous and stateless:** no sign-in (`defaultAuthorizationLevel: anonymous`), nothing about the caller kept, and
     no session (`HttpServerSessionMode.Stateless`): every request carries all it needs, so any instance answers it.
   - **Through the public API:** the tools read `RitesApi:BaseUrl` (the site, through Cloudflare) and pass its answers on

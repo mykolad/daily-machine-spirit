@@ -372,6 +372,7 @@ module traffic 'trafficManager.bicep' = if (hasStandby) {
   params: {
     name: '${prefix}-traffic${nameSuffix}'
     relativeName: '${prefix}${nameSuffix}'
+    routing: 'Priority'
     firstLocation: location
     firstHost: app.outputs.appHost
     standbyLocation: standbyLocation
@@ -423,6 +424,9 @@ module connectorTraffic 'trafficManager.bicep' = if (hasStandby) {
   params: {
     name: '${prefix}-traffic-mcp${nameSuffix}'
     relativeName: '${prefix}-mcp${nameSuffix}'
+    // Both regions at once: the connector keeps nothing and reads the public API, so either answers the same, and
+    // Traffic Manager's probes keep both running anyway.
+    routing: 'Weighted'
     firstLocation: location
     firstHost: connector.outputs.appHost
     standbyLocation: standbyLocation

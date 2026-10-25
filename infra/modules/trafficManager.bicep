@@ -1,9 +1,13 @@
-// Where Cloudflare sends callers when an app has a standby (#113, infra/README.md, "Outside Azure"): the first app while
-// its /healthz answers, else the standby. Every 30 seconds from Azure's probes, out after 3 failures, and Cloudflare
-// keeps the answer a minute, so a failover takes two to three minutes, as does coming back.
+// Where Cloudflare sends callers when an app has a second region (#113, infra/README.md, "Outside Azure"). Priority: the
+// first app while its /healthz answers, else the standby. Weighted: either, evenly, while both answer. Every 30 seconds
+// from Azure's probes, out after 3 failures, and Cloudflare keeps the answer a minute, so a failover takes two to three
+// minutes, as does coming back.
 param name string
 @description('The profile\'s address is <relativeName>.trafficmanager.net, unique across Azure.')
 param relativeName string
+@description('Priority where the standby must stay idle (the site writes to Cosmos DB in the first region); Weighted where either region answers the same.')
+@allowed(['Priority', 'Weighted'])
+param routing string
 param firstLocation string
 param firstHost string
 param standbyLocation string
@@ -14,7 +18,7 @@ resource traffic 'Microsoft.Network/trafficmanagerprofiles@2022-04-01' = {
   location: 'global'
   properties: {
     profileStatus: 'Enabled'
-    trafficRoutingMethod: 'Priority'
+    trafficRoutingMethod: routing
     dnsConfig: {
       relativeName: relativeName
       ttl: 60
@@ -36,6 +40,7 @@ resource traffic 'Microsoft.Network/trafficmanagerprofiles@2022-04-01' = {
           target: firstHost
           endpointStatus: 'Enabled'
           priority: 1
+          weight: 1
         }
       }
       {
@@ -45,6 +50,7 @@ resource traffic 'Microsoft.Network/trafficmanagerprofiles@2022-04-01' = {
           target: standbyHost
           endpointStatus: 'Enabled'
           priority: 2
+          weight: 1
         }
       }
     ]
