@@ -1,7 +1,7 @@
 // Where Cloudflare sends callers when an app has a second region (#113, infra/README.md, "Outside Azure"). Priority: the
 // first app while its /healthz answers, else the standby. Weighted: either, evenly, while both answer. Every 30 seconds
-// from Azure's probes, out after 3 failures, and Cloudflare keeps the answer a minute, so a failover takes two to three
-// minutes, as does coming back.
+// from Azure's probes, out after 3 failures, and Cloudflare keeps the answer for the TTL (a minute for the site), so a
+// failover takes two to three minutes, as does coming back.
 param name string
 @description('The profile\'s address is <relativeName>.trafficmanager.net, unique across Azure.')
 param relativeName string
@@ -14,6 +14,8 @@ param routing string
 param firstAlwaysServes bool
 @description('Whether the standby is taken as healthy without probing it, so it can scale to zero.')
 param standbyAlwaysServes bool
+@description('How long Cloudflare keeps an answer, in seconds: a caller\'s retry within it goes to the same region.')
+param ttl int
 param firstLocation string
 param firstHost string
 param standbyLocation string
@@ -27,7 +29,7 @@ resource traffic 'Microsoft.Network/trafficmanagerprofiles@2022-04-01' = {
     trafficRoutingMethod: routing
     dnsConfig: {
       relativeName: relativeName
-      ttl: 60
+      ttl: ttl
     }
     monitorConfig: {
       protocol: 'HTTPS'

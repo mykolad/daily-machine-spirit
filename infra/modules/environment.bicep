@@ -377,6 +377,7 @@ module traffic 'trafficManager.bicep' = if (hasStandby) {
     // of them probes). Unprobed, it scales to zero, and a failover goes to it anyway, waking it.
     firstAlwaysServes: false
     standbyAlwaysServes: true
+    ttl: 60
     firstLocation: location
     firstHost: app.outputs.appHost
     standbyLocation: standbyLocation
@@ -435,6 +436,9 @@ module connectorTraffic 'trafficManager.bicep' = if (hasStandby) {
     routing: 'Weighted'
     firstAlwaysServes: true
     standbyAlwaysServes: true
+    // Short, so a client's retry soon gets a fresh pick, an even chance of the other region; Traffic Manager's charge
+    // per DNS query is a fraction of a cent at the connector's few calls.
+    ttl: 10
     firstLocation: location
     firstHost: connector.outputs.appHost
     standbyLocation: standbyLocation

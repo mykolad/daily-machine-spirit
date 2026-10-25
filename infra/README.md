@@ -140,7 +140,8 @@ change that adds them is merged. Production's is bound to `mcp.dailymachinespiri
    `Accept: application/json, text/event-stream`, body
    `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_rites","arguments":{}}}`; valid when the
    status is 200, the body matches `\\"rites\\"` and doesn't match `"isError":true`. It reads the rites API too, so
-   it watches both. Each check lands on either region, so a region that's down fails about half of them.
+   it watches both. Each check lands on either region, so a region that's down fails about half of them. Callers
+   fare better: Traffic Manager's answer lasts 10 seconds, so a retry after that is an even chance of the other region.
 
 If a region goes down, take it out by hand until it's back:
 `az network traffic-manager endpoint update -g machinespirit-rg --profile-name machinespirit-traffic-mcp --type externalEndpoints -n uksouth --endpoint-status Disabled`
