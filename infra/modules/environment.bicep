@@ -373,6 +373,9 @@ module traffic 'trafficManager.bicep' = if (hasStandby) {
     name: '${prefix}-traffic${nameSuffix}'
     relativeName: '${prefix}${nameSuffix}'
     routing: 'Priority'
+    // Probes every 30 seconds kept the standby running for nothing (about as many executions as the first app's, all
+    // of them probes). Unprobed, it scales to zero, and a failover goes to it anyway, waking it.
+    standbyAlwaysServes: true
     firstLocation: location
     firstHost: app.outputs.appHost
     standbyLocation: standbyLocation
@@ -427,6 +430,7 @@ module connectorTraffic 'trafficManager.bicep' = if (hasStandby) {
     // Both regions at once: the connector keeps nothing and reads the public API, so either answers the same, and
     // Traffic Manager's probes keep both running anyway.
     routing: 'Weighted'
+    standbyAlwaysServes: false
     firstLocation: location
     firstHost: connector.outputs.appHost
     standbyLocation: standbyLocation

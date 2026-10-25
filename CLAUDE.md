@@ -128,7 +128,8 @@ skills/                           — Consult the Machine Spirit, a skill that p
 - **Two regions** (#113, production only): `machinespirit-app` in Sweden Central and a standby,
   `machinespirit-app-uksouth`, the same package (Deploy Master deploys it last). Cloudflare's origin is Traffic
   Manager, priority routing: the first app while its `/healthz` answers, else the standby, within two to three minutes
-  either way. Both use the one database: Cosmos DB has a replica in UK South, which the standby reads
+  either way. Only the first app is probed: the standby counts as healthy (Always Serve), so it scales to zero until a
+  failover wakes it, with a cold start, and only Deploy Master's smoke tests show it works. Both use the one database: Cosmos DB has a replica in UK South, which the standby reads
   (`Cosmos:Region`, so the SDK prefers that region and falls back to the nearest other), and moves the writes there by
   itself if Sweden Central fails, so voting and the Scriptorium keep working too. It doesn't move them back: that's by
   hand, once Sweden Central recovers (infra/README.md). The free tier counts 400 RU/s per

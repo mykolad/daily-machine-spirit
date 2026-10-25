@@ -8,6 +8,8 @@ param relativeName string
 @description('Priority where the standby must stay idle (the site writes to Cosmos DB in the first region); Weighted where either region answers the same.')
 @allowed(['Priority', 'Weighted'])
 param routing string
+@description('Whether the standby is taken as healthy without probing it, so it can scale to zero: only with Priority, where a failover goes to it anyway.')
+param standbyAlwaysServes bool
 param firstLocation string
 param firstHost string
 param standbyLocation string
@@ -51,6 +53,7 @@ resource traffic 'Microsoft.Network/trafficmanagerprofiles@2022-04-01' = {
           endpointStatus: 'Enabled'
           priority: 2
           weight: 1
+          alwaysServe: standbyAlwaysServes ? 'Enabled' : 'Disabled'
         }
       }
     ]
