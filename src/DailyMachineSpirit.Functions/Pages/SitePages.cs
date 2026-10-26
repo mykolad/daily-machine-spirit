@@ -94,10 +94,11 @@ public sealed class SitePages
             Left: error => Task.FromResult(Failed(request, error)));
     }
 
-    // Nothing to read: the page changes only with a deployment, which no purge follows, so it's kept briefly.
+    // Nothing to read: the page changes with a deployment, which no purge follows, and at midnight (its example date), so
+    // it's kept briefly.
     [Function("About")]
     public IActionResult About([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "catechism")] HttpRequest request)
-        => Page(request, StatusCodes.Status200OK, AboutPage.Render());
+        => Page(request, StatusCodes.Status200OK, AboutPage.Render(time.GetUtcNow()));
 
     /// <summary><c>/rtfm</c>, what veterans tell newcomers, for whoever types it: it leads to the Catechism.</summary>
     [Function("ReadTheManual")]

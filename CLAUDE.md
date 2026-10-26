@@ -181,9 +181,10 @@ skills/                           — Consult the Machine Spirit, a skill that p
   - Routes: `/` (Today: the newest rite), `/archive` (`?before=<number>` for older pages, which the archive also
     loads in place as the reader nears the end; `?q=<words>` for search), `/r/<number>` (spelled only so: `/r/01` or
     `/R/1` is not found, since Cloudflare would keep it apart from what a purge names, and `/r/1/` redirects), `/tags/<key>` (a tag's rites,
-    paged like the archive), `/catechism` (`AboutPage`, the nav's third link, "About": questions and answers, as a
-    catechism is, on what the site is and how to consult it from an assistant, the connector's address and the skill's
-    commands each with a button that copies it). `/search?q=` redirects to `/archive?q=` for good, and `/rtfm` to
+    paged like the archive), `/catechism` (`AboutPage`, the nav's third link, "About": six numbered questions and
+    their answers on the Archive's parchment, as a catechism is, on what the site is and how to consult it from a
+    familiar, an AI assistant, with the connector's address and the skill's commands on slate, each with a button that
+    copies it; an index of the questions beside the sheet on a wide screen). `/search?q=` redirects to `/archive?q=` for good, and `/rtfm` to
     `/catechism`.
     A catch-all route takes `/` and answers every unknown address with the 404 page. The Functions host tries routes in
     the order of their functions' names, first match wins, so the catch-all's name sorts last (`ZzToday`): any other

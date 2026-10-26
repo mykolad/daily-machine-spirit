@@ -34,7 +34,7 @@ public sealed partial class DeployedAppTests
 
     [Fact]
     public async Task About_Answers()
-        => AssertAnswers(await app.Get("/catechism"), HttpStatusCode.OK, $"<title>About · {SiteName}</title>");
+        => AssertAnswers(await app.Get("/catechism"), HttpStatusCode.OK, $"<title>The Catechism · {SiteName}</title>");
 
     [Fact]
     public async Task Archive_Answers()
@@ -100,7 +100,7 @@ public sealed partial class DeployedAppTests
 
     [Fact]
     public async Task ReadTheManual_LeadsToTheCatechism()
-        => AssertAnswers(await app.Get("/rtfm"), HttpStatusCode.OK, $"<title>About · {SiteName}</title>");
+        => AssertAnswers(await app.Get("/rtfm"), HttpStatusCode.OK, $"<title>The Catechism · {SiteName}</title>");
 
     // Today's rite rather than one from the archive, which leaves today's out.
     [Fact]
