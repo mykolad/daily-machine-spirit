@@ -636,12 +636,13 @@ public static class Script
           // time: a search on the Archive brings in a new margin with its own.
           const dueAt = () => Math.min(...[...document.querySelectorAll('[data-countdown]')].map((element) => Date.parse(element.dataset.countdown)));
           const stale = () => Date.now() >= dueAt();
-          // Reloaded when it's shown again, before it's read, but once for each due time: a clock running ahead, or a copy
-          // the reload still finds cached, would otherwise reload it again and again. Without the storage to remember
+          // Reloaded when it's shown again, before it's read, but once for each page and due time: a clock running ahead,
+          // or a copy the reload still finds cached, would otherwise reload it again and again, and one page's reload
+          // mustn't stop another's (the Archive's, then Today's, brought back by Back). Without the storage to remember
           // that, it isn't reloaded, and the reader is told instead.
-          const reloadedKey = 'dms-reloaded-for';
           const reloadIfStale = () => {
             if (!stale()) return false;
+            const reloadedKey = `dms-reloaded:${location.pathname}${location.search}`;
             try {
               if (sessionStorage.getItem(reloadedKey) === String(dueAt())) return false;
               sessionStorage.setItem(reloadedKey, String(dueAt()));
@@ -649,7 +650,8 @@ public static class Script
             location.reload();
             return true;
           };
-          // A reader looking at the page when the rite comes out is told, rather than have the page change under them.
+          // A reader looking at the page when the rite comes out is told, rather than have the page change under them,
+          // with a link to Today: the Archive's first page leaves the newest rite out, and a later page or a search may.
           const tellOfNewRite = () => {
             if (toast.querySelector('.toast-lasting')) return;
             clearTimeout(hideToast);
@@ -657,14 +659,19 @@ public static class Script
             const pill = document.createElement('div');
             pill.className = 'toast toast-lasting';
             pill.append('A new rite is out. ');
-            const showIt = document.createElement('button');
-            showIt.type = 'button';
+            const showIt = document.createElement('a');
+            showIt.href = '/';
             showIt.textContent = 'Show it';
-            showIt.addEventListener('click', () => location.reload());
             pill.appendChild(showIt);
             toast.appendChild(pill);
           };
+          // A computer that slept with the page in front says nothing when it wakes, so a long gap between ticks counts as
+          // the page being shown again. Hidden, a tab's timers may slow to once a minute, well inside the five.
+          let tickedAt = Date.now();
           const tick = () => {
+            const asleep = Date.now() - tickedAt > 300000;
+            tickedAt = Date.now();
+            if (asleep && reloadIfStale()) return;
             if (stale()) {
               document.querySelectorAll('[data-countdown]').forEach((element) => { element.textContent = '0m'; });
               tellOfNewRite();
