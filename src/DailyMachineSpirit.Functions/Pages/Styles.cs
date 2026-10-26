@@ -295,11 +295,11 @@ public static class Styles
         .answer p{margin:0 0 12px}
         .answer>:last-child{margin-bottom:0}
         .answer ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
-        .answer li{display:flex;gap:14px}
-        .answer li::before{content:'';flex:none;width:6px;height:6px;margin-top:12px;background:#8f2a20;transform:rotate(45deg)}
+        .answer li{position:relative;padding-left:20px}
+        .answer li::before{content:'';position:absolute;left:0;top:12px;width:6px;height:6px;background:#8f2a20;transform:rotate(45deg)}
         .answer a{color:#8f2a20;text-decoration:underline;text-underline-offset:3px}
         .answer a:hover{color:#2b2117}
-        .answer code,.catechism-date{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:.8em;padding:1px 6px;border-radius:6px;background:#d8c59a;color:#2b2117}
+        .answer :not(pre)>code,.catechism-date{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:.8em;padding:1px 6px;border-radius:6px;background:#d8c59a;color:#2b2117}
         .catechism-date .imperial-date{text-underline-offset:3px}
         .question-index{display:none}
         .incantation{margin:14px 0 16px;border-radius:14px;background:#141c1f;border:1px solid #2e4248;overflow:hidden;box-shadow:0 8px 22px rgba(43,33,23,.25)}
