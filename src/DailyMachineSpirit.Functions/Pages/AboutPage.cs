@@ -96,16 +96,12 @@ public static class AboutPage
             </div>
             </div>
             </article>
-            <div class="side side-left">
-            <aside class="question-index" aria-label="Questions">
-            <p class="margin-label" aria-hidden="true">The questions</p>
-            <ol>{string.Concat(numbered.Select(question => $"""<li><a href="#q-{question.Number}"><span>{question.Question}</span><span class="index-number" aria-hidden="true">{question.Numeral}</span></a></li>"""))}</ol>
-            </aside>
-            {Svg.AltarCandleLeft}
-            </div>
-            <div class="side side-right">
-            {Svg.AltarCandleRight}
-            </div>
+            {ArchiveSheet.Margins($"""
+                <aside class="question-index" aria-label="Questions">
+                <p class="margin-label" aria-hidden="true">The questions</p>
+                <ol>{string.Concat(numbered.Select(question => $"""<li><a href="#q-{question.Number}"><span>{question.Question}</span><span class="index-number" aria-hidden="true">{question.Numeral}</span></a></li>"""))}</ol>
+                </aside>
+                """, string.Empty)}
             {Svg.Traces}
             </div>
             """);

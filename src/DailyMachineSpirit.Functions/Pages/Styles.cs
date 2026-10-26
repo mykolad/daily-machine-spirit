@@ -361,17 +361,13 @@ public static class Styles
         .hero>.archive-more{grid-column:2;grid-row:2}
         .hero:has(.archive-seal)>.sheet{align-self:stretch}
         .archive-hero .marginalia{display:flex}
-        .side{grid-row:1;align-self:start;display:flex;flex-direction:column;gap:56px;margin-top:80px}
+        .margins{grid-column:1/-1;grid-row:1;align-self:start;position:sticky;top:var(--margins-top,32px);display:grid;grid-template-columns:subgrid;margin-top:80px;pointer-events:none}
+        .side{grid-row:1/span 2;display:grid;grid-template-rows:subgrid;pointer-events:auto}
         .side-left{grid-column:1}
         .side-right{grid-column:3}
-        .side>.marginalia,.side>.month-index,.side>.other-subjects{margin-top:0}
-        .side>.altar{align-self:center}
-        .hero:has(>.side){grid-template-rows:auto auto 1fr auto}
-        .hero:has(>.side)>.sheet{grid-row:1/span 3}
-        .archive-hero>.archive-more{grid-row:4}
-        .hero>.side{grid-row:1/span 2;display:grid;grid-template-rows:subgrid;row-gap:0}
-        .hero>.side>*{grid-column:1}
-        .hero>.side>.altar{grid-row:2;justify-self:center;margin-top:56px}
+        .side-notes{display:flex;flex-direction:column;gap:56px}
+        .side-notes>.marginalia,.side-notes>.month-index,.side-notes>.other-subjects{margin-top:0}
+        .side>.altar{grid-row:2;justify-self:center;margin-top:56px}
         .sub-wide{display:inline}
         .sub-narrow{display:none}
         .margin-number{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:32px;line-height:1.1;color:#ede3cf}
