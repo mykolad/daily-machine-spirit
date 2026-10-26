@@ -101,7 +101,12 @@ public static class AboutPage
             <p class="margin-label" aria-hidden="true">The questions</p>
             <ol>{string.Concat(numbered.Select(question => $"""<li><a href="#q-{question.Number}"><span>{question.Question}</span><span class="index-number" aria-hidden="true">{question.Numeral}</span></a></li>"""))}</ol>
             </aside>
+            {Svg.AltarCandleLeft}
             </div>
+            <div class="side side-right">
+            {Svg.AltarCandleRight}
+            </div>
+            {Svg.Traces}
             </div>
             """);
     }

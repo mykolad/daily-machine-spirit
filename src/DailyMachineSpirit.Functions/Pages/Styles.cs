@@ -366,12 +366,12 @@ public static class Styles
         .side-right{grid-column:3}
         .side>.marginalia,.side>.month-index,.side>.other-subjects{margin-top:0}
         .side>.altar{align-self:center}
-        .archive-hero{grid-template-rows:auto auto 1fr auto}
-        .archive-hero>.sheet{grid-row:1/span 3}
+        .hero:has(>.side){grid-template-rows:auto auto 1fr auto}
+        .hero:has(>.side)>.sheet{grid-row:1/span 3}
         .archive-hero>.archive-more{grid-row:4}
-        .archive-hero>.side{grid-row:1/span 2;display:grid;grid-template-rows:subgrid;row-gap:0}
-        .archive-hero>.side>*{grid-column:1}
-        .archive-hero>.side>.altar{grid-row:2;justify-self:center;margin-top:56px}
+        .hero>.side{grid-row:1/span 2;display:grid;grid-template-rows:subgrid;row-gap:0}
+        .hero>.side>*{grid-column:1}
+        .hero>.side>.altar{grid-row:2;justify-self:center;margin-top:56px}
         .sub-wide{display:inline}
         .sub-narrow{display:none}
         .margin-number{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:32px;line-height:1.1;color:#ede3cf}
@@ -386,7 +386,6 @@ public static class Styles
         .month-count{padding-top:4px;font-family:'JetBrains Mono',monospace;font-weight:500;font-size:14px;color:#b6a98f}
         .other-subjects h2{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:#c9a25a}
         .other-subjects .tags{justify-content:flex-start;margin:0}
-        .catechism-hero>.side-left{position:sticky;top:32px}
         .question-index{display:flex;flex-direction:column;gap:14px;padding-right:28px;border-right:1px solid #2f2820;text-align:right}
         .question-index .margin-label{margin:0}
         .question-index ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px}
