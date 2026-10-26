@@ -37,7 +37,7 @@ public static class TagPage
             heading: label,
             sub: Html.Encode(about),
             search: string.Empty,
-            body: ArchiveRows.Months(rites, []),
+            body: ArchiveRows.Months(rites, [], ArchiveRows.NoVotes),
             below: ArchiveRows.More(olderThan.Map(number => Paths.TagBefore(tag.Key, number)), "Load older rites", end, string.Empty),
             left: left,
             right: right));

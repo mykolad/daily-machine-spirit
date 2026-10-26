@@ -314,6 +314,11 @@ skills/                           — Consult the Machine Spirit, a skill that p
     them, and nothing reads them, so the counts started again from zero.
   - **The page is the same for everyone:** both "Sign in with GitHub" and "Sign out" are in it, hidden, and the script
     shows the reader's own after asking `/api/me`. The API takes JSON only, so another site's form can't vote.
+  - **Your Rites** (`/my-rites`, `VotedRitesFunction`, `VotedRitesPage`): every rite the signed-in reader voted on,
+    newest first, on the Archive's sheet, each row marked with their verdict, narrowed by links to the Blessed or the
+    Heresies (`?verdict=`), like bookmarks. One query for the reader's votes (`GetAllVotes`, by voter key), one for
+    their rites. The one page that differs by reader, so it's never cached (`private, no-store`, and `no-store` for
+    Cloudflare). Signed out, it offers the sign-in; signed in, the vote status under a rite links to it.
 - **Readers sign in to vote** (`Voters/`, #34), with GitHub for now: `/auth/{provider}?return=<path>` sends them to
   the provider's OAuth web flow, and `/auth/{provider}/callback` brings them back. `/auth/signout` (a form posted from
   this site, `RequestOrigin`) signs them out; `/api/me` tells the page's script whether sign-in is set up and whether

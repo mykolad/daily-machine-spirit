@@ -89,6 +89,11 @@ public sealed partial class DeployedAppTests
         }
     }
 
+    // A reader's own page: signed out, the smoke tests are asked to sign in.
+    [Fact]
+    public async Task VotedRites_Answers()
+        => AssertAnswers(await app.Get("/my-rites"), HttpStatusCode.OK, $"<title>Your Rites · {SiteName}</title>");
+
     // Search was a page of its own: links to it lead to the Archive's search (the client follows the redirect).
     [Fact]
     public async Task TheOldSearchAddress_LeadsToTheArchivesSearch()

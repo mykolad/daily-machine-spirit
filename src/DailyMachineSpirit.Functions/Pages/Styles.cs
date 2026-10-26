@@ -214,6 +214,14 @@ public static class Styles
         .row-counts{display:flex;gap:16px;margin-top:4px;font-weight:600;font-size:13px;color:#5c4a33}
         .row-counts span{display:inline-flex;align-items:center;gap:6px}
         .row-counts svg{width:16px;height:16px}
+        .row-yours{display:inline-flex;align-items:center;gap:6px;width:fit-content;margin-top:6px;padding:2px 10px;border-radius:999px;background:#8f2a20;color:#f6eedb;font-weight:600;font-size:13px}
+        .row-yours svg{width:14px;height:14px}
+        .verdicts{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:24px 0 8px}
+        .verdict{display:inline-flex;align-items:center;min-height:44px;padding:8px 18px;border:1px solid #8f2a20;border-radius:999px;font-weight:600;font-size:15px;color:#8f2a20;text-decoration:none}
+        .verdict:hover{background:#e0d0a8;color:#8f2a20}
+        .verdict[aria-current=page]{background:#8f2a20;color:#f6eedb}
+        .voted-account{display:flex;justify-content:center;gap:6px;padding-top:24px;color:#b6a98f;font-size:15px}
+        .voted-account form{display:inline}
         .row-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
         .row-tags .tag{position:relative;z-index:1;min-height:28px;padding:2px 12px;border-color:rgba(143,42,32,.45);color:#8f2a20;font-size:13px}
         .row-tags .tag:hover{background:#d8c59a;color:#8f2a20}
@@ -319,7 +327,7 @@ public static class Styles
         .marginalia .tags{justify-content:flex-end;margin:0}
         .tags .margin-label{flex-basis:100%;margin-bottom:0}
         .hero>.sheet{grid-column:2;grid-row:1}
-        .hero>.archive-more{grid-column:2;grid-row:2}
+        .hero>.archive-more,.hero>.voted-account{grid-column:2;grid-row:2}
         .hero:has(.archive-seal)>.sheet{align-self:stretch}
         .archive-hero .marginalia{display:flex}
         .side{grid-row:1;align-self:start;display:flex;flex-direction:column;gap:56px;margin-top:80px}

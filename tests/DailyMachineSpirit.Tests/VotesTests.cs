@@ -157,12 +157,28 @@ public sealed class VotesTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task GetAllVotes_GivesEveryVoteOfThisReader_AndNoOneElses()
+    {
+        await AddRite();
+        await AddRite(new DateOnly(2026, 10, 10));
+        await AddRite(new DateOnly(2026, 10, 11));
+        await Vote(Reader, Some(Reaction.Blessed));
+        Ok(await Repository.Vote(3, Reader, Some(Reaction.Heresy), CancellationToken.None));
+        Ok(await Repository.Vote(2, "someone-else", Some(Reaction.Blessed), CancellationToken.None));
+
+        var votes = Ok(await Repository.GetAllVotes(Reader, CancellationToken.None));
+
+        Assert.Equal(new Dictionary<int, Reaction> { [1] = Reaction.Blessed, [3] = Reaction.Heresy }, votes);
+    }
+
+    [Fact]
     public async Task WhenTheDataCantBeReached_EveryCallIsAnError()
     {
         var missing = new VoteRepository(cosmos.Container.Database.GetContainer("no-such-container"));
 
         Assert.True((await missing.Vote(1, Reader, Some(Reaction.Blessed), CancellationToken.None)).IsLeft);
         Assert.True((await missing.GetVotes(Reader, [1], CancellationToken.None)).IsLeft);
+        Assert.True((await missing.GetAllVotes(Reader, CancellationToken.None)).IsLeft);
     }
 
     [Fact]
