@@ -53,6 +53,23 @@ and exported the same way.
 | A reader's sign-in (`SignIn`, with `Provider`) | as `dms_signins_total`: `signed-in`, `declined`, `refused`, `failed` |
 | A search of the Archive (`Search`) | `words`, `words-in-a-subject`; the first page of each search the app answers (the same search again within a minute is answered from a cache, and not counted), and a pause while typing in the Archive's field is a search too |
 
+## The MCP connector
+
+The connector (`src/DailyMachineSpirit.Mcp`, #145) exports to the same stack, with the same token, as its own service:
+`machinespirit-mcp` (both of production's regions, told apart by `cloud.region`) and `machinespirit-mcp-staging`.
+It exports traces and logs, no metrics (`ConnectorTelemetry`):
+
+- **A log line per tool call** (`LogCounters`: `Tool`, `Outcome` of `answered`, `no-such-rite` or `unavailable`, and
+  `DurationMs`), which the activity dashboard's last row counts, for the reason above: with a few calls a day, most
+  come to an instance that starts for them, and a counter would miss them. Its warnings and errors too: why the rites
+  API couldn't be read.
+- **A trace per tool call:** the MCP SDK's span (`tools/call list_rites`, with `error.type=tool_error` when the tool
+  answered `isError`), and under it the read of the rites API (its status and duration).
+
+Nothing about the caller: ASP.NET Core's request spans aren't exported (they carry the user agent), nor is the
+`traceparent` a caller sends, and the log lines name only the tool. The connector's synthetic check is set by hand
+(`infra/README.md`).
+
 ## The alerts
 
 Production only (the service `machinespirit-app`), so staging's experiments never wake anyone. Each one's description says

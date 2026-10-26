@@ -288,12 +288,18 @@ skills/                           — Consult the Machine Spirit, a skill that p
   - **Anonymous and stateless:** no sign-in (`defaultAuthorizationLevel: anonymous`), nothing about the caller kept, and
     no session (`HttpServerSessionMode.Stateless`): every request carries all it needs, so any instance answers it.
   - **Through the public API:** the tools read `RitesApi:BaseUrl` (the site, through Cloudflare) and pass its answers on
-    as they are, so they keep the API's contract and are served from Cloudflare's copies. No secrets, no database.
-    Staging's reads production's, since staging's own API admits only the owner.
+    as they are, so they keep the API's contract and are served from Cloudflare's copies. No database, and of the
+    vault only the telemetry's token. Staging's reads production's, since staging's own API admits only the owner.
+  - **Telemetry** (#145, `ConnectorTelemetry`): to Grafana Cloud as the site's goes, as the service
+    `machinespirit-mcp` (both regions, by `cloud.region`) or `machinespirit-mcp-staging`. Traces (the SDK's span per
+    tool call, the API reads under it) and logs: a line per tool call (`LogCounters`), which the activity dashboard
+    counts, and warnings. No metrics: a counter misses calls to instances that start for one (observability/README.md).
+    ASP.NET Core's request spans carry the user agent, so they're never exported, and since the sampler would drop the
+    SDK's span with its unrecorded parent, `UseConnectorTelemetry` starts each trace at the SDK's span.
   - **Failures are answers:** a rite no one published, or the API failing, is the tool's result marked `isError`, in
     words the assistant can pass on, rather than a protocol error it might paper over with a rite of its own.
-  - **Tests** host it on ASP.NET Core's test server over a fake API (`ConnectorTests`) and call it with the SDK's own
-    client; the smoke tests' `Connector` category calls a deployed one.
+  - **Tests** host it on ASP.NET Core's test server over a fake API (`ConnectorTests`, `ConnectorTelemetryTests`) and
+    call it with the SDK's own client; the smoke tests' `Connector` category calls a deployed one.
 - **Votes** (Blessed / Heresy, `Api/VotesFunction`): one per account per rite, which the reader can switch or
   take back, signed in as below. `POST /api/rites/{number}/vote` with `{"vote": "blessed" | "heresy" | null}`, and
   `GET /api/votes?rites=12` for the page to show the reader's own vote pressed.

@@ -160,7 +160,7 @@ are the same with `--vault-name machinespirit-kv`.
 | Secret | Used for | The app reads it from |
 |---|---|---|
 | `JevApiKey` | judging drafts: their quality for the Augury, their similarity for "More rites" | `Jev__ApiKey`, a Key Vault reference |
-| `OtlpHeaders` | telemetry to Grafana Cloud (this site's own access-policy token) | `OTEL_EXPORTER_OTLP_HEADERS`, a Key Vault reference |
+| `OtlpHeaders` | telemetry to Grafana Cloud (this site's own access-policy token), the connector's too | `OTEL_EXPORTER_OTLP_HEADERS`, a Key Vault reference |
 | `GitHubClientSecret` | readers signing in with GitHub to vote: the OAuth app's client secret | `GitHub__ClientSecret`, a Key Vault reference |
 | `VoterKeySecret` | keying each account's votes. Set once: a new value makes every account a new voter. At least 32 characters | `Voters__KeySecret`, a Key Vault reference |
 | `VoterSessionSecret` | signing the sign-in cookie. A new value only signs everyone out. At least 32 characters | `Voters__SessionSecret`, a Key Vault reference |

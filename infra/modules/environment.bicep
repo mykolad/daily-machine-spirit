@@ -155,7 +155,7 @@ resource snapshotContainer 'Microsoft.Storage/storageAccounts/blobServices/conta
 }
 
 // Every app's settings in this environment, but for the host's storage (app.bicep) and what sets a region apart (below).
-var settings = [
+var settings = concat([
   // Outside the region (resources.bicep): the copy the app reads while Cosmos DB doesn't answer (#112).
   {
     name: 'RiteSnapshot__ContainerUri'
@@ -230,8 +230,11 @@ var settings = [
     name: 'Voters__SessionSecret'
     value: '@Microsoft.KeyVault(VaultName=${vault.name};SecretName=VoterSessionSecret)'
   }
-  // Telemetry to Grafana Cloud, read by both the Functions host and the app (Program.cs). The header carries the
-  // stack's token, from the vault (infra/README.md).
+], telemetrySettings)
+
+// Telemetry to Grafana Cloud, read by both the Functions host and the app (Program.cs), and by the connector. The
+// header carries the stack's token, from the vault (infra/README.md).
+var telemetrySettings = [
   {
     name: 'OTEL_EXPORTER_OTLP_ENDPOINT'
     value: otlpEndpoint
@@ -395,6 +398,12 @@ module connector 'connector.bicep' = {
     planName: '${prefix}-plan-mcp${nameSuffix}'
     storageAccountName: connectorStorageAccountName
     ritesApiBaseUrl: ritesApiBaseUrl
+    settings: concat(telemetrySettings, [
+      {
+        name: 'OTEL_RESOURCE_ATTRIBUTES'
+        value: 'deployment.environment.name=${environmentName},cloud.region=${location},service.name=${connectorAppName}'
+      }
+    ])
     allowedIp: allowedIp
     admitsOnlyCloudflare: admitsOnlyCloudflare
     admitsTrafficManager: hasStandby
@@ -414,6 +423,13 @@ module standbyConnector 'connector.bicep' = if (hasStandby) {
     planName: '${prefix}-plan-mcp${nameSuffix}-${standbyLocation}'
     storageAccountName: standbyConnectorStorageAccountName
     ritesApiBaseUrl: ritesApiBaseUrl
+    // The first region's service name, as for the site's standby: one service, told apart by cloud.region.
+    settings: concat(telemetrySettings, [
+      {
+        name: 'OTEL_RESOURCE_ATTRIBUTES'
+        value: 'deployment.environment.name=${environmentName},cloud.region=${standbyLocation},service.name=${connectorAppName}'
+      }
+    ])
     allowedIp: allowedIp
     admitsOnlyCloudflare: admitsOnlyCloudflare
     admitsTrafficManager: true
