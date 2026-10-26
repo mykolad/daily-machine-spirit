@@ -270,3 +270,10 @@ and candles behind it, and the recent rites under Today.
   alone; the pointer gets it from a `title` (an Archive row's on its link, which covers the row). A touch screen
   reads it on the rite's own page, a tap away.
 - **On the parchment the button's focus ring is red** (`#8f2a20`), as the sheet's controls are: amber is too faint there.
+
+## The About page
+
+- **Commands scroll inside their block, and the block takes focus** (`tabindex="0"`, named "Commands"), so a keyboard
+  can scroll it too; a wrapped command would read as two. The connector's address wraps instead, so it needs no
+  scrolling.
+- **Each copy button says what it copies** ("Copy address", "Copy commands"), and the toast says whether it worked.

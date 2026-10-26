@@ -719,6 +719,8 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.Contains("""<a href="/about" aria-current="page">About</a>""", about.Html);
         Assert.Contains("""<pre><code>https://mcp.dailymachinespirit.fyi/mcp</code></pre>""", about.Html);
         Assert.Contains("""data-copy="value" data-text="https://mcp.dailymachinespirit.fyi/mcp">""", about.Html);
+        // The commands scroll rather than wrap, so a keyboard must be able to reach their block.
+        Assert.Contains("""<pre tabindex="0" aria-label="Commands"><code>git clone --depth 1 https://github.com/mykolad/daily-machine-spirit.git""", about.Html);
         Assert.Contains("cp -r daily-machine-spirit/skills/consult-the-machine-spirit ~/.claude/skills/", about.Html);
         Assert.Equal("public, max-age=60, stale-if-error=604800", about.AtCloudflare);
     }

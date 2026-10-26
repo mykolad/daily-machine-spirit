@@ -289,7 +289,8 @@ public static class Styles
         .about li+li{margin-top:6px}
         .about code{font-family:'JetBrains Mono',monospace;font-size:.85em;padding:2px 7px;border-radius:6px;background:#241c12;color:#f0d58c}
         .incantation{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 12px;margin:14px 0 16px;padding:10px 8px 10px 18px;border-radius:14px;background:#141c1f;border:1px solid #2e4248}
-        .incantation pre{flex:1 1 260px;min-width:0;margin:0;overflow-x:auto;padding:4px 0}
+        .incantation pre{flex:1 1 260px;min-width:0;margin:0;padding:4px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+        .incantation-lines pre{flex-basis:100%;overflow-x:auto;white-space:pre;overflow-wrap:normal}
         .incantation code{padding:0;background:none;font-size:14px;line-height:1.6;color:#dbe6e8}
         .incantation .button{margin-left:auto}
         .toast-region{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:40;pointer-events:none;width:max-content;max-width:calc(100vw - 32px)}
