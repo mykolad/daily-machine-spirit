@@ -96,8 +96,13 @@ public sealed class SitePages
 
     // Nothing to read: the page changes only with a deployment, which no purge follows, so it's kept briefly.
     [Function("About")]
-    public IActionResult About([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "about")] HttpRequest request)
+    public IActionResult About([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "catechism")] HttpRequest request)
         => Page(request, StatusCodes.Status200OK, AboutPage.Render());
+
+    /// <summary><c>/rtfm</c>, what veterans tell newcomers, for whoever types it: it leads to the Catechism.</summary>
+    [Function("ReadTheManual")]
+    public IActionResult ReadTheManual([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "rtfm")] HttpRequest request)
+        => new RedirectResult(Paths.About, permanent: true);
 
     /// <summary>
     /// Pages by number, newest first: <c>?before=&lt;number&gt;</c> starts below that number. The first page leaves

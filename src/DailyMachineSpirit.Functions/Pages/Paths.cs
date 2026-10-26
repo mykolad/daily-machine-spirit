@@ -10,7 +10,7 @@ public static class Paths
 
     public const string Archive = "/archive";
 
-    public const string About = "/about";
+    public const string About = "/catechism";
 
     /// <summary>
     /// Not the rites, but what the nav's search field matches them on as the reader types: each rite's number, day,

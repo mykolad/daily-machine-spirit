@@ -552,6 +552,18 @@ public sealed class SitePagesTests : IAsyncLifetime
     }
 
     [Fact]
+    public void ReadTheManual_LeadsToTheCatechism_ForGood()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Path = "/rtfm";
+
+        var redirect = Assert.IsType<RedirectResult>(Pages().ReadTheManual(context.Request));
+
+        Assert.True(redirect.Permanent);
+        Assert.Equal("/catechism", redirect.Url);
+    }
+
+    [Fact]
     public async Task Archive_WithWords_ListsTheRitesHoldingThem_NewestFirst_TodaysToo_AndSaysHowMany()
     {
         await AddRites(22);
@@ -728,11 +740,11 @@ public sealed class SitePagesTests : IAsyncLifetime
     [Fact]
     public async Task About_SaysHowToConsultTheMachineSpirit()
     {
-        var about = await Read(context => Task.FromResult(Pages().About(context.Request)), "/about", "");
+        var about = await Read(context => Task.FromResult(Pages().About(context.Request)), "/catechism", "");
 
         Assert.Equal(StatusCodes.Status200OK, about.Status);
         Assert.Contains("<title>About · The Daily Machine Spirit</title>", about.Html);
-        Assert.Contains("""<a href="/about" aria-current="page">About</a>""", about.Html);
+        Assert.Contains("""<a href="/catechism" aria-current="page">About</a>""", about.Html);
         Assert.Contains("""<pre><code>https://mcp.dailymachinespirit.fyi/mcp</code></pre>""", about.Html);
         Assert.Contains("""data-copy="value" data-text="https://mcp.dailymachinespirit.fyi/mcp">""", about.Html);
         // The commands scroll rather than wrap, so a keyboard must be able to reach their block.
