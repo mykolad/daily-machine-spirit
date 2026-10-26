@@ -15,12 +15,12 @@ public static class TodayPage
         var countdown = Countdown.ToNextRite(now);
         // On a wide screen the countdown moves to the left margin, and the line under the actions (with its candles)
         // hides, so one countdown shows at a time.
-        var marginCountdown = $"""<div class="margin-countdown"><p class="margin-label">Next litany in</p><p class="margin-value" data-countdown>{countdown}</p></div>""";
+        var marginCountdown = $"""<div class="margin-countdown"><p class="margin-label">Next litany in</p><p class="margin-value" {Countdown.Attribute(now)}>{countdown}</p></div>""";
         return Layout.Page(string.Empty, Html.FirstLine(rite.Writing.Text.Replace("`", string.Empty)), Section.Today, $"""
             {Masthead.Render(isHeading: true)}
             {RiteCard.Render(rite, ownPage: false, countedAt: now, marginNotes: marginCountdown)}
             <div class="countdown">
-            <div class="countdown-line">{Svg.CandleLeft}<p>Next litany in <span class="amber" data-countdown>{countdown}</span></p>{Svg.CandleRight}</div>
+            <div class="countdown-line">{Svg.CandleLeft}<p>Next litany in <span class="amber" {Countdown.Attribute(now)}>{countdown}</span></p>{Svg.CandleRight}</div>
             <p class="countdown-note">A new rite is published every day at 00:00 UTC.</p>
             </div>
             {Epigraph}
@@ -35,7 +35,7 @@ public static class TodayPage
             <div class="state">
             {Svg.SleepingSkull}
             <h2>The Machine Spirit slumbers.</h2>
-            <p class="state-body">The first litany arrives in <strong class="amber" data-countdown>{Countdown.ToNextRite(now)}</strong>.</p>
+            <p class="state-body">The first litany arrives in <strong class="amber" {Countdown.Attribute(now)}>{Countdown.ToNextRite(now)}</strong>.</p>
             </div>
             {Epigraph}
             """);

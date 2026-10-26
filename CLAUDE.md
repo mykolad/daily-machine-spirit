@@ -227,6 +227,11 @@ skills/                           — Consult the Machine Spirit, a skill that p
   - **The voter's own counts survive a cached page:** the vote answers with the counts and when they were counted
     (`countedAt`), the page carries when its counts were read (`data-counted-at`, taken before reading), and the script
     keeps each vote's answer for two hours in `localStorage` (`dms-votes-v1`), showing it over an older page.
+  - **A page left open catches up with the new rite:** a page with a countdown (Today, the Archive, a tag's page) says
+    when its next rite is due (`data-countdown`, `Countdown.Attribute`). Shown again after that (a tab switched back
+    to, restored, or woken the next day, or a computer waking, which the script sees as five minutes between its
+    ticks), the script reloads it, once per page and due time (`sessionStorage`), so a clock running ahead can't loop
+    it; a reader looking at it at midnight gets a toast with a link to Today instead.
   - **Tags** (#6): the site's own fixed vocabulary (`Tags/RiteTags`), so there's no `cache` next to `caches`. The
     judge gives a draft its tags with its scores (`IRiteJudge`), and they're stored with the draft and the rite it
     becomes (`tags`, a list of keys), so a tag's page is one query, and switching judges keeps every rite's tags.

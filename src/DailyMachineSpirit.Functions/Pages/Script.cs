@@ -630,16 +630,67 @@ public static class Script
             });
           }
 
-          // Looked up at each tick: a search on the Archive brings in a new margin with its own.
+          // A page with a countdown shows what's newest (Today, the Archive, a tag's page), so it's stale once the next rite
+          // is due: each countdown holds when, as of the page's render. A tab left open, or one the browser brings back from
+          // its cache or wakes the next day, would show the day before under a countdown to tomorrow's. Looked up each
+          // time: a search on the Archive brings in a new margin with its own.
+          const dueAt = () => Math.min(...[...document.querySelectorAll('[data-countdown]')].map((element) => Date.parse(element.dataset.countdown)));
+          const stale = () => Date.now() >= dueAt();
+          // Reloaded when it's shown again, before it's read, but once for each page and due time: a clock running ahead,
+          // or a copy the reload still finds cached, would otherwise reload it again and again, and one page's reload
+          // mustn't stop another's (the Archive's, then Today's, brought back by Back). Without the storage to remember
+          // that, it isn't reloaded, and the reader is told instead.
+          const reloadIfStale = () => {
+            if (!stale()) return false;
+            const reloadedKey = `dms-reloaded:${location.pathname}${location.search}`;
+            try {
+              if (sessionStorage.getItem(reloadedKey) === String(dueAt())) return false;
+              sessionStorage.setItem(reloadedKey, String(dueAt()));
+            } catch { return false; }
+            location.reload();
+            return true;
+          };
+          // A reader looking at the page when the rite comes out is told, rather than have the page change under them,
+          // with a link to Today: the Archive's first page leaves the newest rite out, and a later page or a search may.
+          const tellOfNewRite = () => {
+            if (toast.querySelector('.toast-lasting')) return;
+            clearTimeout(hideToast);
+            toast.innerHTML = '';
+            const pill = document.createElement('div');
+            pill.className = 'toast toast-lasting';
+            pill.append('A new rite is out. ');
+            const showIt = document.createElement('a');
+            showIt.href = '/';
+            showIt.textContent = 'Show it';
+            pill.appendChild(showIt);
+            toast.appendChild(pill);
+          };
+          // A computer that slept with the page in front says nothing when it wakes, so a long gap between ticks counts as
+          // the page being shown again. Hidden, a tab's timers may slow to once a minute, well inside the five.
+          let tickedAt = Date.now();
           const tick = () => {
+            const asleep = Date.now() - tickedAt > 300000;
+            tickedAt = Date.now();
+            if (asleep && reloadIfStale()) return;
+            if (stale()) {
+              document.querySelectorAll('[data-countdown]').forEach((element) => { element.textContent = '0m'; });
+              tellOfNewRite();
+              return;
+            }
             const now = new Date();
             const next = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
             const minutes = Math.ceil((next - now.getTime()) / 60000);
             const text = minutes >= 60 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m` : `${minutes}m`;
             document.querySelectorAll('[data-countdown]').forEach((element) => { element.textContent = text; });
           };
-          // Ticked at once too: a cached page may have been rendered up to an hour ago.
-          if (document.querySelector('[data-countdown]')) { tick(); setInterval(tick, 30000); }
+          if (document.querySelector('[data-countdown]') && !reloadIfStale()) {
+            // Ticked at once too: a cached page may have been rendered up to an hour ago.
+            tick();
+            setInterval(tick, 30000);
+            document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reloadIfStale(); });
+            // A page the browser keeps whole (back, forward, a restored tab) runs no script again, but says it's shown.
+            window.addEventListener('pageshow', (event) => { if (event.persisted) reloadIfStale(); });
+          }
 
           // An Imperial date's day as we reckon it shows while the pointer is on it or it has focus (the stylesheet); a
           // tap shows or hides it too, for a touch screen, and a tap elsewhere hides it. Escape hides any, until the
