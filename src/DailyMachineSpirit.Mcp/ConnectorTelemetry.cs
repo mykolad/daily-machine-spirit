@@ -24,7 +24,10 @@ public static class ConnectorTelemetry
     {
         services.AddLogging(logging => logging
             .AddFilter<OpenTelemetryLoggerProvider>(null, LogLevel.Warning)
-            .AddFilter<OpenTelemetryLoggerProvider>(typeof(ConnectorTelemetry).Namespace, LogLevel.Information));
+            .AddFilter<OpenTelemetryLoggerProvider>(typeof(ConnectorTelemetry).Namespace, LogLevel.Information)
+            // The host gives the connector its port (Program.cs), over the image's HTTP_PORTS, as it should, which
+            // ASP.NET Core warns about at every start; errors still show. On this provider, as its rules beat any other.
+            .AddFilter<OpenTelemetryLoggerProvider>("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Error));
         var telemetry = services.AddOpenTelemetry()
             .WithTracing(tracing => tracing
                 .AddSource(McpSource)
