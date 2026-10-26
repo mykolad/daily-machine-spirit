@@ -1,7 +1,8 @@
 // One app of the MCP connector (#119, src/DailyMachineSpirit.Mcp), in one region: an MCP server over the public rites
 // API, which the Functions host runs as a custom handler. Apart from the site's apps, so a flood of connector calls has
-// its own instances and ceiling, never the site's. It reads only the public API, so it has no secrets and no data
-// access: its own storage for the host, the domain through Cloudflare, and GitHub's right to deploy it.
+// its own instances and ceiling, never the site's. It reads only the public API, so it has no data access: its own
+// storage for the host, the telemetry's token from the vault, the domain through Cloudflare, and GitHub's right to
+// deploy it.
 import { cloudflareRules, ownerRules, trafficManagerRule } from 'accessRules.bicep'
 
 param location string
@@ -11,6 +12,8 @@ param planName string
 param storageAccountName string
 @description('Where the tools read the rites API, e.g. https://dailymachinespirit.fyi/ (through Cloudflare).')
 param ritesApiBaseUrl string
+@description('Settings beyond the connector\'s own: its telemetry (environment.bicep).')
+param settings array
 @description('The only IPv4 address the app admits (staging); empty sets no such rule.')
 // Secure, so the nested deployment's history masks it too (secure doesn't carry across module boundaries).
 @secure()
@@ -21,7 +24,7 @@ param admitsOnlyCloudflare bool
 param admitsTrafficManager bool
 @description('GitHub\'s deploy identity for the environment, which may change this app and nothing else.')
 param githubDeployerPrincipalId string
-@description('The vault holding the domain\'s certificate (the environment\'s).')
+@description('The environment\'s vault, holding the telemetry\'s token and the domain\'s certificate.')
 param vaultName string
 @description('The domain clients reach the connector at, through Cloudflare (production); empty for none.')
 param customDomain string
@@ -119,21 +122,24 @@ resource app 'Microsoft.Web/sites@2024-04-01' = {
       // Deploys go to the SCM site from GitHub's runners, whose addresses change, so the IP rule applies to callers
       // only. The SCM site takes Entra ID alone: basic-auth publishing credentials are off (below).
       scmIpSecurityRestrictionsUseMain: false
-      appSettings: [
-        {
-          name: 'AzureWebJobsStorage__accountName'
-          value: storage.name
-        }
-        // Self-hosted MCP servers (custom handlers built with an MCP SDK) are a preview the host enables by this flag.
-        {
-          name: 'AzureWebJobsFeatureFlags'
-          value: 'EnableMcpCustomHandlerPreview'
-        }
-        {
-          name: 'RitesApi__BaseUrl'
-          value: ritesApiBaseUrl
-        }
-      ]
+      appSettings: concat(
+        [
+          {
+            name: 'AzureWebJobsStorage__accountName'
+            value: storage.name
+          }
+          // Self-hosted MCP servers (custom handlers built with an MCP SDK) are a preview the host enables by this flag.
+          {
+            name: 'AzureWebJobsFeatureFlags'
+            value: 'EnableMcpCustomHandlerPreview'
+          }
+          {
+            name: 'RitesApi__BaseUrl'
+            value: ritesApiBaseUrl
+          }
+        ],
+        settings
+      )
     }
   }
 }
@@ -159,6 +165,7 @@ module connectorAccess 'connectorAccess.bicep' = {
   params: {
     principalId: app.identity.principalId
     storageAccountName: storage.name
+    vaultName: vaultName
   }
 }
 

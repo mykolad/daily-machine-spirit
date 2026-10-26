@@ -1,7 +1,7 @@
 {
   "uid": "daily-machine-spirit-activity",
   "title": "Daily Machine Spirit · Activity",
-  "description": "What the site's people do: the Scribes' actions, readers' votes, sign-ins and searches (counted from the app's logs), and visitors (Cloudflare's analytics). The technical dashboard is daily-machine-spirit.json.",
+  "description": "What the site's people do: the Scribes' actions, readers' votes, sign-ins and searches (counted from the app's logs), visitors (Cloudflare's analytics), and the MCP connector's tool calls (counted from its logs). The technical dashboard is daily-machine-spirit.json.",
   "tags": ["daily-machine-spirit"],
   "timezone": "utc",
   "editable": true,
@@ -19,6 +19,14 @@
         "type": "custom",
         "query": "machinespirit-app,machinespirit-app-staging",
         "current": { "text": "machinespirit-app", "value": "machinespirit-app" },
+        "hide": 0
+      },
+      {
+        "name": "connector",
+        "label": "Connector",
+        "type": "custom",
+        "query": "machinespirit-mcp,machinespirit-mcp-staging",
+        "current": { "text": "machinespirit-mcp", "value": "machinespirit-mcp" },
         "hide": 0
       },
       {
@@ -215,6 +223,87 @@
       ],
       "transformations": [
         { "id": "calculateField", "options": { "mode": "binary", "binary": { "left": "Cached", "operator": "/", "right": "Requests" }, "alias": "Served from the cache", "replaceFields": true } }
+      ]
+    },
+    { "type": "row", "title": "The MCP connector", "collapsed": false, "gridPos": { "x": 0, "y": 30, "w": 24, "h": 1 }, "id": 11, "panels": [] },
+    {
+      "type": "timeseries",
+      "title": "Tool calls per day",
+      "description": "Each call of the connector's tools by an assistant: list_rites, and reveal_heretical_truth (a seal broken). Not who called, nor from where.",
+      "id": 12,
+      "gridPos": { "x": 0, "y": 31, "w": 8, "h": 9 },
+      "datasource": { "type": "loki", "uid": "${loki}" },
+      "interval": "1d",
+      "fieldConfig": {
+        "defaults": { "unit": "short", "decimals": 0, "custom": { "drawStyle": "bars", "fillOpacity": 80, "stacking": { "mode": "normal" }, "lineWidth": 1 } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (Tool) (count_over_time({service_name=\"$connector\"} | Tool != \"\" [$__interval]))",
+          "legendFormat": "{{Tool}}",
+          "queryType": "range"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Tool calls that didn't answer, per day",
+      "description": "unavailable: the rites API failed, and the assistant was told to try again (the warnings below say why). no-such-rite: a truth asked for a number no rite has.",
+      "id": 13,
+      "gridPos": { "x": 8, "y": 31, "w": 8, "h": 9 },
+      "datasource": { "type": "loki", "uid": "${loki}" },
+      "interval": "1d",
+      "fieldConfig": {
+        "defaults": { "unit": "short", "decimals": 0, "custom": { "drawStyle": "bars", "fillOpacity": 80, "stacking": { "mode": "normal" }, "lineWidth": 1 } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (Outcome) (count_over_time({service_name=\"$connector\"} | Tool != \"\" | Outcome != \"answered\" [$__interval]))",
+          "legendFormat": "{{Outcome}}",
+          "queryType": "range"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Tool call duration by region, 95th percentile",
+      "description": "From the tool's start to its answer, the read of the rites API included; not the instance's start, which a first call after a quiet spell waits for too. By the region that answered.",
+      "id": 14,
+      "gridPos": { "x": 16, "y": 31, "w": 8, "h": 9 },
+      "datasource": { "type": "loki", "uid": "${loki}" },
+      "interval": "1h",
+      "fieldConfig": {
+        "defaults": { "unit": "ms", "min": 0, "custom": { "drawStyle": "points", "pointSize": 6 } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "quantile_over_time(0.95, {service_name=\"$connector\"} | Tool != \"\" | unwrap DurationMs [$__interval]) by (cloud_region)",
+          "legendFormat": "{{cloud_region}}",
+          "queryType": "range"
+        }
+      ]
+    },
+    {
+      "type": "logs",
+      "title": "The connector's warnings and errors",
+      "id": 15,
+      "gridPos": { "x": 0, "y": 40, "w": 24, "h": 8 },
+      "datasource": { "type": "loki", "uid": "${loki}" },
+      "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending", "enableLogDetails": true },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{service_name=\"$connector\"} | detected_level=~\"warn|error|critical|fatal\""
+        }
       ]
     }
   ]
