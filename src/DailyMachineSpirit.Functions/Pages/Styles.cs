@@ -370,6 +370,7 @@ public static class Styles
         .archive-hero>.sheet{grid-row:1/span 3}
         .archive-hero>.archive-more{grid-row:4}
         .archive-hero>.side{grid-row:1/span 2;display:grid;grid-template-rows:subgrid;row-gap:0}
+        .archive-hero>.side>*{grid-column:1}
         .archive-hero>.side>.altar{grid-row:2;justify-self:center;margin-top:56px}
         .sub-wide{display:inline}
         .sub-narrow{display:none}
