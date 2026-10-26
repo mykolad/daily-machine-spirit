@@ -37,6 +37,22 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.Contains("3h 12m", html);
     }
 
+    // The script reloads a page shown again once its next rite is due, so every countdown says when, as of the render.
+    [Fact]
+    public async Task EveryCountdown_SaysWhenTheNextRiteIsDue()
+    {
+        var (_, slumbering) = await Today("");
+        await Add(Day, "The Rite of Re-Run");
+        time.Advance(TimeSpan.FromHours(4));
+
+        var (_, today) = await Today("");
+        var (_, archive) = await Archive("");
+
+        Assert.Equal(["2026-10-10T00:00:00Z"], Countdowns(slumbering));
+        Assert.Equal(["2026-10-11T00:00:00Z", "2026-10-11T00:00:00Z"], Countdowns(today));
+        Assert.Equal(["2026-10-11T00:00:00Z"], Countdowns(archive));
+    }
+
     // On Today the motto sits under the rite, where it's read, and leaves the footer, so it's said once; every other
     // page keeps it in the footer.
     [Fact]
@@ -814,6 +830,10 @@ public sealed class SitePagesTests : IAsyncLifetime
         => Regex.Matches(html, """<a class="row-title" href="/r/\d+" title="[^"]+">(.*?)</a>""")
             .Select(match => match.Groups[1].Value.Replace("<mark>", string.Empty).Replace("</mark>", string.Empty))
             .ToList();
+
+    // When each countdown on the page says the next rite is due, in order.
+    private static List<string> Countdowns(string html)
+        => Regex.Matches(html, """data-countdown="([^"]+)">""").Select(match => match.Groups[1].Value).ToList();
 
     // "Rite 1" to "Rite <count>", a day apart, the last on Day: Today's.
     private async Task AddRites(int count)

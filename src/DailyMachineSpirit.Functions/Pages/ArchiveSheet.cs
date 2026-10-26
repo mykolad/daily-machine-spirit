@@ -86,7 +86,7 @@ public static class ArchiveSheet
 
     /// <summary>The countdown to the next rite, as Today's left margin has it.</summary>
     public static string Countdown(DateTimeOffset now)
-        => Note("Next litany in", $"""<p class="margin-value" data-countdown>{Pages.Countdown.ToNextRite(now)}</p>""");
+        => Note("Next litany in", $"""<p class="margin-value" {Pages.Countdown.Attribute(now)}>{Pages.Countdown.ToNextRite(now)}</p>""");
 
     /// <summary>The right margin: a link per month, with how many rites it holds.</summary>
     public static string MonthIndex(IReadOnlyList<ArchiveMonth> months, Func<ArchiveMonth, string> link)

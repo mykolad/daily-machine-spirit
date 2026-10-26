@@ -296,6 +296,9 @@ public static class Styles
         .incantation .button{margin-left:auto}
         .toast-region{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:40;pointer-events:none;width:max-content;max-width:calc(100vw - 32px)}
         .toast{padding:12px 22px;border-radius:24px;background:#ede3cf;color:#100e0b;font-size:15px;font-weight:600;line-height:1.4;text-align:center;box-shadow:0 8px 28px rgba(0,0,0,.5)}
+        .toast-lasting{pointer-events:auto}
+        .toast-lasting a{color:#8f2a20;text-decoration:underline;text-underline-offset:3px}
+        .toast-lasting a:focus-visible{outline-color:#8f2a20;outline-offset:2px}
         @media (min-width:700px){
         .page:has(.masthead) .site-header{margin-bottom:28px}
         .masthead{gap:12px;margin-bottom:28px}
