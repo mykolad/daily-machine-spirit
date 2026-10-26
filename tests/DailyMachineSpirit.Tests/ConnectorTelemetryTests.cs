@@ -12,7 +12,12 @@ using OpenTelemetry.Trace;
 
 namespace DailyMachineSpirit.Tests;
 
-/// <summary>What the MCP connector exports (#145), caught by in-memory exporters in place of OTLP.</summary>
+/// <summary>
+/// What the MCP connector exports (#145), caught by in-memory exporters in place of OTLP. The SDK's activity source is
+/// process-wide, so another test's tool calls would be caught too: these run apart from other tests.
+/// </summary>
+[Collection(nameof(ConnectorTelemetryTests))]
+[CollectionDefinition(nameof(ConnectorTelemetryTests), DisableParallelization = true)]
 public sealed class ConnectorTelemetryTests : IAsyncLifetime
 {
     private const string CallersUserAgent = "CallersOwnAgent/9.9";
