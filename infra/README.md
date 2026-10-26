@@ -1,31 +1,31 @@
 # Infrastructure
 
 Everything the site runs on in Azure is in Bicep: `main.bicep` creates the resource group `machinespirit-rg` (Sweden
-Central) and everything in it. This page covers the few things Bicep can't do: the first deployment, the secret values,
-and what lives outside Azure.
+Central) and everything in it. This page covers the few things Bicep can't do: deploying it, the secret values, and
+what lives outside Azure.
 
-Each environment's own resources (its app, plan, storage, vault, database and GitHub identity) change in staging first;
+Each environment's own resources (its apps, plans, storage, vault, database and GitHub identity) change in staging first;
 production's change only with `deployProduction=true` (false by default). The resources both environments share (the
 models' account and deployments, the Cosmos DB account, the infrastructure identity) are deployed every time, so a
-change to them reaches production at once. Production is live since #50.
+change to them reaches production at once.
 
 | Resource | Name | Notes |
 |---|---|---|
 | Resource group | `machinespirit-rg` | |
 | AI Services | `machinespirit-ai` | `gpt-6-sol` writes the rites, `gpt-6-luna` is the fallback; keys off |
-| Cosmos DB | `machinespirit-cosmos`, `machinespirit-cosmos-staging` | production's is free tier (1000 RU/s, 25 GB for the account's lifetime), database `machinespirit` at 400 RU/s, in Sweden Central with a replica in UK South (#113: 800 RU/s in all), which takes the writes if Sweden Central fails; staging's is serverless (#129: no throughput reserved, paid by the request), database `machinespirit-staging`; both have container `rites` (partition key `/partition`); keys off |
+| Cosmos DB | `machinespirit-cosmos`, `machinespirit-cosmos-staging` | production's is free tier (1000 RU/s, 25 GB for the account's lifetime), database `machinespirit` at 400 RU/s, in Sweden Central with a replica in UK South (800 RU/s in all), which takes the writes if Sweden Central fails; staging's is serverless (no throughput reserved, paid by the request), database `machinespirit-staging`; both have container `rites` (partition key `/partition`); keys off |
 | Key Vault | `machinespirit-kv`, `machinespirit-kv-staging` | one per environment, so staging can't read production's secrets |
 | Storage | `machinespiritprod`, `machinespirituksouth`, `machinespiritstaging` | the Functions host's storage, one per app; keys off |
-| Functions app | `machinespirit-app`, `machinespirit-app-uksouth`, `machinespirit-app-staging` | Flex Consumption, .NET 10 isolated, 512 MB instances, at most 10; staging admits only the owner's IP, production only Cloudflare (and Traffic Manager's health checks). `machinespirit-app-uksouth` is production's standby in UK South (#113): the same code, database, vault and snapshot, without the timers |
+| Functions app | `machinespirit-app`, `machinespirit-app-uksouth`, `machinespirit-app-staging` | Flex Consumption, .NET 10 isolated, 512 MB instances, at most 10; staging admits only the owner's IP, production only Cloudflare (and Traffic Manager's health checks). `machinespirit-app-uksouth` is production's standby in UK South: the same code, database, vault and snapshot, without the timers |
 | Traffic Manager | `machinespirit-traffic` (`machinespirit.trafficmanager.net`) | production's domain points here (Outside Azure): `machinespirit-app` while its `/healthz` answers, else the standby. Probes every 30 seconds, out after 3 failures, a 60-second TTL: a failover takes two to three minutes, and so does coming back. The standby isn't probed (Always Serve), so it scales to zero; Traffic Manager shows it as "always serve" rather than online |
-| The MCP connector (#119) | apps `machinespirit-mcp`, `machinespirit-mcp-uksouth` (production's second region, serving evenly with the first; neither probed), `machinespirit-mcp-staging`, each with its plan and storage (`machinespiritmcp…`); Traffic Manager `machinespirit-traffic-mcp` (`machinespirit-mcp.trafficmanager.net`) | an MCP server over the public rites API (`docs/api.md`), run by the Functions host as a custom handler: apps of its own, so a flood of connector calls never takes the site's instances. No secrets and no data access: only its host's storage. Staging's reads production's public API (staging's own admits only your address) and admits only your address; production's admits Cloudflare and Traffic Manager, at `mcp.dailymachinespirit.fyi` |
+| The MCP connector | apps `machinespirit-mcp`, `machinespirit-mcp-uksouth` (production's second region, serving evenly with the first; neither probed), `machinespirit-mcp-staging`, each with its plan and storage (`machinespiritmcp…`); Traffic Manager `machinespirit-traffic-mcp` (`machinespirit-mcp.trafficmanager.net`) | an MCP server over the public rites API (`docs/api.md`), run by the Functions host as a custom handler: apps of its own, so a flood of connector calls never takes the site's instances. No secrets and no data access: only its host's storage. Staging's reads production's public API (staging's own admits only your address) and admits only your address; production's admits Cloudflare and Traffic Manager, at `mcp.dailymachinespirit.fyi` |
 | GitHub identities | `machinespirit-github-staging`, `-production`, `-infrastructure` | OIDC from this repository's GitHub environments of the same names |
-| The rites' snapshot (#112) | `machinespiritsnapshots`, in Germany West Central (`snapshotLocation`): containers `rites-staging`, `rites-production` | Every published rite, as one blob per environment, which its app reads while Cosmos DB doesn't answer. Outside Sweden Central and UK South (production's standby, #113), so the copy outlives an outage of either; each app may write only its own container |
+| The rites' snapshot | `machinespiritsnapshots`, in Germany West Central (`snapshotLocation`): containers `rites-staging`, `rites-production` | Every published rite, as one blob per environment, which its app reads while Cosmos DB doesn't answer. Outside Sweden Central and UK South, so the copy outlives an outage of either; each app may write only its own container |
 
 Each app has its own managed identity, with access to its environment's database and vault, its own storage, and the models. Nothing in
 Azure is reached with a key or a password: account keys are off, and so is basic-auth publishing, so deploys sign in with
-Entra ID. The only credentials are for services outside Azure (Jev, Grafana Cloud), and they live in the vaults
-(see Secrets).
+Entra ID. The only credentials are for services outside Azure (Jev, Grafana Cloud, GitHub's sign-in, Cloudflare), and
+they live in the vaults (see Secrets).
 
 ## First deployment
 
@@ -51,13 +51,23 @@ az deployment sub create --location swedencentral --name machinespirit --templat
 
 The Cosmos DB free tier can only be chosen when the account is created, and a subscription gets one free account.
 
-Add `deployProduction=true` to create production too (it was, with #50). A deployment without it leaves production as
-it is: nothing there is deleted, but nothing is updated either.
+Add `deployProduction=true` to create production too. Production binds its domains (the site's and the connector's)
+with Cloudflare's Origin CA certificate from its vault, which Azure accepts only once DNS has the `asuid` records
+(Outside Azure). So in a new subscription, its first deployment creates the vault and fails before the apps: set the
+certificate and the records, then deploy again.
+
+Then, in this order:
+
+1. The secrets (Secrets), in both vaults.
+2. Outside Azure: Cloudflare (DNS, the Cache Rule, the rate limit, Access) and the GitHub environments.
+3. Run **Deploy Master** (Deploying the app), which deploys the site and the connector to every app the deployment
+   created.
+4. Grafana Cloud's dashboards, alerts and synthetic checks (Outside Azure).
 
 ## Later changes
 
-Into the existing group, with `resources.bicep`: that's all the infrastructure identity (Owner of this group only) can do,
-so a deploy workflow will use the same command. Staging first, previewed with `what-if`:
+Into the existing group, with `resources.bicep`: that's all the infrastructure identity (Owner of this group only) can
+do. Staging first, previewed with `what-if`:
 
 ```powershell
 $owner = az ad signed-in-user show --query id -o tsv
@@ -75,78 +85,55 @@ A change to a shared resource takes effect for both in the first step: look at i
 
 (In bash, the same with `\` line breaks and `"$owner"`, `"$ip"`.) When your IP changes, deploy again with the new one.
 
-### Moving staging to its own account (#129, once)
+A change that adds an app Deploy Master deploys to (another region, another app) is deployed from its branch before
+it's merged, so the app exists when Deploy Master gets to it.
 
-Staging's database used to sit on the free-tier account beside production's. The staging deploy above creates
-`machinespirit-cosmos-staging` and points staging's app at it, which starts empty. Staging stays stopped from before
-that deploy until its data is copied and checked: anything it wrote to the new account meanwhile (a refill, a midnight
-rite, the rite numbers' counter) the copy would overwrite.
-
-1. Stop staging: `az functionapp stop -g machinespirit-rg -n machinespirit-app-staging`.
-2. Deploy staging, as above.
-3. Copy staging's data across, as your `az login`: `./tools/copy-staging-data.ps1`. It reads staging's database on the
-   shared account and writes every document, as it was, to the new one; it refuses any database not named for staging.
-   While staging is stopped, running it again (if it stopped halfway) writes the same documents over themselves.
-4. Start staging (`az functionapp start …`, the same names) and check it: Today, the Scriptorium, the Record.
-5. Delete staging's old database from the shared account (Bicep never deletes what it no longer lists), which frees its
-   400 RU/s of the free tier for production's second region (#113):
-   `az cosmosdb sql database delete -a machinespirit-cosmos -g machinespirit-rg -n machinespirit-staging`
-
-### Production's standby in UK South (#113, once)
+## Production's two regions
 
 Production runs in two regions: `machinespirit-app` in Sweden Central, and a standby, `machinespirit-app-uksouth`,
 which Traffic Manager sends readers to while the first doesn't answer. Both use the one database: Cosmos DB keeps a
 replica in UK South, which the standby reads (`Cosmos:Region`), and moves the writes there by itself if Sweden
 Central fails, so votes, sign-in and the Scriptorium keep working too. The standby leaves the timers (publishing,
 distilling, the snapshot) to the first app, so they never run twice; a midnight the first app misses is published
-when it's back (the host's schedule monitoring). UK South, not North Europe: Cosmos DB takes no new regions there for
-this subscription (`standbyLocation` in `resources.bicep` says how to tell).
+when it's back (the host's schedule monitoring).
 
 Traffic Manager sends readers back to the first app by itself, but Cosmos DB doesn't move the writes back: a recovered
 Sweden Central rejoins as a read region, and both apps keep writing to UK South, which works, only farther away.
 Once Sweden Central is healthy, and before the next infrastructure deploy (whose `locations` list it first), move them
 back: `az cosmosdb failover-priority-change -g machinespirit-rg -n machinespirit-cosmos --failover-policies swedencentral=0 uksouth=1`.
 
-Deploy Master deploys to the standby too, so it must exist before the change that adds it is merged:
+To see which app Traffic Manager has online:
+`az network traffic-manager endpoint list -g machinespirit-rg --profile-name machinespirit-traffic --query "[].{name:name, status:endpointMonitorStatus}" -o table`
 
-1. From that branch, deploy with `deployProduction=true` (Later changes). Cosmos DB copies the database to UK South
-   (a few minutes for its size); the standby starts without code (Traffic Manager doesn't probe it, so it can't tell).
-2. Merge. Deploy Master deploys both apps; after its run, Traffic Manager has the first online:
-   `az network traffic-manager endpoint list -g machinespirit-rg --profile-name machinespirit-traffic --query "[].{name:name, status:endpointMonitorStatus}" -o table`
-3. Point the domain at Traffic Manager (Outside Azure, DNS).
-4. Try a failover once: `az functionapp stop -g machinespirit-rg -n machinespirit-app`. Within three minutes,
-   `nslookup machinespirit.trafficmanager.net` names the standby, and the site, the Scriptorium and a vote still work
-   (Grafana tells the apps apart by `cloud.region`). Then `az functionapp start` with the same names, and within three
-   minutes Traffic Manager names the first app again.
+To try a failover: `az functionapp stop -g machinespirit-rg -n machinespirit-app`. Within three minutes,
+`nslookup machinespirit.trafficmanager.net` names the standby, and the site, the Scriptorium and a vote still work
+(Grafana tells the apps apart by `cloud.region`). Then `az functionapp start` with the same names, and within three
+minutes Traffic Manager names the first app again.
 
-### The MCP connector (#119, once)
+## The MCP connector
 
-The connector's apps come with the infrastructure, and Deploy Master deploys to them, so they must exist before the
-change that adds them is merged. Production's is bound to `mcp.dailymachinespirit.fyi`, which Azure checks first:
+Production's connector answers at `mcp.dailymachinespirit.fyi` (its DNS records are under Outside Azure), from both
+regions at once. Besides the infrastructure and Deploy Master, it needs:
 
-1. In Cloudflare's DNS, add a TXT record `asuid.mcp` with the same `customDomainVerificationId` as the site's `asuid`
-   (Outside Azure, DNS): Azure checks a subdomain's own.
-2. From that branch, deploy staging, then production (Later changes).
-3. Merge. Deploy Master deploys the connector to staging, then to production and its standby, each checked by its own
-   smoke tests (the `Connector` category).
-4. Point the connector's address at its Traffic Manager: a proxied CNAME `mcp` → `machinespirit-mcp.trafficmanager.net`.
-5. Rate-limit it (Outside Azure, the rate limit rule: a row for the path `/mcp`), and try it: add `https://mcp.dailymachinespirit.fyi/mcp` as a
-   custom connector in the Claude app, and ask it to consult the Machine Spirit. If Cloudflare challenges the
-   assistant's servers (or the connector's own reads of the API), Bot Fight Mode is the likely cause: on the Free plan
-   no rule can skip it, so it would have to be off.
-6. Watch it: Traffic Manager doesn't probe the connector (Always Serve, so both regions scale to zero), so a Grafana
-   Synthetic Monitoring HTTP check does, as for the site's Today page. Every 15 minutes from Frankfurt and London:
-   `POST https://mcp.dailymachinespirit.fyi/mcp`, headers `Content-Type: application/json` and
-   `Accept: application/json, text/event-stream`, body
-   `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_rites","arguments":{}}}`; valid when the
-   status is 200, the body matches `rites[^ ]{1,8}:[[]` (the tool's text is JSON inside JSON, its quotes escaped as
-   `"`) and doesn't match `"isError":true`. Grafana's regex validation fails a check when the body matches,
-   unless Invert is ticked: so tick Invert on the first, not on the second. A timeout of 30 seconds: neither region is kept running, so most
-   checks wake one (a couple of seconds). It reads the rites API too, so
-   it watches both. Each check lands on either region, so a region that's down fails about half of them. Callers
-   fare better: Traffic Manager's answer lasts 10 seconds, so a retry after that is an even chance of the other region.
+- **Cloudflare's rate limit** (Outside Azure): its path, `/mcp`, is in the rule.
+- **Bot Fight Mode off**, if Cloudflare challenges the assistants' servers (or the connector's own reads of the API):
+  on the Free plan no rule can skip it.
+- **A Grafana Synthetic Monitoring check**, since Traffic Manager doesn't probe the connector (Always Serve, so both
+  regions scale to zero). Every 15 minutes from Frankfurt and London: `POST https://mcp.dailymachinespirit.fyi/mcp`,
+  headers `Content-Type: application/json` and `Accept: application/json, text/event-stream`, body
+  `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_rites","arguments":{}}}`; valid when the
+  status is 200, the body matches `rites[^ ]{1,8}:[[]` (the tool's text is JSON inside JSON, its quotes escaped as
+  `\u0022`) and doesn't match `"isError":true`. Grafana's regex validation fails a check when the body matches,
+  unless Invert is ticked: so tick Invert on the first, not on the second. A timeout of 30 seconds: neither region is
+  kept running, so most checks wake one (a couple of seconds). It reads the rites API too, so it watches both. Its
+  alert fires at 2 failures of 8 in an hour, with this section as its runbook.
 
-If a region goes down, take it out by hand until it's back:
+To try it, add `https://mcp.dailymachinespirit.fyi/mcp` as a custom connector in the Claude app, and ask it to consult
+the Machine Spirit.
+
+Each call lands on either region, so a region that's down fails about half of them, and so does the check. Callers
+fare better: Traffic Manager's answer lasts 10 seconds, so a retry after that is an even chance of the other region.
+Take a region that's down out by hand until it's back:
 `az network traffic-manager endpoint update -g machinespirit-rg --profile-name machinespirit-traffic-mcp --type externalEndpoints -n uksouth --endpoint-status Disabled`
 (or `swedencentral`), and `Enabled` again after.
 
@@ -165,6 +152,7 @@ are the same with `--vault-name machinespirit-kv`.
 | `VoterKeySecret` | keying each account's votes. Set once: a new value makes every account a new voter. At least 32 characters | `Voters__KeySecret`, a Key Vault reference |
 | `VoterSessionSecret` | signing the sign-in cookie. A new value only signs everyone out. At least 32 characters | `Voters__SessionSecret`, a Key Vault reference |
 | `CloudflareApiToken` | production only: purging pages from Cloudflare's cache when they change | `Cloudflare__ApiToken`, a Key Vault reference (only where `zoneId` is set) |
+| `dailymachinespirit-origin` | production only: Cloudflare's Origin CA certificate for the domain (Outside Azure) | imported into the apps by Bicep |
 
 ### Jev
 
@@ -196,7 +184,7 @@ az keyvault secret set --vault-name machinespirit-kv-staging --name OtlpHeaders 
   --file $HOME\.machinespirit\otlp-headers.txt -o none
 ```
 
-The dashboard is in `observability/` (its README says how to import it).
+The dashboards, alerts and Today's synthetic check are in `observability/` (its README says how to put them in Grafana).
 
 ### Readers' sign-in with GitHub
 
@@ -267,8 +255,9 @@ It prints `True`. The next request for each page then reaches the app once; brow
 GitHub Actions deploys the app (`.github/workflows/`), signed in as the environment's GitHub identity:
 
 - **Deploy Master**: every merge to `master` is built and tested again, then that package goes to staging, and once
-  staging passes its smoke tests, to production, then to production's standby (#113). No approval: staging is the
-  gate, and the `production` environment admits deployments from `master` only.
+  staging passes its smoke tests, to production, then to production's standby. The MCP connector goes the same way,
+  from the same package. No approval: staging is the gate, and the `production` environment admits deployments from
+  `master` only.
 - **Deploy Branch to Staging**: Actions → Deploy Branch to Staging → Run workflow, with a branch name, to try a PR
   on staging before merging. Staging keeps it until the next deployment.
 
@@ -278,8 +267,7 @@ staging admits only your address and production only Cloudflare: each GitHub ide
 environment's apps, which is enough.
 
 `https://machinespirit-app-staging.azurewebsites.net/healthz` shows the deployed commit (only from your address).
-Production's, `https://machinespirit-app.azurewebsites.net/healthz`, answers only Cloudflare: through the domain, once it
-points there (#31).
+Production's, `https://machinespirit-app.azurewebsites.net/healthz`, answers only Cloudflare: through the domain.
 
 By hand, from a checkout (Azure Functions Core Tools v4, signed in with `az login`):
 
@@ -290,18 +278,18 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
 
 ## Outside Azure
 
-- **Cloudflare** (`dailymachinespirit.fyi`) sits in front of production (set up 2026-10-12):
+- **Cloudflare** (`dailymachinespirit.fyi`) sits in front of production:
   - **SSL/TLS** in **Full (strict)** mode, with a **Cloudflare Origin CA certificate** (SSL/TLS → Origin Server) for
     `dailymachinespirit.fyi` and `*.dailymachinespirit.fyi`, valid 15 years. It lives in production's vault as the
     secret `dailymachinespirit-origin`: a PFX with Cloudflare's origin root
     (`https://developers.cloudflare.com/ssl/static/origin_ca_rsa_root.pem`), content type `application/x-pkcs12`.
-    Bicep imports it into the app (`productionDomain` in `resources.bicep`) and binds the domain. When it nears its
+    Bicep imports it into the apps (`productionDomain` in `resources.bicep`) and binds the domains. When it nears its
     end, make a new one, set the secret again, and deploy the infrastructure.
-  - **DNS**: a proxied CNAME `@` → `machinespirit.trafficmanager.net` (Traffic Manager, #113, which names the app that
-    answers; before it, `machinespirit-app.azurewebsites.net`), and a TXT record `asuid` with the apps'
-    `customDomainVerificationId` (one per subscription), which Azure checks before binding the domain to each app.
-    The MCP connector (#119) has the same pair for its subdomain: a proxied CNAME `mcp` →
-    `machinespirit-mcp.trafficmanager.net`, and a TXT record `asuid.mcp` with the same id.
+  - **DNS**: a proxied CNAME `@` → `machinespirit.trafficmanager.net` (Traffic Manager, which names the app that
+    answers), and a TXT record `asuid` with the apps' `customDomainVerificationId` (one per subscription), which Azure
+    checks before binding the domain to each app. The MCP connector has the same pair for its subdomain: a proxied
+    CNAME `mcp` → `machinespirit-mcp.trafficmanager.net`, and a TXT record `asuid.mcp` with the same id (Azure checks a
+    subdomain's own). Cloudflare shows the TXT values in quotes; that's only its display.
   - **A Cache Rule** (Caching → Cache Rules), after the purge is set up (Secrets): hostname equals
     `dailymachinespirit.fyi`, and either the URI path doesn't start with `/api/`, `/auth/`, `/scriptorium` or `/healthz`,
     or it equals `/api/search-index` (the search field's index), or it starts with `/api/v1/rites` (the public rites API,
@@ -316,12 +304,12 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
     an hour). Cloudflare's own header carries `stale-if-error=604800`, which lets Cloudflare serve a page it still holds for up to a week past its lifetime while the app answers with a 5xx or not at
     all (`cf-cache-status: STALE`), so readers keep the site read-only through an outage. A purged page is gone, not
     stale. Cloudflare ignores `stale-if-error` while **Always Online** (Caching → Configuration) is on, so leave that off.
-  - **A rate limit rule** (Security → WAF → Rate limiting rules, set up 2026-10-13) for votes and searches (each
+  - **A rate limit rule** (Security → WAF → Rate limiting rules) for votes, searches and the MCP connector (each
     search reads every rite; the Archive's field searches as the reader types, a request per pause), counted by IP, 20
     in 10 seconds, blocked for 10 seconds. The Free plan has one such rule, so every limited path shares it:
     `(http.request.uri.path wildcard r"/api/rites/*/vote") or (http.request.uri.path wildcard r"/archive*") or (http.request.uri.path wildcard r"/mcp*")`
-    (the MCP connector, #119, whose calls are POSTs, never cached: matched by its path, as the Free plan's rules can't
-    match a host; the site has no `/mcp`). Not `/search`: it only redirects old links to the Archive. An assistant's
+    (the connector's calls are POSTs, never cached: matched by its path, as the Free plan's rules can't match a host;
+    the site has no `/mcp`). Not `/search`: it only redirects old links to the Archive. An assistant's
     servers call the connector for many users from few addresses, so if they're refused (429) in normal use, give the
     connector the limit instead of votes and search, or raise it. Every request to the Archive, not only those with
     `q=`: the app reads the decoded query (`%71=` is `q=` too), and any other query string is cached apart, so each new
@@ -333,7 +321,7 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
   Production admits only Cloudflare's address ranges (`cloudflare-ips.json`), so its cache and rate limit can't be gone
   around. **Check Cloudflare's Addresses** (a weekly workflow) opens an issue when Cloudflare publishes different
   ranges: copy them into the file, and deploy the infrastructure (Later changes).
-- **Cloudflare Access** guards production's Scriptorium (set up 2026-10-12). In the Cloudflare One dashboard:
+- **Cloudflare Access** guards production's Scriptorium. In the Cloudflare One dashboard:
   - **GitHub as a login method** (Integrations → Identity providers): its own GitHub OAuth app, separate from the
     readers' sign-in apps, with the callback `https://<team>.cloudflareaccess.com/cdn-cgi/access/callback`. Its client
     secret stays in Cloudflare.
@@ -346,20 +334,23 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
   - **Its Application Audience (AUD) tag** and the team domain (Settings → Team domain) are in `productionAccess` in
     `resources.bicep`: neither is secret, and there every deployment keeps them. Without both, production's
     Scriptorium lets nobody in.
-  - **The Expurgators** erase words from published rites (`/scriptorium/expurgate`) (set up 2026-10-19), so they have an
-    application of their own, which takes those paths from the Scribes' (Access applies the most specific path):
+  - **The Expurgators** erase words from published rites (`/scriptorium/expurgate`), so they have an application of
+    their own, which takes those paths from the Scribes' (Access applies the most specific path):
     1. **An Access group** (Access controls → Access groups), *Expurgators*, including the emails of the Scribes who
        may expurgate.
     2. **A self-hosted application**, *Expurgators*, with two destinations, `dailymachinespirit.fyi/scriptorium/expurgate`
        and `dailymachinespirit.fyi/scriptorium/expurgate/*`, GitHub as its only login method, and an Allow policy that
        includes the *Expurgators* group.
     3. **Its AUD tag** in `productionAccess.expurgatorAudience` in `resources.bicep`, then deploy the infrastructure
-       (Later changes). Until then the setting is empty, and nobody may expurgate.
+       (Later changes). Without it, nobody may expurgate.
 
     A new Expurgator is a new email in the group.
-- **GitHub**: one environment per deploy identity, holding its ids as variables (`AZURE_CLIENT_ID` from
-  `githubClientIds` in the deployment's outputs, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`). `staging` exists;
-  `production` and `infrastructure` come with their workflows.
+- **GitHub**: the environments `staging` and `production`, one per deploy identity, each holding its ids as variables
+  (`AZURE_CLIENT_ID` from `githubClientIds` in the deployment's outputs, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`).
+  The infrastructure identity trusts an `infrastructure` environment, which no workflow uses yet: the infrastructure is
+  deployed by hand (Later changes).
+- **Grafana Cloud**: the telemetry's token (Secrets); the dashboards, the alert rules and Today's synthetic check, put
+  there by `tools/` (`observability/README.md`); and the connector's synthetic check, set by hand (The MCP connector).
 
 ## Deleting it
 
