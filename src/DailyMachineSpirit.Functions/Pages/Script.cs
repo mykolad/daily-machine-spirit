@@ -51,9 +51,15 @@ public static class Script
             }
           };
           document.querySelectorAll('[data-copy]').forEach((button) => {
+            // The page's link, a rite's text with its link, or a value (an address, a command) as it's shown.
             button.addEventListener('click', async () => {
+              const kind = button.dataset.copy;
+              if (kind === 'value') {
+                say(await copy(button.dataset.text) ? 'Copied to clipboard' : 'Couldn’t copy. Your browser blocked the clipboard.');
+                return;
+              }
               const url = new URL(button.dataset.url, location.origin).href;
-              const isLink = button.dataset.copy === 'link';
+              const isLink = kind === 'link';
               const copied = await copy(isLink ? url : `${button.dataset.text}\n${url}`);
               say(!copied ? 'Couldn’t copy. Your browser blocked the clipboard.'
                 : isLink ? 'Link copied to clipboard' : 'Text copied to clipboard');

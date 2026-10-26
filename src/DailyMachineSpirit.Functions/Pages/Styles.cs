@@ -40,6 +40,7 @@ public static class Styles
         nav>a{padding:10px 16px;border-radius:999px;font-family:Cinzel,serif;font-weight:700;font-size:14px;letter-spacing:.12em;color:#ede3cf;text-decoration:none}
         nav>a[aria-current=page]{background:rgba(201,162,90,.16)}
         nav>a:hover{background:rgba(201,162,90,.22);color:#ede3cf}
+        @media (max-width:419px){nav>a{padding:10px 10px;letter-spacing:.08em}}
         main{width:100%;flex:1;display:flex;flex-direction:column;align-items:center}
         main:focus-visible{outline:none}
         .masthead{display:flex;flex-direction:column;align-items:center;gap:14px;margin-bottom:clamp(32px,5vw,52px)}
@@ -277,6 +278,20 @@ public static class Styles
         .site-footer{margin-top:72px;padding-bottom:48px;display:flex;flex-direction:column;align-items:center;gap:12px;max-width:600px}
         .motto{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:16px;letter-spacing:.08em;color:#c9a25a}
         .disclaimer{margin:0;font-size:14px;line-height:1.6;color:#b6a98f}
+        .about{width:100%;max-width:680px;text-align:left}
+        .about h1{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:clamp(32px,6vw,48px);line-height:1.1;letter-spacing:.04em;text-align:center}
+        .about>.tagline{margin:12px 0 0;text-align:center}
+        .about h2{margin:48px 0 12px;font-family:Cinzel,serif;font-weight:700;font-size:clamp(20px,3vw,24px);line-height:1.25;letter-spacing:.04em;color:#c9a25a;text-wrap:balance}
+        .about h3{margin:28px 0 8px;font-size:18px;font-weight:700}
+        .about p,.about li{font-size:17px;line-height:1.65;color:#ddd1b8;text-wrap:pretty}
+        .about p{margin:0 0 12px}
+        .about ul{margin:0;padding-left:22px}
+        .about li+li{margin-top:6px}
+        .about code{font-family:'JetBrains Mono',monospace;font-size:.85em;padding:2px 7px;border-radius:6px;background:#241c12;color:#f0d58c}
+        .incantation{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 12px;margin:14px 0 16px;padding:10px 8px 10px 18px;border-radius:14px;background:#141c1f;border:1px solid #2e4248}
+        .incantation pre{flex:1 1 260px;min-width:0;margin:0;overflow-x:auto;padding:4px 0}
+        .incantation code{padding:0;background:none;font-size:14px;line-height:1.6;color:#dbe6e8}
+        .incantation .button{margin-left:auto}
         .toast-region{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:40;pointer-events:none;width:max-content;max-width:calc(100vw - 32px)}
         .toast{padding:12px 22px;border-radius:24px;background:#ede3cf;color:#100e0b;font-size:15px;font-weight:600;line-height:1.4;text-align:center;box-shadow:0 8px 28px rgba(0,0,0,.5)}
         @media (min-width:700px){

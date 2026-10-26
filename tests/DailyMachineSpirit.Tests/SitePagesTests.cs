@@ -707,6 +707,22 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.All([archive, tag, withQuery], page => Assert.Equal("public, max-age=60, stale-if-error=604800", page.AtCloudflare));
     }
 
+    // The connector's address and the skill's commands, each shown with a button that copies it as it is. Only a
+    // deployment changes the page, and nothing purges it then, so it's kept briefly.
+    [Fact]
+    public async Task About_SaysHowToConsultTheMachineSpirit()
+    {
+        var about = await Read(context => Task.FromResult(Pages().About(context.Request)), "/about", "");
+
+        Assert.Equal(StatusCodes.Status200OK, about.Status);
+        Assert.Contains("<title>About · The Daily Machine Spirit</title>", about.Html);
+        Assert.Contains("""<a href="/about" aria-current="page">About</a>""", about.Html);
+        Assert.Contains("""<pre><code>https://mcp.dailymachinespirit.fyi/mcp</code></pre>""", about.Html);
+        Assert.Contains("""data-copy="value" data-text="https://mcp.dailymachinespirit.fyi/mcp">""", about.Html);
+        Assert.Contains("cp -r daily-machine-spirit/skills/consult-the-machine-spirit ~/.claude/skills/", about.Html);
+        Assert.Equal("public, max-age=60, stale-if-error=604800", about.AtCloudflare);
+    }
+
     // The script shows the counts a vote answered over a page whose counts were read before that vote.
     [Fact]
     public async Task ARitesCounts_SayWhenTheyWereRead()

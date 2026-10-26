@@ -33,6 +33,10 @@ public sealed partial class DeployedAppTests
         => AssertAnswers(await app.Get("/"), HttpStatusCode.OK, $"<title>{SiteName}</title>");
 
     [Fact]
+    public async Task About_Answers()
+        => AssertAnswers(await app.Get("/about"), HttpStatusCode.OK, $"<title>About · {SiteName}</title>");
+
+    [Fact]
     public async Task Archive_Answers()
         => AssertAnswers(await app.Get("/archive"), HttpStatusCode.OK, $"<title>The Archive · {SiteName}</title>");
 

@@ -102,6 +102,11 @@ public sealed class SitePages
     /// under that tag (a tag without words is the tag's own page); the words are never logged (a failure logs the path
     /// alone).
     /// </summary>
+    // Nothing to read: the page changes only with a deployment, which no purge follows, so it's kept briefly.
+    [Function("About")]
+    public IActionResult About([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "about")] HttpRequest request)
+        => Page(request, StatusCodes.Status200OK, AboutPage.Render());
+
     [Function("Archive")]
     public async Task<IActionResult> Archive(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "archive")] HttpRequest request,
