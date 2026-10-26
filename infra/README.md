@@ -130,7 +130,7 @@ change that adds them is merged. Production's is bound to `mcp.dailymachinespiri
 3. Merge. Deploy Master deploys the connector to staging, then to production and its standby, each checked by its own
    smoke tests (the `Connector` category).
 4. Point the connector's address at its Traffic Manager: a proxied CNAME `mcp` → `machinespirit-mcp.trafficmanager.net`.
-5. Rate-limit it (Outside Azure, the rate limit rule), and try it: add `https://mcp.dailymachinespirit.fyi/mcp` as a
+5. Rate-limit it (Outside Azure, the rate limit rule: a row for the path `/mcp`), and try it: add `https://mcp.dailymachinespirit.fyi/mcp` as a
    custom connector in the Claude app, and ask it to consult the Machine Spirit. If Cloudflare challenges the
    assistant's servers (or the connector's own reads of the API), Bot Fight Mode is the likely cause: on the Free plan
    no rule can skip it, so it would have to be off.
@@ -139,7 +139,10 @@ change that adds them is merged. Production's is bound to `mcp.dailymachinespiri
    `POST https://mcp.dailymachinespirit.fyi/mcp`, headers `Content-Type: application/json` and
    `Accept: application/json, text/event-stream`, body
    `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_rites","arguments":{}}}`; valid when the
-   status is 200, the body matches `\\"rites\\"` and doesn't match `"isError":true`. It reads the rites API too, so
+   status is 200, the body matches `rites[^ ]{1,8}:[[]` (the tool's text is JSON inside JSON, its quotes escaped as
+   `"`) and doesn't match `"isError":true`. Grafana's regex validation fails a check when the body matches,
+   unless Invert is ticked: so tick Invert on the first, not on the second. A timeout of 30 seconds: neither region is kept running, so most
+   checks wake one (a couple of seconds). It reads the rites API too, so
    it watches both. Each check lands on either region, so a region that's down fails about half of them. Callers
    fare better: Traffic Manager's answer lasts 10 seconds, so a retry after that is an even chance of the other region.
 
@@ -316,13 +319,16 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
   - **A rate limit rule** (Security → WAF → Rate limiting rules, set up 2026-10-13) for votes and searches (each
     search reads every rite; the Archive's field searches as the reader types, a request per pause), counted by IP, 20
     in 10 seconds, blocked for 10 seconds. The Free plan has one such rule, so every limited path shares it:
-    `(http.request.uri.path wildcard r"/api/rites/*/vote") or (http.request.uri.path eq "/archive") or (http.host eq "mcp.dailymachinespirit.fyi")`
-    (the MCP connector, #119, whose calls are POSTs, never cached). An assistant's servers call the connector for many
-    users from few addresses, so if they're refused (429) in normal use, give the connector the limit instead of votes and
-    search, or raise it. Every request to
-    the Archive, not only those with `q=`: the app reads the decoded query (`%71=` is `q=` too), and any other query
-    string is cached apart, so each new one reads the database. Paging and live search stay far below the limit. With
-    `eq`, the `*` would be taken literally, and match nothing. The nav's suggestions are matched in the browser.
+    `(http.request.uri.path wildcard r"/api/rites/*/vote") or (http.request.uri.path wildcard r"/archive*") or (http.request.uri.path wildcard r"/mcp*")`
+    (the MCP connector, #119, whose calls are POSTs, never cached: matched by its path, as the Free plan's rules can't
+    match a host; the site has no `/mcp`). Not `/search`: it only redirects old links to the Archive. An assistant's
+    servers call the connector for many users from few addresses, so if they're refused (429) in normal use, give the
+    connector the limit instead of votes and search, or raise it. Every request to the Archive, not only those with
+    `q=`: the app reads the decoded query (`%71=` is `q=` too), and any other query string is cached apart, so each new
+    one reads the database. Paging and live search stay far below the limit. `wildcard`, never `eq`: it ignores case,
+    as the apps' routes do, and the trailing `*` takes `/archive/` and `/mcp/`, which the apps accept too, so `/MCP` or
+    `/archive/` can't go around the limit; and with `eq`, a `*` would be taken literally. No other path starts with
+    `/archive` or `/mcp`. The nav's suggestions are matched in the browser.
 
   Production admits only Cloudflare's address ranges (`cloudflare-ips.json`), so its cache and rate limit can't be gone
   around. **Check Cloudflare's Addresses** (a weekly workflow) opens an issue when Cloudflare publishes different
