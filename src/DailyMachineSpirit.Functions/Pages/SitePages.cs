@@ -94,6 +94,11 @@ public sealed class SitePages
             Left: error => Task.FromResult(Failed(request, error)));
     }
 
+    // Nothing to read: the page changes only with a deployment, which no purge follows, so it's kept briefly.
+    [Function("About")]
+    public IActionResult About([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "about")] HttpRequest request)
+        => Page(request, StatusCodes.Status200OK, AboutPage.Render());
+
     /// <summary>
     /// Pages by number, newest first: <c>?before=&lt;number&gt;</c> starts below that number. The first page leaves
     /// out the newest rite, which Today shows: only the day's own rite is ever published, so the highest number is also
@@ -102,11 +107,6 @@ public sealed class SitePages
     /// under that tag (a tag without words is the tag's own page); the words are never logged (a failure logs the path
     /// alone).
     /// </summary>
-    // Nothing to read: the page changes only with a deployment, which no purge follows, so it's kept briefly.
-    [Function("About")]
-    public IActionResult About([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "about")] HttpRequest request)
-        => Page(request, StatusCodes.Status200OK, AboutPage.Render());
-
     [Function("Archive")]
     public async Task<IActionResult> Archive(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "archive")] HttpRequest request,
