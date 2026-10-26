@@ -366,6 +366,11 @@ public static class Styles
         .side-right{grid-column:3}
         .side>.marginalia,.side>.month-index,.side>.other-subjects{margin-top:0}
         .side>.altar{align-self:center}
+        .archive-hero{grid-template-rows:auto auto 1fr auto}
+        .archive-hero>.sheet{grid-row:1/span 3}
+        .archive-hero>.archive-more{grid-row:4}
+        .archive-hero>.side{grid-row:1/span 2;display:grid;grid-template-rows:subgrid;row-gap:0}
+        .archive-hero>.side>.altar{grid-row:2;justify-self:center;margin-top:56px}
         .sub-wide{display:inline}
         .sub-narrow{display:none}
         .margin-number{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:32px;line-height:1.1;color:#ede3cf}

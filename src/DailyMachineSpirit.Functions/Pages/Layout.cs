@@ -15,7 +15,7 @@ public static class Layout
     // it, hide (the votes with their margin's label).
     private const string NoScriptCss = ".truth[hidden]{display:block}.seal,[data-copy],.faithful{display:none}";
 
-    // Every page but Today and the Archive, which have the masthead instead.
+    // Every page but Today, the Archive and the Catechism, which have the masthead instead.
     private const string Brand = $"<a class=\"brand\" href=\"/\">{Svg.BrandCog}{SiteName}</a>";
 
     // For the nav's search to suggest subjects as the reader types, without asking the server: the vocabulary is small
@@ -52,7 +52,7 @@ public static class Layout
             <div class="frame">
             <div class="page">
             <header class="site-header">
-            {(section is Section.Today or Section.Archive ? string.Empty : Brand)}
+            {(section is Section.Today or Section.Archive or Section.About ? string.Empty : Brand)}
             <nav aria-label="Main">
             <a href="/"{Current(section == Section.Today)}>Today</a>
             <a href="/archive"{Current(section == Section.Archive)}>Archive</a>

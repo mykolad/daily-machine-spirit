@@ -745,6 +745,9 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.Equal(StatusCodes.Status200OK, about.Status);
         Assert.Contains("<title>The Catechism · The Daily Machine Spirit</title>", about.Html);
         Assert.Contains("""<a href="/catechism" aria-current="page">About</a>""", about.Html);
+        // The site's name heads it as it heads the Archive, so the small brand link would say it twice.
+        Assert.Contains("""<p class="site-name">The Daily Machine Spirit</p>""", about.Html);
+        Assert.DoesNotContain("class=\"brand\"", about.Html);
         Assert.Contains("<h2>Can my familiar consult the Machine Spirit?</h2>", about.Html);
         // Today's date, as the far future reckons it, is the example of how one is read.
         Assert.Contains("""<time datetime="2026-10-09">0 769 026.M3</time>""", about.Html);

@@ -69,6 +69,7 @@ public static class AboutPage
         };
         var numbered = questions.Select((question, index) => (Number: index + 1, Numeral: Numerals[index], question.Question, question.Answer)).ToList();
         return Layout.Page("The Catechism", Description, Section.About, $"""
+            {Masthead.Render(isHeading: false)}
             <div class="hero catechism-hero">
             <article class="sheet catechism">
             <span class="rule-outer" aria-hidden="true"></span><span class="rule-inner" aria-hidden="true"></span>
