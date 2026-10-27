@@ -339,11 +339,11 @@ public static class Script
           });
           watchOlder();
 
-          // The Archive's own field shows the results as the reader types: a quarter of a second after they stop, the
-          // results page is fetched and swapped into this one, and the address follows without a new history entry.
-          // One renderer, the server's, so results look the same however they're reached. Without the script it's a
-          // plain form, and Enter loads the results as a page.
-          const field = document.getElementById('archive-search');
+          // The sheet's own field (the Archive's, the Breviary's) shows the results as the reader types: a quarter of a
+          // second after they stop, the results page is fetched and swapped into this one, and the address follows
+          // without a new history entry. One renderer, the server's, so results look the same however they're reached.
+          // Without the script it's a plain form, and Enter loads the results as a page.
+          const field = document.querySelector('.sheet-search input[type=search]');
           if (field) {
             const form = field.form;
             let typing;
@@ -367,12 +367,15 @@ public static class Script
               document.title = page.title;
               placeMargins();
             };
-            // Narrowed to a subject, the words are sought within it; clearing them clears the search, the subject too.
+            // The form's own address and fields, as Enter would send them. Narrowed to a subject, the Archive's words are
+            // sought within it; clearing them clears the search, the subject too. The Breviary's verdict stays.
             const show = async (typed) => {
-              const tag = form.elements.tag;
-              if (!typed) tag?.remove();
-              const within = tag && typed ? `&tag=${encodeURIComponent(tag.value)}` : '';
-              const url = typed ? `/archive?q=${encodeURIComponent(typed)}${within}` : '/archive';
+              if (!typed) form.elements.tag?.remove();
+              const fields = new URLSearchParams(new FormData(form));
+              if (typed) fields.set('q', typed);
+              else fields.delete('q');
+              const query = fields.toString();
+              const url = `${form.getAttribute('action')}${query ? `?${query}` : ''}`;
               request?.abort();
               request = new AbortController();
               try {
@@ -392,7 +395,7 @@ public static class Script
                 // What the line under the heading says as it's shown: "3 rites mention it", or the Archive's count.
                 announcer.textContent = document.querySelector('.sheet-sub')?.innerText ?? '';
               } catch (error) {
-                if (error.name !== 'AbortError') say('The Archive couldn’t be searched. Try again.');
+                if (error.name !== 'AbortError') say('The search didn’t work. Try again.');
               }
             };
             field.addEventListener('input', () => {
@@ -421,7 +424,7 @@ public static class Script
               else clear();
             });
             // Arriving from the nav's search, to search on.
-            if (location.hash === '#archive-search') field.focus();
+            if (location.hash === `#${field.id}`) field.focus();
           }
 
           // The nav's search, on every page but the Archive (whose field the icon leads to): the icon opens a field, and

@@ -1,3 +1,5 @@
+using DailyMachineSpirit.Data.Entities;
+
 namespace DailyMachineSpirit.Functions.Pages;
 
 /// <summary>What a reader searches for. Never logged: it may say something about them.</summary>
@@ -32,4 +34,12 @@ public static class SearchWords
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Take(MaxWords)
             .ToList();
+
+    /// <summary>
+    /// Whether every word is somewhere in the rite's title, text or Heretical Truth, ignoring case: what the Archive's
+    /// search asks of the database, for rites already read.
+    /// </summary>
+    public static bool FoundIn(Rite rite, IReadOnlyList<string> words)
+        => words.All(word => new[] { rite.Writing.Title, rite.Writing.Text, rite.Writing.HereticalTruth }
+            .Any(part => part.Contains(word, StringComparison.OrdinalIgnoreCase)));
 }

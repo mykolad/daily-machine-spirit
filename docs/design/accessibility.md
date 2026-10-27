@@ -294,6 +294,11 @@ and candles behind it, and the recent rites under Today.
   push a link off the screen.
 - **Each row's verdict says it in words** ("You blessed it", "You called it heresy"), so its colour only helps the eye:
   gold for Blessed, dark text on `#b8862b` (5.5:1), red for heresy, parchment on `#8f2a20` (7.2:1).
+- **Each chapter is a section under its own heading** (`h2`), so a screen reader can move between chapters as a
+  sighted reader scans the rubrics. The index of chapters, in the right margin on a wide screen, is links to those
+  headings, each count said as "2 rites".
+- **The search field is the Archive's:** named "Search your Breviary", a plain form without the script, and the count
+  found in the page's title and the line under the heading, announced as the results swap in.
 - **The verdict filters are links** in a `nav` named "Show", the current one `aria-current="page"`: each is a page of
   its own, so they work without the script.
 - **The toast after a vote links to the Breviary,** for six seconds and as long as the pointer or focus is on it. Its

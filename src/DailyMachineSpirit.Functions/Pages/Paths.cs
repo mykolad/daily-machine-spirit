@@ -55,7 +55,16 @@ public static class Paths
     public const string Breviary = "/breviary";
 
     /// <summary>The reader's rites with one verdict: <c>?verdict=blessed</c> or <c>heresy</c>.</summary>
-    public static string BreviaryOnly(string verdict) => $"{Breviary}?verdict={verdict}";
+    public static string BreviaryOnly(string verdict) => BreviaryShowing(Some(verdict), string.Empty);
+
+    /// <summary>The reader's rites with the verdict, if one is given, and holding the words typed, if any.</summary>
+    public static string BreviaryShowing(Option<string> verdict, string typed)
+    {
+        var query = verdict.Map(only => $"verdict={only}").ToList()
+            .Concat(typed.Length == 0 ? [] : [$"q={Uri.EscapeDataString(typed)}"])
+            .ToList();
+        return query.Count == 0 ? Breviary : $"{Breviary}?{string.Join("&", query)}";
+    }
 
     public static string SignIn(string returnTo) => $"/auth/github?return={Uri.EscapeDataString(returnTo)}";
 
