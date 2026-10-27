@@ -82,6 +82,26 @@ public sealed class BreviaryTests : IAsyncLifetime
         Assert.Contains("You haven’t voted on a rite yet.", html);
     }
 
+    // The verdict counts the others who gave it, so no vote is said twice; the other verdict keeps its count.
+    [Fact]
+    public async Task AVerdict_CountsTheOthersWhoGaveIt_BesideTheOtherVerdictsCount()
+    {
+        await AddRites(2);
+        await Vote(1, Reaction.Blessed);
+        await Vote(2, Reaction.Heresy);
+        foreach (var (voter, reaction) in new[] { ("a", Reaction.Blessed), ("b", Reaction.Blessed), ("c", Reaction.Heresy) })
+        {
+            Ok(await Votes.Vote(1, voter, Some(reaction), CancellationToken.None));
+        }
+
+        var (_, html, _) = await Get(Function(), string.Empty, SignedIn());
+
+        Assert.Contains("You and 2 others blessed it</span>", html);
+        Assert.Contains("Heresy 1</span>", html);
+        Assert.DoesNotContain("Blessed 3", html);
+        Assert.Contains("You called it heresy</span></span>", html);
+    }
+
     [Fact]
     public async Task WhenTheVotesCantBeRead_Is503_AndNeverCached()
     {

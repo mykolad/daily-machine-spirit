@@ -214,8 +214,12 @@ public static class Styles
         .row-counts{display:flex;gap:16px;margin-top:4px;font-weight:600;font-size:13px;color:#5c4a33}
         .row-counts span{display:inline-flex;align-items:center;gap:6px}
         .row-counts svg{width:16px;height:16px}
-        .row-yours{display:inline-flex;align-items:center;gap:6px;width:fit-content;margin-top:6px;padding:2px 10px;border-radius:999px;background:#8f2a20;color:#f6eedb;font-weight:600;font-size:13px}
-        .row-yours svg{width:14px;height:14px}
+        .row-yours{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;margin-top:6px}
+        .row-yours>.row-counts{margin-top:0}
+        .row-verdict{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;font-weight:600;font-size:13px}
+        .row-verdict-blessed{background:#b8862b;color:#1f160a}
+        .row-verdict-heresy{background:#8f2a20;color:#f6eedb}
+        .row-verdict svg{width:14px;height:14px}
         .verdicts{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:24px 0 8px}
         .verdict{display:inline-flex;align-items:center;min-height:44px;padding:8px 18px;border:1px solid #8f2a20;border-radius:999px;font-weight:600;font-size:15px;color:#8f2a20;text-decoration:none}
         .verdict:hover{background:#e0d0a8;color:#8f2a20}
@@ -377,7 +381,9 @@ public static class Styles
         .side-right{grid-column:3}
         .side-notes{display:flex;flex-direction:column;gap:56px}
         .side-notes>.marginalia,.side-notes>.month-index,.side-notes>.other-subjects{margin-top:0}
-        .side>.altar{grid-column:1;grid-row:2;justify-self:center;margin-top:56px}
+        .side>.altar{grid-column:1;grid-row:2;margin-top:56px}
+        .hero>.altar-left,.side-left>.altar{justify-self:end;margin-right:22px}
+        .hero>.altar-right,.side-right>.altar{justify-self:start;margin-left:22px}
         .sub-wide{display:inline}
         .sub-narrow{display:none}
         .margin-number{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:32px;line-height:1.1;color:#ede3cf}
