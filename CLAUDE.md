@@ -321,7 +321,7 @@ skills/                           — Consult the Machine Spirit, a skill that p
   - **The Breviary** (`/breviary`, `BreviaryFunction`, `BreviaryPage`): every rite the signed-in reader voted on, on
     the Archive's sheet, each row marked with their verdict, narrowed by links to the Blessed or the Heresies
     (`?verdict=`), like bookmarks. In a chapter per subject (`BreviaryChapter`), by name, newest first within each, a
-    rite under its likeliest subject alone. Each chapter shows its 3 newest and links to itself whole (`?chapter=`, with
+    rite in each of its subjects' chapters, as on the subjects' pages. Each chapter shows its 3 newest and links to itself whole (`?chapter=`, with
     a chip to take it off, as the Archive's subject has), so the page stays short; the right margin indexes the
     chapters, each linking to itself whole. Its own search (`?q=`) finds what the Archive's would
     (`SearchWords.FoundIn`), among the rites already read for the page, and follows the typing as the Archive's field

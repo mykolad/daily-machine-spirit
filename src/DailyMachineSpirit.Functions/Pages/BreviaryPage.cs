@@ -55,7 +55,7 @@ public static class BreviaryPage
         var blessed = yours.Values.Count(reaction => reaction == Reaction.Blessed);
         var heresies = yours.Count - blessed;
         var found = rites.Where(rite => SearchWords.FoundIn(rite, words)).ToList();
-        var inChapter = found.Where(rite => chapter.ForAll(subject => BreviaryChapter.SubjectOf(rite) == subject)).ToList();
+        var inChapter = found.Where(rite => chapter.ForAll(subject => BreviaryChapter.SubjectsOf(rite).Contains(subject))).ToList();
         var inChapterBlessed = inChapter.Count(rite => VerdictOn(rite, yours) == Reaction.Blessed);
         var shown = inChapter.Where(rite => HasVerdict(rite, yours, only)).ToList();
         // Every chapter, the one shown among them, so the index leads from one to the next.

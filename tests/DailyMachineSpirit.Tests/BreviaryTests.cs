@@ -83,7 +83,7 @@ public sealed class BreviaryTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task TheRites_AreInAChapterPerSubject_ByName_UnderTheirLikeliest_WithTheUnfiledLast()
+    public async Task TheRites_AreInAChapterPerSubject_ByName_UnderEachOfTheirSubjects_WithTheUnfiledLast()
     {
         await AddRite(1, "First", ["caches", "builds"]);
         await AddRite(2, "Second", ["builds"]);
@@ -97,7 +97,9 @@ public sealed class BreviaryTests : IAsyncLifetime
         var (_, html, _) = await Get(Function(), string.Empty, SignedIn());
 
         Assert.Equal(["chapter-builds", "chapter-caches", "chapter-unfiled"], Chapters(html));
-        Assert.Equal(["/r/2", "/r/4", "/r/1", "/r/3"], Titles(html));
+        // The first rite has two subjects, so it is in both chapters, as on both subjects' pages.
+        Assert.Equal(["/r/2", "/r/1", "/r/4", "/r/1", "/r/3"], Titles(html));
+        Assert.Contains("""<a href="/breviary?chapter=builds"><span>Builds</span><span class="chapter-count">2<span class="sr-only"> rites</span></span></a>""", html);
         Assert.Contains("""<a href="/breviary?chapter=caches"><span>Caches</span><span class="chapter-count">2<span class="sr-only"> rites</span></span></a>""", html);
     }
 
@@ -145,6 +147,20 @@ public sealed class BreviaryTests : IAsyncLifetime
         Assert.Contains("""<a href="/breviary?chapter=builds" aria-current="page"><span>Builds</span>""", html);
         Assert.Contains("""<a href="/breviary?chapter=caches"><span>Caches</span>""", html);
         NeverCached(headers);
+    }
+
+    [Fact]
+    public async Task OneChapter_HoldsTheRitesWithItAsTheirSecondSubject()
+    {
+        await AddRite(1, "The Ledger", ["data", "performance"]);
+        await AddRite(2, "The Longer Candle", ["performance"]);
+        await Vote(1, Reaction.Blessed);
+        await Vote(2, Reaction.Blessed);
+
+        var (_, html, _) = await Get(Function(), "?chapter=performance", SignedIn());
+
+        Assert.Equal(["/r/2", "/r/1"], Titles(html));
+        Assert.Contains("""<a class="verdict" href="/breviary?chapter=performance" aria-current="page">All 2</a>""", html);
     }
 
     [Fact]

@@ -22,17 +22,22 @@ public sealed record BreviaryChapter(Tag Subject, IReadOnlyList<Rite> Rites)
     /// <param name="rites">The rites, in the order each chapter keeps them.</param>
     public static List<BreviaryChapter> Of(IReadOnlyList<Rite> rites)
         => rites
-            .GroupBy(SubjectOf)
+            .SelectMany(rite => SubjectsOf(rite).Select(subject => (Subject: subject, Rite: rite)))
+            .GroupBy(filed => filed.Subject, filed => filed.Rite)
             .OrderBy(chapter => chapter.Key == Unfiled)
             .ThenBy(chapter => chapter.Key.Label, StringComparer.Ordinal)
             .Select(chapter => new BreviaryChapter(chapter.Key, chapter.ToList()))
             .ToList();
 
     /// <summary>
-    /// The chapter a rite is in. A rite with two subjects is in its likeliest's alone (the first its judge gave): the same
-    /// rite twice on a page reads as two.
+    /// The chapters a rite is in: one for each of its subjects, as a subject's page lists every rite filed under it, so
+    /// a reader finds it under whichever they look for.
     /// </summary>
-    public static Tag SubjectOf(Rite rite) => RiteTags.Of(rite.Tags).HeadOrNone().IfNone(Unfiled);
+    public static IReadOnlyList<Tag> SubjectsOf(Rite rite)
+    {
+        var subjects = RiteTags.Of(rite.Tags);
+        return subjects.Count == 0 ? [Unfiled] : subjects;
+    }
 
     /// <summary>The chapter a link names (<c>?chapter=caches</c>), or None for a key that's no subject's.</summary>
     public static Option<Tag> Named(string key) => key == Unfiled.Key ? Some(Unfiled) : RiteTags.Find(key);
