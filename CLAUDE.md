@@ -244,8 +244,10 @@ skills/                           — Consult the Machine Spirit, a skill that p
     title link covers the row, so its tag links can sit inside it.
     - **Changing how tags are given** (another threshold) applies to drafts judged from then on; the rest keep theirs.
   - **Search** (`/archive?q=`, #7): the Archive filtered to the rites holding every word typed (at most 6, quotes
-    ignored) in their title, text or Heretical Truth, ignoring case, newest first, Today's too. Each row marks the words
-    (`Highlight`) and shows the words around the first match in the text (`RowLine`); a rite found by its truth alone
+    ignored) in their title, text or Heretical Truth, ignoring case, or by naming one of their subjects (#159: a word
+    starting a word of the subject's name, "build" for Builds, `RiteTags.Names`, as a `SoughtWord` with the tags it
+    names), newest first, Today's too. Each row marks the words (`Highlight`), in its subject chips too, and shows the
+    words around the first match in the text (`RowLine`); a rite found by its truth alone
     shows its opening words, the truth staying sealed until the reader opens the rite. A plain `CONTAINS` over a few
     hundred rites (each word a query parameter), plus their numbers, days and tags for the count, the month index and
     the subjects (`FindDaysAndTags`); Cosmos's full-text index can take over when that grows. The words are never
@@ -263,9 +265,9 @@ skills/                           — Consult the Machine Spirit, a skill that p
     - **The nav's search** (every page but the Archive, where the icon leads to the page's field): the icon opens a
       combobox, and up to five rites holding every word drop down under it. They're matched in the browser against
       the search index (`/api/search-index`, `SearchIndexFunction`: not the rites, only each one's number, day, kind
-      and words as stored, so it matches what the Archive's search matches), loaded once when the field first opens
-      and kept at Cloudflare until a new rite purges it (`DailyRiteFunction`; any query string is redirected to the one
-      address, so it can't cause a read of its own), so what's typed there never leaves the browser until the reader
+      and words as stored, and its tags, so it matches what the Archive's search matches), loaded once when the field
+      first opens and kept at Cloudflare until a new rite purges it (`DailyRiteFunction`; any query string is redirected
+      to the one address, so it can't cause a read of its own), so what's typed there never leaves the browser until the reader
       searches. Without the script the icon is a link to the Archive's field.
       Above the rites, up to three **subjects** (#69) whose name, or what their rites are about (`Tag.About`), has a
       word starting with each word typed, ignoring case and accents, so "flaky" suggests Builds. The vocabulary comes

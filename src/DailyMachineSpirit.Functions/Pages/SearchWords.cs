@@ -1,4 +1,5 @@
 using DailyMachineSpirit.Data.Entities;
+using DailyMachineSpirit.Functions.Tags;
 
 namespace DailyMachineSpirit.Functions.Pages;
 
@@ -35,11 +36,16 @@ public static class SearchWords
             .Take(MaxWords)
             .ToList();
 
+    /// <summary>The words as the database looks for them: each with the subjects it names (<see cref="RiteTags.Named"/>).</summary>
+    public static List<SoughtWord> Sought(IReadOnlyList<string> words)
+        => words.Select(word => new SoughtWord(word, RiteTags.Named(word).Select(tag => tag.Key).ToList())).ToList();
+
     /// <summary>
-    /// Whether every word is somewhere in the rite's title, text or Heretical Truth, ignoring case: what the Archive's
-    /// search asks of the database, for rites already read.
+    /// Whether every word is somewhere in the rite's title, text or Heretical Truth, ignoring case, or names one of its
+    /// subjects: what the Archive's search asks of the database, for rites already read.
     /// </summary>
     public static bool FoundIn(Rite rite, IReadOnlyList<string> words)
         => words.All(word => new[] { rite.Writing.Title, rite.Writing.Text, rite.Writing.HereticalTruth }
-            .Any(part => part.Contains(word, StringComparison.OrdinalIgnoreCase)));
+            .Any(part => part.Contains(word, StringComparison.OrdinalIgnoreCase))
+            || RiteTags.Of(rite.Tags).Any(tag => RiteTags.Names(tag, word)));
 }

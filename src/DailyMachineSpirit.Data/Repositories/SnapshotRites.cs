@@ -34,10 +34,10 @@ public sealed class SnapshotRites : IRiteReader
     public Task<Either<Error, List<Rite>>> GetOlderThan(int number, int count, CancellationToken cancellationToken)
         => Answer(rites.Where(rite => rite.Number < number).Take(count).ToList());
 
-    public Task<Either<Error, List<Rite>>> SearchOlderThan(IReadOnlyList<string> words, Option<string> tag, int number, int count, CancellationToken cancellationToken)
+    public Task<Either<Error, List<Rite>>> SearchOlderThan(IReadOnlyList<SoughtWord> words, Option<string> tag, int number, int count, CancellationToken cancellationToken)
         => Answer(Holding(words, tag).Where(rite => rite.Number < number).Take(count).ToList());
 
-    public Task<Either<Error, List<FoundRite>>> FindDaysAndTags(IReadOnlyList<string> words, Option<string> tag, CancellationToken cancellationToken)
+    public Task<Either<Error, List<FoundRite>>> FindDaysAndTags(IReadOnlyList<SoughtWord> words, Option<string> tag, CancellationToken cancellationToken)
         => Answer(Holding(words, tag).Select(rite => new FoundRite(rite.Number, rite.PublishedOnUtc, rite.Tags.IfNone([]))).ToList());
 
     public Task<Either<Error, List<RiteDay>>> GetDays(CancellationToken cancellationToken)
@@ -45,7 +45,7 @@ public sealed class SnapshotRites : IRiteReader
 
     public Task<Either<Error, List<RiteWords>>> GetAllWords(CancellationToken cancellationToken)
         => Answer(rites.Select(rite => new RiteWords(
-            rite.Number, rite.PublishedOnUtc, rite.Writing.Kind, rite.Writing.Title, rite.Writing.Text, rite.Writing.HereticalTruth)).ToList());
+            rite.Number, rite.PublishedOnUtc, rite.Writing.Kind, rite.Writing.Title, rite.Writing.Text, rite.Writing.HereticalTruth, rite.Tags.IfNone([]))).ToList());
 
     public Task<Either<Error, List<UnrevealedRite>>> GetAllUnrevealed(CancellationToken cancellationToken)
         => Answer(rites.Select(rite => new UnrevealedRite(
@@ -66,11 +66,13 @@ public sealed class SnapshotRites : IRiteReader
 
     private static Task<Either<Error, T>> Answer<T>(T answer) => Task.FromResult(Right<Error, T>(answer));
 
-    // As RiteRepository's CONTAINS: every word somewhere in the title, text or Heretical Truth, ignoring case.
-    private IEnumerable<Rite> Holding(IReadOnlyList<string> words, Option<string> tag)
+    // As RiteRepository's CONTAINS: every word somewhere in the title, text or Heretical Truth, ignoring case, or filed
+    // under a subject it names.
+    private IEnumerable<Rite> Holding(IReadOnlyList<SoughtWord> words, Option<string> tag)
         => rites.Where(rite =>
             words.All(word => new[] { rite.Writing.Title, rite.Writing.Text, rite.Writing.HereticalTruth }
-                .Any(part => part.Contains(word, StringComparison.OrdinalIgnoreCase)))
+                .Any(part => part.Contains(word.Word, StringComparison.OrdinalIgnoreCase))
+                || word.Subjects.Any(subject => FiledUnder(rite, subject)))
             && tag.ForAll(key => FiledUnder(rite, key)));
 
     private static bool FiledUnder(Rite rite, string tag) => rite.Tags.Exists(tags => tags.Contains(tag));

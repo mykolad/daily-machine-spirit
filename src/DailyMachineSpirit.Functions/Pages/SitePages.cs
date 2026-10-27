@@ -130,8 +130,9 @@ public sealed class SitePages
         if (words.Count > 0)
         {
             var tagKey = tag.Map(filter => filter.Key);
-            var found = await rites.FindDaysAndTags(words, tagKey, cancellationToken)
-                .BindAsync(days => rites.SearchOlderThan(words, tagKey, isFirstPage ? int.MaxValue : before, options.Value.ArchivePageSize + 1, cancellationToken)
+            var sought = SearchWords.Sought(words);
+            var found = await rites.FindDaysAndTags(sought, tagKey, cancellationToken)
+                .BindAsync(days => rites.SearchOlderThan(sought, tagKey, isFirstPage ? int.MaxValue : before, options.Value.ArchivePageSize + 1, cancellationToken)
                     .MapAsync(page => Results(days, page)));
             return found.Match(
                 Right: results =>
