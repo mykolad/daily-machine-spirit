@@ -259,11 +259,14 @@ skills/                           — Consult the Machine Spirit, a skill that p
       The margin offers the subjects the found rites are filed under, the most first, each narrowing the search to it:
       the way to filter without the script. A tag without words is the tag's own page, and a key the vocabulary doesn't
       have is no filter. Clearing the words as the field follows the typing clears the subject too.
-    - **The Archive's field follows the typing:** a quarter of a second after the reader stops, the script fetches
-      `/archive?q=` and swaps the sheet, its margins and the address (`history.replaceState`), so live and shared
-      results come from the same renderer.
-    - **The nav's search** (every page but the Archive, where the icon leads to the page's field): the icon opens a
-      combobox, and up to five rites holding every word drop down under it. They're matched in the browser against
+    - **One search on the page** (#157): with the script, the sheet's field (the Archive's, the Breviary's) is hidden and
+      the nav's search fills it. A quarter of a second after the reader stops, the script fetches `/archive?q=` and swaps
+      the sheet, its margins and the address (`history.replaceState`), so live and shared results come from the same
+      renderer. A searched page opens with the nav's field open and its words in it. Without the script the sheet's
+      field is a plain form.
+    - **The nav's search** (every page; on the Archive it narrows the Archive, and on the Breviary the reader's rites
+      while "Only my Breviary" is ticked, as it is at first): the icon opens a combobox. Elsewhere, or unticked, up to
+      five rites holding every word drop down under it. They're matched in the browser against
       the search index (`/api/search-index`, `SearchIndexFunction`: not the rites, only each one's number, day, kind
       and words as stored, and its tags, so it matches what the Archive's search matches), loaded once when the field
       first opens and kept at Cloudflare until a new rite purges it (`DailyRiteFunction`; any query string is redirected
@@ -326,8 +329,8 @@ skills/                           — Consult the Machine Spirit, a skill that p
     rite in each of its subjects' chapters, as on the subjects' pages. Each chapter shows its 3 newest and links to
     itself whole (`?chapter=`, with a chip to take it off, as the Archive's subject has), so the page stays short; the
     right margin indexes the chapters, each linking to itself whole. Its own search (`?q=`) finds what the Archive's would
-    (`SearchWords.FoundIn`), among the rites already read for the page, and follows the typing as the Archive's field
-    does. One query for the reader's votes (`GetAllVotes`, by voter key), one for
+    (`SearchWords.FoundIn`), among the rites already read for the page, and narrows them as the reader types in the nav's
+    search. One query for the reader's votes (`GetAllVotes`, by voter key), one for
     their rites. The one page that differs by reader, so it's never cached (`private, no-store`, and `no-store` for
     Cloudflare). Signed out, it offers the sign-in. Signed in, it's linked from a book icon in the nav (beside search,
     shown by the script from the `dms-signed-in` cookie, below), the vote status under a rite, and the toast after a

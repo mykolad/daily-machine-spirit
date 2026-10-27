@@ -265,6 +265,10 @@ public static class Styles
         .nav-find:not(.open) .nav-find-field{visibility:hidden}
         .nav-find-field:focus-visible{outline:none}
         .nav-find-field::placeholder{color:#8f8068;opacity:1}
+        .nav-find-scope{position:absolute;top:calc(100% + 8px);left:50%;z-index:30;display:flex;align-items:center;gap:8px;min-height:36px;padding:4px 14px;border:1px solid #84662c;border-radius:999px;background:#1f1a14;color:#ede3cf;font:14px Figtree,system-ui,sans-serif;white-space:nowrap;transform:translateX(-50%);cursor:pointer}
+        .nav-find-scope input{width:16px;height:16px;margin:0;accent-color:#d9b874}
+        .nav-find:not(.open) .nav-find-scope{display:none}
+        .nav-find:has(.nav-find-scope) .nav-find-drop{top:calc(100% + 56px)}
         .nav-find-drop{position:absolute;top:calc(100% + 8px);right:0;z-index:30;width:400px;max-width:calc(100vw - 32px);max-height:calc(100dvh - 96px);overflow-y:auto;overscroll-behavior:contain;padding:8px;border-radius:14px;background:#ebdfc2;color:#2b2117;text-align:left;box-shadow:0 14px 30px rgba(0,0,0,.55),inset 0 0 0 4px #ebdfc2,inset 0 0 0 5px #8f2a20}
         .nav-find-drop[hidden]{display:none}
         .nav-find-drop :focus-visible{outline-color:#8f2a20;outline-offset:2px}
