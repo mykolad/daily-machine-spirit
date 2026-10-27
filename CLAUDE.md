@@ -323,9 +323,11 @@ skills/                           — Consult the Machine Spirit, a skill that p
   - **The Breviary** (`/breviary`, `BreviaryFunction`, `BreviaryPage`): every rite the signed-in reader voted on, on
     the Archive's sheet, each row marked with their verdict, narrowed by links to the Blessed or the Heresies
     (`?verdict=`), like bookmarks. In a chapter per subject (`BreviaryChapter`), by name, newest first within each, a
-    rite under its likeliest subject alone, with an index of the chapters in the right margin. Its own search (`?q=`)
-    finds what the Archive's would (`SearchWords.FoundIn`), among the rites already read for the page, and follows the
-    typing as the Archive's field does. One query for the reader's votes (`GetAllVotes`, by voter key), one for
+    rite in each of its subjects' chapters, as on the subjects' pages. Each chapter shows its 3 newest and links to
+    itself whole (`?chapter=`, with a chip to take it off, as the Archive's subject has), so the page stays short; the
+    right margin indexes the chapters, each linking to itself whole. Its own search (`?q=`) finds what the Archive's would
+    (`SearchWords.FoundIn`), among the rites already read for the page, and follows the typing as the Archive's field
+    does. One query for the reader's votes (`GetAllVotes`, by voter key), one for
     their rites. The one page that differs by reader, so it's never cached (`private, no-store`, and `no-store` for
     Cloudflare). Signed out, it offers the sign-in. Signed in, it's linked from a book icon in the nav (beside search,
     shown by the script from the `dms-signed-in` cookie, below), the vote status under a rite, and the toast after a

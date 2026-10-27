@@ -54,13 +54,14 @@ public static class Paths
     /// <summary>The Breviary, the signed-in reader's own page: the rites they voted on.</summary>
     public const string Breviary = "/breviary";
 
-    /// <summary>The reader's rites with one verdict: <c>?verdict=blessed</c> or <c>heresy</c>.</summary>
-    public static string BreviaryOnly(string verdict) => BreviaryShowing(Some(verdict), string.Empty);
-
-    /// <summary>The reader's rites with the verdict, if one is given, and holding the words typed, if any.</summary>
-    public static string BreviaryShowing(Option<string> verdict, string typed)
+    /// <summary>
+    /// The reader's rites with the verdict (<c>?verdict=blessed</c> or <c>heresy</c>), in the chapter (its subject's
+    /// key), and holding the words typed, each only if given. In the order the Breviary's search form sends them.
+    /// </summary>
+    public static string BreviaryShowing(Option<string> verdict, Option<string> chapter, string typed)
     {
         var query = verdict.Map(only => $"verdict={only}").ToList()
+            .Concat(chapter.Map(key => $"chapter={Uri.EscapeDataString(key)}"))
             .Concat(typed.Length == 0 ? [] : [$"q={Uri.EscapeDataString(typed)}"])
             .ToList();
         return query.Count == 0 ? Breviary : $"{Breviary}?{string.Join("&", query)}";

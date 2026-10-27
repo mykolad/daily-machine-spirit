@@ -40,6 +40,8 @@ public sealed class BreviaryFunction
             BreviaryPage.HeresyVerdict => Some(Reaction.Heresy),
             _ => None,
         };
+        // A key that's no subject's (an old or mistyped link) shows every chapter.
+        var chapter = BreviaryChapter.Named(request.Query["chapter"].ToString());
         // Matched against the rites already read for the page: a reader's few hundred at most need no query of their own.
         // Only quotes are no words, and no search.
         var asked = SearchWords.Typed(request.Query["q"].ToString());
@@ -48,7 +50,7 @@ public sealed class BreviaryFunction
         return await session.SignedIn(request).MatchAsync(
             Some: async voterKey => (await votes.GetAllVotes(voterKey, cancellationToken)
                     .BindAsync(yours => rites.GetByNumbers(yours.Keys.ToList(), cancellationToken)
-                        .MapAsync(found => BreviaryPage.Render(found.OrderByDescending(rite => rite.Number).ToList(), yours, only, typed, words))))
+                        .MapAsync(found => BreviaryPage.Render(found.OrderByDescending(rite => rite.Number).ToList(), yours, only, chapter, typed, words))))
                 .Match(
                     Right: html => Personal(request, StatusCodes.Status200OK, html),
                     Left: error =>
