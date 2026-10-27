@@ -4,13 +4,13 @@ using LanguageExt;
 namespace DailyMachineSpirit.Functions.Pages;
 
 /// <summary>
-/// The signed-in reader's own rites (<c>/my-rites</c>): every rite they voted on, newest first, on the Archive's sheet,
+/// The Breviary (<c>/breviary</c>), the signed-in reader's own book of rites: every rite they voted on, newest first, on the Archive's sheet,
 /// each marked with their verdict, and narrowed to the Blessed or the Heresies by links, so it works without the
 /// script. Kept like favourites: a Blessed vote is a bookmark.
 /// </summary>
-public static class VotedRitesPage
+public static class BreviaryPage
 {
-    private const string Title = "Your Rites";
+    private const string Title = "Your Breviary";
 
     private const string Description = "The rites you voted on, Blessed or Heresy.";
 
@@ -20,15 +20,15 @@ public static class VotedRitesPage
 
     /// <summary>For a reader who isn't signed in: what the page keeps, and the way to sign in.</summary>
     public static string SignedOut()
-        => Layout.Page(Title, Description, Section.Other, ArchiveSheet.Render(
-            kicker: "Your verdicts",
+        => Layout.Page(Title, Description, Section.Breviary, ArchiveSheet.Render(
+            kicker: "Rites you have judged",
             heading: Title,
             sub: Description,
             search: string.Empty,
             body: $"""
                 <div class="sheet-none">
                 <p>Sign in with GitHub, and every rite you bless,<br>or call heresy, is kept here.</p>
-                <a class="sheet-button" href="{Html.Encode(Paths.SignIn(Paths.VotedRites))}">Sign in with GitHub</a>
+                <a class="sheet-button" href="{Html.Encode(Paths.SignIn(Paths.Breviary))}">Sign in with GitHub</a>
                 </div>
                 """,
             below: string.Empty,
@@ -57,14 +57,14 @@ public static class VotedRitesPage
             {ArchiveSheet.Note("Heresy", $"""<p class="margin-number">{Html.Count(heresies)}</p>""")}
             </aside>
             """;
-        return Layout.Page(Title, Description, Section.Other, ArchiveSheet.Render(
-            kicker: "Your verdicts",
+        return Layout.Page(Title, Description, Section.Breviary, ArchiveSheet.Render(
+            kicker: "Rites you have judged",
             heading: Title,
             sub: yours.Count == 0 ? Description : $"{Rites(yours.Count)} you voted on, newest first.",
             search: Verdicts(only, yours.Count, blessed, heresies),
             body: body,
             below: $"""
-                <div class="voted-account">Kept for your GitHub account · <form method="post" action="{Html.Encode(Paths.SignOutFrom(Paths.VotedRites))}"><button type="submit" class="text-button">Sign out</button></form></div>
+                <div class="voted-account">Kept for your GitHub account · <form method="post" action="{Html.Encode(Paths.SignOutFrom(Paths.Breviary))}"><button type="submit" class="text-button">Sign out</button></form></div>
                 """,
             left: left,
             right: string.Empty));
@@ -74,9 +74,9 @@ public static class VotedRitesPage
     private static string Verdicts(Option<Reaction> only, int all, int blessed, int heresies)
         => $"""
             <nav class="verdicts" aria-label="Show">
-            {Verdict(Paths.VotedRites, $"All {Html.Count(all)}", only.IsNone)}
-            {Verdict(Paths.VotedRitesOnly(BlessedVerdict), $"Blessed {Html.Count(blessed)}", only.Exists(verdict => verdict == Reaction.Blessed))}
-            {Verdict(Paths.VotedRitesOnly(HeresyVerdict), $"Heresy {Html.Count(heresies)}", only.Exists(verdict => verdict == Reaction.Heresy))}
+            {Verdict(Paths.Breviary, $"All {Html.Count(all)}", only.IsNone)}
+            {Verdict(Paths.BreviaryOnly(BlessedVerdict), $"Blessed {Html.Count(blessed)}", only.Exists(verdict => verdict == Reaction.Blessed))}
+            {Verdict(Paths.BreviaryOnly(HeresyVerdict), $"Heresy {Html.Count(heresies)}", only.Exists(verdict => verdict == Reaction.Heresy))}
             </nav>
             """;
 

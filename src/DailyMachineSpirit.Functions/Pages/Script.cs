@@ -31,6 +31,33 @@ public static class Script
             clearTimeout(hideToast);
             hideToast = setTimeout(() => { toast.innerHTML = ''; }, 2600);
           };
+
+          // The nav's link to the reader's Breviary, for a signed-in reader alone. The page is the same for everyone, so a
+          // cookie that says only that shows it (sign-in sets it; signing out, and /api/me for a sign-in run out, clear it).
+          const breviaryLink = document.querySelector('.nav-breviary');
+          const showBreviary = (signedIn) => { if (breviaryLink) breviaryLink.hidden = !signedIn; };
+          showBreviary(document.cookie.split('; ').includes('dms-signed-in=1'));
+          // After a vote, where it's kept. Longer than the other toasts, and kept while the pointer or focus is on it, to
+          // follow the link; the nav's link leads there too.
+          const sayKept = (vote) => {
+            clearTimeout(hideToast);
+            toast.innerHTML = '';
+            const pill = document.createElement('div');
+            pill.className = 'toast toast-lasting';
+            pill.append(vote === 'blessed' ? 'Blessed. Kept in your ' : 'Called heresy. Kept in your ');
+            const link = document.createElement('a');
+            link.href = '/breviary';
+            link.textContent = 'Breviary';
+            pill.append(link, '.');
+            toast.appendChild(pill);
+            const later = () => {
+              hideToast = setTimeout(() => {
+                if (pill.matches(':hover, :focus-within')) later();
+                else if (pill.isConnected) toast.innerHTML = '';
+              }, 6000);
+            };
+            later();
+          };
           // Whether the text reached the clipboard: the older fallback can fail quietly, and the toast must not lie.
           const copy = async (text) => {
             try {
@@ -124,7 +151,10 @@ public static class Script
               try {
                 const votes = await fetch(`/api/votes?rites=${rite}`);
                 // Signed out meanwhile (another tab, or the sign-in ran out): offer the sign-in again.
-                if (votes.status === 401) reader.signedIn = false;
+                if (votes.status === 401) {
+                  reader.signedIn = false;
+                  showBreviary(false);
+                }
                 else if (votes.ok) reader = { ...reader, vote: (await votes.json())[rite] ?? null, voteLoaded: true };
               } catch { }
             };
@@ -133,6 +163,7 @@ public static class Script
               try {
                 const me = await (await fetch('/api/me')).json();
                 reader = { available: me.signInAvailable === true, signedIn: me.signedIn === true, vote: null, voteLoaded: false };
+                showBreviary(reader.signedIn);
                 if (reader.signedIn) await loadVote();
               } catch { }
               showReader();
@@ -176,6 +207,7 @@ public static class Script
                   reader.signedIn = false;
                   reader.vote = null;
                   showReader();
+                  showBreviary(false);
                   show(null, before);
                   say('Sign in with GitHub again to vote.');
                   return;
@@ -186,6 +218,7 @@ public static class Script
                 const answer = await response.json().catch(() => null);
                 if (answer) remember(answer);
                 show(vote, answer ?? hoped);
+                if (vote) sayKept(vote);
               } catch {
                 show(previous, before);
                 say('Your vote wasn’t recorded. Try again.');
@@ -673,11 +706,11 @@ public static class Script
           // A reader looking at the page when the rite comes out is told, rather than have the page change under them,
           // with a link to Today: the Archive's first page leaves the newest rite out, and a later page or a search may.
           const tellOfNewRite = () => {
-            if (toast.querySelector('.toast-lasting')) return;
+            if (toast.querySelector('.toast-new-rite')) return;
             clearTimeout(hideToast);
             toast.innerHTML = '';
             const pill = document.createElement('div');
-            pill.className = 'toast toast-lasting';
+            pill.className = 'toast toast-lasting toast-new-rite';
             pill.append('A new rite is out. ');
             const showIt = document.createElement('a');
             showIt.href = '/';

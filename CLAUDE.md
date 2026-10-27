@@ -318,11 +318,13 @@ skills/                           — Consult the Machine Spirit, a skill that p
     them, and nothing reads them, so the counts started again from zero.
   - **The page is the same for everyone:** both "Sign in with GitHub" and "Sign out" are in it, hidden, and the script
     shows the reader's own after asking `/api/me`. The API takes JSON only, so another site's form can't vote.
-  - **Your Rites** (`/my-rites`, `VotedRitesFunction`, `VotedRitesPage`): every rite the signed-in reader voted on,
+  - **The Breviary** (`/breviary`, `BreviaryFunction`, `BreviaryPage`): every rite the signed-in reader voted on,
     newest first, on the Archive's sheet, each row marked with their verdict, narrowed by links to the Blessed or the
     Heresies (`?verdict=`), like bookmarks. One query for the reader's votes (`GetAllVotes`, by voter key), one for
     their rites. The one page that differs by reader, so it's never cached (`private, no-store`, and `no-store` for
-    Cloudflare). Signed out, it offers the sign-in; signed in, the vote status under a rite links to it.
+    Cloudflare). Signed out, it offers the sign-in. Signed in, it's linked from a book icon in the nav (beside search,
+    shown by the script from the `dms-signed-in` cookie, below), the vote status under a rite, and the toast after a
+    vote; the Catechism says it's there.
 - **Readers sign in to vote** (`Voters/`, #34), with GitHub for now: `/auth/{provider}?return=<path>` sends them to
   the provider's OAuth web flow, and `/auth/{provider}/callback` brings them back. `/auth/signout` (a form posted from
   this site, `RequestOrigin`) signs them out; `/api/me` tells the page's script whether sign-in is set up and whether
@@ -336,7 +338,10 @@ skills/                           — Consult the Machine Spirit, a skill that p
     it. An account at another provider is another voter, even if it's the same person.
   - **The cookie** (`dms-voter`, HttpOnly, Secure, SameSite=Lax, 30 days) holds the key, its expiry and a signature
     (`Voters:SessionSecret`). A state cookie ties the provider's answer to the browser and the provider that started,
-    and the return path must be a path on this site.
+    and the return path must be a path on this site. Beside it, `dms-signed-in` (`1`, readable by the script, the
+    same 30 days) says only that the reader is signed in, so every page's script can show the nav's Breviary link
+    without asking the server; signing out clears it, and `/api/me` sets it right for a sign-in from before it or one
+    that ran out.
   - **Separate from the Scriptorium:** signing in here makes nobody a Scribe.
   - **Settings:** `Voters:KeySecret` and `:SessionSecret` (32 characters at least, or they count as unset), and each
     provider's own (`GitHub:ClientId`, `:ClientSecret`, `:CallbackUrl`). A provider not set up has no sign-in pages

@@ -11,17 +11,17 @@ using static LanguageExt.Prelude;
 namespace DailyMachineSpirit.Functions.Pages;
 
 /// <summary>
-/// <c>/my-rites</c>: the rites the signed-in reader voted on (<see cref="VotedRitesPage"/>). Unlike every other page it
+/// <c>/breviary</c>: the rites the signed-in reader voted on (<see cref="BreviaryPage"/>). Unlike every other page it
 /// differs by reader, so it's never cached, by the browser or by Cloudflare.
 /// </summary>
-public sealed class VotedRitesFunction
+public sealed class BreviaryFunction
 {
     private readonly IVoteRepository votes;
     private readonly IRiteReader rites;
     private readonly VoterSession session;
-    private readonly ILogger<VotedRitesFunction> logger;
+    private readonly ILogger<BreviaryFunction> logger;
 
-    public VotedRitesFunction(IVoteRepository votes, IRiteReader rites, VoterSession session, ILogger<VotedRitesFunction> logger)
+    public BreviaryFunction(IVoteRepository votes, IRiteReader rites, VoterSession session, ILogger<BreviaryFunction> logger)
     {
         this.votes = votes;
         this.rites = rites;
@@ -29,30 +29,30 @@ public sealed class VotedRitesFunction
         this.logger = logger;
     }
 
-    [Function("VotedRites")]
-    public async Task<IActionResult> VotedRites(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "my-rites")] HttpRequest request,
+    [Function("Breviary")]
+    public async Task<IActionResult> Breviary(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "breviary")] HttpRequest request,
         CancellationToken cancellationToken)
     {
         var only = request.Query["verdict"].ToString() switch
         {
-            VotedRitesPage.BlessedVerdict => Some(Reaction.Blessed),
-            VotedRitesPage.HeresyVerdict => Some(Reaction.Heresy),
+            BreviaryPage.BlessedVerdict => Some(Reaction.Blessed),
+            BreviaryPage.HeresyVerdict => Some(Reaction.Heresy),
             _ => None,
         };
         return await session.SignedIn(request).MatchAsync(
             Some: async voterKey => (await votes.GetAllVotes(voterKey, cancellationToken)
                     .BindAsync(yours => rites.GetByNumbers(yours.Keys.ToList(), cancellationToken)
-                        .MapAsync(found => VotedRitesPage.Render(found.OrderByDescending(rite => rite.Number).ToList(), yours, only))))
+                        .MapAsync(found => BreviaryPage.Render(found.OrderByDescending(rite => rite.Number).ToList(), yours, only))))
                 .Match(
                     Right: html => Personal(request, StatusCodes.Status200OK, html),
                     Left: error =>
                     {
                         // The path alone: nothing that tells the reader apart.
                         logger.LogError(error.ToException(), "The page {Path} couldn't be served: {Reason}", request.Path.Value, error.Message);
-                        return Personal(request, StatusCodes.Status503ServiceUnavailable, StatePages.Failed(Paths.VotedRites));
+                        return Personal(request, StatusCodes.Status503ServiceUnavailable, StatePages.Failed(Paths.Breviary));
                     }),
-            None: () => Personal(request, StatusCodes.Status200OK, VotedRitesPage.SignedOut()));
+            None: () => Personal(request, StatusCodes.Status200OK, BreviaryPage.SignedOut()));
     }
 
     // Cloudflare reads its own header before Cache-Control, so both say so.

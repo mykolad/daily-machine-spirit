@@ -22,6 +22,10 @@ public sealed class SignInFunction
 {
     public const string StateCookieName = "dms-signin-state";
 
+    // Only that the reader is signed in, for the script, which can't read the session's cookie (HttpOnly): it shows the
+    // nav's link to their Breviary on pages that are the same for everyone, without asking the server on each.
+    public const string SignedInCookieName = "dms-signed-in";
+
     // Long enough to sign in at the provider, short enough that an old state is useless.
     private static readonly TimeSpan StateLasts = TimeSpan.FromMinutes(10);
     private const int MaxReturnPathLength = 512;
@@ -89,6 +93,7 @@ public sealed class SignInFunction
             return new StatusCodeResult(StatusCodes.Status403Forbidden);
         }
         request.HttpContext.Response.Cookies.Delete(VoterSession.CookieName, Cookie(TimeSpan.Zero));
+        request.HttpContext.Response.Cookies.Delete(SignedInCookieName, ScriptsCookie(TimeSpan.Zero));
         return Redirect(SafeReturnPath(request.Query["return"].ToString()));
     }
 
@@ -102,7 +107,18 @@ public sealed class SignInFunction
     {
         NeverCached(request);
         var signInAvailable = voters.Value.IsConfigured && providers.Any(provider => provider.IsConfigured);
-        return new OkObjectResult(new { signInAvailable, signedIn = session.SignedIn(request).IsSome });
+        var signedIn = session.SignedIn(request).IsSome;
+        // Set right for a reader who signed in before it existed, or whose session ran out or stopped being valid.
+        var hinted = request.Cookies.ContainsKey(SignedInCookieName);
+        if (signedIn && !hinted)
+        {
+            request.HttpContext.Response.Cookies.Append(SignedInCookieName, "1", ScriptsCookie(VoterSession.Lasts));
+        }
+        else if (!signedIn && hinted)
+        {
+            request.HttpContext.Response.Cookies.Delete(SignedInCookieName, ScriptsCookie(TimeSpan.Zero));
+        }
+        return new OkObjectResult(new { signInAvailable, signedIn });
     }
 
     private async Task<IActionResult> Callback(HttpRequest request, ISignInProvider provider, CancellationToken cancellationToken)
@@ -139,6 +155,7 @@ public sealed class SignInFunction
             {
                 request.HttpContext.Response.Cookies.Append(VoterSession.CookieName,
                     session.Issue(session.VoterKeyFor(provider.Name, accountId)), Cookie(VoterSession.Lasts));
+                request.HttpContext.Response.Cookies.Append(SignedInCookieName, "1", ScriptsCookie(VoterSession.Lasts));
                 ReportSignIn(provider, "signed-in");
                 return Redirect(returnPath);
             },
@@ -192,6 +209,16 @@ public sealed class SignInFunction
         HttpOnly = true,
         Secure = true,
         // Lax: sent when the provider sends the reader back (a top-level GET), never with another site's posts.
+        SameSite = SameSiteMode.Lax,
+        Path = "/",
+        MaxAge = lasts,
+    };
+
+    // The page's script reads it, so it can't be HttpOnly; it holds nothing but "1".
+    private static CookieOptions ScriptsCookie(TimeSpan lasts) => new()
+    {
+        HttpOnly = false,
+        Secure = true,
         SameSite = SameSiteMode.Lax,
         Path = "/",
         MaxAge = lasts,

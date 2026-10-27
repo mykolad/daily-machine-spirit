@@ -245,7 +245,8 @@ public static class Styles
         .tag:hover{background:rgba(201,162,90,.12);color:#f0d59a}
         .other-subjects{width:100%;margin-top:56px;display:flex;flex-direction:column;align-items:center;gap:12px}
         .other-subjects h2{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:22px}
-        nav .nav-search{display:grid;place-items:center;width:44px;height:44px;padding:0;color:#d9b874}
+        nav .nav-search,nav .nav-breviary{display:grid;place-items:center;width:44px;height:44px;padding:0;color:#d9b874}
+        nav .nav-breviary[hidden]{display:none}
         .nav-find{position:relative;display:flex;align-items:center;width:44px;height:44px;border:1px solid transparent;border-radius:999px;transition:width 250ms ease}
         .nav-find.open{width:320px;border-color:#84662c}
         .nav-find:has(.nav-find-field:focus-visible){outline:2px solid #f0b45a;outline-offset:4px}

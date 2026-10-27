@@ -57,6 +57,7 @@ public static class Layout
             <a href="/"{Current(section == Section.Today)}>Today</a>
             <a href="/archive"{Current(section == Section.Archive)}>Archive</a>
             <a href="{Paths.About}"{Current(section == Section.About)}>About</a>
+            <a class="nav-breviary" href="{Paths.Breviary}" aria-label="Your Breviary" title="Your Breviary"{Current(section == Section.Breviary)} hidden>{Svg.BreviaryIcon}</a>
             <a class="nav-search" href="{Paths.Archive}#archive-search" aria-label="Search"{(section == Section.Archive ? string.Empty : Subjects)}>{Svg.SearchIcon}</a>
             </nav>
             </header>

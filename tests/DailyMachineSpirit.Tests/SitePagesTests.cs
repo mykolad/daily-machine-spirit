@@ -756,6 +756,7 @@ public sealed class SitePagesTests : IAsyncLifetime
         // The commands scroll rather than wrap, so a keyboard must be able to reach their block; their prompts are
         // shown, never copied.
         Assert.Contains("""<ul role="list">""", about.Html);
+        Assert.Contains("""Every rite you vote on is kept in <a href="/breviary">your Breviary</a>.""", about.Html);
         Assert.Contains("""<pre tabindex="0" aria-label="Commands"><code><span class="prompt" aria-hidden="true">$ </span>git clone --depth 1 https://github.com/mykolad/daily-machine-spirit.git""", about.Html);
         Assert.Contains("""
             data-text="git clone --depth 1 https://github.com/mykolad/daily-machine-spirit.git

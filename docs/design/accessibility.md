@@ -285,3 +285,13 @@ and candles behind it, and the recent rites under Today.
   wouldn't show on slate. The commands' block draws it inside its edge, since the block clips what's outside.
 - **Each copy button says what it copies** ("Copy address", "Copy commands"), and the toast says whether it worked.
 - **Smooth scrolling** to a question, only without reduced motion.
+
+## The Breviary (a reader's own rites)
+
+- **The nav's book icon is named** "Your Breviary" (`aria-label`, and `title` for the tooltip a sighted reader needs,
+  as a book alone doesn't say whose), and `aria-current` on its page. It's 44 by 44 pixels, as search is.
+- **The verdict filters are links** in a `nav` named "Show", the current one `aria-current="page"`: each is a page of
+  its own, so they work without the script.
+- **The toast after a vote links to the Breviary,** for six seconds and as long as the pointer or focus is on it. Its
+  region is `role="status"`, so it's announced. The link isn't the only way there: the nav's icon and the vote status
+  under the rite lead there too, so a reader who misses the toast misses nothing.

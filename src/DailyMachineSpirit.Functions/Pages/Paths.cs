@@ -51,11 +51,11 @@ public static class Paths
     /// </summary>
     public static IReadOnlyCollection<string> ShowingVotesOf(int number) => [Today, Rite(number)];
 
-    /// <summary>The signed-in reader's own page: the rites they voted on.</summary>
-    public const string VotedRites = "/my-rites";
+    /// <summary>The Breviary, the signed-in reader's own page: the rites they voted on.</summary>
+    public const string Breviary = "/breviary";
 
     /// <summary>The reader's rites with one verdict: <c>?verdict=blessed</c> or <c>heresy</c>.</summary>
-    public static string VotedRitesOnly(string verdict) => $"{VotedRites}?verdict={verdict}";
+    public static string BreviaryOnly(string verdict) => $"{Breviary}?verdict={verdict}";
 
     public static string SignIn(string returnTo) => $"/auth/github?return={Uri.EscapeDataString(returnTo)}";
 

@@ -12,7 +12,7 @@ using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Tests;
 
-public sealed class VotedRitesTests : IAsyncLifetime
+public sealed class BreviaryTests : IAsyncLifetime
 {
     private readonly CosmosTestContainer cosmos = new();
     private readonly VoterSession session = new(
@@ -33,7 +33,7 @@ public sealed class VotedRitesTests : IAsyncLifetime
         var (status, html, headers) = await Get(Function(), string.Empty, string.Empty);
 
         Assert.Equal(StatusCodes.Status200OK, status);
-        Assert.Contains("""<a class="sheet-button" href="/auth/github?return=%2Fmy-rites">Sign in with GitHub</a>""", html);
+        Assert.Contains("""<a class="sheet-button" href="/auth/github?return=%2Fbreviary">Sign in with GitHub</a>""", html);
         NeverCached(headers);
     }
 
@@ -51,8 +51,10 @@ public sealed class VotedRitesTests : IAsyncLifetime
         Assert.Equal(["/r/3", "/r/1"], Titles(html));
         Assert.Contains("You called it heresy</span>", html);
         Assert.Contains("You blessed it</span>", html);
-        Assert.Contains("""<a class="verdict" href="/my-rites" aria-current="page">All 2</a>""", html);
+        Assert.Contains("""<a class="verdict" href="/breviary" aria-current="page">All 2</a>""", html);
         Assert.Contains("2 rites you voted on, newest first.", html);
+        // The nav's link, which the script shows to a signed-in reader, says it's this page.
+        Assert.Contains("""<a class="nav-breviary" href="/breviary" aria-label="Your Breviary" title="Your Breviary" aria-current="page" hidden>""", html);
         NeverCached(headers);
     }
 
@@ -68,7 +70,7 @@ public sealed class VotedRitesTests : IAsyncLifetime
         var (_, html, _) = await Get(Function(), query, SignedIn());
 
         Assert.Equal([rite], Titles(html));
-        Assert.Contains($"""href="/my-rites{query}" aria-current="page">""", html);
+        Assert.Contains($"""href="/breviary{query}" aria-current="page">""", html);
     }
 
     [Fact]
@@ -84,9 +86,9 @@ public sealed class VotedRitesTests : IAsyncLifetime
     public async Task WhenTheVotesCantBeRead_Is503_AndNeverCached()
     {
         var missing = cosmos.Container.Database.GetContainer("no-such-container");
-        var function = new VotedRitesFunction(
+        var function = new BreviaryFunction(
             new VoteRepository(missing), new RiteRepository(missing, NullLogger<RiteRepository>.Instance), session,
-            NullLogger<VotedRitesFunction>.Instance);
+            NullLogger<BreviaryFunction>.Instance);
 
         var (status, _, headers) = await Get(function, string.Empty, SignedIn());
 
@@ -96,8 +98,8 @@ public sealed class VotedRitesTests : IAsyncLifetime
 
     private VoteRepository Votes => new(cosmos.Container);
 
-    private VotedRitesFunction Function()
-        => new(Votes, new RiteRepository(cosmos.Container, NullLogger<RiteRepository>.Instance), session, NullLogger<VotedRitesFunction>.Instance);
+    private BreviaryFunction Function()
+        => new(Votes, new RiteRepository(cosmos.Container, NullLogger<RiteRepository>.Instance), session, NullLogger<BreviaryFunction>.Instance);
 
     private string VoterKey => session.VoterKeyFor("github", "583231");
 
@@ -105,17 +107,17 @@ public sealed class VotedRitesTests : IAsyncLifetime
 
     private async Task Vote(int number, Reaction reaction) => Ok(await Votes.Vote(number, VoterKey, Some(reaction), CancellationToken.None));
 
-    private static async Task<(int Status, string Html, IHeaderDictionary Headers)> Get(VotedRitesFunction function, string query, string cookie)
+    private static async Task<(int Status, string Html, IHeaderDictionary Headers)> Get(BreviaryFunction function, string query, string cookie)
     {
         var request = new DefaultHttpContext().Request;
         request.Method = "GET";
-        request.Path = Paths.VotedRites;
+        request.Path = Paths.Breviary;
         request.QueryString = new QueryString(query);
         if (cookie.Length > 0)
         {
             request.Headers.Cookie = cookie;
         }
-        var page = Assert.IsType<ContentResult>(await function.VotedRites(request, CancellationToken.None));
+        var page = Assert.IsType<ContentResult>(await function.Breviary(request, CancellationToken.None));
         return (page.StatusCode ?? 0, page.Content ?? string.Empty, request.HttpContext.Response.Headers);
     }
 
