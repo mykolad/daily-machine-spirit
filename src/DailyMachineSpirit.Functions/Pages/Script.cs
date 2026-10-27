@@ -43,7 +43,7 @@ public static class Script
             clearTimeout(hideToast);
             toast.innerHTML = '';
             const pill = document.createElement('div');
-            pill.className = 'toast toast-lasting';
+            pill.className = 'toast toast-lasting toast-kept';
             pill.append(vote === 'blessed' ? 'Blessed. Kept in your ' : 'Called heresy. Kept in your ');
             const link = document.createElement('a');
             link.href = '/breviary';
@@ -218,7 +218,13 @@ public static class Script
                 const answer = await response.json().catch(() => null);
                 if (answer) remember(answer);
                 show(vote, answer ?? hoped);
-                if (vote) sayKept(vote);
+                if (vote) {
+                  sayKept(vote);
+                } else if (toast.querySelector('.toast-kept')) {
+                  // Taken back while the toast still says it's kept: it no longer is.
+                  clearTimeout(hideToast);
+                  toast.innerHTML = '';
+                }
               } catch {
                 show(previous, before);
                 say('Your vote wasn’t recorded. Try again.');
