@@ -146,7 +146,7 @@ public sealed class BreviaryTests : IAsyncLifetime
     [Fact]
     public async Task Search_FindsTheRitesFiledUnderASubjectAWordNames()
     {
-        await AddRite(1, "The Muffled Alarm", ["testing", "builds"]);
+        await AddRite(1, "The Muffled Alarm", ["builds"]);
         await AddRite(2, "The Warm Cache", ["caches"]);
         await Vote(1, Reaction.Blessed);
         await Vote(2, Reaction.Blessed);
