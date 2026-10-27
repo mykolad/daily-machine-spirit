@@ -344,6 +344,8 @@ public static class Script
           // without a new history entry. One renderer, the server's, so results look the same however they're reached.
           // Without the script it's a plain form, and Enter loads the results as a page.
           const field = document.querySelector('.sheet-search input[type=search]');
+          // The Archive's field is the nav's search there; the Breviary's searches the reader's rites alone, beside it.
+          const onTheArchive = field?.id === 'archive-search';
           if (field) {
             const form = field.form;
             let typing;
@@ -388,6 +390,11 @@ public static class Script
                   return;
                 }
                 const page = new DOMParser().parseFromString(await response.text(), 'text/html');
+                // A page without the field (the Breviary of a reader who signed out meanwhile) has nothing to swap in.
+                if (!page.querySelector('.sheet-search')) {
+                  location.assign(url);
+                  return;
+                }
                 searches += 1;
                 swap(page);
                 history.replaceState(null, '', url);
@@ -416,7 +423,7 @@ public static class Script
               clear();
             });
             document.addEventListener('click', (event) => {
-              const link = event.target.closest('.sheet-clear, .margin-clear, .nav-search');
+              const link = event.target.closest(onTheArchive ? '.sheet-clear, .margin-clear, .nav-search' : '.sheet-clear, .margin-clear');
               if (!link || !isPlainClick(event)) return;
               event.preventDefault();
               // The nav's search icon leads to this field: here it's the field itself.
@@ -432,9 +439,10 @@ public static class Script
           // rites (up to five, holding every word) come from the search index (every rite's words), loaded once when the
           // field first opens (/api/search-index), so what the reader types never leaves the browser until they search.
           // Enter, or "Search all in the Archive", searches the Archive. Without the script the icon is a link to the
-          // Archive's field.
+          // Archive's field. The Breviary has a field of its own too, for the reader's rites alone, so its nav still
+          // searches them all.
           const navSearch = document.querySelector('.nav-search');
-          if (navSearch && !field) {
+          if (navSearch && !onTheArchive) {
             const subjects = JSON.parse(navSearch.dataset.subjects ?? '[]');
             const box = document.createElement('div');
             box.className = 'nav-find';

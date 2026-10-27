@@ -133,6 +133,10 @@ public sealed class BreviaryTests : IAsyncLifetime
         var (_, html, _) = await Get(Function(), "?verdict=heresy&q=ledger", SignedIn());
 
         Assert.Equal(["/r/2"], Titles(html));
+        // What's shown is counted, not what the other verdict holds.
+        Assert.Contains("<title>“ledger” in your Breviary: 1 rite ·", html);
+        Assert.Contains("1 of your rites mentions it.", html);
+        Assert.Contains("""<a class="verdict" href="/breviary?q=ledger">All 2</a>""", html);
         Assert.Contains("""<input type="hidden" name="verdict" value="heresy">""", html);
         Assert.Contains("""<a class="sheet-clear" href="/breviary?verdict=heresy" aria-label="Clear search">""", html);
     }

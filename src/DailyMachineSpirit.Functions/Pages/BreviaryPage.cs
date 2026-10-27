@@ -49,7 +49,8 @@ public static class BreviaryPage
         var heresies = yours.Count - blessed;
         var found = rites.Where(rite => SearchWords.FoundIn(rite, words)).ToList();
         var foundBlessed = found.Count(rite => VerdictOn(rite, yours) == Reaction.Blessed);
-        var chapters = BreviaryChapter.Of(found.Where(rite => only.ForAll(verdict => VerdictOn(rite, yours) == verdict)).ToList());
+        var shown = found.Where(rite => only.ForAll(verdict => VerdictOn(rite, yours) == verdict)).ToList();
+        var chapters = BreviaryChapter.Of(shown);
         var verdict = only.Map(reaction => reaction == Reaction.Blessed ? BlessedVerdict : HeresyVerdict);
         var left = $"""
             <aside class="marginalia" aria-label="Your votes">
@@ -57,12 +58,13 @@ public static class BreviaryPage
             {ArchiveSheet.Note("Heresy", $"""<p class="margin-number">{Html.Count(heresies)}</p>""")}
             </aside>
             """;
-        // The count is in the title too, which a screen reader reads first when the results load.
-        var title = words.Count == 0 ? Title : $"“{typed}” in your Breviary: {(found.Count == 0 ? "no rites" : Rites(found.Count))}";
+        // What the search found with the verdict shown, as the verdicts' links count what each would show. The count is
+        // in the title too, which a screen reader reads first when the results load.
+        var title = words.Count == 0 ? Title : $"“{typed}” in your Breviary: {(shown.Count == 0 ? "no rites" : Rites(shown.Count))}";
         return Layout.Page(title, Description, Section.Breviary, ArchiveSheet.Render(
             kicker: "Rites you have judged",
             heading: Title,
-            sub: Sub(yours.Count, words.Count == 0 ? None : Some(found.Count)),
+            sub: Sub(yours.Count, words.Count == 0 ? None : Some(shown.Count)),
             search: yours.Count == 0 ? string.Empty : Search(typed, verdict) + Verdicts(only, typed, found.Count, foundBlessed, found.Count - foundBlessed),
             body: chapters.Count > 0 ? Chapters(chapters, words, yours) : NothingShown(yours.Count, only, words.Count > 0, verdict),
             below: $"""
