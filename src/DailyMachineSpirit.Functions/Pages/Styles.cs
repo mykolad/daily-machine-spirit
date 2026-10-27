@@ -36,11 +36,12 @@ public static class Styles
         .site-header{display:flex;flex-direction:column;align-items:center;gap:14px;margin-bottom:clamp(28px,5vw,44px)}
         .brand{display:flex;align-items:center;gap:10px;font-family:Cinzel,serif;font-weight:700;font-size:16px;letter-spacing:.04em;color:#ede3cf;text-decoration:none;padding:4px 8px;border-radius:999px}
         .brand:hover{color:#ede3cf}
-        nav{display:flex;gap:4px}
+        nav{display:flex;flex-wrap:wrap;justify-content:center;gap:4px}
         nav>a{padding:10px 16px;border-radius:999px;font-family:Cinzel,serif;font-weight:700;font-size:14px;letter-spacing:.12em;color:#ede3cf;text-decoration:none}
         nav>a[aria-current=page]{background:rgba(201,162,90,.16)}
         nav>a:hover{background:rgba(201,162,90,.22);color:#ede3cf}
-        @media (max-width:419px){nav>a{padding:10px 10px;letter-spacing:.08em}}
+        @media (max-width:419px){nav{gap:0}nav>a{padding:10px 6px;letter-spacing:.04em}nav .nav-search,nav .nav-breviary{width:36px}}
+        @media (max-width:359px){nav>a{padding:10px 5px;font-size:13px}}
         main{width:100%;flex:1;display:flex;flex-direction:column;align-items:center}
         main:focus-visible{outline:none}
         .masthead{display:flex;flex-direction:column;align-items:center;gap:14px;margin-bottom:clamp(32px,5vw,52px)}
