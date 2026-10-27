@@ -68,5 +68,6 @@ public sealed class SearchIndexFunction
         rite.Kind == RiteKind.Prayer ? "prayer" : "ritual",
         rite.Title,
         rite.Text,
-        rite.HereticalTruth);
+        rite.HereticalTruth,
+        rite.Tags);
 }

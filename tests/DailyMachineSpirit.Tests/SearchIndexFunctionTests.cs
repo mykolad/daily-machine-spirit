@@ -17,10 +17,10 @@ public sealed class SearchIndexFunctionTests : IAsyncLifetime
 
     public Task DisposeAsync() => cosmos.DisposeAsync();
 
-    // What the search field matches, newest first, the words as stored (as the Archive's search reads them); kept at the
-    // edge until a new rite purges it.
+    // What the search field matches, newest first: the words as stored (as the Archive's search reads them) and the
+    // subjects a word may name. Kept at the edge until a new rite purges it.
     [Fact]
-    public async Task Index_ListsEveryRitesWords_NewestFirst()
+    public async Task Index_ListsEveryRitesWordsAndSubjects_NewestFirst()
     {
         await Add(new DateOnly(2026, 10, 8), RiteKind.Prayer, "The Litany of the Warm Cache");
         await Add(new DateOnly(2026, 10, 9), RiteKind.Ritual, "The Rite of Re-Run");
@@ -35,10 +35,10 @@ public sealed class SearchIndexFunctionTests : IAsyncLifetime
         var entries = JsonSerializer.Deserialize<SearchIndexEntry[]>(result.Content ?? "[]", new JsonSerializerOptions(JsonSerializerDefaults.Web)) ?? [];
         Assert.Equal(
             [
-                new SearchIndexEntry(2, "2026-10-09", "ritual", "The Rite of Re-Run", "Press Re-run thrice, intoning `it passed locally`.", "Your test depends on `timing`."),
-                new SearchIndexEntry(1, "2026-10-08", "prayer", "The Litany of the Warm Cache", "Press Re-run thrice, intoning `it passed locally`.", "Your test depends on `timing`."),
+                "2 2026-10-09 ritual The Rite of Re-Run | Press Re-run thrice, intoning `it passed locally`. | Your test depends on `timing`. | caches",
+                "1 2026-10-08 prayer The Litany of the Warm Cache | Press Re-run thrice, intoning `it passed locally`. | Your test depends on `timing`. | caches",
             ],
-            entries);
+            entries.Select(entry => $"{entry.Number} {entry.Day} {entry.Kind} {entry.Title} | {entry.Text} | {entry.Truth} | {string.Join(' ', entry.Tags)}"));
     }
 
     // Any query string would be its own cache entry, and its own read of every rite: one address answers for all.

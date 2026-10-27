@@ -60,7 +60,7 @@ public static class ArchiveRows
         var tags = RiteTags.Of(rite.Tags);
         var tagLinks = tags.Count == 0
             ? string.Empty
-            : $"""<span class="row-tags"><span class="sr-only">Filed under </span>{TagLinks.Render(tags)}</span>""";
+            : $"""<span class="row-tags"><span class="sr-only">Filed under </span>{TagLinks.Marked(tags, words)}</span>""";
         return $"""
             <li class="row">
             <span class="row-meta">{ImperialDate.InALink(rite.PublishedOnUtc, "row-date")}<span class="kind">{(rite.Writing.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL")}</span><span class="row-number"><span aria-hidden="true">NO. </span><span class="sr-only">Rite </span>{rite.Number}</span></span>

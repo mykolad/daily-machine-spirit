@@ -36,10 +36,10 @@ public sealed class SwitchableRites : IRiteRepository
     public Task<Either<Error, List<Rite>>> GetOlderThan(int number, int count, CancellationToken cancellationToken)
         => Counted(() => Current.GetOlderThan(number, count, cancellationToken));
 
-    public Task<Either<Error, List<Rite>>> SearchOlderThan(IReadOnlyList<string> words, Option<string> tag, int number, int count, CancellationToken cancellationToken)
+    public Task<Either<Error, List<Rite>>> SearchOlderThan(IReadOnlyList<SoughtWord> words, Option<string> tag, int number, int count, CancellationToken cancellationToken)
         => Counted(() => Current.SearchOlderThan(words, tag, number, count, cancellationToken));
 
-    public Task<Either<Error, List<FoundRite>>> FindDaysAndTags(IReadOnlyList<string> words, Option<string> tag, CancellationToken cancellationToken)
+    public Task<Either<Error, List<FoundRite>>> FindDaysAndTags(IReadOnlyList<SoughtWord> words, Option<string> tag, CancellationToken cancellationToken)
         => Counted(() => Current.FindDaysAndTags(words, tag, cancellationToken));
 
     public Task<Either<Error, List<RiteDay>>> GetDays(CancellationToken cancellationToken) => Counted(() => Current.GetDays(cancellationToken));

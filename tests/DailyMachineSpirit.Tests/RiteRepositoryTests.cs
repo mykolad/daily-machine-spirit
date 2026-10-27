@@ -227,6 +227,23 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
         Assert.Empty(found.Single(rite => rite.Number == untagged.Number).Tags);
     }
 
+    // A word naming a subject finds the rites filed under it, whether or not their words hold it; every word must still
+    // be found, in the words or a subject.
+    [Fact]
+    public async Task Search_FindsTheRitesFiledUnderASubjectAWordNames()
+    {
+        var builds = await AddOrFail(MakeRite(new DateOnly(2026, 10, 5), "The Muffled Alarm") with { Tags = Some(new[] { "testing", "builds" }) });
+        var mentions = await AddOrFail(MakeRite(new DateOnly(2026, 10, 6), "The Rite of Many Builds"));
+        await AddOrFail(MakeRite(new DateOnly(2026, 10, 7), "The Warm Cache") with { Tags = Some(new[] { "caches" }) });
+        var named = new SoughtWord("builds", ["builds"]);
+
+        var found = Ok(await Repository.SearchOlderThan([named], None, int.MaxValue, 10, CancellationToken.None));
+        var both = Ok(await Repository.FindDaysAndTags([named, "alarm"], None, CancellationToken.None));
+
+        Assert.Equal([mentions.Number, builds.Number], found.Select(rite => rite.Number));
+        Assert.Equal([builds.Number], both.Select(rite => rite.Number));
+    }
+
     // A reader's words are parameters: quotes and query syntax in them are only text to look for.
     [Fact]
     public async Task Search_TakesWordsAsTextOnly()

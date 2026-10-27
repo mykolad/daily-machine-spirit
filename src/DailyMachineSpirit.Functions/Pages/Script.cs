@@ -603,9 +603,14 @@ public static class Script
                 });
                 const index = await rites;
                 if (outdated(typed)) return;
+                // As the Archive's search: each word in the rite's words, or naming one of its subjects (RiteTags.Names).
+                // An index Cloudflare kept from before it had tags has none.
+                const named = words.map((word) => subjects
+                  .filter((subject) => subject.label.toLowerCase().split(' ').some((part) => part.startsWith(word)))
+                  .map((subject) => subject.key));
                 const found = index.filter((rite) => {
                   const words2 = `${rite.title}\n${rite.text}\n${rite.truth}`.toLowerCase();
-                  return words.every((word) => words2.includes(word));
+                  return words.every((word, at) => words2.includes(word) || named[at].some((key) => (rite.tags ?? []).includes(key)));
                 });
                 const quoted = `“${typed}”`;
                 label.textContent = found.length > 0

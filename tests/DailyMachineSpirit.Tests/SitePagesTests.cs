@@ -624,6 +624,31 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.DoesNotContain("""class="filter-chip" """, html);
     }
 
+    // A word naming a subject finds the rites filed under it, its words or not, and marks the subject it named.
+    [Fact]
+    public async Task Archive_WithAWordNamingASubject_FindsTheRitesFiledUnderIt()
+    {
+        await AddCaches();
+
+        var (_, html) = await Searched("builds", "");
+
+        Assert.Equal(["The Build Cache", "The Warm Cache"], Titles(html));
+        Assert.Contains("""<a class="tag" href="/tags/builds"><span><mark>Builds</mark></span></a>""", html);
+        Assert.Contains("""<a class="tag" href="/tags/caches">Caches</a>""", html);
+    }
+
+    // The marked part and the rest stay one run of text in the chip, so the space between the name's words stays.
+    [Fact]
+    public async Task Archive_WithAWordNamingPartOfASubject_MarksItInTheWholeName()
+    {
+        await Add(Day, "The Lost Branch");
+        await Tag(Day, "version-control");
+
+        var (_, html) = await Searched("control", "");
+
+        Assert.Contains("""<a class="tag" href="/tags/version-control"><span>Version <mark>control</mark></span></a>""", html);
+    }
+
     // Nothing found within a subject: the way out is the same words in every subject.
     [Fact]
     public async Task Archive_WithATagNoRiteMatches_OffersEverySubject()

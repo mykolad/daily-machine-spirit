@@ -231,6 +231,19 @@ public sealed class BreviaryTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Search_FindsTheRitesFiledUnderASubjectAWordNames()
+    {
+        await AddRite(1, "The Muffled Alarm", ["builds"]);
+        await AddRite(2, "The Warm Cache", ["caches"]);
+        await Vote(1, Reaction.Blessed);
+        await Vote(2, Reaction.Blessed);
+
+        var (_, html, _) = await Get(Function(), "?q=build", SignedIn());
+
+        Assert.Equal(["/r/1"], Titles(html));
+    }
+
+    [Fact]
     public async Task Search_FindingNothing_SaysSo_AndLeadsBackToTheWholeBreviary()
     {
         await AddRites(1);

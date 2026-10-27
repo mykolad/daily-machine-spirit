@@ -52,10 +52,10 @@ public sealed class RitesWithFallback : IRiteReader
     public Task<Either<Error, List<Rite>>> GetOlderThan(int number, int count, CancellationToken cancellationToken)
         => Read(source => source.GetOlderThan(number, count, cancellationToken), cancellationToken);
 
-    public Task<Either<Error, List<Rite>>> SearchOlderThan(IReadOnlyList<string> words, Option<string> tag, int number, int count, CancellationToken cancellationToken)
+    public Task<Either<Error, List<Rite>>> SearchOlderThan(IReadOnlyList<SoughtWord> words, Option<string> tag, int number, int count, CancellationToken cancellationToken)
         => Read(source => source.SearchOlderThan(words, tag, number, count, cancellationToken), cancellationToken);
 
-    public Task<Either<Error, List<FoundRite>>> FindDaysAndTags(IReadOnlyList<string> words, Option<string> tag, CancellationToken cancellationToken)
+    public Task<Either<Error, List<FoundRite>>> FindDaysAndTags(IReadOnlyList<SoughtWord> words, Option<string> tag, CancellationToken cancellationToken)
         => Read(source => source.FindDaysAndTags(words, tag, cancellationToken), cancellationToken);
 
     public Task<Either<Error, List<RiteDay>>> GetDays(CancellationToken cancellationToken)

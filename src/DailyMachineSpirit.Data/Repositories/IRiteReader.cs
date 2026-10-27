@@ -26,13 +26,14 @@ public interface IRiteReader
     Task<Either<Error, List<Rite>>> GetOlderThan(int number, int count, CancellationToken cancellationToken);
 
     /// <summary>
-    /// At most <paramref name="count"/> rites whose title, text or Heretical Truth holds every one of
-    /// <paramref name="words"/>, ignoring case, and tagged <paramref name="tag"/> if one is given, the newest first.
+    /// At most <paramref name="count"/> rites holding every one of <paramref name="words"/>, each in their title, text or
+    /// Heretical Truth, ignoring case, or by a subject it names, and tagged <paramref name="tag"/> if one is given, the
+    /// newest first.
     /// </summary>
-    Task<Either<Error, List<Rite>>> SearchOlderThan(IReadOnlyList<string> words, Option<string> tag, int number, int count, CancellationToken cancellationToken);
+    Task<Either<Error, List<Rite>>> SearchOlderThan(IReadOnlyList<SoughtWord> words, Option<string> tag, int number, int count, CancellationToken cancellationToken);
 
     /// <summary>The number, day and tags of every rite <see cref="SearchOlderThan"/> finds, however many, the newest first.</summary>
-    Task<Either<Error, List<FoundRite>>> FindDaysAndTags(IReadOnlyList<string> words, Option<string> tag, CancellationToken cancellationToken);
+    Task<Either<Error, List<FoundRite>>> FindDaysAndTags(IReadOnlyList<SoughtWord> words, Option<string> tag, CancellationToken cancellationToken);
 
     /// <summary>Every rite's number and day, the newest first.</summary>
     Task<Either<Error, List<RiteDay>>> GetDays(CancellationToken cancellationToken);

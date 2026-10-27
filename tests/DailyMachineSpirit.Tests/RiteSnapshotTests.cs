@@ -41,10 +41,12 @@ public sealed class RiteSnapshotTests : IAsyncLifetime
             Assert.Equal([2, 1], Numbers(await source.GetOlderThan(3, 5, none)));
             Assert.Equal([3, 1], Numbers(await source.SearchOlderThan(["CACHE"], None, 5, 5, none)));
             Assert.Equal([1], Numbers(await source.SearchOlderThan(["cache", "warm"], Some("caches"), 5, 5, none)));
+            Assert.Equal([1], Numbers(await source.SearchOlderThan([new SoughtWord("builds", ["builds"])], None, 5, 5, none)));
             Assert.Equal(["3:2026-10-19:caches", "1:2026-10-17:caches builds"],
                 Ok(await source.FindDaysAndTags(["cache"], None, none)).Select(found => $"{found.Number}:{found.PublishedOnUtc:yyyy-MM-dd}:{string.Join(' ', found.Tags)}"));
             Assert.Equal([4, 3, 2, 1], Ok(await source.GetDays(none)).Select(day => day.Number));
             Assert.Equal(["The Rite of 4", "The Rite of 3", "The Rite of 2", "The Litany of the Warm Cache"], Ok(await source.GetAllWords(none)).Select(words => words.Title));
+            Assert.Equal([0, 1, 0, 2], Ok(await source.GetAllWords(none)).Select(words => words.Tags.Count));
             Assert.Equal([0, 1, 0, 2], Ok(await source.GetAllUnrevealed(none)).Select(rite => rite.Tags.Count));
             Assert.Equal(Some("Truth of 2."), Ok(await source.GetHereticalTruth(2, none)));
             Assert.Equal(None, Ok(await source.GetHereticalTruth(9, none)));

@@ -29,6 +29,16 @@ public static class RiteTags
 
     public static Option<Tag> Find(string key) => All.Where(tag => tag.Key == key).HeadOrNone();
 
+    /// <summary>
+    /// The subjects a searched word names: those with a word in their name that starts with it, ignoring case ("build" and
+    /// "builds" name Builds, "control" Version control).
+    /// </summary>
+    public static List<Tag> Named(string word) => All.Where(tag => Names(tag, word)).ToList();
+
+    /// <summary>Whether a searched word names the subject (<see cref="Named"/>).</summary>
+    public static bool Names(Tag tag, string word)
+        => tag.Label.Split(' ').Any(part => part.StartsWith(word, StringComparison.OrdinalIgnoreCase));
+
     /// <summary>A rite's or draft's tags, in the order its judge gave them; keys no longer in the vocabulary are left out.</summary>
     public static List<Tag> Of(Option<string[]> keys)
         => keys.IfNone([]).Select(Find).Somes().ToList();
