@@ -58,6 +58,14 @@ public class VoteRepository : IVoteRepository
             return found.ToDictionary(document => document.RiteNumber, document => document.Reaction);
         });
 
+    public Task<Either<Error, Dictionary<int, Reaction>>> GetAllVotes(string voterKey, CancellationToken cancellationToken)
+        => Attempt(async () => (await container.Query<VoteDocument>(
+                new QueryDefinition("SELECT * FROM c WHERE c.type = @type AND c.voterKey = @voterKey")
+                    .WithParameter("@type", VoteDocument.VoteType)
+                    .WithParameter("@voterKey", voterKey),
+                cancellationToken))
+            .ToDictionary(document => document.RiteNumber, document => document.Reaction));
+
     // The vote is read before the rite: a vote saved by the reader's other tab before this read is then already in the
     // counts read after it, so an unchanged vote never comes back with counts that leave it out.
     private async Task<Either<Error, Option<SavedVote>>> VoteOnce(

@@ -52,6 +52,11 @@ public sealed class SignInFunctionTests : IDisposable
         var voter = SetCookie(request, VoterSession.CookieName);
         Assert.Equal(Some(Session().VoterKeyFor("github", AccountId)), Session().Read(voter.Value));
         Assert.Contains("httponly", voter.Attributes);
+        // For the script, which shows the nav's link to the Breviary: only that, and readable.
+        var signedIn = SetCookie(request, SignInFunction.SignedInCookieName);
+        Assert.Equal("1", signedIn.Value);
+        Assert.DoesNotContain("httponly", signedIn.Attributes);
+        Assert.Contains("secure", signedIn.Attributes);
         Assert.Equal(string.Empty, SetCookie(request, SignInFunction.StateCookieName).Value);
         Assert.Equal(["provider=github outcome=signed-in"], MetricsProbe.Tags(signIns, "provider", "outcome"));
     }
@@ -208,6 +213,44 @@ public sealed class SignInFunctionTests : IDisposable
 
         Assert.Equal("/r/12", Assert.IsType<RedirectResult>(result).Url);
         Assert.Equal(string.Empty, SetCookie(request, VoterSession.CookieName).Value);
+        Assert.Equal(string.Empty, SetCookie(request, SignInFunction.SignedInCookieName).Value);
+    }
+
+    // A reader signed in before the script's cookie existed gets it; one whose sign-in ran out loses it.
+    [Theory]
+    [InlineData(true, false, "1")]
+    [InlineData(false, true, "")]
+    public void Me_SetsTheScriptsCookieRight(bool signedIn, bool hinted, string expected)
+    {
+        var cookies = new List<string>();
+        if (signedIn)
+        {
+            cookies.Add($"{VoterSession.CookieName}={Session().Issue(Session().VoterKeyFor("github", AccountId))}");
+        }
+        if (hinted)
+        {
+            cookies.Add($"{SignInFunction.SignedInCookieName}=1");
+        }
+        var request = Get("/api/me", string.Empty, string.Join("; ", cookies));
+
+        Function().Me(request);
+
+        Assert.Equal(expected, SetCookie(request, SignInFunction.SignedInCookieName).Value);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Me_LeavesTheScriptsCookieAlone_WhenItsRight(bool signedIn)
+    {
+        var cookie = signedIn
+            ? $"{VoterSession.CookieName}={Session().Issue(Session().VoterKeyFor("github", AccountId))}; {SignInFunction.SignedInCookieName}=1"
+            : string.Empty;
+        var request = Get("/api/me", string.Empty, cookie);
+
+        Function().Me(request);
+
+        Assert.False(HasSetCookie(request, SignInFunction.SignedInCookieName));
     }
 
     [Theory]

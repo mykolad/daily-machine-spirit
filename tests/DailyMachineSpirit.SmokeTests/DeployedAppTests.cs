@@ -93,6 +93,11 @@ public sealed partial class DeployedAppTests
         }
     }
 
+    // A reader's own page: signed out, the smoke tests are asked to sign in.
+    [Fact]
+    public async Task TheBreviary_Answers()
+        => AssertAnswers(await app.Get("/breviary"), HttpStatusCode.OK, $"<title>Your Breviary · {SiteName}</title>");
+
     // Search was a page of its own: links to it lead to the Archive's search (the client follows the redirect).
     [Fact]
     public async Task TheOldSearchAddress_LeadsToTheArchivesSearch()

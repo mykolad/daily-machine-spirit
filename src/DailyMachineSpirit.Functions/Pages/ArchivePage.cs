@@ -46,7 +46,7 @@ public static class ArchivePage
                 heading: "The Archive",
                 sub: sub,
                 search: ArchiveSheet.Search(string.Empty, None),
-                body: ArchiveRows.Months(rites, []),
+                body: ArchiveRows.Months(rites, [], ArchiveRows.NoVotes),
                 below: ArchiveRows.More(olderThan.Map(Paths.ArchiveBefore), "Load older rites", "The archive ends here. Earlier knowledge is lost.", ArchiveSheet.Closing(days.Count)),
                 left: left,
                 right: right)}
@@ -79,7 +79,7 @@ public static class ArchivePage
                 {elsewhere}
                 </div>
                 """
-            : ArchiveRows.Months(results.Shown, words);
+            : ArchiveRows.Months(results.Shown, words, ArchiveRows.NoVotes);
         var below = found == 0
             ? string.Empty
             : ArchiveRows.More(results.OlderThan.Map(number => Paths.ArchiveSearchBefore(typed, tagKey, number)), "More results", "No more rites mention it.", string.Empty);

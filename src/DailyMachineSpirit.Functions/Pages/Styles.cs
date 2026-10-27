@@ -36,11 +36,10 @@ public static class Styles
         .site-header{display:flex;flex-direction:column;align-items:center;gap:14px;margin-bottom:clamp(28px,5vw,44px)}
         .brand{display:flex;align-items:center;gap:10px;font-family:Cinzel,serif;font-weight:700;font-size:16px;letter-spacing:.04em;color:#ede3cf;text-decoration:none;padding:4px 8px;border-radius:999px}
         .brand:hover{color:#ede3cf}
-        nav{display:flex;gap:4px}
-        nav>a{padding:10px 16px;border-radius:999px;font-family:Cinzel,serif;font-weight:700;font-size:14px;letter-spacing:.12em;color:#ede3cf;text-decoration:none}
-        nav>a[aria-current=page]{background:rgba(201,162,90,.16)}
-        nav>a:hover{background:rgba(201,162,90,.22);color:#ede3cf}
-        @media (max-width:419px){nav>a{padding:10px 10px;letter-spacing:.08em}}
+        .site-header nav{display:flex;flex-wrap:wrap;justify-content:center;gap:4px}
+        .site-header nav>a{display:flex;align-items:center;min-height:44px;padding:2px 16px 0;border-radius:999px;font-family:Cinzel,serif;font-weight:700;font-size:14px;letter-spacing:.12em;color:#ede3cf;text-decoration:none}
+        .site-header nav>a[aria-current=page]{background:rgba(201,162,90,.16)}
+        .site-header nav>a:hover{background:rgba(201,162,90,.22);color:#ede3cf}
         main{width:100%;flex:1;display:flex;flex-direction:column;align-items:center}
         main:focus-visible{outline:none}
         .masthead{display:flex;flex-direction:column;align-items:center;gap:14px;margin-bottom:clamp(32px,5vw,52px)}
@@ -215,6 +214,14 @@ public static class Styles
         .row-counts{display:flex;gap:16px;margin-top:4px;font-weight:600;font-size:13px;color:#5c4a33}
         .row-counts span{display:inline-flex;align-items:center;gap:6px}
         .row-counts svg{width:16px;height:16px}
+        .row-yours{display:inline-flex;align-items:center;gap:6px;width:fit-content;margin-top:6px;padding:2px 10px;border-radius:999px;background:#8f2a20;color:#f6eedb;font-weight:600;font-size:13px}
+        .row-yours svg{width:14px;height:14px}
+        .verdicts{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:24px 0 8px}
+        .verdict{display:inline-flex;align-items:center;min-height:44px;padding:8px 18px;border:1px solid #8f2a20;border-radius:999px;font-weight:600;font-size:15px;color:#8f2a20;text-decoration:none}
+        .verdict:hover{background:#e0d0a8;color:#8f2a20}
+        .verdict[aria-current=page]{background:#8f2a20;color:#f6eedb}
+        .voted-account{display:flex;justify-content:center;gap:6px;padding-top:24px;color:#b6a98f;font-size:15px}
+        .voted-account form{display:inline}
         .row-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
         .row-tags .tag{position:relative;z-index:1;min-height:28px;padding:2px 12px;border-color:rgba(143,42,32,.45);color:#8f2a20;font-size:13px}
         .row-tags .tag:hover{background:#d8c59a;color:#8f2a20}
@@ -237,7 +244,10 @@ public static class Styles
         .tag:hover{background:rgba(201,162,90,.12);color:#f0d59a}
         .other-subjects{width:100%;margin-top:56px;display:flex;flex-direction:column;align-items:center;gap:12px}
         .other-subjects h2{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:22px}
-        nav .nav-search{display:grid;place-items:center;width:44px;height:44px;padding:0;color:#d9b874}
+        .site-header nav>.nav-search,.site-header nav>.nav-breviary{display:grid;place-items:center;width:44px;height:44px;padding:0;color:#d9b874}
+        .site-header nav>.nav-breviary[hidden]{display:none}
+        @media (max-width:419px){.site-header nav{gap:0}.site-header nav>a{padding:2px 6px 0;letter-spacing:.04em}.site-header nav>.nav-search,.site-header nav>.nav-breviary{width:36px}}
+        @media (max-width:359px){.site-header nav>a{padding:2px 5px 0;font-size:13px}}
         .nav-find{position:relative;display:flex;align-items:center;width:44px;height:44px;border:1px solid transparent;border-radius:999px;transition:width 250ms ease}
         .nav-find.open{width:320px;border-color:#84662c}
         .nav-find:has(.nav-find-field:focus-visible){outline:2px solid #f0b45a;outline-offset:4px}
@@ -358,7 +368,7 @@ public static class Styles
         .marginalia .tags{justify-content:flex-end;margin:0}
         .tags .margin-label{flex-basis:100%;margin-bottom:0}
         .hero>.sheet{grid-column:2;grid-row:1}
-        .hero>.archive-more{grid-column:2;grid-row:2}
+        .hero>.archive-more,.hero>.voted-account{grid-column:2;grid-row:2}
         .hero:has(.archive-seal)>.sheet{align-self:stretch}
         .archive-hero .marginalia{display:flex}
         .margins{grid-column:1/-1;grid-row:1;align-self:start;position:sticky;top:var(--margins-top,32px);display:grid;grid-template-columns:subgrid;margin-top:80px;pointer-events:none}

@@ -6,5 +6,6 @@ public enum Section
     Today,
     Archive,
     About,
+    Breviary,
     Other,
 }

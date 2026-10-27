@@ -15,4 +15,7 @@ public interface IVoteRepository
 
     /// <summary>The reader's votes among these rites, by rite number; a rite they haven't voted on isn't in it.</summary>
     Task<Either<Error, Dictionary<int, Reaction>>> GetVotes(string voterKey, IReadOnlyCollection<int> riteNumbers, CancellationToken cancellationToken);
+
+    /// <summary>Every vote the reader has, by rite number.</summary>
+    Task<Either<Error, Dictionary<int, Reaction>>> GetAllVotes(string voterKey, CancellationToken cancellationToken);
 }

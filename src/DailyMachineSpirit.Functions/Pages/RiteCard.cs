@@ -86,7 +86,7 @@ public static class RiteCard
             <button type="button" class="button reaction reaction-heresy" data-reaction="heresy" aria-pressed="false">{Svg.SkullIcon}<span>Heresy</span><span class="count">{Html.Count(rite.HeresyCount)}</span></button>
             </div>
             <div class="vote-status" data-signed-in="false" hidden><a href="{Html.Encode(Paths.SignIn(here))}">Sign in with GitHub</a> to vote<span class="vote-privacy">Only a one-way key made from your account's id is kept: never your name, email or GitHub token.</span></div>
-            <div class="vote-status" data-signed-in="true" hidden>Voting with your GitHub account · <form method="post" action="{Html.Encode(Paths.SignOutFrom(here))}"><button type="submit" class="text-button">Sign out</button></form></div>
+            <div class="vote-status" data-signed-in="true" hidden>Voting with your GitHub account · <a href="{Paths.Breviary}">Your Breviary</a> · <form method="post" action="{Html.Encode(Paths.SignOutFrom(here))}"><button type="submit" class="text-button">Sign out</button></form></div>
             </div>
             <div class="sharing">
             <button type="button" class="button button-ghost" data-copy="link" data-url="{url}">{Svg.LinkIcon}Share link</button>
