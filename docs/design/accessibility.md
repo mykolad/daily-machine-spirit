@@ -295,8 +295,10 @@ and candles behind it, and the recent rites under Today.
 - **Each row's verdict says it in words** ("You blessed it", "You called it heresy"), so its colour only helps the eye:
   gold for Blessed, dark text on `#b8862b` (5.5:1), red for heresy, parchment on `#8f2a20` (7.2:1).
 - **Each chapter is a section under its own heading** (`h2`), so a screen reader can move between chapters as a
-  sighted reader scans the rubrics. The index of chapters, in the right margin on a wide screen, is links to those
-  headings, each count said as "2 rites".
+  sighted reader scans the rubrics. A chapter's link to the rest, "All 12 in Builds", names its chapter, the arrow
+  after it hidden. The index of chapters, in the right margin on a wide screen, links to each chapter whole, each count
+  said as "2 rites", the one shown `aria-current="page"` and underlined, not told by its colour alone. Shown whole, the
+  chapter is named by a chip ("Show every chapter, not only Builds"), not by a rubric saying it again.
 - **The search field is the Archive's:** named "Search your Breviary", a plain form without the script, and the count
   found in the page's title and the line under the heading, announced as the results swap in. Its `search` landmark
   is named "Your Breviary" and the nav's "All rites", so a screen reader moving by landmarks tells the two apart.
