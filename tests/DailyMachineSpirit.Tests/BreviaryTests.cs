@@ -117,6 +117,8 @@ public sealed class BreviaryTests : IAsyncLifetime
         Assert.Equal(["/r/2", "/r/1"], Titles(html));
         Assert.Contains("<title>“ledger” in your Breviary: 2 rites", html);
         Assert.Contains("2 of your rites mention it.", html);
+        // Told apart from the nav's search, which looks through every rite.
+        Assert.Contains("""<form class="sheet-search" role="search" aria-label="Your Breviary" """, html);
         Assert.Contains("""<a class="verdict" href="/breviary?verdict=blessed&amp;q=ledger">Blessed 1</a>""", html);
         Assert.Contains("""<a class="sheet-clear" href="/breviary" aria-label="Clear search">""", html);
         NeverCached(headers);

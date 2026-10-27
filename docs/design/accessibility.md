@@ -298,7 +298,8 @@ and candles behind it, and the recent rites under Today.
   sighted reader scans the rubrics. The index of chapters, in the right margin on a wide screen, is links to those
   headings, each count said as "2 rites".
 - **The search field is the Archive's:** named "Search your Breviary", a plain form without the script, and the count
-  found in the page's title and the line under the heading, announced as the results swap in.
+  found in the page's title and the line under the heading, announced as the results swap in. Its `search` landmark
+  is named "Your Breviary" and the nav's "All rites", so a screen reader moving by landmarks tells the two apart.
 - **The verdict filters are links** in a `nav` named "Show", the current one `aria-current="page"`: each is a page of
   its own, so they work without the script.
 - **The toast after a vote links to the Breviary,** for six seconds and as long as the pointer or focus is on it. Its

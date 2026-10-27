@@ -91,7 +91,7 @@ public static class BreviaryPage
     // does the same). The verdict shown comes along, and clearing the words keeps it.
     private static string Search(string typed, Option<string> verdict)
         => $"""
-            <form class="sheet-search" role="search" action="{Paths.Breviary}" method="get">
+            <form class="sheet-search" role="search" aria-label="Your Breviary" action="{Paths.Breviary}" method="get">
             {Svg.SearchIcon}
             {verdict.Map(key => $"""<input type="hidden" name="verdict" value="{key}">""").IfNone(string.Empty)}
             <input type="search" id="breviary-search" name="q" value="{Html.Encode(typed)}" aria-label="Search your Breviary" placeholder="Search your Breviary" maxlength="{SearchWords.MaxLength}" autocomplete="off" spellcheck="false">
