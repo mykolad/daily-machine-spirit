@@ -98,7 +98,78 @@ public sealed class BreviaryTests : IAsyncLifetime
 
         Assert.Equal(["chapter-builds", "chapter-caches", "chapter-unfiled"], Chapters(html));
         Assert.Equal(["/r/2", "/r/4", "/r/1", "/r/3"], Titles(html));
-        Assert.Contains("""<a href="#chapter-caches"><span>Caches</span><span class="chapter-count">2<span class="sr-only"> rites</span></span></a>""", html);
+        Assert.Contains("""<a href="/breviary?chapter=caches"><span>Caches</span><span class="chapter-count">2<span class="sr-only"> rites</span></span></a>""", html);
+    }
+
+    [Fact]
+    public async Task EachChapter_ShowsItsThreeNewest_AndLeadsToTheRest_KeepingTheVerdictAndWords()
+    {
+        for (var number = 1; number <= 5; number++)
+        {
+            await AddRite(number, $"The Ledger {number}", ["builds"]);
+            await Vote(number, Reaction.Blessed);
+        }
+        await AddRite(6, "The Cached Ledger", ["caches"]);
+        await Vote(6, Reaction.Blessed);
+
+        var (_, html, _) = await Get(Function(), "?verdict=blessed&q=ledger", SignedIn());
+
+        Assert.Equal(["/r/5", "/r/4", "/r/3", "/r/6"], Titles(html));
+        Assert.Contains("""<p class="chapter-more"><a href="/breviary?verdict=blessed&amp;chapter=builds&amp;q=ledger">All 5 in Builds<span aria-hidden="true"> →</span></a></p>""", html);
+        // Caches shows its one rite, with nothing more to lead to.
+        Assert.Single(Regex.Matches(html, "class=\"chapter-more\""));
+    }
+
+    [Fact]
+    public async Task OneChapter_ShowsEveryRiteInIt_UnderItsChip_AndTheIndexSaysWhichItIs()
+    {
+        for (var number = 1; number <= 4; number++)
+        {
+            await AddRite(number, $"The Ledger {number}", ["builds"]);
+            await Vote(number, number == 2 ? Reaction.Heresy : Reaction.Blessed);
+        }
+        await AddRite(5, "The Cached Ledger", ["caches"]);
+        await Vote(5, Reaction.Blessed);
+
+        var (status, html, headers) = await Get(Function(), "?chapter=builds", SignedIn());
+
+        Assert.Equal(StatusCodes.Status200OK, status);
+        Assert.Equal(["/r/4", "/r/3", "/r/2", "/r/1"], Titles(html));
+        // The chip names the chapter, so no rubric says it again.
+        Assert.Empty(Chapters(html));
+        Assert.Contains("<title>Builds in your Breviary ·", html);
+        Assert.Contains("4 rites you voted on, newest first.", html);
+        Assert.Contains("""<input type="hidden" name="chapter" value="builds">""", html);
+        Assert.Contains("""<a class="filter-chip" href="/breviary" aria-label="Show every chapter, not only Builds">""", html);
+        Assert.Contains("""<a class="verdict" href="/breviary?verdict=heresy&amp;chapter=builds">Heresy 1</a>""", html);
+        Assert.Contains("""<a href="/breviary?chapter=builds" aria-current="page"><span>Builds</span>""", html);
+        Assert.Contains("""<a href="/breviary?chapter=caches"><span>Caches</span>""", html);
+        NeverCached(headers);
+    }
+
+    [Fact]
+    public async Task AChapterNoSubjectHas_ShowsEveryChapter()
+    {
+        await AddRite(1, "The Ledger", ["builds"]);
+        await Vote(1, Reaction.Blessed);
+
+        var (_, html, _) = await Get(Function(), "?chapter=no-such-subject", SignedIn());
+
+        Assert.Equal(["chapter-builds"], Chapters(html));
+        Assert.DoesNotContain("class=\"filter-chip\"", html);
+    }
+
+    [Fact]
+    public async Task OneChapter_WithoutTheVerdictShown_SaysSo_AndLeadsBackToTheWholeBreviary()
+    {
+        await AddRite(1, "The Ledger", ["builds"]);
+        await Vote(1, Reaction.Blessed);
+
+        var (_, html, _) = await Get(Function(), "?verdict=heresy&chapter=builds", SignedIn());
+
+        Assert.Empty(Titles(html));
+        Assert.Contains("You haven’t called a rite heresy in Builds yet.", html);
+        Assert.Contains("""<a class="sheet-button" href="/breviary?verdict=heresy">Show your whole Breviary</a>""", html);
     }
 
     [Fact]

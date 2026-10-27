@@ -197,6 +197,8 @@ public static class Styles
         .month-rubric::before,.month-rubric::after,.chapter-rubric::before,.chapter-rubric::after{content:'';flex:1;height:1px;background:rgba(143,42,32,.3)}
         .month-rubric>span::before,.month-rubric>span::after,.chapter-rubric>span::before,.chapter-rubric>span::after{content:'';display:inline-block;width:5px;height:5px;margin:0 12px;background:#8f2a20;transform:rotate(45deg);vertical-align:middle}
         .rows{list-style:none;margin:0;padding:0}
+        .chapter-more{display:flex;justify-content:flex-end;margin:0}
+        .chapter-more a{display:inline-flex;align-items:center;min-height:44px;padding:0 6px;font-weight:600;color:#8f2a20;text-underline-offset:3px}
         .row{position:relative;display:flex;flex-direction:column;gap:2px;padding:12px 6px;border-radius:8px}
         .row:hover{background:#e0d0a8}
         .sheet .row:has(.row-title:focus-visible){outline:2px solid #8f2a20;outline-offset:2px}
@@ -395,6 +397,7 @@ public static class Styles
         .month-index ul,.chapter-index ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
         .month-index a,.chapter-index a{display:flex;justify-content:space-between;gap:12px;font-family:'EB Garamond',serif;font-size:20px;color:#ede3cf;text-decoration:none}
         .month-index a:hover,.chapter-index a:hover{color:#f0d59a}
+        .chapter-index a[aria-current]{color:#f0d59a;text-decoration:underline;text-underline-offset:5px}
         .month-count,.chapter-count{padding-top:4px;font-family:'JetBrains Mono',monospace;font-weight:500;font-size:14px;color:#b6a98f}
         .other-subjects h2{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:#c9a25a}
         .other-subjects .tags{justify-content:flex-start;margin:0}
