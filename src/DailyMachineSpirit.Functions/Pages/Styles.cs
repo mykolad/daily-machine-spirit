@@ -193,9 +193,9 @@ public static class Styles
         .sheet-filter{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px;margin:0 0 8px;font-size:15px;color:#5c4a33}
         .filter-chip{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:2px 8px 2px 14px;border:1px solid #8f2a20;border-radius:999px;font-weight:600;color:#8f2a20;text-decoration:none}
         .filter-chip:hover{background:#e0d0a8;color:#8f2a20}
-        .month-rubric{display:flex;align-items:center;gap:16px;margin:24px 0 4px;font-family:Cinzel,serif;font-weight:700;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:#8f2a20}
-        .month-rubric::before,.month-rubric::after{content:'';flex:1;height:1px;background:rgba(143,42,32,.3)}
-        .month-rubric>span::before,.month-rubric>span::after{content:'';display:inline-block;width:5px;height:5px;margin:0 12px;background:#8f2a20;transform:rotate(45deg);vertical-align:middle}
+        .month-rubric,.chapter-rubric{display:flex;align-items:center;gap:16px;margin:24px 0 4px;font-family:Cinzel,serif;font-weight:700;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:#8f2a20}
+        .month-rubric::before,.month-rubric::after,.chapter-rubric::before,.chapter-rubric::after{content:'';flex:1;height:1px;background:rgba(143,42,32,.3)}
+        .month-rubric>span::before,.month-rubric>span::after,.chapter-rubric>span::before,.chapter-rubric>span::after{content:'';display:inline-block;width:5px;height:5px;margin:0 12px;background:#8f2a20;transform:rotate(45deg);vertical-align:middle}
         .rows{list-style:none;margin:0;padding:0}
         .row{position:relative;display:flex;flex-direction:column;gap:2px;padding:12px 6px;border-radius:8px}
         .row:hover{background:#e0d0a8}
@@ -234,7 +234,7 @@ public static class Styles
         .sheet-none p{margin:0;font-family:'EB Garamond',serif;font-size:19px;line-height:1.5}
         .sheet-button{display:inline-flex;align-items:center;min-height:44px;padding:8px 20px;border:1px solid #8f2a20;border-radius:999px;font-weight:600;font-size:15px;color:#8f2a20;text-decoration:none}
         .sheet-button:hover{background:#e0d0a8;color:#8f2a20}
-        .archive-hero .marginalia,.month-index{display:none}
+        .archive-hero .marginalia,.month-index,.chapter-index{display:none}
         .side{display:contents}
         .archive-loading{width:100%;display:flex;flex-direction:column;gap:12px;margin-top:12px}
         .skeleton-row{height:118px;border-radius:20px;background:#1a1612}
@@ -346,7 +346,7 @@ public static class Styles
         .sheet-title{font-size:34px}
         .sheet-sub{font-size:16px}
         .sheet-search{height:40px}
-        .month-rubric{font-size:12px}
+        .month-rubric,.chapter-rubric{font-size:12px}
         .row{display:grid;grid-template-columns:112px minmax(0,1fr);gap:20px;padding:14px 8px}
         .row-meta{flex-direction:column;gap:4px;padding-top:3px}
         .row-date{font-size:14px}
@@ -380,7 +380,7 @@ public static class Styles
         .side-left{grid-column:1}
         .side-right{grid-column:3}
         .side-notes{display:flex;flex-direction:column;gap:56px}
-        .side-notes>.marginalia,.side-notes>.month-index,.side-notes>.other-subjects{margin-top:0}
+        .side-notes>.marginalia,.side-notes>.month-index,.side-notes>.chapter-index,.side-notes>.other-subjects{margin-top:0}
         .side>.altar{grid-column:1;grid-row:2;margin-top:56px}
         .hero>.altar-left,.side-left>.altar{justify-self:end;margin-right:22px}
         .hero>.altar-right,.side-right>.altar{justify-self:start;margin-left:22px}
@@ -390,12 +390,12 @@ public static class Styles
         .margin-since{margin:0;font-family:'EB Garamond',serif;font-style:italic;font-size:20px;color:#cdbd9e}
         .margin-sought{margin:0;font-family:'EB Garamond',serif;font-style:italic;font-size:22px;color:#ede3cf;overflow-wrap:anywhere}
         .margin-clear{font-weight:600;text-decoration:none}
-        .month-index,.other-subjects{grid-column:3;grid-row:1;align-self:start;display:flex;flex-direction:column;align-items:stretch;gap:12px;width:auto;margin-top:80px;padding-left:28px;border-left:1px solid #2f2820;text-align:left}
-        .month-index .margin-label{margin:0}
-        .month-index ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
-        .month-index a{display:flex;justify-content:space-between;gap:12px;font-family:'EB Garamond',serif;font-size:20px;color:#ede3cf;text-decoration:none}
-        .month-index a:hover{color:#f0d59a}
-        .month-count{padding-top:4px;font-family:'JetBrains Mono',monospace;font-weight:500;font-size:14px;color:#b6a98f}
+        .month-index,.chapter-index,.other-subjects{grid-column:3;grid-row:1;align-self:start;display:flex;flex-direction:column;align-items:stretch;gap:12px;width:auto;margin-top:80px;padding-left:28px;border-left:1px solid #2f2820;text-align:left}
+        .month-index .margin-label,.chapter-index .margin-label{margin:0}
+        .month-index ul,.chapter-index ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+        .month-index a,.chapter-index a{display:flex;justify-content:space-between;gap:12px;font-family:'EB Garamond',serif;font-size:20px;color:#ede3cf;text-decoration:none}
+        .month-index a:hover,.chapter-index a:hover{color:#f0d59a}
+        .month-count,.chapter-count{padding-top:4px;font-family:'JetBrains Mono',monospace;font-weight:500;font-size:14px;color:#b6a98f}
         .other-subjects h2{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:#c9a25a}
         .other-subjects .tags{justify-content:flex-start;margin:0}
         .question-index{display:flex;flex-direction:column;gap:14px;padding-right:28px;border-right:1px solid #2f2820;text-align:right}

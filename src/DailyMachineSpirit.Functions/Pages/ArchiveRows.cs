@@ -48,9 +48,13 @@ public static class ArchiveRows
             Some: href => $"""<a class="button button-outline" href="{Html.Encode(href)}">{moreLabel}</a>""",
             None: () => $"""{closing}<p class="archive-end">{end}</p>""")}</div>""";
 
-    // The title is the row's link, stretched over the whole row, so the tags can be links of their own: a link can't
-    // hold another. It comes first among the row's links, where the script moves focus.
-    private static string Row(Rite rite, IReadOnlyList<string> words, IReadOnlyDictionary<int, Reaction> yours)
+    /// <summary>
+    /// One rite's row. The title is the row's link, stretched over the whole row, so the tags can be links of their own: a
+    /// link can't hold another. It comes first among the row's links, where the script moves focus.
+    /// </summary>
+    /// <param name="words">What a search looks for, marked wherever it's found, or none.</param>
+    /// <param name="yours">The reader's own votes, marked on their rows.</param>
+    public static string Row(Rite rite, IReadOnlyList<string> words, IReadOnlyDictionary<int, Reaction> yours)
     {
         var line = words.Count == 0 ? RowLine.Opening(rite) : RowLine.For(rite, words);
         var tags = RiteTags.Of(rite.Tags);
