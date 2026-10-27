@@ -292,6 +292,8 @@ and candles behind it, and the recent rites under Today.
   as a book alone doesn't say whose), and `aria-current` on its page. It's 44 by 44 pixels, as search is; below 420px
   both are 36 wide (past AA's 24), so the nav still fits one line at 320px. Narrower still, the nav wraps rather than
   push a link off the screen.
+- **Each row's verdict says it in words** ("You blessed it", "You called it heresy"), so its colour only helps the eye:
+  gold for Blessed, dark text on `#b8862b` (5.5:1), red for heresy, parchment on `#8f2a20` (7.2:1).
 - **The verdict filters are links** in a `nav` named "Show", the current one `aria-current="page"`: each is a page of
   its own, so they work without the script.
 - **The toast after a vote links to the Breviary,** for six seconds and as long as the pointer or focus is on it. Its

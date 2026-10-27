@@ -60,21 +60,35 @@ public static class ArchiveRows
         return $"""
             <li class="row">
             <span class="row-meta">{ImperialDate.InALink(rite.PublishedOnUtc, "row-date")}<span class="kind">{(rite.Writing.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL")}</span><span class="row-number"><span aria-hidden="true">NO. </span><span class="sr-only">Rite </span>{rite.Number}</span></span>
-            <span class="row-main"><a class="row-title" href="{Paths.Rite(rite.Number)}" title="{ImperialDate.Day(rite.PublishedOnUtc)}">{Highlight.Of(rite.Writing.Title, words)}</a><span class="row-line">{Highlight.Of(line, words)}</span>{Yours(rite, yours)}{Counts(rite)}{tagLinks}</span>
+            <span class="row-main"><a class="row-title" href="{Paths.Rite(rite.Number)}" title="{ImperialDate.Day(rite.PublishedOnUtc)}">{Highlight.Of(rite.Writing.Title, words)}</a><span class="row-line">{Highlight.Of(line, words)}</span>{RowVotes(rite, yours)}{tagLinks}</span>
             </li>
             """;
     }
 
-    private static string Yours(Rite rite, IReadOnlyDictionary<int, Reaction> yours)
-        => yours.TryGetValue(rite.Number, out var reaction)
-            ? $"""<span class="row-yours">{(reaction == Reaction.Blessed ? $"{Svg.SmallFlameIcon}You blessed it" : $"{Svg.SmallSkullIcon}You called it heresy")}</span>"""
-            : string.Empty;
+    // The reader's own verdict counts the others who gave it ("You and 2 others blessed it"), so beside it only the
+    // other verdict's count is left: no vote is said twice.
+    private static string RowVotes(Rite rite, IReadOnlyDictionary<int, Reaction> yours)
+    {
+        var blessed = rite.BlessedCount > 0 ? $"<span>{Svg.SmallFlameIcon}Blessed {Html.Count(rite.BlessedCount)}</span>" : string.Empty;
+        var heresies = rite.HeresyCount > 0 ? $"<span>{Svg.SmallSkullIcon}Heresy {Html.Count(rite.HeresyCount)}</span>" : string.Empty;
+        if (!yours.TryGetValue(rite.Number, out var reaction))
+        {
+            return Counts(blessed + heresies);
+        }
+
+        return reaction == Reaction.Blessed
+            ? $"""<span class="row-yours"><span class="row-verdict row-verdict-blessed">{Svg.SmallFlameIcon}{YouAnd(rite.BlessedCount)} blessed it</span>{Counts(heresies)}</span>"""
+            : $"""<span class="row-yours"><span class="row-verdict row-verdict-heresy">{Svg.SmallSkullIcon}{YouAnd(rite.HeresyCount)} called it heresy</span>{Counts(blessed)}</span>""";
+    }
 
     // Each count only when there is one, and no line at all for a rite nobody has voted on.
-    private static string Counts(Rite rite)
+    private static string Counts(string counts) => counts.Length == 0 ? string.Empty : $"""<span class="row-counts">{counts}</span>""";
+
+    // The count holds the reader's own vote too.
+    private static string YouAnd(int votes) => (votes - 1) switch
     {
-        var counts = (rite.BlessedCount > 0 ? $"<span>{Svg.SmallFlameIcon}Blessed {Html.Count(rite.BlessedCount)}</span>" : string.Empty)
-            + (rite.HeresyCount > 0 ? $"<span>{Svg.SmallSkullIcon}Heresy {Html.Count(rite.HeresyCount)}</span>" : string.Empty);
-        return counts.Length == 0 ? string.Empty : $"""<span class="row-counts">{counts}</span>""";
-    }
+        <= 0 => "You",
+        1 => "You and 1 other",
+        var others => $"You and {Html.Count(others)} others",
+    };
 }
