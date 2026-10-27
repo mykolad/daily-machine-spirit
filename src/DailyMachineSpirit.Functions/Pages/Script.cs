@@ -572,9 +572,11 @@ public static class Script
               drop.hidden = !shown;
               input.setAttribute('aria-expanded', String(shown));
             };
-            // Closed, or typed on, while the rites were loading: the next suggestions are on their way, or none are wanted.
-            const outdated = (typed) => !box.classList.contains('open') || input.value.trim() !== typed;
+            // Closed, typed on, or turned to the page's own search while the rites were loading: the next suggestions are on
+            // their way, or none are wanted.
+            const outdated = (typed) => !box.classList.contains('open') || input.value.trim() !== typed || scoped();
             const suggest = async () => {
+              if (scoped()) return;
               const typed = input.value.trim();
               const words = wordsOf(typed);
               if (words.length === 0) {
@@ -726,6 +728,7 @@ public static class Script
                 nameTheField();
                 const typed = input.value.trim();
                 if (scoped()) {
+                  clearTimeout(typing);
                   fill([], []);
                   choose(-1);
                   showDrop(false);
