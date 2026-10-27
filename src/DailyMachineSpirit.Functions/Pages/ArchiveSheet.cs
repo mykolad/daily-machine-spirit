@@ -52,14 +52,7 @@ public static class ArchiveSheet
             </div>
             </div>
             {below}
-            <div class="side side-left">
-            {left}
-            {Svg.AltarCandleLeft}
-            </div>
-            <div class="side side-right">
-            {right}
-            {Svg.AltarCandleRight}
-            </div>
+            {Margins(left, right)}
             {Svg.Traces}
             </div>
             """;
@@ -78,6 +71,27 @@ public static class ArchiveSheet
             {(typed.Length == 0 ? string.Empty : $"""<a class="sheet-clear" href="{Paths.Archive}" aria-label="Clear search">{Svg.ClearIcon}</a>""")}
             </form>
             {tag.Map(filter => $"""<p class="sheet-filter">Filed under <a class="filter-chip" href="{Html.Encode(Paths.ArchiveSearch(typed))}" aria-label="Remove filter: {Html.Encode(filter.Label)}">{Html.Encode(filter.Label)}{Svg.ClearIcon}</a></p>""").IfNone(string.Empty)}
+            """;
+
+    /// <summary>
+    /// What stands beside the sheet on a wide screen: each margin's notes over its candle. The two margins are one block,
+    /// so the candles stand level under the taller notes, and it follows the reader down the sheet (the page's script
+    /// keeps its foot in view when it's taller than the window).
+    /// </summary>
+    /// <param name="left">The left margin's notes, or empty.</param>
+    /// <param name="right">The right margin's notes, or empty.</param>
+    public static string Margins(string left, string right)
+        => $"""
+            <div class="margins">
+            <div class="side side-left">
+            <div class="side-notes">{left}</div>
+            {Svg.AltarCandleLeft}
+            </div>
+            <div class="side side-right">
+            <div class="side-notes">{right}</div>
+            {Svg.AltarCandleRight}
+            </div>
+            </div>
             """;
 
     /// <summary>A margin's label and what it says.</summary>

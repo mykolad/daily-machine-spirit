@@ -51,9 +51,15 @@ public static class Script
             }
           };
           document.querySelectorAll('[data-copy]').forEach((button) => {
+            // The page's link, a rite's text with its link, or a value (an address, a command) as it's shown.
             button.addEventListener('click', async () => {
+              const kind = button.dataset.copy;
+              if (kind === 'value') {
+                say(await copy(button.dataset.text) ? 'Copied to clipboard' : 'Couldn’t copy. Your browser blocked the clipboard.');
+                return;
+              }
               const url = new URL(button.dataset.url, location.origin).href;
-              const isLink = button.dataset.copy === 'link';
+              const isLink = kind === 'link';
               const copied = await copy(isLink ? url : `${button.dataset.text}\n${url}`);
               say(!copied ? 'Couldn’t copy. Your browser blocked the clipboard.'
                 : isLink ? 'Link copied to clipboard' : 'Text copied to clipboard');
@@ -189,6 +195,19 @@ public static class Script
             }));
           }
 
+          // The margins beside a sheet follow the reader down it, their candles level beside the text (the stylesheet).
+          // Taller than the window (the Archive's month index grows by a line a month), they'd hide their candles, so they
+          // stop with their foot in view instead. Measured again whenever they may have changed: the fonts arriving, the
+          // window resized, a search on the Archive bringing in new ones.
+          const placeMargins = () => {
+            const margins = document.querySelector('.margins');
+            if (!margins) return;
+            margins.style.setProperty('--margins-top', `${Math.min(32, innerHeight - margins.offsetHeight - 32)}px`);
+          };
+          placeMargins();
+          addEventListener('resize', placeMargins);
+          document.fonts.ready.then(placeMargins);
+
           // The archive (and search results, and a tag's page) loads older rites as the reader nears the end, by fetching
           // the next page the "Load older rites" link points to and taking its rows. The link stays: a keyboard follows
           // it here too, and focus moves to the first new rite. Without the script, it's an ordinary link to that page.
@@ -291,7 +310,7 @@ public static class Script
             let typing;
             let request;
             // Everything on the sheet but the field (which keeps focus and what's typed), and everything beside and
-            // below the sheet but the candles and traces.
+            // below the sheet but the traces (the margins come anew, their candles with them).
             const swap = (page) => {
               const fresh = [...page.querySelector('.sheet-inner').children].map((part) => document.importNode(part, true));
               const at = fresh.findIndex((part) => part.matches('.sheet-search'));
@@ -302,11 +321,12 @@ public static class Script
               const clearLink = fresh[at].querySelector('.sheet-clear');
               if (clearLink) form.append(clearLink);
               const hero = document.querySelector('.archive-hero');
-              const stays = (part) => part.matches('.sheet, .altar, .traces');
+              const stays = (part) => part.matches('.sheet, .traces');
               [...hero.children].filter((part) => !stays(part)).forEach((part) => part.remove());
               hero.querySelector('.sheet').after(...[...page.querySelector('.archive-hero').children]
                 .filter((part) => !stays(part)).map((part) => document.importNode(part, true)));
               document.title = page.title;
+              placeMargins();
             };
             // Narrowed to a subject, the words are sought within it; clearing them clears the search, the subject too.
             const show = async (typed) => {
