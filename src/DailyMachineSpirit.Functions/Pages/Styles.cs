@@ -40,8 +40,6 @@ public static class Styles
         nav>a{padding:10px 16px;border-radius:999px;font-family:Cinzel,serif;font-weight:700;font-size:14px;letter-spacing:.12em;color:#ede3cf;text-decoration:none}
         nav>a[aria-current=page]{background:rgba(201,162,90,.16)}
         nav>a:hover{background:rgba(201,162,90,.22);color:#ede3cf}
-        @media (max-width:419px){nav{gap:0}nav>a{padding:10px 6px;letter-spacing:.04em}nav .nav-search,nav .nav-breviary{width:36px}}
-        @media (max-width:359px){nav>a{padding:10px 5px;font-size:13px}}
         main{width:100%;flex:1;display:flex;flex-direction:column;align-items:center}
         main:focus-visible{outline:none}
         .masthead{display:flex;flex-direction:column;align-items:center;gap:14px;margin-bottom:clamp(32px,5vw,52px)}
@@ -248,6 +246,8 @@ public static class Styles
         .other-subjects h2{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:22px}
         nav .nav-search,nav .nav-breviary{display:grid;place-items:center;width:44px;height:44px;padding:0;color:#d9b874}
         nav .nav-breviary[hidden]{display:none}
+        @media (max-width:419px){nav{gap:0}nav>a{padding:10px 6px;letter-spacing:.04em}nav .nav-search,nav .nav-breviary{width:36px}}
+        @media (max-width:359px){nav>a{padding:10px 5px;font-size:13px}}
         .nav-find{position:relative;display:flex;align-items:center;width:44px;height:44px;border:1px solid transparent;border-radius:999px;transition:width 250ms ease}
         .nav-find.open{width:320px;border-color:#84662c}
         .nav-find:has(.nav-find-field:focus-visible){outline:2px solid #f0b45a;outline-offset:4px}
