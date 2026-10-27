@@ -101,6 +101,13 @@ public class RiteRepository : IRiteRepository, IRitePublishing
                 .WithParameter("@type", RiteDocument.RiteType),
             cancellationToken));
 
+    // Only the counts: the scores alone would be most of every document. A rite never voted on has no counts stored.
+    public Task<Either<Error, List<RiteVotes>>> GetVotes(CancellationToken cancellationToken)
+        => Attempt(async () => await container.Query<RiteVotes>(
+            new QueryDefinition("SELECT c.number, c.blessedVotes AS blessed, c.heresyVotes AS heresy FROM c WHERE c.type = @type ORDER BY c.number DESC")
+                .WithParameter("@type", RiteDocument.RiteType),
+            cancellationToken));
+
     public Task<Either<Error, Rite>> Add(Rite rite, CancellationToken cancellationToken)
         => AttemptEither(() => Save(rite, None, cancellationToken));
 

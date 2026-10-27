@@ -100,6 +100,25 @@ public sealed class SitePages
     public IActionResult About([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "catechism")] HttpRequest request)
         => Page(request, StatusCodes.Status200OK, AboutPage.Render(time.GetUtcNow()));
 
+    /// <summary>
+    /// The readers' most venerated rites: every rite's counts (a few hundred numbers), ranked here, then the few kept.
+    /// Kept at the edge until a vote purges it.
+    /// </summary>
+    [Function("Reliquary")]
+    public async Task<IActionResult> Reliquary(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "reliquary")] HttpRequest request,
+        CancellationToken cancellationToken)
+    {
+        var now = time.GetUtcNow();
+        var kept = await rites.GetVotes(cancellationToken)
+            .MapAsync(Veneration.MostVenerated)
+            .BindAsync(numbers => rites.GetByNumbers(numbers, cancellationToken)
+                .MapAsync(found => numbers.SelectMany(number => found.Where(rite => rite.Number == number)).ToList()));
+        return kept.Match(
+            Right: shown => Page(request, StatusCodes.Status200OK, ReliquaryPage.Render(shown, now), EdgeLifetime.UntilPurged),
+            Left: error => Failed(request, error));
+    }
+
     /// <summary><c>/rtfm</c>, what veterans tell newcomers, for whoever types it: it leads to the Catechism.</summary>
     [Function("ReadTheManual")]
     public IActionResult ReadTheManual([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "rtfm")] HttpRequest request)

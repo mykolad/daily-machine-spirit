@@ -332,6 +332,12 @@ skills/                           — Consult the Machine Spirit, a skill that p
     Cloudflare). Signed out, it offers the sign-in. Signed in, it's linked from a book icon in the nav (beside search,
     shown by the script from the `dms-signed-in` cookie, below), the vote status under a rite, and the toast after a
     vote; the Catechism says it's there.
+  - **The Reliquary** (`/reliquary`, #154, `ReliquaryPage`): the readers' most venerated rites across the site, on the
+    Archive's sheet, linked from under the Archive's search. A rite's veneration is its blessings less its heresies
+    (`Veneration`): only rites above zero, the most first, a tie to the more blessed, then the newer, at most 20. One
+    query for every rite's counts (`GetVotes`, a few hundred numbers), ranked in memory since Cosmos can't order by a
+    difference, then one for the rites kept. Any vote may reorder it, so it's purged with the pages that show a rite's
+    counts (`Paths.ShowingVotesOf`) and kept at the edge until then.
 - **Readers sign in to vote** (`Voters/`, #34), with GitHub for now: `/auth/{provider}?return=<path>` sends them to
   the provider's OAuth web flow, and `/auth/{provider}/callback` brings them back. `/auth/signout` (a form posted from
   this site, `RequestOrigin`) signs them out; `/api/me` tells the page's script whether sign-in is set up and whether

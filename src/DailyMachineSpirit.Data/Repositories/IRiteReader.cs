@@ -38,6 +38,9 @@ public interface IRiteReader
     /// <summary>Every rite's number and day, the newest first.</summary>
     Task<Either<Error, List<RiteDay>>> GetDays(CancellationToken cancellationToken);
 
+    /// <summary>Every rite's number and vote counts, the newest first.</summary>
+    Task<Either<Error, List<RiteVotes>>> GetVotes(CancellationToken cancellationToken);
+
     /// <summary>Every rite's words, the newest first, without scores, votes or tags.</summary>
     Task<Either<Error, List<RiteWords>>> GetAllWords(CancellationToken cancellationToken);
 

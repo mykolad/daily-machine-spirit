@@ -760,6 +760,57 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.All([archive, tag, withQuery], page => Assert.Equal("public, max-age=60, stale-if-error=604800", page.AtCloudflare));
     }
 
+    // Blessings less heresies rank the rites; a tie goes to the more blessed. A rite as often called heresy as blessed,
+    // or never voted on, isn't venerated. Kept at the edge until a vote purges it.
+    [Fact]
+    public async Task Reliquary_KeepsTheMostVeneratedRites_TheMostFirst()
+    {
+        await Add(Day.AddDays(-4), "The Unvoted Vigil");
+        await Add(Day.AddDays(-3), "The Disputed Litany");
+        await Add(Day.AddDays(-2), "The Twice Blessed Rite");
+        await Add(Day.AddDays(-1), "The Contested Prayer");
+        await Add(Day, "The Once Blessed Rite");
+        var votes = new VoteRepository(cosmos.Container);
+        foreach (var (number, voter, vote) in new[]
+        {
+            (2, "a", Reaction.Blessed), (2, "b", Reaction.Heresy),
+            (3, "a", Reaction.Blessed), (3, "b", Reaction.Blessed),
+            (4, "a", Reaction.Blessed), (4, "b", Reaction.Blessed), (4, "c", Reaction.Blessed), (4, "d", Reaction.Heresy),
+            (5, "a", Reaction.Blessed),
+        })
+        {
+            Ok(await votes.Vote(number, voter, Some(vote), CancellationToken.None));
+        }
+
+        var page = await Read(context => Pages().Reliquary(context.Request, CancellationToken.None), "/reliquary", "");
+
+        Assert.Equal(StatusCodes.Status200OK, page.Status);
+        Assert.Equal(["The Contested Prayer", "The Twice Blessed Rite", "The Once Blessed Rite"], Titles(page.Html));
+        Assert.Contains("<title>The Reliquary · The Daily Machine Spirit</title>", page.Html);
+        Assert.Equal("public, max-age=3600, stale-if-error=604800", page.AtCloudflare);
+    }
+
+    [Fact]
+    public async Task Reliquary_WithoutAVeneratedRite_SaysSo()
+    {
+        await Add(Day, "The Unvoted Vigil");
+
+        var page = await Read(context => Pages().Reliquary(context.Request, CancellationToken.None), "/reliquary", "");
+
+        Assert.Empty(Titles(page.Html));
+        Assert.Contains("No rite is venerated yet.", page.Html);
+    }
+
+    [Fact]
+    public async Task Archive_LeadsToTheReliquary()
+    {
+        await Add(Day, "The Unvoted Vigil");
+
+        var (_, html) = await Archive("");
+
+        Assert.Contains("""<a href="/reliquary">""", html);
+    }
+
     // The connector's address and the skill's commands, each shown with a button that copies it as it is. Only a
     // deployment changes the page, and nothing purges it then, so it's kept briefly.
     [Fact]

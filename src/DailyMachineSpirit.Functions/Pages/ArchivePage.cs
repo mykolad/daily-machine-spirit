@@ -14,6 +14,9 @@ public static class ArchivePage
 {
     private const string Description = "Earlier litanies, newest first.";
 
+    // The readers' most venerated rites, beside the whole record.
+    private static readonly string Reliquary = $"""<p class="sheet-also"><a href="{Paths.Reliquary}">The Reliquary: the most venerated rites</a></p>""";
+
     /// <param name="olderThan">Where the next page starts, or None when these are the oldest.</param>
     /// <param name="days">Every rite's number and day, newest first: Today's, then the Archive's.</param>
     public static string Render(IReadOnlyList<Rite> rites, Option<int> olderThan, IReadOnlyList<RiteDay> days, DateTimeOffset now)
@@ -45,7 +48,7 @@ public static class ArchivePage
                 kicker: string.Empty,
                 heading: "The Archive",
                 sub: sub,
-                search: ArchiveSheet.Search(string.Empty, None),
+                search: ArchiveSheet.Search(string.Empty, None) + Reliquary,
                 body: ArchiveRows.Months(rites, [], ArchiveRows.NoVotes),
                 below: ArchiveRows.More(olderThan.Map(Paths.ArchiveBefore), "Load older rites", "The archive ends here. Earlier knowledge is lost.", ArchiveSheet.Closing(days.Count)),
                 left: left,

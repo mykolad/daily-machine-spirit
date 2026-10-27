@@ -61,6 +61,9 @@ public sealed class RitesWithFallback : IRiteReader
     public Task<Either<Error, List<RiteDay>>> GetDays(CancellationToken cancellationToken)
         => Read(source => source.GetDays(cancellationToken), cancellationToken);
 
+    public Task<Either<Error, List<RiteVotes>>> GetVotes(CancellationToken cancellationToken)
+        => Read(source => source.GetVotes(cancellationToken), cancellationToken);
+
     public Task<Either<Error, List<RiteWords>>> GetAllWords(CancellationToken cancellationToken)
         => Read(source => source.GetAllWords(cancellationToken), cancellationToken);
 

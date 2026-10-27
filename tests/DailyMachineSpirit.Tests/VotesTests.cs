@@ -192,7 +192,7 @@ public sealed class VotesTests : IAsyncLifetime
         Assert.Equal("""{"blessed":1,"heresy":0,"vote":"blessed","countedAt":1791600000000}""", body);
     }
 
-    // The cached pages that show the rite's counts: its own, and Today.
+    // The cached pages that show the rite's counts: its own, Today, and the Reliquary, which the vote may reorder.
     [Fact]
     public async Task Post_PurgesThePagesShowingTheCounts()
     {
@@ -200,7 +200,7 @@ public sealed class VotesTests : IAsyncLifetime
 
         await Post(Function(), 1, """{"vote":"blessed"}""", "application/json", SignedIn());
 
-        Assert.Equal(["/", "/r/1"], Assert.Single(await Purged()).Order());
+        Assert.Equal(["/", "/r/1", "/reliquary"], Assert.Single(await Purged()).Order());
     }
 
     [Fact]

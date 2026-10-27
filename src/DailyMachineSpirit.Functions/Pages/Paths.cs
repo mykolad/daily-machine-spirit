@@ -43,13 +43,16 @@ public static class Paths
 
     public static string ArchiveSearchBefore(string typed, Option<string> tagKey, int number) => $"{ArchiveSearch(typed, tagKey)}&before={number}";
 
+    /// <summary>The readers' most venerated rites (<see cref="ReliquaryPage"/>).</summary>
+    public const string Reliquary = "/reliquary";
+
     /// <summary>
-    /// The cached pages that show a rite's counts and change with its votes: its own, and Today, which shows the newest
-    /// (purging it for an older rite costs one render). The archive, a tag's page and search results show counts too,
-    /// but which of their pages holds a rite moves as rites are added, so they're only cached briefly
-    /// (<see cref="SitePages"/>).
+    /// The cached pages that show a rite's counts and change with its votes: its own, Today, which shows the newest, and
+    /// the Reliquary, which any vote may reorder (purging either for a rite it doesn't show costs one render). The
+    /// archive, a tag's page and search results show counts too, but which of their pages holds a rite moves as rites
+    /// are added, so they're only cached briefly (<see cref="SitePages"/>).
     /// </summary>
-    public static IReadOnlyCollection<string> ShowingVotesOf(int number) => [Today, Rite(number)];
+    public static IReadOnlyCollection<string> ShowingVotesOf(int number) => [Today, Rite(number), Reliquary];
 
     /// <summary>The Breviary, the signed-in reader's own page: the rites they voted on.</summary>
     public const string Breviary = "/breviary";
