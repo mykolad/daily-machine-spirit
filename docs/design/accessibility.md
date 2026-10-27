@@ -276,6 +276,8 @@ and candles behind it, and the recent rites under Today.
 - **The headings are the questions alone.** Their numerals ("I.") are `aria-hidden`, so a screen reader's list of
   headings reads as the six questions. On a wide screen the index beside the sheet repeats them as links (an `aside`
   named "Questions"); below 1280px it isn't there, as the sheet already lists them in the same order.
+- **The index and the answers' lists say `role="list"`,** since Safari drops the semantics of a list drawn without
+  markers.
 - **Commands scroll inside their block, and the block takes focus** (`tabindex="0"`, named "Commands"), so a keyboard
   can scroll it too; a wrapped command would read as two. The connector's address wraps instead, so it needs no
   scrolling. The `$` before each command is drawn, hidden from screen readers, and never selected or copied.

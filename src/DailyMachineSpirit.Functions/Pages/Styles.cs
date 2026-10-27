@@ -367,7 +367,7 @@ public static class Styles
         .side-right{grid-column:3}
         .side-notes{display:flex;flex-direction:column;gap:56px}
         .side-notes>.marginalia,.side-notes>.month-index,.side-notes>.other-subjects{margin-top:0}
-        .side>.altar{grid-row:2;justify-self:center;margin-top:56px}
+        .side>.altar{grid-column:1;grid-row:2;justify-self:center;margin-top:56px}
         .sub-wide{display:inline}
         .sub-narrow{display:none}
         .margin-number{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:32px;line-height:1.1;color:#ede3cf}

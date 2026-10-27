@@ -40,7 +40,7 @@ public static class AboutPage
                 <p>Each rite hides its Heretical Truth under a wax seal: in a sentence or two, what really happens, and the real fix. Break the seal to read it.</p>
                 """),
             ("How is a rite read?", $"""
-                <ul>
+                <ul role="list">
                 <li>The date under its title is the far future’s reckoning: {ImperialDate.WithTheDay(DateOnly.FromDateTime(now.UtcDateTime), "catechism-day", "catechism-date")} counts the year’s thousandths passed, then the year, then the millennium. Point at it or tap it for the day as we count it.</li>
                 <li>Blessed or Heresy: your verdict on a rite. Sign in with GitHub to vote, once a rite. You can change your vote or take it back.</li>
                 <li><a href="{Paths.Archive}">The Archive</a> keeps every rite, to search or browse by subject.</li>
@@ -99,7 +99,7 @@ public static class AboutPage
             {ArchiveSheet.Margins($"""
                 <aside class="question-index" aria-label="Questions">
                 <p class="margin-label" aria-hidden="true">The questions</p>
-                <ol>{string.Concat(numbered.Select(question => $"""<li><a href="#q-{question.Number}"><span>{question.Question}</span><span class="index-number" aria-hidden="true">{question.Numeral}</span></a></li>"""))}</ol>
+                <ol role="list">{string.Concat(numbered.Select(question => $"""<li><a href="#q-{question.Number}"><span>{question.Question}</span><span class="index-number" aria-hidden="true">{question.Numeral}</span></a></li>"""))}</ol>
                 </aside>
                 """, string.Empty)}
             {Svg.Traces}
