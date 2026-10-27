@@ -552,6 +552,18 @@ public sealed class SitePagesTests : IAsyncLifetime
     }
 
     [Fact]
+    public void ReadTheManual_LeadsToTheCatechism_ForGood()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Path = "/rtfm";
+
+        var redirect = Assert.IsType<RedirectResult>(Pages().ReadTheManual(context.Request));
+
+        Assert.True(redirect.Permanent);
+        Assert.Equal("/catechism", redirect.Url);
+    }
+
+    [Fact]
     public async Task Archive_WithWords_ListsTheRitesHoldingThem_NewestFirst_TodaysToo_AndSaysHowMany()
     {
         await AddRites(22);
@@ -721,6 +733,36 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.All([slumbering, today, rite, archive, tag, withQuery], page => Assert.Equal("public, max-age=60", page.CacheControl));
         Assert.All([slumbering, today, rite], page => Assert.Equal("public, max-age=3600, stale-if-error=604800", page.AtCloudflare));
         Assert.All([archive, tag, withQuery], page => Assert.Equal("public, max-age=60, stale-if-error=604800", page.AtCloudflare));
+    }
+
+    // The connector's address and the skill's commands, each shown with a button that copies it as it is. Only a
+    // deployment changes the page, and nothing purges it then, so it's kept briefly.
+    [Fact]
+    public async Task About_SaysHowToConsultTheMachineSpirit()
+    {
+        var about = await Read(context => Task.FromResult(Pages().About(context.Request)), "/catechism", "");
+
+        Assert.Equal(StatusCodes.Status200OK, about.Status);
+        Assert.Contains("<title>The Catechism · The Daily Machine Spirit</title>", about.Html);
+        Assert.Contains("""<a href="/catechism" aria-current="page">About</a>""", about.Html);
+        // The site's name heads it as it heads the Archive, so the small brand link would say it twice.
+        Assert.Contains("""<p class="site-name">The Daily Machine Spirit</p>""", about.Html);
+        Assert.DoesNotContain("class=\"brand\"", about.Html);
+        Assert.Contains("<h2>Can my familiar consult the Machine Spirit?</h2>", about.Html);
+        // Today's date, as the far future reckons it, is the example of how one is read.
+        Assert.Contains("""<time datetime="2026-10-09">0 769 026.M3</time>""", about.Html);
+        Assert.Contains("""<pre><code>https://mcp.dailymachinespirit.fyi/mcp</code></pre>""", about.Html);
+        Assert.Contains("""data-copy="value" data-text="https://mcp.dailymachinespirit.fyi/mcp">""", about.Html);
+        // The commands scroll rather than wrap, so a keyboard must be able to reach their block; their prompts are
+        // shown, never copied.
+        Assert.Contains("""<ul role="list">""", about.Html);
+        Assert.Contains("""<pre tabindex="0" aria-label="Commands"><code><span class="prompt" aria-hidden="true">$ </span>git clone --depth 1 https://github.com/mykolad/daily-machine-spirit.git""", about.Html);
+        Assert.Contains("""
+            data-text="git clone --depth 1 https://github.com/mykolad/daily-machine-spirit.git
+            mkdir -p ~/.claude/skills
+            cp -r daily-machine-spirit/skills/consult-the-machine-spirit ~/.claude/skills/">
+            """.ReplaceLineEndings("\n"), about.Html);
+        Assert.Equal("public, max-age=60, stale-if-error=604800", about.AtCloudflare);
     }
 
     // The script shows the counts a vote answered over a page whose counts were read before that vote.

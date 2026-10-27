@@ -94,6 +94,17 @@ public sealed class SitePages
             Left: error => Task.FromResult(Failed(request, error)));
     }
 
+    // Nothing to read: the page changes with a deployment, which no purge follows, and at midnight (its example date), so
+    // it's kept briefly.
+    [Function("About")]
+    public IActionResult About([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "catechism")] HttpRequest request)
+        => Page(request, StatusCodes.Status200OK, AboutPage.Render(time.GetUtcNow()));
+
+    /// <summary><c>/rtfm</c>, what veterans tell newcomers, for whoever types it: it leads to the Catechism.</summary>
+    [Function("ReadTheManual")]
+    public IActionResult ReadTheManual([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "rtfm")] HttpRequest request)
+        => new RedirectResult(Paths.About, permanent: true);
+
     /// <summary>
     /// Pages by number, newest first: <c>?before=&lt;number&gt;</c> starts below that number. The first page leaves
     /// out the newest rite, which Today shows: only the day's own rite is ever published, so the highest number is also

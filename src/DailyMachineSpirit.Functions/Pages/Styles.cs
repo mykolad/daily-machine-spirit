@@ -40,6 +40,7 @@ public static class Styles
         nav>a{padding:10px 16px;border-radius:999px;font-family:Cinzel,serif;font-weight:700;font-size:14px;letter-spacing:.12em;color:#ede3cf;text-decoration:none}
         nav>a[aria-current=page]{background:rgba(201,162,90,.16)}
         nav>a:hover{background:rgba(201,162,90,.22);color:#ede3cf}
+        @media (max-width:419px){nav>a{padding:10px 10px;letter-spacing:.08em}}
         main{width:100%;flex:1;display:flex;flex-direction:column;align-items:center}
         main:focus-visible{outline:none}
         .masthead{display:flex;flex-direction:column;align-items:center;gap:14px;margin-bottom:clamp(32px,5vw,52px)}
@@ -285,6 +286,44 @@ public static class Styles
         .site-footer{margin-top:72px;padding-bottom:48px;display:flex;flex-direction:column;align-items:center;gap:12px;max-width:600px}
         .motto{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:16px;letter-spacing:.08em;color:#c9a25a}
         .disclaimer{margin:0;font-size:14px;line-height:1.6;color:#b6a98f}
+        .sheet.catechism{padding:0}
+        .catechism .sheet-inner{padding:clamp(44px,7vw,68px) clamp(28px,9vw,76px) clamp(40px,6vw,60px)}
+        .catechism .sheet-kicker{margin-bottom:10px}
+        .catechism .sheet-title{font-size:clamp(30px,4.6vw,42px);letter-spacing:.02em;text-wrap:balance}
+        .catechism .sheet-sub{margin-top:10px;font-size:18px;line-height:1.4}
+        .catechism .divider{display:block;margin:16px auto 0}
+        .questions{display:flex;flex-direction:column;gap:40px;margin-top:36px}
+        .question{display:grid;grid-template-columns:minmax(0,1fr);row-gap:4px;scroll-margin-top:24px}
+        .question-number{font-family:Cinzel,serif;font-weight:700;font-size:22px;line-height:1.25;color:#8f2a20}
+        .answer h2{margin:0 0 10px;font-family:Cinzel,serif;font-weight:700;font-size:clamp(20px,2.6vw,23px);line-height:1.25;color:#8f2a20;text-wrap:balance}
+        .answer h3{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin:28px 0 8px}
+        .answer-name{font-family:Cinzel,serif;font-weight:700;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:#8f2a20}
+        .answer-place{font-family:'EB Garamond',serif;font-style:italic;font-weight:400;font-size:17px;color:#5c4a33}
+        .answer p,.answer li{font-family:'EB Garamond',serif;font-size:19px;line-height:1.6;color:#2b2117;text-wrap:pretty}
+        .answer p{margin:0 0 12px}
+        .answer>:last-child{margin-bottom:0}
+        .answer ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+        .answer li{position:relative;padding-left:20px}
+        .answer li::before{content:'';position:absolute;left:0;top:12px;width:6px;height:6px;background:#8f2a20;transform:rotate(45deg)}
+        .answer a{color:#8f2a20;text-decoration:underline;text-underline-offset:3px}
+        .answer a:hover{color:#2b2117}
+        .answer :not(pre)>code,.catechism-date{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:.8em;padding:1px 6px;border-radius:6px;background:#d8c59a;color:#2b2117}
+        .catechism-date .imperial-date{text-underline-offset:3px}
+        .question-index{display:none}
+        .incantation{margin:14px 0 16px;border-radius:14px;background:#141c1f;border:1px solid #2e4248;overflow:hidden;box-shadow:0 8px 22px rgba(43,33,23,.25)}
+        .incantation-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0 12px;padding:6px 6px 6px 18px;border-bottom:1px solid #2e4248}
+        .incantation-label{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#8cc4ae}
+        .incantation .button{min-height:40px;margin-left:auto;padding:8px 14px;font-size:15px}
+        .incantation .button svg{width:16px;height:16px}
+        .incantation pre{margin:0;padding:14px 18px;white-space:pre-wrap;overflow-wrap:anywhere}
+        .incantation code{font-family:'JetBrains Mono',monospace;font-size:14px;line-height:1.6;color:#dbe6e8}
+        .incantation-lines pre{overflow-x:auto;white-space:pre;overflow-wrap:normal}
+        .incantation-lines code{font-size:13.5px;line-height:1.7}
+        .prompt{color:#8cc4ae;user-select:none}
+        .sheet .incantation :focus-visible{outline-color:#f0b45a}
+        .incantation pre:focus-visible{outline-offset:-2px}
+        @media (prefers-reduced-motion:no-preference){html:has(.question-index){scroll-behavior:smooth}}
+        @media (min-width:700px){.question{grid-template-columns:44px minmax(0,1fr);column-gap:18px;row-gap:0}}
         .toast-region{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:40;pointer-events:none;width:max-content;max-width:calc(100vw - 32px)}
         .toast{padding:12px 22px;border-radius:24px;background:#ede3cf;color:#100e0b;font-size:15px;font-weight:600;line-height:1.4;text-align:center;box-shadow:0 8px 28px rgba(0,0,0,.5)}
         .toast-lasting{pointer-events:auto}
@@ -330,11 +369,13 @@ public static class Styles
         .hero>.archive-more,.hero>.voted-account{grid-column:2;grid-row:2}
         .hero:has(.archive-seal)>.sheet{align-self:stretch}
         .archive-hero .marginalia{display:flex}
-        .side{grid-row:1;align-self:start;display:flex;flex-direction:column;gap:56px;margin-top:80px}
+        .margins{grid-column:1/-1;grid-row:1;align-self:start;position:sticky;top:var(--margins-top,32px);display:grid;grid-template-columns:subgrid;margin-top:80px;pointer-events:none}
+        .side{grid-row:1/span 2;display:grid;grid-template-rows:subgrid;pointer-events:auto}
         .side-left{grid-column:1}
         .side-right{grid-column:3}
-        .side>.marginalia,.side>.month-index,.side>.other-subjects{margin-top:0}
-        .side>.altar{align-self:center}
+        .side-notes{display:flex;flex-direction:column;gap:56px}
+        .side-notes>.marginalia,.side-notes>.month-index,.side-notes>.other-subjects{margin-top:0}
+        .side>.altar{grid-column:1;grid-row:2;justify-self:center;margin-top:56px}
         .sub-wide{display:inline}
         .sub-narrow{display:none}
         .margin-number{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:32px;line-height:1.1;color:#ede3cf}
@@ -349,6 +390,12 @@ public static class Styles
         .month-count{padding-top:4px;font-family:'JetBrains Mono',monospace;font-weight:500;font-size:14px;color:#b6a98f}
         .other-subjects h2{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:#c9a25a}
         .other-subjects .tags{justify-content:flex-start;margin:0}
+        .question-index{display:flex;flex-direction:column;gap:14px;padding-right:28px;border-right:1px solid #2f2820;text-align:right}
+        .question-index .margin-label{margin:0}
+        .question-index ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px}
+        .question-index a{display:flex;justify-content:flex-end;align-items:baseline;gap:10px;font-family:'EB Garamond',serif;font-size:18px;line-height:1.3;color:#ede3cf;text-decoration:none}
+        .question-index a:hover{color:#f0d59a}
+        .index-number{flex:none;min-width:26px;font-family:Cinzel,serif;font-weight:700;font-size:12px;letter-spacing:.08em;color:#c9a25a;text-align:left}
         .countdown{margin-top:28px}
         .countdown-line{display:none}
         }

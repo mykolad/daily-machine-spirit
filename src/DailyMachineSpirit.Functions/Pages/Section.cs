@@ -5,5 +5,6 @@ public enum Section
 {
     Today,
     Archive,
+    About,
     Other,
 }
