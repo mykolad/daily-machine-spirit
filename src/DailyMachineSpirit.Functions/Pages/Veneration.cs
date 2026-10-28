@@ -12,6 +12,9 @@ public static class Veneration
     /// <summary>How many rites the Reliquary keeps: a page's worth.</summary>
     public const int Kept = 20;
 
+    /// <summary>For pages that show no rite's place: the Reliquary's own, whose order says it, or when the counts can't be read.</summary>
+    public static readonly IReadOnlyDictionary<int, int> NoPlaces = new Dictionary<int, int>();
+
     /// <summary>The numbers of the most venerated rites, the most first.</summary>
     public static List<int> MostVenerated(IReadOnlyList<RiteVotes> votes)
         => votes
@@ -22,4 +25,8 @@ public static class Veneration
             .Take(Kept)
             .Select(rite => rite.Number)
             .ToList();
+
+    /// <summary>Each kept rite's place in the Reliquary, by its number: 1 for the most venerated.</summary>
+    public static IReadOnlyDictionary<int, int> Places(IReadOnlyList<RiteVotes> votes)
+        => MostVenerated(votes).Select((number, at) => (number, at)).ToDictionary(kept => kept.number, kept => kept.at + 1);
 }

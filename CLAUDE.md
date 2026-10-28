@@ -335,13 +335,19 @@ skills/                           — Consult the Machine Spirit, a skill that p
     Cloudflare). Signed out, it offers the sign-in. Signed in, it's linked from a book icon in the nav (beside search,
     shown by the script from the `dms-signed-in` cookie, below), the vote status under a rite, and the toast after a
     vote; the Catechism says it's there.
-  - **The Reliquary** (`/reliquary`, #154, `ReliquaryPage`): the readers' most venerated rites across the site, on the
-    Archive's sheet, linked from under the Archive's search. A rite's veneration is its blessings less its heresies
-    (`Veneration`): only rites above zero, the most first, a tie to the more blessed, then the newer, at most 20. One
-    query for every rite's counts (`GetVotes`, a few hundred numbers), ranked in memory since Cosmos can't order by a
-    difference, then one for the rites kept. Any vote may reorder it, so it's purged with the pages that show a rite's
-    counts (`Paths.ShowingVotesOf`), and by an erasure, and kept at the edge until then; any other spelling of its address
-    is not found, as a rite's is.
+  - **The Reliquary** (`/reliquary`, #154, `ReliquaryPage`): the readers' most venerated rites across the site: the
+    Archive in its other order, with its masthead and sheet, the nav's Archive link current. Both pages offer the two
+    orders under the heading, "Newest" and "Most venerated" (`ArchiveSheet.Orders`, links, like the Breviary's verdicts).
+    A rite's veneration is its blessings less its heresies (`Veneration`): only rites above zero, the most first, a tie
+    to the more blessed, then the newer, at most 20. One query for every rite's counts (`GetVotes`, a few hundred
+    numbers), ranked in memory since Cosmos can't order by a difference, then one for the rites kept. Any vote may
+    reorder it, so it's purged with the pages that show a rite's counts (`Paths.ShowingVotesOf`), and by an erasure, and
+    kept at the edge until then; any other spelling of its address is not found, as a rite's is.
+    - **Relic badges** (`RelicBadge`): a rite the Reliquary keeps wears its place ("2nd most venerated"), linking there,
+      in its rows (the Archive, search, a subject's page, the Breviary; not the Reliquary's own, whose order says it)
+      and in its card's left margin (Today, its page), so readers find the Reliquary through the rites in it. The same
+      counts are read beside the page's own rites (`RelicPlaces`); if they fail, the page goes without badges. A vote
+      purges only its own rite's page, so another rite's page may show an old place for up to its hour.
 - **Readers sign in to vote** (`Voters/`, #34), with GitHub for now: `/auth/{provider}?return=<path>` sends them to
   the provider's OAuth web flow, and `/auth/{provider}/callback` brings them back. `/auth/signout` (a form posted from
   this site, `RequestOrigin`) signs them out; `/api/me` tells the page's script whether sign-in is set up and whether

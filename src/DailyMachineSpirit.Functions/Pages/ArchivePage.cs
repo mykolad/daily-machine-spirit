@@ -14,12 +14,10 @@ public static class ArchivePage
 {
     private const string Description = "Earlier litanies, newest first.";
 
-    // The readers' most venerated rites, beside the whole record.
-    private static readonly string Reliquary = $"""<p class="sheet-also"><a href="{Paths.Reliquary}">The Reliquary: the most venerated rites</a></p>""";
-
     /// <param name="olderThan">Where the next page starts, or None when these are the oldest.</param>
     /// <param name="days">Every rite's number and day, newest first: Today's, then the Archive's.</param>
-    public static string Render(IReadOnlyList<Rite> rites, Option<int> olderThan, IReadOnlyList<RiteDay> days, DateTimeOffset now)
+    /// <param name="places">The places of the rites the Reliquary keeps, each worn as a badge.</param>
+    public static string Render(IReadOnlyList<Rite> rites, Option<int> olderThan, IReadOnlyList<RiteDay> days, IReadOnlyDictionary<int, int> places, DateTimeOffset now)
     {
         // Today shows the newest rite, so the Archive's list and its months start with the one before.
         var listed = days.Skip(1).ToList();
@@ -48,8 +46,8 @@ public static class ArchivePage
                 kicker: string.Empty,
                 heading: "The Archive",
                 sub: sub,
-                search: ArchiveSheet.Search(string.Empty, None) + Reliquary,
-                body: ArchiveRows.Months(rites, [], ArchiveRows.NoVotes),
+                search: ArchiveSheet.Search(string.Empty, None) + ArchiveSheet.Orders(byVeneration: false),
+                body: ArchiveRows.Months(rites, [], ArchiveRows.NoVotes, places),
                 below: ArchiveRows.More(olderThan.Map(Paths.ArchiveBefore), "Load older rites", "The archive ends here. Earlier knowledge is lost.", ArchiveSheet.Closing(days.Count)),
                 left: left,
                 right: right)}
@@ -59,7 +57,8 @@ public static class ArchivePage
     /// <param name="typed">What the reader typed, shown back as the heading and in the field.</param>
     /// <param name="words">The words looked for, marked in the rows.</param>
     /// <param name="tag">The subject the search is narrowed to, if any.</param>
-    public static string Results(string typed, IReadOnlyList<string> words, Option<Tag> tag, SearchResults results, DateTimeOffset now)
+    /// <param name="places">The places of the rites the Reliquary keeps, each worn as a badge.</param>
+    public static string Results(string typed, IReadOnlyList<string> words, Option<Tag> tag, SearchResults results, IReadOnlyDictionary<int, int> places, DateTimeOffset now)
     {
         var quoted = $"“{typed}”";
         var tagKey = tag.Map(filter => filter.Key);
@@ -82,7 +81,7 @@ public static class ArchivePage
                 {elsewhere}
                 </div>
                 """
-            : ArchiveRows.Months(results.Shown, words, ArchiveRows.NoVotes);
+            : ArchiveRows.Months(results.Shown, words, ArchiveRows.NoVotes, places);
         var below = found == 0
             ? string.Empty
             : ArchiveRows.More(results.OlderThan.Map(number => Paths.ArchiveSearchBefore(typed, tagKey, number)), "More results", "No more rites mention it.", string.Empty);

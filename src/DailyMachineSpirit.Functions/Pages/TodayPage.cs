@@ -10,7 +10,8 @@ public static class TodayPage
     private const string Epigraph = $"""<p class="epigraph">{Layout.Motto}</p>""";
 
     /// <param name="recent">The rites before today's, newest first; the section is left out when there are none.</param>
-    public static string Render(Rite rite, IReadOnlyList<Rite> recent, DateTimeOffset now)
+    /// <param name="places">The places of the rites the Reliquary keeps, for the rite's badge.</param>
+    public static string Render(Rite rite, IReadOnlyList<Rite> recent, IReadOnlyDictionary<int, int> places, DateTimeOffset now)
     {
         var countdown = Countdown.ToNextRite(now);
         // On a wide screen the countdown moves to the left margin, and the line under the actions (with its candles)
@@ -18,7 +19,7 @@ public static class TodayPage
         var marginCountdown = $"""<div class="margin-countdown"><p class="margin-label">Next litany in</p><p class="margin-value" {Countdown.Attribute(now)}>{countdown}</p></div>""";
         return Layout.Page(string.Empty, Html.FirstLine(rite.Writing.Text.Replace("`", string.Empty)), Section.Today, $"""
             {Masthead.Render(isHeading: true)}
-            {RiteCard.Render(rite, ownPage: false, countedAt: now, marginNotes: marginCountdown)}
+            {RiteCard.Render(rite, ownPage: false, countedAt: now, marginNotes: marginCountdown, places)}
             <div class="countdown">
             <div class="countdown-line">{Svg.CandleLeft}<p>Next litany in <span class="amber" {Countdown.Attribute(now)}>{countdown}</span></p>{Svg.CandleRight}</div>
             <p class="countdown-note">A new rite is published every day at 00:00 UTC.</p>

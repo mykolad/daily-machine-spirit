@@ -190,8 +190,6 @@ public static class Styles
         input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none}
         .sheet-clear{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:999px;color:#5c4a33}
         .sheet-clear:hover{background:#e0d0a8;color:#2b2117}
-        .sheet-also{margin:0 0 8px;text-align:center;font-size:15px}
-        .sheet-also a{display:inline-flex;align-items:center;min-height:44px;font-weight:600;color:#8f2a20;text-underline-offset:3px}
         .sheet-filter{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px;margin:0 0 8px;font-size:15px;color:#5c4a33}
         .filter-chip{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:2px 8px 2px 14px;border:1px solid #8f2a20;border-radius:999px;font-weight:600;color:#8f2a20;text-decoration:none}
         .filter-chip:hover{background:#e0d0a8;color:#8f2a20}
@@ -224,10 +222,10 @@ public static class Styles
         .row-verdict-blessed{background:#b8862b;color:#1f160a}
         .row-verdict-heresy{background:#8f2a20;color:#f6eedb}
         .row-verdict svg{width:14px;height:14px}
-        .verdicts{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:24px 0 8px}
-        .verdict{display:inline-flex;align-items:center;min-height:44px;padding:8px 18px;border:1px solid #8f2a20;border-radius:999px;font-weight:600;font-size:15px;color:#8f2a20;text-decoration:none}
-        .verdict:hover{background:#e0d0a8;color:#8f2a20}
-        .verdict[aria-current=page]{background:#8f2a20;color:#f6eedb}
+        .verdicts,.orders{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:24px 0 8px}
+        .verdict,.order{display:inline-flex;align-items:center;min-height:44px;padding:8px 18px;border:1px solid #8f2a20;border-radius:999px;font-weight:600;font-size:15px;color:#8f2a20;text-decoration:none}
+        .verdict:hover,.order:hover{background:#e0d0a8;color:#8f2a20}
+        .verdict[aria-current=page],.order[aria-current=page]{background:#8f2a20;color:#f6eedb}
         .voted-account{display:flex;justify-content:center;gap:6px;padding-top:24px;color:#b6a98f;font-size:15px}
         .voted-account form{display:inline}
         .row-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
@@ -250,6 +248,12 @@ public static class Styles
         .tags{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px 10px;margin:18px 0 0;font-size:15px;color:#bfb39a}
         .tag{display:inline-flex;align-items:center;min-height:32px;padding:4px 14px;border-radius:999px;border:1px solid rgba(201,162,90,.45);font-size:14px;font-weight:600;color:#d9b874;text-decoration:none;white-space:nowrap}
         .tag:hover{background:rgba(201,162,90,.12);color:#f0d59a}
+        .relic{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:4px 14px;border-radius:999px;border:1px solid #c9a25a;background:#3a2f1a;font-size:14px;font-weight:600;color:#f2e1bd;text-decoration:none;white-space:nowrap}
+        .relic:hover{background:#4a3b20;color:#f2e1bd}
+        .relic svg{width:14px;height:14px}
+        .relic-note{display:flex;flex-direction:column;align-items:center;margin-top:18px}
+        .relic-note>.margin-label{display:none}
+        .row .relic{position:relative;z-index:1;align-self:flex-start;min-height:28px;margin-top:6px;padding:2px 12px;font-size:13px}
         .other-subjects{width:100%;margin-top:56px;display:flex;flex-direction:column;align-items:center;gap:12px}
         .other-subjects h2{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:22px}
         .site-header nav>.nav-search,.site-header nav>.nav-breviary{display:grid;place-items:center;width:44px;height:44px;padding:0;color:#d9b874}
@@ -379,6 +383,8 @@ public static class Styles
         .sharing{grid-column:2;grid-row:3;display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:28px}
         .marginalia .tags{justify-content:flex-end;margin:0}
         .tags .margin-label{flex-basis:100%;margin-bottom:0}
+        .marginalia .relic-note{align-items:flex-end;margin-top:0}
+        .relic-note>.margin-label{display:block}
         .hero>.sheet{grid-column:2;grid-row:1}
         .hero>.archive-more,.hero>.voted-account{grid-column:2;grid-row:2}
         .hero:has(.archive-seal)>.sheet{align-self:stretch}

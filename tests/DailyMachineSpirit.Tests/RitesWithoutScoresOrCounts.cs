@@ -5,12 +5,15 @@ using LanguageExt.Common;
 
 namespace DailyMachineSpirit.Tests;
 
-/// <summary>The real rites, except that reading scores fails, as when Cosmos falters halfway through a page.</summary>
-public sealed class RitesWithoutScores : IRiteRepository
+/// <summary>
+/// The real rites, except that reading scores or every rite's counts fails, as when Cosmos falters halfway through a
+/// page: what More rites and the relic badges read.
+/// </summary>
+public sealed class RitesWithoutScoresOrCounts : IRiteRepository
 {
     private readonly IRiteRepository rites;
 
-    public RitesWithoutScores(IRiteRepository rites)
+    public RitesWithoutScoresOrCounts(IRiteRepository rites)
     {
         this.rites = rites;
     }
@@ -37,7 +40,8 @@ public sealed class RitesWithoutScores : IRiteRepository
 
     public Task<Either<Error, List<RiteDay>>> GetDays(CancellationToken cancellationToken) => rites.GetDays(cancellationToken);
 
-    public Task<Either<Error, List<RiteVotes>>> GetVotes(CancellationToken cancellationToken) => rites.GetVotes(cancellationToken);
+    public Task<Either<Error, List<RiteVotes>>> GetVotes(CancellationToken cancellationToken)
+        => Task.FromResult<Either<Error, List<RiteVotes>>>(Error.New("Cosmos didn't answer."));
 
     public Task<Either<Error, List<RiteWords>>> GetAllWords(CancellationToken cancellationToken) => rites.GetAllWords(cancellationToken);
 

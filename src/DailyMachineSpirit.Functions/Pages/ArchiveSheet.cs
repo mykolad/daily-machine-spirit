@@ -74,6 +74,18 @@ public static class ArchiveSheet
             """;
 
     /// <summary>
+    /// The Archive's two orders: the newest first (the Archive) or the most venerated (the Reliquary). Links, as the
+    /// Breviary's verdicts are: each is a page of its own, so it works without the script, and the current one says so.
+    /// </summary>
+    public static string Orders(bool byVeneration)
+        => $"""
+            <nav class="orders" aria-label="Order">
+            <a class="order" href="{Paths.Archive}"{Current(!byVeneration)}>Newest</a>
+            <a class="order" href="{Paths.Reliquary}"{Current(byVeneration)}>Most venerated</a>
+            </nav>
+            """;
+
+    /// <summary>
     /// What stands beside the sheet on a wide screen: each margin's notes over its candle. The two margins are one block,
     /// so the candles stand level under the taller notes, and it follows the reader down the sheet (the page's script
     /// keeps its foot in view when it's taller than the window).
@@ -128,4 +140,6 @@ public static class ArchiveSheet
             """;
 
     private static string Repeated(string code) => string.Join(" · ", Enumerable.Repeat(code, CopiesPerPage));
+
+    private static string Current(bool current) => current ? " aria-current=\"page\"" : string.Empty;
 }

@@ -50,11 +50,15 @@ public sealed class SitePages
             return Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(path));
         }
 
-        // Today's rite and the ones before it, in one read. A new rite purges Today, which is the only time they change.
+        // Today's rite and the ones before it, in one read. A new rite purges Today, as does every vote, which may move its
+        // relic badge.
         var now = time.GetUtcNow();
-        return (await rites.GetNewest(1 + options.Value.RecentRitesOnToday, cancellationToken)).Match(
-            Right: newest => newest.HeadOrNone().Match(
-                Some: rite => Page(request, StatusCodes.Status200OK, TodayPage.Render(rite, newest.Skip(1).ToList(), now), EdgeLifetime.UntilPurged),
+        var places = Places(cancellationToken);
+        var newest = await rites.GetNewest(1 + options.Value.RecentRitesOnToday, cancellationToken);
+        var placed = await places;
+        return newest.Match(
+            Right: found => found.HeadOrNone().Match(
+                Some: rite => Page(request, StatusCodes.Status200OK, TodayPage.Render(rite, found.Skip(1).ToList(), placed, now), EdgeLifetime.UntilPurged),
                 None: () => Page(request, StatusCodes.Status200OK, TodayPage.Slumbering(now), EdgeLifetime.UntilPurged)),
             Left: error => Failed(request, error));
     }
@@ -74,11 +78,13 @@ public sealed class SitePages
             // Taken before the counts are read, so it errs toward the voter: for a vote saved during the read, the script
             // shows that vote's answer, which has the vote, rather than counts that might not.
             var now = time.GetUtcNow();
+            var places = Places(cancellationToken);
             var found = (await rites.GetByNumbers([number], cancellationToken)).Map(matches => matches.HeadOrNone());
+            var placed = await places;
             return await found.Match<Task<IActionResult>>(
                 Right: rite => rite.Match<Task<IActionResult>>(
                     Some: async shown => Page(request, StatusCodes.Status200OK,
-                        RitePage.Render(shown, await MoreRites(shown, cancellationToken), now), EdgeLifetime.UntilPurged),
+                        RitePage.Render(shown, await MoreRites(shown, cancellationToken), placed, now), EdgeLifetime.UntilPurged),
                     None: () => Task.FromResult<IActionResult>(Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(id)))),
                 Left: error => Task.FromResult(Failed(request, error)));
         });
@@ -137,6 +143,7 @@ public sealed class SitePages
         {
             return new RedirectResult(Paths.Tag(only.Key), permanent: false);
         }
+        var places = Places(cancellationToken);
         if (words.Count > 0)
         {
             var tagKey = tag.Map(filter => filter.Key);
@@ -144,6 +151,7 @@ public sealed class SitePages
             var found = await rites.FindDaysAndTags(sought, tagKey, cancellationToken)
                 .BindAsync(days => rites.SearchOlderThan(sought, tagKey, isFirstPage ? int.MaxValue : before, options.Value.ArchivePageSize + 1, cancellationToken)
                     .MapAsync(page => Results(days, page)));
+            var placed = await places;
             return found.Match(
                 Right: results =>
                 {
@@ -152,7 +160,7 @@ public sealed class SitePages
                     {
                         logger.CountArchiveSearch(tag.IsSome ? "words-in-a-subject" : "words");
                     }
-                    return Page(request, StatusCodes.Status200OK, ArchivePage.Results(typed, words, tag, results, now));
+                    return Page(request, StatusCodes.Status200OK, ArchivePage.Results(typed, words, tag, results, placed, now));
                 },
                 Left: error => Failed(request, error));
         }
@@ -162,8 +170,9 @@ public sealed class SitePages
                     ? rites.GetOlderThan(int.MaxValue, options.Value.ArchivePageSize + 2, cancellationToken).MapAsync(found => found.Skip(1).ToList())
                     : rites.GetOlderThan(before, options.Value.ArchivePageSize + 1, cancellationToken)))
                 .Map(page => (Days: days, Page: OnePage(page))));
+        var listedPlaces = await places;
         return archive.Match(
-            Right: found => Page(request, StatusCodes.Status200OK, ArchivePage.Render(found.Page.Shown, found.Page.OlderThan, found.Days, now)),
+            Right: found => Page(request, StatusCodes.Status200OK, ArchivePage.Render(found.Page.Shown, found.Page.OlderThan, found.Days, listedPlaces, now)),
             Left: error => Failed(request, error));
     }
 
@@ -198,12 +207,14 @@ public sealed class SitePages
     {
         var now = time.GetUtcNow();
         var before = int.TryParse(request.Query["before"], out var number) && number > 0 ? number : int.MaxValue;
+        var places = Places(cancellationToken);
         var page = await rites.GetTaggedOlderThan(tag.Key, before, options.Value.ArchivePageSize + 1, cancellationToken);
+        var placed = await places;
         return page.Match(
             Right: found =>
             {
                 var (shown, olderThan) = OnePage(found);
-                return Page(request, StatusCodes.Status200OK, TagPage.Render(tag, shown, olderThan, isFirstPage: before == int.MaxValue, now));
+                return Page(request, StatusCodes.Status200OK, TagPage.Render(tag, shown, olderThan, isFirstPage: before == int.MaxValue, placed, now));
             },
             Left: error => Failed(request, error));
     }
@@ -238,6 +249,9 @@ public sealed class SitePages
                 return [];
             });
     }
+
+    // Read beside the page's own rites, so it adds no wait.
+    private Task<IReadOnlyDictionary<int, int>> Places(CancellationToken cancellationToken) => RelicPlaces.Read(rites, logger, cancellationToken);
 
     // Newest first, read one beyond a page: the extra one says there are older ones, and the next page starts below the
     // last one shown.

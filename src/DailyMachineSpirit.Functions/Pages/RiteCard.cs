@@ -23,7 +23,8 @@ public static class RiteCard
     /// page, which a cache may have kept from before it.</param>
     /// <param name="marginNotes">What the left margin shows above the tags on a wide screen (Today's countdown), or
     /// empty.</param>
-    public static string Render(Rite rite, bool ownPage, DateTimeOffset countedAt, string marginNotes)
+    /// <param name="places">The places of the rites the Reliquary keeps: the rite's, if kept, is in the left margin.</param>
+    public static string Render(Rite rite, bool ownPage, DateTimeOffset countedAt, string marginNotes, IReadOnlyDictionary<int, int> places)
     {
         var heading = ownPage ? "h1" : "h2";
         var kind = rite.Writing.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL";
@@ -36,11 +37,15 @@ public static class RiteCard
             : string.Empty;
         var tags = RiteTags.Of(rite.Tags);
         var filedUnder = tags.Count == 0 ? string.Empty : $"""<p class="tags"><span class="margin-label">Filed under</span> {TagLinks.Render(tags)}</p>""";
-        var margin = marginNotes.Length == 0 && filedUnder.Length == 0
+        // The badge says it's in the Reliquary, so its label is for the eye alone.
+        var badge = RelicBadge.For(rite.Number, places);
+        var relic = badge.Length == 0 ? string.Empty : $"""<div class="relic-note"><p class="margin-label" aria-hidden="true">In the Reliquary</p>{badge}</div>""";
+        var margin = marginNotes.Length == 0 && relic.Length == 0 && filedUnder.Length == 0
             ? string.Empty
             : $"""
                 <aside class="marginalia" aria-label="About this rite">
                 {marginNotes}
+                {relic}
                 {filedUnder}
                 </aside>
                 """;
