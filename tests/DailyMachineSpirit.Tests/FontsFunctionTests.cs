@@ -10,8 +10,6 @@ public class FontsFunctionTests
     [InlineData("cinzel.woff2")]
     [InlineData("eb-garamond.woff2")]
     [InlineData("eb-garamond-italic.woff2")]
-    [InlineData("figtree.woff2")]
-    [InlineData("jetbrains-mono.woff2")]
     public void EveryFontTheStylesheetNames_IsServed_AndCachedForAYear(string name)
     {
         var context = new DefaultHttpContext();

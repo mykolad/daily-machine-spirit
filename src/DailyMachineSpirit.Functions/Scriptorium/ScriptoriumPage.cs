@@ -25,27 +25,27 @@ public static partial class ScriptoriumPage
     private const string Styles = """
         :root { color-scheme: dark; }
         * { box-sizing: border-box; }
-        body { margin: 0; background: #100e0b; color: #ede3cf; font: 16px/1.5 Figtree, system-ui, sans-serif; }
+        body { margin: 0; background: #100e0b; color: #ede3cf; font: 16px/1.5 var(--ui); }
         .frame { overflow-x: clip; }
         header, main { max-width: 820px; margin: 0 auto; padding: 28px clamp(16px, 4vw, 40px) 0; }
         main { padding-bottom: 72px; }
         footer { max-width: 600px; margin: 0 auto; padding: 0 16px 48px; text-align: center; }
         .motto { margin: 0 0 8px; font: 700 16px Cinzel, serif; letter-spacing: .08em; color: #c9a25a; }
-        .disclaimer { margin: 0; font: 400 14px/1.6 Figtree, sans-serif; color: #b6a98f; }
+        .disclaimer { margin: 0; font: 400 14px/1.6 var(--ui); color: #b6a98f; }
         .brand { display: inline-flex; align-items: center; gap: 10px; padding: 4px 8px 4px 0; font: 700 16px Cinzel, serif; letter-spacing: .04em; color: #c9a25a; text-decoration: none; }
         .brand:hover { color: #f0d59a; }
         .masthead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; }
         .identity { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin: 0; font-size: 14px; color: #b6a98f; }
         .identity strong { font-weight: 600; color: #ede3cf; }
         .tabs ul { list-style: none; display: flex; flex-wrap: wrap; gap: 0 8px; margin: 16px 0 0; padding: 0; border-bottom: 1px solid rgba(237,227,207,.16); }
-        .tabs a { display: inline-flex; align-items: baseline; gap: 8px; white-space: nowrap; min-height: 44px; padding: 12px 10px 9px; margin-bottom: -1px; border-bottom: 3px solid transparent; font: 600 16px/1.2 Figtree, sans-serif; color: #cdbd9e; text-decoration: none; }
+        .tabs a { display: inline-flex; align-items: baseline; gap: 8px; white-space: nowrap; min-height: 44px; padding: 12px 10px 9px; margin-bottom: -1px; border-bottom: 3px solid transparent; font: 600 16px/1.2 var(--ui); color: #cdbd9e; text-decoration: none; }
         .tabs a:hover { color: #f0d59a; border-bottom-color: rgba(201,162,90,.4); }
         .tabs a[aria-current=page] { color: #ede3cf; border-bottom-color: #c9a25a; }
-        .tabs .count { font: 500 13px "JetBrains Mono", monospace; color: #b6a98f; }
+        .tabs .count { font: 500 13px var(--mono); color: #b6a98f; }
         h1 { font: 700 clamp(30px, 4.4vw, 46px)/1.1 Cinzel, serif; margin: 32px 0 8px; }
         h2 { font: 700 26px/1.2 Cinzel, serif; margin: 0; }
         h3 { font: 700 21px/1.2 Cinzel, serif; margin: 6px 0 8px; }
-        .lede { font: italic 400 20px/1.4 "EB Garamond", serif; color: #cdbd9e; margin: 0 0 16px; max-width: 62ch; }
+        .lede { font: italic 400 20px/1.4 var(--serif); color: #cdbd9e; margin: 0 0 16px; max-width: 62ch; }
         .status:not(:empty) { background: #1a1612; border-left: 4px solid #c9a25a; padding: 12px 16px; border-radius: 12px; }
         section { margin-top: 44px; }
         .section-head { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; margin-bottom: 8px; }
@@ -69,16 +69,16 @@ public static partial class ScriptoriumPage
         .filters { display: flex; align-items: flex-start; gap: 12px; margin: 18px 0 0; }
         .subjects { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
         .every { margin-left: auto; flex: none; }
-        .chip { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; min-height: 34px; padding: 5px 12px; border-radius: 999px; border: 1px solid rgba(201,162,90,.45); font: 600 14px/1.4 Figtree, sans-serif; color: #d9b874; text-decoration: none; }
+        .chip { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; min-height: 34px; padding: 5px 12px; border-radius: 999px; border: 1px solid rgba(201,162,90,.45); font: 600 14px/1.4 var(--ui); color: #d9b874; text-decoration: none; }
         .chip:hover { border-color: #c9a25a; color: #f0d59a; }
         .chip[aria-current] { background: #c9a25a; border-color: #c9a25a; color: #100e0b; }
-        .chip-count { font: 500 12px "JetBrains Mono", monospace; opacity: .8; }
+        .chip-count { font: 500 12px var(--mono); opacity: .8; }
         .group { margin-top: 32px; }
         .group-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding-bottom: 10px; }
         .group-title { display: inline-flex; align-items: center; gap: 8px; margin: 0; font: 700 13px Cinzel, serif; letter-spacing: .16em; text-transform: uppercase; color: #d9b874; }
         .augury-group .group-title { color: #8cc4ae; }
         .group-title .icon { width: 16px; height: 16px; }
-        .group-count { font: 500 13px "JetBrains Mono", monospace; letter-spacing: 0; color: #b6a98f; }
+        .group-count { font: 500 13px var(--mono); letter-spacing: 0; color: #b6a98f; }
         .group-hint { margin: 0; font-size: 14px; color: #b6a98f; }
         .empty { margin: 0; padding: 16px 20px; border: 1px dashed rgba(237,227,207,.16); border-radius: 16px; font-size: 15px; color: #b6a98f; }
         .rites { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
@@ -89,7 +89,7 @@ public static partial class ScriptoriumPage
         .row form { margin: 0; }
         .next-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; margin: 0; padding: 10px 20px; background: #241c12; border-bottom: 1px solid rgba(201,162,90,.25); }
         .next-label { font: 700 12px Cinzel, serif; letter-spacing: .2em; text-transform: uppercase; color: #c9a25a; }
-        .next-when { font: 500 13px "JetBrains Mono", monospace; color: #8cc4ae; }
+        .next-when { font: 500 13px var(--mono); color: #8cc4ae; }
         .row-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 12px 12px 12px 20px; }
         [data-folding] .row-head { cursor: pointer; }
         [data-folding] .row-head:hover { background: rgba(237,227,207,.03); }
@@ -97,15 +97,15 @@ public static partial class ScriptoriumPage
         .place { width: 40px; font: 700 20px/1 Cinzel, serif; color: #b6a98f; }
         .scribes .place { color: #c9a25a; }
         .day { display: grid; gap: 2px; width: 88px; }
-        .day time { font: 500 13px "JetBrains Mono", monospace; color: #cdbd9e; white-space: nowrap; }
+        .day time { font: 500 13px var(--mono); color: #cdbd9e; white-space: nowrap; }
         .kind { font: 700 11px Cinzel, serif; letter-spacing: .14em; text-transform: uppercase; color: #b6a98f; }
         .heading { flex: 1 1 240px; min-width: 0; display: grid; gap: 6px; }
         .row-title { margin: 0; font: 700 18px/1.25 Cinzel, serif; color: #ede3cf; text-wrap: pretty; }
         .burn-day .group-title { color: #e88a78; }
         .ash-day { width: 72px; }
-        .from { font: 500 13px "JetBrains Mono", monospace; color: #cdbd9e; white-space: nowrap; }
+        .from { font: 500 13px var(--mono); color: #cdbd9e; white-space: nowrap; }
         .under-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
-        .reason-said { font: italic 17px/1.3 "EB Garamond", serif; color: #cdbd9e; }
+        .reason-said { font: italic 17px/1.3 var(--serif); color: #cdbd9e; }
         .restore-now { min-height: 44px; padding: 10px 16px 10px 12px; font-size: 15px; }
         .more-ashes { margin-top: 24px; }
         .row .tags { margin: 0; }
@@ -113,7 +113,7 @@ public static partial class ScriptoriumPage
         .cluster { display: flex; align-items: center; gap: 12px; margin-left: auto; flex: none; }
         .score { display: grid; justify-items: end; gap: 1px; }
         .score-label { font: 700 10px Cinzel, serif; letter-spacing: .16em; text-transform: uppercase; color: #b6a98f; }
-        .score-value { font: 500 14px "JetBrains Mono", monospace; color: #8cc4ae; }
+        .score-value { font: 500 14px var(--mono); color: #8cc4ae; }
         .step, .expand { justify-content: center; width: 44px; height: 44px; min-height: 44px; padding: 0; background: transparent; }
         .step { color: #ede3cf; border-color: rgba(237,227,207,.22); }
         .step:hover:not(:disabled) { background: rgba(237,227,207,.08); }
@@ -124,7 +124,7 @@ public static partial class ScriptoriumPage
         .expand[aria-expanded=true] .icon { transform: rotate(180deg); }
         .body { display: grid; gap: 12px; padding: 4px 20px 20px; }
         .body > p { margin: 0; }
-        .note-fold summary { display: inline-flex; align-items: center; gap: 6px; padding: 6px 0; font: 600 15px Figtree, sans-serif; color: #cdbd9e; cursor: pointer; list-style: none; }
+        .note-fold summary { display: inline-flex; align-items: center; gap: 6px; padding: 6px 0; font: 600 15px var(--ui); color: #cdbd9e; cursor: pointer; list-style: none; }
         .note-fold summary::-webkit-details-marker { display: none; }
         .note-fold summary:hover { color: #f0d59a; }
         .note-fold summary .icon { width: 16px; height: 16px; }
@@ -147,7 +147,7 @@ public static partial class ScriptoriumPage
         .recent { list-style: none; margin: 14px 0 0; padding: 6px 0; background: #1a1612; border-radius: 20px; }
         .recent li { display: grid; grid-template-columns: 20px 84px minmax(0, 1fr); gap: 4px 14px; align-items: baseline; padding: 10px 20px; }
         .recent p { margin: 0; }
-        .recent time { font: 500 13px "JetBrains Mono", monospace; color: #b6a98f; white-space: nowrap; }
+        .recent time { font: 500 13px var(--mono); color: #b6a98f; white-space: nowrap; }
         .recent cite { font-style: normal; font-weight: 600; }
         .verb { color: #cdbd9e; }
         .judgment-icon { align-self: center; display: grid; color: #b6a98f; }
@@ -162,17 +162,17 @@ public static partial class ScriptoriumPage
         .kicker { margin: 0; font: 700 13px Cinzel, serif; letter-spacing: .16em; text-transform: uppercase; color: #c9a25a; }
         .placed { color: #f0b45a; }
         .resembles { margin: 0 0 12px; padding: 8px 12px; border-left: 4px solid #f0b45a; background: #241c12; border-radius: 8px; color: #ede3cf; }
-        .text { font: 400 19px/1.55 "EB Garamond", serif; margin: 0 0 12px; }
+        .text { font: 400 19px/1.55 var(--serif); margin: 0 0 12px; }
         .truth { background: #141c1f; border: 1px solid #2e4248; border-radius: 16px; padding: 12px 16px; color: #dbe6e8; margin: 0 0 12px; }
         .ailment { background: #211a12; border: 1px solid #5a4630; border-radius: 16px; padding: 12px 16px; color: #ede3cf; margin: 0 0 12px; }
-        .truth-label { display: block; font: 500 14px "JetBrains Mono", monospace; letter-spacing: .14em; text-transform: uppercase; color: #8cc4ae; }
+        .truth-label { display: block; font: 500 14px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: #8cc4ae; }
         .ailment .truth-label { color: #c9a25a; }
-        code { font-family: "JetBrains Mono", monospace; font-size: .9em; background: #0b1214; color: #f0d58c; padding: 1px 6px; border-radius: 6px; }
+        code { font-family: var(--mono); font-size: .9em; background: #0b1214; color: #f0d58c; padding: 1px 6px; border-radius: 6px; }
         .text code, .ailment code { background: #2b2117; color: #f0d58c; }
         .meta, .when, .optional { color: #b6a98f; }
         .meta { margin: 0 0 12px; font-size: 15px; }
         .tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
-        .tag { white-space: nowrap; padding: 2px 12px; border-radius: 999px; border: 1px solid rgba(201,162,90,.45); font: 600 14px/1.5 Figtree, sans-serif; color: #d9b874; }
+        .tag { white-space: nowrap; padding: 2px 12px; border-radius: 999px; border: 1px solid rgba(201,162,90,.45); font: 600 14px/1.5 var(--ui); color: #d9b874; }
         .fold summary { cursor: pointer; padding: 10px 0; font-weight: 600; color: #cdbd9e; }
         .fold summary .icon { width: 16px; height: 16px; vertical-align: -2px; margin: 0 4px; }
         .amend { max-width: 740px; }
@@ -181,11 +181,11 @@ public static partial class ScriptoriumPage
         .amend input.changed[type=text], .amend textarea.changed { border-color: #f0b45a; }
         .changed-mark { font-weight: 400; color: #f0b45a; }
         .amend .buttons { margin-top: 20px; }
-        .amend input[type=text], textarea { width: 100%; background: #100e0b; color: #ede3cf; border: 1px solid #b6a98f; border-radius: 12px; padding: 8px 12px; font: 16px/1.4 Figtree, sans-serif; margin-bottom: 8px; }
-        button { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; min-height: 46px; padding: 10px 18px 10px 14px; border-radius: 999px; font: 600 16px/1.2 Figtree, sans-serif; cursor: pointer; border: 1px solid transparent; }
+        .amend input[type=text], textarea { width: 100%; background: #100e0b; color: #ede3cf; border: 1px solid #b6a98f; border-radius: 12px; padding: 8px 12px; font: 16px/1.4 var(--ui); margin-bottom: 8px; }
+        button { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; min-height: 46px; padding: 10px 18px 10px 14px; border-radius: 999px; font: 600 16px/1.2 var(--ui); cursor: pointer; border: 1px solid transparent; }
         .icon { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
         .primary { background: #c9a25a; color: #100e0b; }
-        .button-link { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; min-height: 46px; padding: 10px 18px 10px 14px; border-radius: 999px; border: 1px solid rgba(237,227,207,.22); font: 600 16px/1.2 Figtree, sans-serif; color: #ede3cf; text-decoration: none; }
+        .button-link { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; min-height: 46px; padding: 10px 18px 10px 14px; border-radius: 999px; border: 1px solid rgba(237,227,207,.22); font: 600 16px/1.2 var(--ui); color: #ede3cf; text-decoration: none; }
         .button-link:hover { background: rgba(237,227,207,.08); border-color: rgba(237,227,207,.4); color: #ede3cf; }
         .primary:hover { background: #d6b170; }
         .outline, .secondary { background: transparent; color: #ede3cf; border-color: rgba(237,227,207,.22); }
@@ -197,17 +197,17 @@ public static partial class ScriptoriumPage
         .judgments li { background: #1a1612; border-radius: 12px; padding: 10px 14px; }
         .record-filters { display: grid; gap: 10px; margin: 28px 0 0; }
         .who { display: inline-flex; justify-self: start; flex-wrap: wrap; padding: 3px; border: 1px solid rgba(237,227,207,.16); border-radius: 999px; }
-        .seg { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; min-height: 38px; padding: 7px 14px; border-radius: 999px; font: 600 14px/1.4 Figtree, sans-serif; color: #cdbd9e; text-decoration: none; }
+        .seg { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; min-height: 38px; padding: 7px 14px; border-radius: 999px; font: 600 14px/1.4 var(--ui); color: #cdbd9e; text-decoration: none; }
         .seg:hover { color: #f0d59a; }
         .seg[aria-current] { background: #c9a25a; color: #100e0b; }
         .what-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
-        .utc { margin: 0; font: 500 13px "JetBrains Mono", monospace; color: #b6a98f; }
+        .utc { margin: 0; font: 500 13px var(--mono); color: #b6a98f; }
         .record-empty { margin-top: 32px; }
         .record-day { margin-top: 28px; }
         .record-day h2 { position: sticky; top: 0; z-index: 1; display: flex; align-items: baseline; gap: 12px; margin: 0; padding: 10px 0; background: #100e0b; font: 700 13px Cinzel, serif; letter-spacing: .16em; text-transform: uppercase; color: #d9b874; }
         .record { list-style: none; margin: 0; padding: 6px 0; background: #1a1612; border: 1px solid rgba(237,227,207,.1); border-radius: 20px; }
         .record > li { display: grid; grid-template-columns: 48px 30px minmax(0, 1fr); gap: 2px 12px; align-items: start; padding: 9px 16px 9px 20px; }
-        .record > li > time { font: 500 13px/28px "JetBrains Mono", monospace; color: #b6a98f; }
+        .record > li > time { font: 500 13px/28px var(--mono); color: #b6a98f; }
         .badge { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 999px; }
         .badge .icon { width: 15px; height: 15px; stroke-width: 2.2; }
         .badge.scribe { background: rgba(201,162,90,.15); color: #d9b874; }
@@ -220,11 +220,11 @@ public static partial class ScriptoriumPage
         .said a { color: #ede3cf; font-weight: 600; text-decoration: none; }
         .said a:hover { color: #f0d59a; text-decoration: underline; }
         .said strong { color: #ede3cf; }
-        .detail { margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: rgba(237,227,207,.06); font: 500 12px/1.6 "JetBrains Mono", monospace; color: #cdbd9e; white-space: nowrap; }
+        .detail { margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: rgba(237,227,207,.06); font: 500 12px/1.6 var(--mono); color: #cdbd9e; white-space: nowrap; }
         .detail.augury { color: #8cc4ae; }
         .detail.long { white-space: normal; overflow-wrap: anywhere; }
         .run { display: inline; }
-        .run > summary { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; margin-left: 6px; padding: 2px 4px; font: 600 14px Figtree, sans-serif; color: #d9b874; cursor: pointer; list-style: none; }
+        .run > summary { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; margin-left: 6px; padding: 2px 4px; font: 600 14px var(--ui); color: #d9b874; cursor: pointer; list-style: none; }
         .run > summary::-webkit-details-marker { display: none; }
         .run > summary:hover { color: #f0d59a; }
         .run > summary .icon { width: 16px; height: 16px; transition: transform .2s; }
@@ -234,8 +234,8 @@ public static partial class ScriptoriumPage
         .run-list { list-style: none; margin: 8px 0 2px; padding: 8px 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 14px; background: #141c1f; border: 1px solid #2e4248; border-radius: 14px; }
         .run-list li { display: grid; grid-template-columns: subgrid; grid-column: 1 / -1; align-items: baseline; }
         .run-list a { font-size: 15px; font-weight: 400; }
-        .run-list time { font: 500 12px "JetBrains Mono", monospace; color: #b6a98f; }
-        .run-list .augury { font: 500 13px "JetBrains Mono", monospace; color: #8cc4ae; text-align: right; }
+        .run-list time { font: 500 12px var(--mono); color: #b6a98f; }
+        .run-list .augury { font: 500 13px var(--mono); color: #8cc4ae; text-align: right; }
         .older { margin: 24px 0 0; }
         @media (max-width: 560px) { .record > li { grid-template-columns: 40px 28px minmax(0, 1fr); gap: 2px 8px; padding: 9px 12px; } }
         .record-link { margin: 0 0 16px; }
@@ -243,7 +243,7 @@ public static partial class ScriptoriumPage
         .agreement th, .agreement td { text-align: left; vertical-align: top; padding: 8px 10px 8px 0; border-bottom: 1px solid rgba(237,227,207,.12); }
         .agreement thead th { font-weight: 600; color: #b6a98f; }
         .judgments cite { font-style: normal; font-weight: 600; }
-        .note { display: block; font: italic 18px/1.4 "EB Garamond", serif; color: #cdbd9e; }
+        .note { display: block; font: italic 18px/1.4 var(--serif); color: #cdbd9e; }
         a { color: #d9b874; }
         a:hover { color: #f0d59a; }
         :focus-visible { outline: 2px solid #f0b45a; outline-offset: 3px; }
@@ -253,10 +253,10 @@ public static partial class ScriptoriumPage
         [hidden] { display: none !important; }
         .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
         .number-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 16px 0 0; }
-        .number-form input { width: 7em; background: #100e0b; color: #ede3cf; border: 1px solid #b6a98f; border-radius: 12px; padding: 10px 12px; font: 16px Figtree, sans-serif; }
+        .number-form input { width: 7em; background: #100e0b; color: #ede3cf; border: 1px solid #b6a98f; border-radius: 12px; padding: 10px 12px; font: 16px var(--ui); }
         .part { border: 1px solid rgba(237,227,207,.16); border-radius: 16px; padding: 8px 16px 16px; margin: 16px 0 0; }
-        .part legend { padding: 0 6px; font: 500 14px "JetBrains Mono", monospace; letter-spacing: .14em; text-transform: uppercase; color: #8cc4ae; }
-        .words { margin: 0; font: 400 19px/2 "EB Garamond", serif; }
+        .part legend { padding: 0 6px; font: 500 14px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: #8cc4ae; }
+        .words { margin: 0; font: 400 19px/2 var(--serif); }
         .word { position: relative; padding: 1px 2px; border-radius: 4px; cursor: pointer; }
         .word input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
         .word:hover { background: rgba(237,227,207,.08); }
@@ -265,7 +265,7 @@ public static partial class ScriptoriumPage
         .distil-panel { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 24px; margin: 24px 0 0; padding: 16px 16px 16px 20px; background: #1a1612; border: 1px solid rgba(237,227,207,.1); border-radius: 20px; }
         .distil-said { flex: 1 1 320px; display: grid; gap: 4px; }
         .distil-said p { margin: 0; }
-        .distilled-at { font: 500 13px "JetBrains Mono", monospace; color: #8cc4ae; }
+        .distilled-at { font: 500 13px var(--mono); color: #8cc4ae; }
         .distil-about { font-size: 15px; color: #cdbd9e; }
         .distil-form { display: grid; justify-items: start; gap: 6px; margin: 0; }
         .distil-form .hint { margin: 0; font-size: 13px; }
@@ -280,7 +280,7 @@ public static partial class ScriptoriumPage
         .precept.acted { animation: flashbar 1.4s ease-out; }
         @keyframes flashbar { from { box-shadow: inset 3px 0 0 #f0b45a; } to { box-shadow: inset 3px 0 0 rgba(240,180,90,0); } }
         .numeral { font: 700 20px/1.45 Cinzel, serif; color: #c9a25a; }
-        .precept-text { margin: 0; font: 400 20px/1.45 "EB Garamond", serif; color: #ede3cf; }
+        .precept-text { margin: 0; font: 400 20px/1.45 var(--serif); color: #ede3cf; }
         [data-edits-in-place] .precept-text { cursor: pointer; }
         .precept-meta { margin: 4px 0 0; font-size: 14px; color: #b6a98f; }
         .pinned-by { display: inline-flex; align-items: center; gap: 6px; color: #d9b874; }
@@ -296,7 +296,7 @@ public static partial class ScriptoriumPage
         .precept.editing .precept-edit { display: grid; gap: 8px; }
         .precept.editing .precept-shown, .precept.editing .precept-actions { display: none; }
         .precept-edit label, .precept-add label { font-size: 15px; font-weight: 600; color: #cdbd9e; }
-        .precept-edit textarea { margin: 0; font: 19px/1.45 "EB Garamond", serif; }
+        .precept-edit textarea { margin: 0; font: 19px/1.45 var(--serif); }
         .precept-add { grid-column: 2 / 4; display: grid; gap: 8px; margin: 0; }
         .precept-add textarea { margin: 0; }
         .precept-add button:disabled { opacity: .45; }
@@ -304,7 +304,7 @@ public static partial class ScriptoriumPage
         .agreement-card .agreement { min-width: 520px; margin: 0; }
         .agreement-card thead th { font: 700 11px Cinzel, serif; letter-spacing: .14em; text-transform: uppercase; color: #b6a98f; }
         .agreement .number { text-align: right; }
-        .agreement td.number { font: 500 15px "JetBrains Mono", monospace; }
+        .agreement td.number { font: 500 15px var(--mono); }
         .agreement .muted, .agreement .quiet td, .agreement .quiet th { color: #b6a98f; }
         .agreement tbody tr:last-child th, .agreement tbody tr:last-child td { border-bottom: 0; }
         @media (max-width: 560px) { .precept { grid-template-columns: 36px minmax(0, 1fr); } .precept-actions { grid-column: 2; } .precept-add { grid-column: 2; } }
@@ -472,7 +472,7 @@ public static partial class ScriptoriumPage
             <meta name="robots" content="noindex">
             <link rel="icon" type="image/svg+xml" href="{Pages.Svg.Favicon}">
             <title>{Encode(title)} · The Daily Machine Spirit</title>
-            <style>{Pages.Styles.FontFaces}{Styles}{Pages.Styles.Altar}</style>
+            <style>{Pages.Styles.Fonts}{Styles}{Pages.Styles.Altar}</style>
             </head>
             <body>
             <a class="skip" href="#main">Skip to content</a>
