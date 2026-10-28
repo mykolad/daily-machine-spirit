@@ -340,7 +340,8 @@ skills/                           — Consult the Machine Spirit, a skill that p
     (`Veneration`): only rites above zero, the most first, a tie to the more blessed, then the newer, at most 20. One
     query for every rite's counts (`GetVotes`, a few hundred numbers), ranked in memory since Cosmos can't order by a
     difference, then one for the rites kept. Any vote may reorder it, so it's purged with the pages that show a rite's
-    counts (`Paths.ShowingVotesOf`) and kept at the edge until then.
+    counts (`Paths.ShowingVotesOf`), and by an erasure, and kept at the edge until then; any other spelling of its address
+    is not found, as a rite's is.
 - **Readers sign in to vote** (`Voters/`, #34), with GitHub for now: `/auth/{provider}?return=<path>` sends them to
   the provider's OAuth web flow, and `/auth/{provider}/callback` brings them back. `/auth/signout` (a form posted from
   this site, `RequestOrigin`) signs them out; `/api/me` tells the page's script whether sign-in is set up and whether
@@ -555,7 +556,7 @@ skills/                           — Consult the Machine Spirit, a skill that p
       redacted part, field by field; an older copy (from before an amendment) and a note have each erased word replaced
       wherever it appears. The rite's own copy must still read as the words chosen from, and each copy is patched only
       if it's the version read: a vote changes the rite's, so a refusal is read and erased again,
-      up to three times. Then Today, the rite's page, the search index and the rites API (with the rite's truth) are purged; another rite's page that names it
+      up to three times. Then Today, the rite's page, the Reliquary, the search index and the rites API (with the rite's truth) are purged; another rite's page that names it
       in More rites refreshes within its hour. Cosmos's own backups keep the old words until they expire. A
       refill already running may still mark a new draft as much like the rite by its old title: it read the titles
       before the erasure, and only knows the rite by its title (`TakenRite`), so no batch can guard it.

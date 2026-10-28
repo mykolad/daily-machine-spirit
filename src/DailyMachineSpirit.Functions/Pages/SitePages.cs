@@ -69,29 +69,19 @@ public sealed class SitePages
         {
             return Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(id));
         }
-        // Cloudflare keeps every spelling of an address apart, and a purge (a vote, an erasure) names only /r/1: kept at
-        // /r/01 or /R/1, a page would show erased words for its hour. A trailing slash is a slip worth forgiving: its
-        // redirect holds no words to go stale. A query string is fine, kept only a minute (EdgeLifetime.Brief).
-        var address = Paths.Rite(number);
-        if (string.Equals(request.Path.Value, address + "/", StringComparison.Ordinal))
+        return await AtItsAddress(request, Paths.Rite(number), id, async () =>
         {
-            return new RedirectResult(address + request.QueryString, permanent: true);
-        }
-        if (!string.Equals(request.Path.Value, address, StringComparison.Ordinal))
-        {
-            return Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(id));
-        }
-
-        // Taken before the counts are read, so it errs toward the voter: for a vote saved during the read, the script shows
-        // that vote's answer, which has the vote, rather than counts that might not.
-        var now = time.GetUtcNow();
-        var found = (await rites.GetByNumbers([number], cancellationToken)).Map(matches => matches.HeadOrNone());
-        return await found.Match<Task<IActionResult>>(
-            Right: rite => rite.Match<Task<IActionResult>>(
-                Some: async shown => Page(request, StatusCodes.Status200OK,
-                    RitePage.Render(shown, await MoreRites(shown, cancellationToken), now), EdgeLifetime.UntilPurged),
-                None: () => Task.FromResult<IActionResult>(Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(id)))),
-            Left: error => Task.FromResult(Failed(request, error)));
+            // Taken before the counts are read, so it errs toward the voter: for a vote saved during the read, the script
+            // shows that vote's answer, which has the vote, rather than counts that might not.
+            var now = time.GetUtcNow();
+            var found = (await rites.GetByNumbers([number], cancellationToken)).Map(matches => matches.HeadOrNone());
+            return await found.Match<Task<IActionResult>>(
+                Right: rite => rite.Match<Task<IActionResult>>(
+                    Some: async shown => Page(request, StatusCodes.Status200OK,
+                        RitePage.Render(shown, await MoreRites(shown, cancellationToken), now), EdgeLifetime.UntilPurged),
+                    None: () => Task.FromResult<IActionResult>(Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(id)))),
+                Left: error => Task.FromResult(Failed(request, error)));
+        });
     }
 
     // Nothing to read: the page changes with a deployment, which no purge follows, and at midnight (its example date), so
@@ -108,16 +98,17 @@ public sealed class SitePages
     public async Task<IActionResult> Reliquary(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "reliquary")] HttpRequest request,
         CancellationToken cancellationToken)
-    {
-        var now = time.GetUtcNow();
-        var kept = await rites.GetVotes(cancellationToken)
-            .MapAsync(Veneration.MostVenerated)
-            .BindAsync(numbers => rites.GetByNumbers(numbers, cancellationToken)
-                .MapAsync(found => numbers.SelectMany(number => found.Where(rite => rite.Number == number)).ToList()));
-        return kept.Match(
-            Right: shown => Page(request, StatusCodes.Status200OK, ReliquaryPage.Render(shown, now), EdgeLifetime.UntilPurged),
-            Left: error => Failed(request, error));
-    }
+        => await AtItsAddress(request, Paths.Reliquary, (request.Path.Value ?? string.Empty).TrimStart('/'), async () =>
+        {
+            var now = time.GetUtcNow();
+            var kept = await rites.GetVotes(cancellationToken)
+                .MapAsync(Veneration.MostVenerated)
+                .BindAsync(numbers => rites.GetByNumbers(numbers, cancellationToken)
+                    .MapAsync(found => numbers.SelectMany(number => found.Where(rite => rite.Number == number)).ToList()));
+            return kept.Match(
+                Right: shown => Page(request, StatusCodes.Status200OK, ReliquaryPage.Render(shown, now), EdgeLifetime.UntilPurged),
+                Left: error => Failed(request, error));
+        });
 
     /// <summary><c>/rtfm</c>, what veterans tell newcomers, for whoever types it: it leads to the Catechism.</summary>
     [Function("ReadTheManual")]
@@ -254,6 +245,22 @@ public sealed class SitePages
     {
         var shown = newestFirst.Take(options.Value.ArchivePageSize).ToList();
         return (shown, newestFirst.Count > options.Value.ArchivePageSize ? Some(shown[^1].Number) : Option<int>.None);
+    }
+
+    // Cloudflare keeps every spelling of an address apart, and a purge (a vote, an erasure) names only one: kept at /r/01,
+    // /R/1 or /Reliquary, a page would show erased words or old counts for its hour. A trailing slash is a slip worth
+    // forgiving: its redirect holds no words to go stale. A query string is fine, kept only a minute (EdgeLifetime.Brief).
+    private static async Task<IActionResult> AtItsAddress(HttpRequest request, string address, string asked, Func<Task<IActionResult>> page)
+    {
+        if (string.Equals(request.Path.Value, address + "/", StringComparison.Ordinal))
+        {
+            return new RedirectResult(address + request.QueryString, permanent: true);
+        }
+        if (!string.Equals(request.Path.Value, address, StringComparison.Ordinal))
+        {
+            return Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(asked));
+        }
+        return await page();
     }
 
     private IActionResult Failed(HttpRequest request, Error error)

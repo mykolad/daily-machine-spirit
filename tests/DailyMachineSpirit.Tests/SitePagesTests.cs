@@ -801,6 +801,29 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.Contains("No rite is venerated yet.", page.Html);
     }
 
+    // A vote's purge names /reliquary alone, so another spelling would keep old counts at Cloudflare for its hour.
+    [Fact]
+    public async Task Reliquary_SpelledAnotherWay_IsNotFound()
+    {
+        await Add(Day, "The Unvoted Vigil");
+
+        var page = await Read(context => Pages().Reliquary(context.Request, CancellationToken.None), "/Reliquary", "");
+
+        Assert.Equal((StatusCodes.Status404NotFound, "no-store"), (page.Status, page.CacheControl));
+    }
+
+    [Fact]
+    public async Task Reliquary_WithATrailingSlash_RedirectsToItsAddress_KeepingTheQuery()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Path = "/reliquary/";
+        context.Request.QueryString = new QueryString("?utm_source=feed");
+
+        var result = Assert.IsType<RedirectResult>(await Pages().Reliquary(context.Request, CancellationToken.None));
+
+        Assert.Equal(("/reliquary?utm_source=feed", true), (result.Url, result.Permanent));
+    }
+
     [Fact]
     public async Task Archive_LeadsToTheReliquary()
     {
