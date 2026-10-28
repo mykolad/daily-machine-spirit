@@ -339,13 +339,15 @@ public static class Script
           });
           watchOlder();
 
-          // The sheet's own field (the Archive's, the Breviary's) shows the results as the reader types: a quarter of a
-          // second after they stop, the results page is fetched and swapped into this one, and the address follows
-          // without a new history entry. One renderer, the server's, so results look the same however they're reached.
-          // Without the script it's a plain form, and Enter loads the results as a page.
+          // The sheet's own field (the Archive's, the Breviary's) is a plain form without the script, and Enter loads the
+          // results as a page. With it, the field is hidden and the nav's search fills it (#157), one search on the page:
+          // a quarter of a second after the reader stops typing, the results page is fetched and swapped into this one,
+          // and the address follows without a new history entry. One renderer, the server's, so results look the same
+          // however they're reached.
           const field = document.querySelector('.sheet-search input[type=search]');
-          // The Archive's field is the nav's search there; the Breviary's searches the reader's rites alone, beside it.
           const onTheArchive = field?.id === 'archive-search';
+          // What the nav's search calls to search the page, on a page with a field of its own.
+          let searchThePage = null;
           if (field) {
             const form = field.form;
             let typing;
@@ -405,49 +407,36 @@ public static class Script
                 if (error.name !== 'AbortError') say('The search didn’t work. Try again.');
               }
             };
-            field.addEventListener('input', () => {
+            form.style.display = 'none';
+            searchThePage = (typed) => {
               clearTimeout(typing);
-              typing = setTimeout(() => show(field.value.trim()), 250);
-            });
-            // Esc, the field's clear button and "Clear search" bring back the whole Archive, focus staying in the field.
-            const clear = () => {
+              field.value = typed;
+              typing = setTimeout(() => show(typed), 250);
+            };
+            // The Archive's "Clear search" in the margin brings back the whole Archive (the nav's search closes too).
+            document.addEventListener('click', (event) => {
+              if (!event.target.closest('.margin-clear') || !isPlainClick(event)) return;
+              event.preventDefault();
               clearTimeout(typing);
               field.value = '';
-              field.focus();
               show('');
-            };
-            field.addEventListener('keydown', (event) => {
-              // Escape while an input method composes a word cancels the word, not the search.
-              if (event.isComposing || event.key !== 'Escape' || field.value === '') return;
-              event.preventDefault();
-              clear();
             });
-            document.addEventListener('click', (event) => {
-              const link = event.target.closest(onTheArchive ? '.sheet-clear, .margin-clear, .nav-search' : '.sheet-clear, .margin-clear');
-              if (!link || !isPlainClick(event)) return;
-              event.preventDefault();
-              // The nav's search icon leads to this field: here it's the field itself.
-              if (link.matches('.nav-search')) field.focus();
-              else clear();
-            });
-            // Arriving from the nav's search, to search on.
-            if (location.hash === `#${field.id}`) field.focus();
           }
 
-          // The nav's search, on every page but the Archive (whose field the icon leads to): the icon opens a field, and
-          // the subjects and the rites the words typed point to drop down under it. The subjects come with the page; the
-          // rites (up to five, holding every word) come from the search index (every rite's words), loaded once when the
-          // field first opens (/api/search-index), so what the reader types never leaves the browser until they search.
-          // Enter, or "Search all in the Archive", searches the Archive. Without the script the icon is a link to the
-          // Archive's field. The Breviary has a field of its own too, for the reader's rites alone, so its nav still
-          // searches them all.
+          // The nav's search, the page's only one: the icon opens a field. On the Archive the Archive narrows under it as
+          // the reader types; on the Breviary the reader's rites do while "Only my Breviary" is ticked, as it is at first.
+          // Elsewhere, and unticked, the subjects and the rites the words typed point to drop down under it. The subjects
+          // come with the page; the rites (up to five, holding every word) come from the search index (every rite's words
+          // and subjects), loaded once when the field first opens (/api/search-index), so what the reader types never
+          // leaves the browser until they search. Enter, or "Search all in the Archive", searches the Archive. Without the
+          // script the icon is a link to the Archive's field.
           const navSearch = document.querySelector('.nav-search');
-          if (navSearch && !onTheArchive) {
+          if (navSearch) {
             const subjects = JSON.parse(navSearch.dataset.subjects ?? '[]');
             const box = document.createElement('div');
             box.className = 'nav-find';
             box.setAttribute('role', 'search');
-            // Named for what it searches: the Breviary has a search of its own beside it, for the reader's rites alone.
+            // Named for what it searches (nameTheField), so a screen reader moving by landmarks knows which rites.
             box.setAttribute('aria-label', 'All rites');
             box.innerHTML = `<button type="button" class="nav-find-open" aria-label="Search" aria-expanded="false" aria-controls="nav-find-field">${navSearch.innerHTML}</button>`
               + '<input type="search" id="nav-find-field" class="nav-find-field" role="combobox" aria-autocomplete="list" aria-controls="search-list" aria-expanded="false" aria-label="Search the rites" placeholder="Search the rites" tabindex="-1" maxlength="100" autocomplete="off" spellcheck="false">'
@@ -469,6 +458,20 @@ public static class Script
             status.className = 'sr-only';
             status.setAttribute('role', 'status');
             box.append(status);
+            // The Archive holds every rite: only the Breviary has a narrower search to choose.
+            const scope = searchThePage && !onTheArchive && document.createElement('label');
+            if (scope) {
+              scope.className = 'nav-find-scope';
+              scope.innerHTML = '<input type="checkbox" checked> Only my Breviary';
+              box.append(scope);
+            }
+            const scoped = () => (scope ? scope.querySelector('input').checked : Boolean(searchThePage));
+            const nameTheField = () => {
+              const mine = scoped();
+              input.placeholder = !mine ? 'Search the rites' : onTheArchive ? 'Search the Archive' : 'Search your Breviary';
+              input.setAttribute('aria-label', input.placeholder);
+              box.setAttribute('aria-label', !mine ? 'All rites' : onTheArchive ? 'The Archive' : 'Your Breviary');
+            };
             const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
             // A rite's day as the pages show it (ImperialDate.Of): the thousandths of its year passed at its midnight, its
             // year within the millennium, and the millennium.
@@ -569,9 +572,11 @@ public static class Script
               drop.hidden = !shown;
               input.setAttribute('aria-expanded', String(shown));
             };
-            // Closed, or typed on, while the rites were loading: the next suggestions are on their way, or none are wanted.
-            const outdated = (typed) => !box.classList.contains('open') || input.value.trim() !== typed;
+            // Closed, typed on, or turned to the page's own search while the rites were loading: the next suggestions are on
+            // their way, or none are wanted.
+            const outdated = (typed) => !box.classList.contains('open') || input.value.trim() !== typed || scoped();
             const suggest = async () => {
+              if (scoped()) return;
               const typed = input.value.trim();
               const words = wordsOf(typed);
               if (words.length === 0) {
@@ -656,6 +661,8 @@ public static class Script
               input.focus();
             };
             const close = (refocus) => {
+              // Closed, the page's search is over: the whole Archive, or Breviary, again.
+              if (scoped() && input.value.trim()) searchThePage('');
               clearTimeout(typing);
               box.classList.remove('open');
               opener.setAttribute('aria-expanded', 'false');
@@ -671,9 +678,17 @@ public static class Script
             box.querySelector('.nav-find-close').addEventListener('click', () => close(true));
             // At once, so Enter and "Search all" search what's typed now, and no suggestion for older words can be opened;
             // only the suggestions wait for a pause.
+            const pointAll = (typed) => {
+              all.href = typed ? `/archive?q=${encodeURIComponent(typed)}#archive-search` : '/archive#archive-search';
+            };
             input.addEventListener('input', () => {
               const typed = input.value.trim();
-              all.href = typed ? `/archive?q=${encodeURIComponent(typed)}#archive-search` : '/archive#archive-search';
+              pointAll(typed);
+              // The page's rites narrow under it as the reader types: they're the results, so nothing drops down.
+              if (scoped()) {
+                searchThePage(typed);
+                return;
+              }
               fill([], []);
               choose(-1);
               clearTimeout(typing);
@@ -691,6 +706,7 @@ public static class Script
                 choose(active <= 0 ? count - 1 : active - 1);
               } else if (event.key === 'Enter') {
                 event.preventDefault();
+                if (scoped()) return;
                 if (active >= 0) location.assign(options()[active].href);
                 else if (input.value.trim()) location.assign(all.href);
               } else if (event.key === 'Escape') {
@@ -698,13 +714,53 @@ public static class Script
                 close(true);
               }
             });
-            // A click or a tab anywhere else closes it.
+            // A click or a tab anywhere else closes it, but not while it holds the page's search: the words stay over the
+            // rites they found.
+            const keepsTheSearch = () => scoped() && input.value.trim() !== '';
             document.addEventListener('click', (event) => {
-              if (box.classList.contains('open') && !box.contains(event.target)) close(false);
+              if (box.classList.contains('open') && !box.contains(event.target) && !keepsTheSearch()) close(false);
             });
             box.addEventListener('focusout', (event) => {
-              if (box.classList.contains('open') && event.relatedTarget && !box.contains(event.relatedTarget)) close(false);
+              if (box.classList.contains('open') && event.relatedTarget && !box.contains(event.relatedTarget) && !keepsTheSearch()) close(false);
             });
+            if (scope) {
+              scope.querySelector('input').addEventListener('change', () => {
+                nameTheField();
+                const typed = input.value.trim();
+                if (scoped()) {
+                  clearTimeout(typing);
+                  fill([], []);
+                  choose(-1);
+                  showDrop(false);
+                  status.textContent = '';
+                  searchThePage(typed);
+                } else {
+                  searchThePage('');
+                  if (typed) suggest();
+                }
+                input.focus();
+              });
+            }
+            if (searchThePage) {
+              nameTheField();
+              // A search of the page, linked or reloaded: its words shown back in the open field. Arriving from another
+              // page's search ("#archive-search"), to search on.
+              if (field.value || location.hash === `#${field.id}`) {
+                box.classList.add('open');
+                opener.setAttribute('aria-expanded', 'true');
+                input.tabIndex = 0;
+                input.value = field.value;
+                pointAll(field.value);
+                if (location.hash === `#${field.id}`) input.focus();
+              }
+              // "Clear search" in the margin: the page's search is over, so the nav's is too.
+              document.addEventListener('click', (event) => {
+                if (event.target.closest('.margin-clear') && isPlainClick(event)) {
+                  input.value = '';
+                  close(true);
+                }
+              });
+            }
           }
 
           // A page with a countdown shows what's newest (Today, the Archive, a tag's page), so it's stale once the next rite

@@ -164,9 +164,14 @@ month, with Today's masthead, margins and altar, and search as the Archive filte
   1.18:1), and it scrolls into view when the drop-down is cut short (zoomed in, a keyboard on screen); keys an input
   method uses while composing a word are left to it. Without the script the icon is a link to the Archive's field.
 - **The drop-down's count line is ink-muted, not brass-dim,** for the same 4.05:1 reason as the sheet's.
-- **The Archive's results follow the typing without moving focus:** the field stays focused while the rows are
-  swapped, and the line under the heading ("3 rites mention it") is announced in a live region. Escape and the clear
-  buttons bring back the whole Archive with focus still in the field. Enter still loads the results as a page.
+- **One search on the page:** on the Archive, and on the Breviary while "Only my Breviary" is ticked, the nav's field
+  is the page's search, and its rows are the results, so nothing drops down. Its name, placeholder and `search`
+  landmark say which rites it searches ("Search the Archive", "Search your Breviary"; unticked, "Search the rites").
+  "Only my Breviary" is a native checkbox inside its label. The results follow the typing without moving focus: the
+  field stays focused while the rows are swapped, and the line under the heading ("3 rites mention it") is announced
+  in a live region. While it holds words, a click or a tab elsewhere leaves it open, so the words stay over the rites
+  they found; Escape, its × and the margin's "Clear search" bring back the whole page and return focus to the icon.
+  Without the script the sheet's own field is a plain form, and Enter loads the results as a page.
 
 ## The main region
 
@@ -299,9 +304,9 @@ and candles behind it, and the recent rites under Today.
   after it hidden. The index of chapters, in the right margin on a wide screen, links to each chapter whole, each count
   said as "2 rites", the one shown `aria-current="page"` and underlined, not told by its colour alone. Shown whole, the
   chapter is named by a chip ("Show every chapter, not only Builds"), not by a rubric saying it again.
-- **The search field is the Archive's:** named "Search your Breviary", a plain form without the script, and the count
-  found in the page's title and the line under the heading, announced as the results swap in. Its `search` landmark
-  is named "Your Breviary" and the nav's "All rites", so a screen reader moving by landmarks tells the two apart.
+- **The search is the Archive's:** the nav's, with "Only my Breviary" ticked (above), or without the script a plain
+  form named "Search your Breviary", whose `search` landmark is named "Your Breviary". The count found is in the
+  page's title and the line under the heading, announced as the results swap in.
 - **The verdict filters are links** in a `nav` named "Show", the current one `aria-current="page"`: each is a page of
   its own, so they work without the script.
 - **The toast after a vote links to the Breviary,** for six seconds and as long as the pointer or focus is on it. Its
