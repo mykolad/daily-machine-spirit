@@ -116,6 +116,11 @@ public sealed class SitePages
                 Left: error => Failed(request, error));
         });
 
+    // A prototype (#152): the page holds no rites, which its script reads from the search index.
+    [Function("Consult")]
+    public IActionResult Consult([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "consult")] HttpRequest request)
+        => Page(request, StatusCodes.Status200OK, ConsultPage.Render());
+
     /// <summary><c>/rtfm</c>, what veterans tell newcomers, for whoever types it: it leads to the Catechism.</summary>
     [Function("ReadTheManual")]
     public IActionResult ReadTheManual([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "rtfm")] HttpRequest request)
