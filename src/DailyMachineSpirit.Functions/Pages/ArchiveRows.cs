@@ -66,7 +66,7 @@ public static class ArchiveRows
         return $"""
             <li class="row">
             <span class="row-meta">{ImperialDate.InALink(rite.PublishedOnUtc, "row-date")}<span class="kind">{(rite.Writing.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL")}</span><span class="row-number"><span aria-hidden="true">NO. </span><span class="sr-only">Rite </span>{rite.Number}</span></span>
-            <span class="row-main"><a class="row-title" href="{Paths.Rite(rite.Number)}" title="{ImperialDate.Day(rite.PublishedOnUtc)}">{Highlight.Of(rite.Writing.Title, words)}</a><span class="row-line">{Highlight.Of(line, words)}</span>{RowVotes(rite, yours)}{RelicBadge.For(rite.Number, places)}{tagLinks}</span>
+            <span class="row-main"><a class="row-title" href="{Paths.Rite(rite.Number)}" title="{ImperialDate.Day(rite.PublishedOnUtc)}">{Highlight.Of(rite.Writing.Title, words)}</a><span class="row-line">{Highlight.Of(line, words)}</span>{Standing(RowVotes(rite, yours), RelicBadge.For(rite.Number, places))}{tagLinks}</span>
             </li>
             """;
     }
@@ -86,6 +86,10 @@ public static class ArchiveRows
             ? $"""<span class="row-yours"><span class="row-verdict row-verdict-blessed">{Svg.SmallFlameIcon}{YouAnd(rite.BlessedCount)} blessed it</span>{Counts(heresies)}</span>"""
             : $"""<span class="row-yours"><span class="row-verdict row-verdict-heresy">{Svg.SmallSkullIcon}{YouAnd(rite.HeresyCount)} called it heresy</span>{Counts(blessed)}</span>""";
     }
+
+    // The votes and the relic badge share a line, wrapping only where it's too narrow; no line when there's neither.
+    private static string Standing(string votes, string badge)
+        => votes.Length + badge.Length == 0 ? string.Empty : $"""<span class="row-standing">{votes}{badge}</span>""";
 
     // Each count only when there is one, and no line at all for a rite nobody has voted on.
     private static string Counts(string counts) => counts.Length == 0 ? string.Empty : $"""<span class="row-counts">{counts}</span>""";

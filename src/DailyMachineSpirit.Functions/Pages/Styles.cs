@@ -253,7 +253,9 @@ public static class Styles
         .relic svg{width:14px;height:14px}
         .relic-note{display:flex;flex-direction:column;align-items:center;margin-top:18px}
         .relic-note>.margin-label{display:none}
-        .row .relic{position:relative;z-index:1;align-self:flex-start;min-height:28px;margin-top:6px;padding:2px 12px;font-size:13px}
+        .row-standing{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;margin-top:4px}
+        .row-standing>.row-counts,.row-standing>.row-yours{margin-top:0}
+        .row .relic{position:relative;z-index:1;min-height:28px;padding:2px 12px;font-size:13px}
         .other-subjects{width:100%;margin-top:56px;display:flex;flex-direction:column;align-items:center;gap:12px}
         .other-subjects h2{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:22px}
         .site-header nav>.nav-search,.site-header nav>.nav-breviary{display:grid;place-items:center;width:44px;height:44px;padding:0;color:#d9b874}
