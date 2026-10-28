@@ -13,7 +13,8 @@ public static class TagPage
     /// <param name="olderThan">Where the next page starts, or None when these are the oldest.</param>
     /// <param name="isFirstPage">An empty first page means the tag has no rites yet; an empty later one, only that
     /// none are older.</param>
-    public static string Render(Tag tag, IReadOnlyList<Rite> rites, Option<int> olderThan, bool isFirstPage, DateTimeOffset now)
+    /// <param name="places">The places of the rites the Reliquary keeps, each worn as a badge.</param>
+    public static string Render(Tag tag, IReadOnlyList<Rite> rites, Option<int> olderThan, bool isFirstPage, IReadOnlyDictionary<int, int> places, DateTimeOffset now)
     {
         var label = Html.Encode(tag.Label);
         var about = $"Rites about {tag.About}, newest first.";
@@ -37,7 +38,7 @@ public static class TagPage
             heading: label,
             sub: Html.Encode(about),
             search: string.Empty,
-            body: ArchiveRows.Months(rites, [], ArchiveRows.NoVotes),
+            body: ArchiveRows.Months(rites, [], ArchiveRows.NoVotes, places),
             below: ArchiveRows.More(olderThan.Map(number => Paths.TagBefore(tag.Key, number)), "Load older rites", end, string.Empty),
             left: left,
             right: right));

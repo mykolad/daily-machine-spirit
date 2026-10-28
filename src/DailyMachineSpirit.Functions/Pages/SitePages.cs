@@ -50,11 +50,15 @@ public sealed class SitePages
             return Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(path));
         }
 
-        // Today's rite and the ones before it, in one read. A new rite purges Today, which is the only time they change.
+        // Today's rite and the ones before it, in one read. A new rite purges Today, as does every vote, which may move its
+        // relic badge.
         var now = time.GetUtcNow();
-        return (await rites.GetNewest(1 + options.Value.RecentRitesOnToday, cancellationToken)).Match(
-            Right: newest => newest.HeadOrNone().Match(
-                Some: rite => Page(request, StatusCodes.Status200OK, TodayPage.Render(rite, newest.Skip(1).ToList(), now), EdgeLifetime.UntilPurged),
+        var places = Places(cancellationToken);
+        var newest = await rites.GetNewest(1 + options.Value.RecentRitesOnToday, cancellationToken);
+        var placed = await places;
+        return newest.Match(
+            Right: found => found.HeadOrNone().Match(
+                Some: rite => Page(request, StatusCodes.Status200OK, TodayPage.Render(rite, found.Skip(1).ToList(), placed, now), EdgeLifetime.UntilPurged),
                 None: () => Page(request, StatusCodes.Status200OK, TodayPage.Slumbering(now), EdgeLifetime.UntilPurged)),
             Left: error => Failed(request, error));
     }
@@ -69,29 +73,21 @@ public sealed class SitePages
         {
             return Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(id));
         }
-        // Cloudflare keeps every spelling of an address apart, and a purge (a vote, an erasure) names only /r/1: kept at
-        // /r/01 or /R/1, a page would show erased words for its hour. A trailing slash is a slip worth forgiving: its
-        // redirect holds no words to go stale. A query string is fine, kept only a minute (EdgeLifetime.Brief).
-        var address = Paths.Rite(number);
-        if (string.Equals(request.Path.Value, address + "/", StringComparison.Ordinal))
+        return await AtItsAddress(request, Paths.Rite(number), id, async () =>
         {
-            return new RedirectResult(address + request.QueryString, permanent: true);
-        }
-        if (!string.Equals(request.Path.Value, address, StringComparison.Ordinal))
-        {
-            return Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(id));
-        }
-
-        // Taken before the counts are read, so it errs toward the voter: for a vote saved during the read, the script shows
-        // that vote's answer, which has the vote, rather than counts that might not.
-        var now = time.GetUtcNow();
-        var found = (await rites.GetByNumbers([number], cancellationToken)).Map(matches => matches.HeadOrNone());
-        return await found.Match<Task<IActionResult>>(
-            Right: rite => rite.Match<Task<IActionResult>>(
-                Some: async shown => Page(request, StatusCodes.Status200OK,
-                    RitePage.Render(shown, await MoreRites(shown, cancellationToken), now), EdgeLifetime.UntilPurged),
-                None: () => Task.FromResult<IActionResult>(Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(id)))),
-            Left: error => Task.FromResult(Failed(request, error)));
+            // Taken before the counts are read, so it errs toward the voter: for a vote saved during the read, the script
+            // shows that vote's answer, which has the vote, rather than counts that might not.
+            var now = time.GetUtcNow();
+            var places = Places(cancellationToken);
+            var found = (await rites.GetByNumbers([number], cancellationToken)).Map(matches => matches.HeadOrNone());
+            var placed = await places;
+            return await found.Match<Task<IActionResult>>(
+                Right: rite => rite.Match<Task<IActionResult>>(
+                    Some: async shown => Page(request, StatusCodes.Status200OK,
+                        RitePage.Render(shown, await MoreRites(shown, cancellationToken), placed, now), EdgeLifetime.UntilPurged),
+                    None: () => Task.FromResult<IActionResult>(Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(id)))),
+                Left: error => Task.FromResult(Failed(request, error)));
+        });
     }
 
     // Nothing to read: the page changes with a deployment, which no purge follows, and at midnight (its example date), so
@@ -99,6 +95,26 @@ public sealed class SitePages
     [Function("About")]
     public IActionResult About([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "catechism")] HttpRequest request)
         => Page(request, StatusCodes.Status200OK, AboutPage.Render(time.GetUtcNow()));
+
+    /// <summary>
+    /// The readers' most venerated rites: every rite's counts (a few hundred numbers), ranked here, then the few kept.
+    /// Kept at the edge until a vote purges it.
+    /// </summary>
+    [Function("Reliquary")]
+    public async Task<IActionResult> Reliquary(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "reliquary")] HttpRequest request,
+        CancellationToken cancellationToken)
+        => await AtItsAddress(request, Paths.Reliquary, (request.Path.Value ?? string.Empty).TrimStart('/'), async () =>
+        {
+            var now = time.GetUtcNow();
+            var kept = await rites.GetVotes(cancellationToken)
+                .MapAsync(Veneration.MostVenerated)
+                .BindAsync(numbers => rites.GetByNumbers(numbers, cancellationToken)
+                    .MapAsync(found => numbers.SelectMany(number => found.Where(rite => rite.Number == number)).ToList()));
+            return kept.Match(
+                Right: shown => Page(request, StatusCodes.Status200OK, ReliquaryPage.Render(shown, now), EdgeLifetime.UntilPurged),
+                Left: error => Failed(request, error));
+        });
 
     /// <summary><c>/rtfm</c>, what veterans tell newcomers, for whoever types it: it leads to the Catechism.</summary>
     [Function("ReadTheManual")]
@@ -127,6 +143,7 @@ public sealed class SitePages
         {
             return new RedirectResult(Paths.Tag(only.Key), permanent: false);
         }
+        var places = Places(cancellationToken);
         if (words.Count > 0)
         {
             var tagKey = tag.Map(filter => filter.Key);
@@ -134,6 +151,7 @@ public sealed class SitePages
             var found = await rites.FindDaysAndTags(sought, tagKey, cancellationToken)
                 .BindAsync(days => rites.SearchOlderThan(sought, tagKey, isFirstPage ? int.MaxValue : before, options.Value.ArchivePageSize + 1, cancellationToken)
                     .MapAsync(page => Results(days, page)));
+            var placed = await places;
             return found.Match(
                 Right: results =>
                 {
@@ -142,7 +160,7 @@ public sealed class SitePages
                     {
                         logger.CountArchiveSearch(tag.IsSome ? "words-in-a-subject" : "words");
                     }
-                    return Page(request, StatusCodes.Status200OK, ArchivePage.Results(typed, words, tag, results, now));
+                    return Page(request, StatusCodes.Status200OK, ArchivePage.Results(typed, words, tag, results, placed, now));
                 },
                 Left: error => Failed(request, error));
         }
@@ -152,8 +170,9 @@ public sealed class SitePages
                     ? rites.GetOlderThan(int.MaxValue, options.Value.ArchivePageSize + 2, cancellationToken).MapAsync(found => found.Skip(1).ToList())
                     : rites.GetOlderThan(before, options.Value.ArchivePageSize + 1, cancellationToken)))
                 .Map(page => (Days: days, Page: OnePage(page))));
+        var listedPlaces = await places;
         return archive.Match(
-            Right: found => Page(request, StatusCodes.Status200OK, ArchivePage.Render(found.Page.Shown, found.Page.OlderThan, found.Days, now)),
+            Right: found => Page(request, StatusCodes.Status200OK, ArchivePage.Render(found.Page.Shown, found.Page.OlderThan, found.Days, listedPlaces, now)),
             Left: error => Failed(request, error));
     }
 
@@ -188,12 +207,14 @@ public sealed class SitePages
     {
         var now = time.GetUtcNow();
         var before = int.TryParse(request.Query["before"], out var number) && number > 0 ? number : int.MaxValue;
+        var places = Places(cancellationToken);
         var page = await rites.GetTaggedOlderThan(tag.Key, before, options.Value.ArchivePageSize + 1, cancellationToken);
+        var placed = await places;
         return page.Match(
             Right: found =>
             {
                 var (shown, olderThan) = OnePage(found);
-                return Page(request, StatusCodes.Status200OK, TagPage.Render(tag, shown, olderThan, isFirstPage: before == int.MaxValue, now));
+                return Page(request, StatusCodes.Status200OK, TagPage.Render(tag, shown, olderThan, isFirstPage: before == int.MaxValue, placed, now));
             },
             Left: error => Failed(request, error));
     }
@@ -229,12 +250,31 @@ public sealed class SitePages
             });
     }
 
+    // Read beside the page's own rites, so it adds no wait.
+    private Task<IReadOnlyDictionary<int, int>> Places(CancellationToken cancellationToken) => RelicPlaces.Read(rites, logger, cancellationToken);
+
     // Newest first, read one beyond a page: the extra one says there are older ones, and the next page starts below the
     // last one shown.
     private (List<Rite> Shown, Option<int> OlderThan) OnePage(IReadOnlyList<Rite> newestFirst)
     {
         var shown = newestFirst.Take(options.Value.ArchivePageSize).ToList();
         return (shown, newestFirst.Count > options.Value.ArchivePageSize ? Some(shown[^1].Number) : Option<int>.None);
+    }
+
+    // Cloudflare keeps every spelling of an address apart, and a purge (a vote, an erasure) names only one: kept at /r/01,
+    // /R/1 or /Reliquary, a page would show erased words or old counts for its hour. A trailing slash is a slip worth
+    // forgiving: its redirect holds no words to go stale. A query string is fine, kept only a minute (EdgeLifetime.Brief).
+    private static async Task<IActionResult> AtItsAddress(HttpRequest request, string address, string asked, Func<Task<IActionResult>> page)
+    {
+        if (string.Equals(request.Path.Value, address + "/", StringComparison.Ordinal))
+        {
+            return new RedirectResult(address + request.QueryString, permanent: true);
+        }
+        if (!string.Equals(request.Path.Value, address, StringComparison.Ordinal))
+        {
+            return Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(asked));
+        }
+        return await page();
     }
 
     private IActionResult Failed(HttpRequest request, Error error)

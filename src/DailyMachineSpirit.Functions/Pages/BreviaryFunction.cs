@@ -48,17 +48,23 @@ public sealed class BreviaryFunction
         var words = SearchWords.From(asked);
         var typed = words.Count == 0 ? string.Empty : asked;
         return await session.SignedIn(request).MatchAsync(
-            Some: async voterKey => (await votes.GetAllVotes(voterKey, cancellationToken)
-                    .BindAsync(yours => rites.GetByNumbers(yours.Keys.ToList(), cancellationToken)
-                        .MapAsync(found => BreviaryPage.Render(found.OrderByDescending(rite => rite.Number).ToList(), yours, only, chapter, typed, words))))
-                .Match(
-                    Right: html => Personal(request, StatusCodes.Status200OK, html),
-                    Left: error =>
-                    {
-                        // The path alone: nothing that tells the reader apart.
-                        logger.LogError(error.ToException(), "The page {Path} couldn't be served: {Reason}", request.Path.Value, error.Message);
-                        return Personal(request, StatusCodes.Status503ServiceUnavailable, StatePages.Failed(Paths.Breviary));
-                    }),
+            Some: async voterKey =>
+            {
+                // Read beside the reader's own, so it adds no wait.
+                var places = RelicPlaces.Read(rites, logger, cancellationToken);
+                return (await votes.GetAllVotes(voterKey, cancellationToken)
+                        .BindAsync(yours => rites.GetByNumbers(yours.Keys.ToList(), cancellationToken)
+                            .MapAsync(async found => BreviaryPage.Render(
+                                found.OrderByDescending(rite => rite.Number).ToList(), yours, only, chapter, typed, words, await places))))
+                    .Match(
+                        Right: html => Personal(request, StatusCodes.Status200OK, html),
+                        Left: error =>
+                        {
+                            // The path alone: nothing that tells the reader apart.
+                            logger.LogError(error.ToException(), "The page {Path} couldn't be served: {Reason}", request.Path.Value, error.Message);
+                            return Personal(request, StatusCodes.Status503ServiceUnavailable, StatePages.Failed(Paths.Breviary));
+                        });
+            },
             None: () => Personal(request, StatusCodes.Status200OK, BreviaryPage.SignedOut()));
     }
 

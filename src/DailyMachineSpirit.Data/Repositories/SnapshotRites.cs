@@ -43,6 +43,9 @@ public sealed class SnapshotRites : IRiteReader
     public Task<Either<Error, List<RiteDay>>> GetDays(CancellationToken cancellationToken)
         => Answer(rites.Select(rite => new RiteDay(rite.Number, rite.PublishedOnUtc)).ToList());
 
+    public Task<Either<Error, List<RiteVotes>>> GetVotes(CancellationToken cancellationToken)
+        => Answer(rites.Select(rite => new RiteVotes(rite.Number, rite.BlessedCount, rite.HeresyCount)).ToList());
+
     public Task<Either<Error, List<RiteWords>>> GetAllWords(CancellationToken cancellationToken)
         => Answer(rites.Select(rite => new RiteWords(
             rite.Number, rite.PublishedOnUtc, rite.Writing.Kind, rite.Writing.Title, rite.Writing.Text, rite.Writing.HereticalTruth, rite.Tags.IfNone([]))).ToList());

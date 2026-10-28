@@ -17,7 +17,8 @@ public static class ArchiveRows
 
     /// <param name="words">What a search looks for, marked wherever it's found; none for the Archive.</param>
     /// <param name="yours">The reader's own votes, marked on their rows; none but on their own page.</param>
-    public static string Months(IReadOnlyList<Rite> rites, IReadOnlyList<string> words, IReadOnlyDictionary<int, Reaction> yours)
+    /// <param name="places">The places of the rites the Reliquary keeps, each worn as a badge.</param>
+    public static string Months(IReadOnlyList<Rite> rites, IReadOnlyList<string> words, IReadOnlyDictionary<int, Reaction> yours, IReadOnlyDictionary<int, int> places)
     {
         var html = new StringBuilder("""<div class="months">""");
         foreach (var month in rites.GroupBy(rite => (rite.PublishedOnUtc.Year, rite.PublishedOnUtc.Month)))
@@ -32,7 +33,7 @@ public static class ArchiveRows
                 """);
             foreach (var rite in month)
             {
-                html.Append(Row(rite, words, yours));
+                html.Append(Row(rite, words, yours, places));
             }
             html.Append("</ol></section>");
         }
@@ -49,12 +50,13 @@ public static class ArchiveRows
             None: () => $"""{closing}<p class="archive-end">{end}</p>""")}</div>""";
 
     /// <summary>
-    /// One rite's row. The title is the row's link, stretched over the whole row, so the tags can be links of their own: a
-    /// link can't hold another. It comes first among the row's links, where the script moves focus.
+    /// One rite's row. The title is the row's link, stretched over the whole row, so the tags and the relic badge can be
+    /// links of their own: a link can't hold another. It comes first among the row's links, where the script moves focus.
     /// </summary>
     /// <param name="words">What a search looks for, marked wherever it's found, or none.</param>
     /// <param name="yours">The reader's own votes, marked on their rows.</param>
-    public static string Row(Rite rite, IReadOnlyList<string> words, IReadOnlyDictionary<int, Reaction> yours)
+    /// <param name="places">The places of the rites the Reliquary keeps, each worn as a badge.</param>
+    public static string Row(Rite rite, IReadOnlyList<string> words, IReadOnlyDictionary<int, Reaction> yours, IReadOnlyDictionary<int, int> places)
     {
         var line = words.Count == 0 ? RowLine.Opening(rite) : RowLine.For(rite, words);
         var tags = RiteTags.Of(rite.Tags);
@@ -64,7 +66,7 @@ public static class ArchiveRows
         return $"""
             <li class="row">
             <span class="row-meta">{ImperialDate.InALink(rite.PublishedOnUtc, "row-date")}<span class="kind">{(rite.Writing.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL")}</span><span class="row-number"><span aria-hidden="true">NO. </span><span class="sr-only">Rite </span>{rite.Number}</span></span>
-            <span class="row-main"><a class="row-title" href="{Paths.Rite(rite.Number)}" title="{ImperialDate.Day(rite.PublishedOnUtc)}">{Highlight.Of(rite.Writing.Title, words)}</a><span class="row-line">{Highlight.Of(line, words)}</span>{RowVotes(rite, yours)}{tagLinks}</span>
+            <span class="row-main"><a class="row-title" href="{Paths.Rite(rite.Number)}" title="{ImperialDate.Day(rite.PublishedOnUtc)}">{Highlight.Of(rite.Writing.Title, words)}</a><span class="row-line">{Highlight.Of(line, words)}</span>{Standing(RowVotes(rite, yours), RelicBadge.For(rite.Number, places))}{tagLinks}</span>
             </li>
             """;
     }
@@ -84,6 +86,10 @@ public static class ArchiveRows
             ? $"""<span class="row-yours"><span class="row-verdict row-verdict-blessed">{Svg.SmallFlameIcon}{YouAnd(rite.BlessedCount)} blessed it</span>{Counts(heresies)}</span>"""
             : $"""<span class="row-yours"><span class="row-verdict row-verdict-heresy">{Svg.SmallSkullIcon}{YouAnd(rite.HeresyCount)} called it heresy</span>{Counts(blessed)}</span>""";
     }
+
+    // The votes and the relic badge share a line, wrapping only where it's too narrow; no line when there's neither.
+    private static string Standing(string votes, string badge)
+        => votes.Length + badge.Length == 0 ? string.Empty : $"""<span class="row-standing">{votes}{badge}</span>""";
 
     // Each count only when there is one, and no line at all for a rite nobody has voted on.
     private static string Counts(string counts) => counts.Length == 0 ? string.Empty : $"""<span class="row-counts">{counts}</span>""";

@@ -7,5 +7,8 @@ public enum Section
     Archive,
     About,
     Breviary,
+
+    /// <summary>The Archive in its other order: the Archive's link is current, but its search is the nav's own.</summary>
+    Reliquary,
     Other,
 }

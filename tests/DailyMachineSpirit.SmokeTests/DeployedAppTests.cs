@@ -45,6 +45,11 @@ public sealed partial class DeployedAppTests
     public async Task ATagsPage_Answers()
         => AssertAnswers(await app.Get("/tags/builds"), HttpStatusCode.OK, $"<title>Filed under Builds · {SiteName}</title>");
 
+    // Its query (every rite's counts) is its own, so the deployed database answers it too.
+    [Fact]
+    public async Task TheReliquary_Answers()
+        => AssertAnswers(await app.Get("/reliquary"), HttpStatusCode.OK, $"<title>The Reliquary · {SiteName}</title>");
+
     // A query of its own, over the rites' text, for the deployed database to answer.
     [Fact]
     public async Task Search_Answers()

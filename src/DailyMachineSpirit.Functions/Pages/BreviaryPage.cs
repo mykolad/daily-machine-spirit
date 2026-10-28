@@ -49,8 +49,10 @@ public static class BreviaryPage
     /// <param name="chapter">The one chapter shown, whole, or None for every chapter's newest.</param>
     /// <param name="typed">What the reader searched for, shown back in the field, or empty.</param>
     /// <param name="words">The words looked for, from what was typed; none shows every rite.</param>
+    /// <param name="places">The places of the rites the Reliquary keeps, each worn as a badge.</param>
     public static string Render(
-        IReadOnlyList<Rite> rites, IReadOnlyDictionary<int, Reaction> yours, Option<Reaction> only, Option<Tag> chapter, string typed, IReadOnlyList<string> words)
+        IReadOnlyList<Rite> rites, IReadOnlyDictionary<int, Reaction> yours, Option<Reaction> only, Option<Tag> chapter, string typed, IReadOnlyList<string> words,
+        IReadOnlyDictionary<int, int> places)
     {
         var blessed = yours.Values.Count(reaction => reaction == Reaction.Blessed);
         var heresies = yours.Count - blessed;
@@ -82,7 +84,7 @@ public static class BreviaryPage
                 : Search(typed, verdict, chapter) + Verdicts(only, key, typed, inChapter.Count, inChapterBlessed, inChapter.Count - inChapterBlessed),
             body: shown.Count == 0
                 ? NothingShown(yours.Count, only, chapter, words.Count > 0, verdict)
-                : chapter.IsSome ? Rows(shown, words, yours) : Chapters(BreviaryChapter.Of(shown), verdict, typed, words, yours),
+                : chapter.IsSome ? Rows(shown, words, yours, places) : Chapters(BreviaryChapter.Of(shown), verdict, typed, words, yours, places),
             below: $"""
                 <div class="voted-account">Kept for your GitHub account · <form method="post" action="{Html.Encode(Paths.SignOutFrom(Paths.Breviary))}"><button type="submit" class="text-button">Sign out</button></form></div>
                 """,
@@ -142,7 +144,8 @@ public static class BreviaryPage
 
     // Every chapter's newest few, so the page stays short however many rites the reader keeps, and a link to the rest.
     private static string Chapters(
-        IReadOnlyList<BreviaryChapter> chapters, Option<string> verdict, string typed, IReadOnlyList<string> words, IReadOnlyDictionary<int, Reaction> yours)
+        IReadOnlyList<BreviaryChapter> chapters, Option<string> verdict, string typed, IReadOnlyList<string> words, IReadOnlyDictionary<int, Reaction> yours,
+        IReadOnlyDictionary<int, int> places)
     {
         var html = new StringBuilder("""<div class="chapters">""");
         foreach (var chapter in chapters)
@@ -150,7 +153,7 @@ public static class BreviaryPage
             html.Append($"""
                 <section class="chapter" aria-labelledby="{chapter.Anchor}">
                 <h2 class="chapter-rubric" id="{chapter.Anchor}"><span>{Html.Encode(chapter.Subject.Label)}</span></h2>
-                {Rows(chapter.Rites.Take(NewestPerChapter).ToList(), words, yours)}
+                {Rows(chapter.Rites.Take(NewestPerChapter).ToList(), words, yours, places)}
                 """);
             if (chapter.Rites.Count > NewestPerChapter)
             {
@@ -161,8 +164,8 @@ public static class BreviaryPage
         return html.Append("</div>").ToString();
     }
 
-    private static string Rows(IReadOnlyList<Rite> rites, IReadOnlyList<string> words, IReadOnlyDictionary<int, Reaction> yours)
-        => $"""<ol class="rows">{string.Concat(rites.Select(rite => ArchiveRows.Row(rite, words, yours)))}</ol>""";
+    private static string Rows(IReadOnlyList<Rite> rites, IReadOnlyList<string> words, IReadOnlyDictionary<int, Reaction> yours, IReadOnlyDictionary<int, int> places)
+        => $"""<ol class="rows">{string.Concat(rites.Select(rite => ArchiveRows.Row(rite, words, yours, places)))}</ol>""";
 
     private static string ChapterLink(Tag subject, Option<string> verdict, string typed) => Paths.BreviaryShowing(verdict, Some(subject.Key), typed);
 

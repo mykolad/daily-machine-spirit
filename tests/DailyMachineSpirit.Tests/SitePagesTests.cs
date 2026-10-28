@@ -245,14 +245,15 @@ public sealed class SitePagesTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Rite_WhenMoreRitesFail_IsStillServed_WithoutThem()
+    public async Task Rite_WhenMoreRitesAndTheRelicPlacesFail_IsStillServed_WithoutThem()
     {
         await Add(Day.AddDays(-1), "Litany of the Clean Cache");
         await Add(Day, "The Rite of Re-Run");
         Ok(await Repository.SaveScores(Day,
             new RiteSimilarity { ScoresGeneratorVersion = "jev/q1", Scores = [1f, 0f], CreatedAtUtc = DateTime.UtcNow },
             CancellationToken.None));
-        var failing = new RitesWithoutScores(Repository);
+        Ok(await new VoteRepository(cosmos.Container).Vote(2, "a", Some(Reaction.Blessed), CancellationToken.None));
+        var failing = new RitesWithoutScoresOrCounts(Repository);
         var pages = new SitePages(failing, Options.Create(Settings.PublicPages), time, NullLogger<SitePages>.Instance);
 
         var page = await Read(context => pages.Rite(context.Request, "2", CancellationToken.None), "/r/2", "");
@@ -260,6 +261,7 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.Equal(StatusCodes.Status200OK, page.Status);
         Assert.Contains("The Rite of Re-Run", page.Html);
         Assert.DoesNotContain("More rites", page.Html);
+        Assert.DoesNotContain("""class="relic""", page.Html);
     }
 
     [Fact]
@@ -760,6 +762,130 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.All([archive, tag, withQuery], page => Assert.Equal("public, max-age=60, stale-if-error=604800", page.AtCloudflare));
     }
 
+    // Blessings less heresies rank the rites; a tie goes to the more blessed. A rite as often called heresy as blessed,
+    // or never voted on, isn't venerated. Kept at the edge until a vote purges it.
+    [Fact]
+    public async Task Reliquary_KeepsTheMostVeneratedRites_TheMostFirst()
+    {
+        await Add(Day.AddDays(-4), "The Unvoted Vigil");
+        await Add(Day.AddDays(-3), "The Disputed Litany");
+        await Add(Day.AddDays(-2), "The Twice Blessed Rite");
+        await Add(Day.AddDays(-1), "The Contested Prayer");
+        await Add(Day, "The Once Blessed Rite");
+        var votes = new VoteRepository(cosmos.Container);
+        foreach (var (number, voter, vote) in new[]
+        {
+            (2, "a", Reaction.Blessed), (2, "b", Reaction.Heresy),
+            (3, "a", Reaction.Blessed), (3, "b", Reaction.Blessed),
+            (4, "a", Reaction.Blessed), (4, "b", Reaction.Blessed), (4, "c", Reaction.Blessed), (4, "d", Reaction.Heresy),
+            (5, "a", Reaction.Blessed),
+        })
+        {
+            Ok(await votes.Vote(number, voter, Some(vote), CancellationToken.None));
+        }
+
+        var page = await Read(context => Pages().Reliquary(context.Request, CancellationToken.None), "/reliquary", "");
+
+        Assert.Equal(StatusCodes.Status200OK, page.Status);
+        Assert.Equal(["The Contested Prayer", "The Twice Blessed Rite", "The Once Blessed Rite"], Titles(page.Html));
+        Assert.Contains("<title>The Reliquary · The Daily Machine Spirit</title>", page.Html);
+        Assert.Equal("public, max-age=3600, stale-if-error=604800", page.AtCloudflare);
+        // The order says each one's place, so the rows wear no badge.
+        Assert.DoesNotContain("""class="relic""", page.Html);
+    }
+
+    // The Archive in its other order: the Archive's link is current, and the order's own link says it's this one.
+    [Fact]
+    public async Task Reliquary_IsTheArchiveByVeneration()
+    {
+        await Add(Day, "The Unvoted Vigil");
+
+        var page = await Read(context => Pages().Reliquary(context.Request, CancellationToken.None), "/reliquary", "");
+
+        Assert.Contains("""<a href="/archive" aria-current="page">Archive</a>""", page.Html);
+        Assert.Contains("""<a class="order" href="/archive">Newest</a>""", page.Html);
+        Assert.Contains("""<a class="order" href="/reliquary" aria-current="page">Most venerated</a>""", page.Html);
+    }
+
+    [Fact]
+    public async Task Reliquary_WithoutAVeneratedRite_SaysSo()
+    {
+        await Add(Day, "The Unvoted Vigil");
+
+        var page = await Read(context => Pages().Reliquary(context.Request, CancellationToken.None), "/reliquary", "");
+
+        Assert.Empty(Titles(page.Html));
+        Assert.Contains("No rite is venerated yet.", page.Html);
+    }
+
+    // A vote's purge names /reliquary alone, so another spelling would keep old counts at Cloudflare for its hour.
+    [Fact]
+    public async Task Reliquary_SpelledAnotherWay_IsNotFound()
+    {
+        await Add(Day, "The Unvoted Vigil");
+
+        var page = await Read(context => Pages().Reliquary(context.Request, CancellationToken.None), "/Reliquary", "");
+
+        Assert.Equal((StatusCodes.Status404NotFound, "no-store"), (page.Status, page.CacheControl));
+    }
+
+    [Fact]
+    public async Task Reliquary_WithATrailingSlash_RedirectsToItsAddress_KeepingTheQuery()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Path = "/reliquary/";
+        context.Request.QueryString = new QueryString("?utm_source=feed");
+
+        var result = Assert.IsType<RedirectResult>(await Pages().Reliquary(context.Request, CancellationToken.None));
+
+        Assert.Equal(("/reliquary?utm_source=feed", true), (result.Url, result.Permanent));
+    }
+
+    [Fact]
+    public async Task Archive_OffersItsOtherOrder_TheReliquary()
+    {
+        await Add(Day, "The Unvoted Vigil");
+
+        var (_, html) = await Archive("");
+
+        Assert.Contains("""<a class="order" href="/archive" aria-current="page">Newest</a>""", html);
+        Assert.Contains("""<a class="order" href="/reliquary">Most venerated</a>""", html);
+    }
+
+    // Readers find the Reliquary through the rites in it: each wears its place, linking there.
+    [Fact]
+    public async Task Archive_MarksTheRitesTheReliquaryKeeps_WithTheirPlaces()
+    {
+        await Add(Day.AddDays(-3), "The Twice Blessed Rite");
+        await Add(Day.AddDays(-2), "The Once Blessed Rite");
+        await Add(Day.AddDays(-1), "The Unvoted Vigil");
+        await Add(Day, "The Rite of Re-Run");
+        var votes = new VoteRepository(cosmos.Container);
+        Ok(await votes.Vote(1, "a", Some(Reaction.Blessed), CancellationToken.None));
+        Ok(await votes.Vote(1, "b", Some(Reaction.Blessed), CancellationToken.None));
+        Ok(await votes.Vote(2, "a", Some(Reaction.Blessed), CancellationToken.None));
+
+        var (_, html) = await Archive("");
+
+        Assert.Equal(["2nd most venerated", "Most venerated"], Relics(html));
+    }
+
+    [Fact]
+    public async Task RiteCard_OfARiteTheReliquaryKeeps_WearsItsPlace_OnTodayAndItsOwnPage()
+    {
+        await Add(Day, "The Once Blessed Rite");
+        Ok(await new VoteRepository(cosmos.Container).Vote(1, "a", Some(Reaction.Blessed), CancellationToken.None));
+
+        var (_, today) = await Today("");
+        var own = await Read(context => Pages().Rite(context.Request, "1", CancellationToken.None), "/r/1", "");
+
+        Assert.All([today, own.Html], html =>
+        {
+            Assert.Equal(["Most venerated"], Relics(html));
+            Assert.Contains("""<p class="margin-label" aria-hidden="true">In the Reliquary</p>""", html);
+        });
+    }
+
     // The connector's address and the skill's commands, each shown with a button that copies it as it is. Only a
     // deployment changes the page, and nothing purges it then, so it's kept briefly.
     [Fact]
@@ -879,6 +1005,12 @@ public sealed class SitePagesTests : IAsyncLifetime
     private static List<string> Titles(string html)
         => Regex.Matches(html, """<a class="row-title" href="/r/\d+" title="[^"]+">(.*?)</a>""")
             .Select(match => match.Groups[1].Value.Replace("<mark>", string.Empty).Replace("</mark>", string.Empty))
+            .ToList();
+
+    // What each relic badge on the page says, in order, each leading to the Reliquary.
+    private static List<string> Relics(string html)
+        => Regex.Matches(html, """<a class="relic" href="/reliquary"><svg.*?</svg>(.*?)<span class="sr-only">, in the Reliquary</span></a>""")
+            .Select(match => match.Groups[1].Value)
             .ToList();
 
     // When each countdown on the page says the next rite is due, in order.
