@@ -2,7 +2,6 @@ using System.Text.Json.Nodes;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Scriptorium;
-using Microsoft.Azure.Cosmos;
 using static DailyMachineSpirit.Tests.Expect;
 using static LanguageExt.Prelude;
 

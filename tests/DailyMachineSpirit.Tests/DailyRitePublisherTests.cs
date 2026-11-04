@@ -1,8 +1,6 @@
 using DailyMachineSpirit.Functions;
-using DailyMachineSpirit.Functions.Generation;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using static DailyMachineSpirit.Tests.BacklogTestbed;
 using static DailyMachineSpirit.Tests.Expect;
 

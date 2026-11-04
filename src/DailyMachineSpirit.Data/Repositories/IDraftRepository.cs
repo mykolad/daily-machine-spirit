@@ -4,7 +4,7 @@ using LanguageExt.Common;
 
 namespace DailyMachineSpirit.Data.Repositories;
 
-/// <summary>Every call returns its failure as an <see cref="Error"/>, never throws one. Publishing a draft is <see cref="IRiteRepository.Publish"/>.</summary>
+/// <summary>Every call returns its failure as an <see cref="Error"/>, never throws one. Publishing a draft is <see cref="IRitePublishing.Publish"/>.</summary>
 public interface IDraftRepository
 {
     Task<Either<Error, Draft>> Add(Draft draft, CancellationToken cancellationToken);

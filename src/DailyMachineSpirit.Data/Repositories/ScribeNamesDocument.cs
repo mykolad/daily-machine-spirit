@@ -1,5 +1,3 @@
-using DailyMachineSpirit.Data.Entities;
-
 namespace DailyMachineSpirit.Data.Repositories;
 
 /// <summary>Every Scribe's name in one document, so its ETag keeps two Scribes from taking the same name at once.</summary>

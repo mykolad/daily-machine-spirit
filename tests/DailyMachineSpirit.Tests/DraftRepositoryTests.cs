@@ -1,6 +1,5 @@
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
-using LanguageExt;
 using Microsoft.Extensions.Logging.Abstractions;
 using static DailyMachineSpirit.Tests.Expect;
 using static LanguageExt.Prelude;

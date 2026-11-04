@@ -9,8 +9,8 @@ using DailyMachineSpirit.Functions.Tags;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Time.Testing;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
 using static DailyMachineSpirit.Tests.Expect;
 using static LanguageExt.Prelude;
 
