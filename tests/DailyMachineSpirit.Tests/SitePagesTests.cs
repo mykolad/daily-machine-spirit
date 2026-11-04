@@ -714,7 +714,7 @@ public sealed class SitePagesTests : IAsyncLifetime
     [Fact]
     public async Task EveryPage_WhenTheDataCantBeRead_FailsWith503_AndOffersToTryAgain()
     {
-        var missing = new RiteRepository(cosmos.Container.Database.GetContainer("no-such-container"), NullLogger<RiteRepository>.Instance);
+        var missing = new RiteRepository(cosmos.Container.Database.GetContainer("no-such-container"), TimeProvider.System, NullLogger<RiteRepository>.Instance);
         var pages = new SitePages(missing, Options.Create(Settings.PublicPages), time, NullLogger<SitePages>.Instance);
 
         var today = await Read(context => pages.Today(context.Request, "", CancellationToken.None));
@@ -931,7 +931,7 @@ public sealed class SitePagesTests : IAsyncLifetime
 
     private SitePages Pages() => new(Repository, Options.Create(Settings.PublicPages), time, NullLogger<SitePages>.Instance);
 
-    private RiteRepository Repository => new(cosmos.Container, NullLogger<RiteRepository>.Instance);
+    private RiteRepository Repository => new(cosmos.Container, TimeProvider.System, NullLogger<RiteRepository>.Instance);
 
     private async Task<(int Status, string Html)> Today(string path)
     {

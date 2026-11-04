@@ -23,9 +23,11 @@ public sealed class BlobRiteSnapshotStore : IRiteSnapshotStore
     private static readonly JsonSerializerOptions Json = CosmosClients.DocumentJson();
 
     private readonly BlobClient blob;
+    private readonly TimeProvider time;
 
-    public BlobRiteSnapshotStore(Uri containerUri)
+    public BlobRiteSnapshotStore(Uri containerUri, TimeProvider time)
     {
+        this.time = time;
         blob = new BlobContainerClient(containerUri, new DefaultAzureCredential()).GetBlobClient(BlobName);
     }
 
@@ -65,7 +67,7 @@ public sealed class BlobRiteSnapshotStore : IRiteSnapshotStore
         {
             var snapshot = new RiteSnapshotDocument
             {
-                WrittenAtUtc = DateTime.UtcNow,
+                WrittenAtUtc = time.GetUtcNow().UtcDateTime,
                 Rites = rites.Select(rite => RiteDocument.From(rite, rite.Number)).ToList(),
             };
             // Only over the copy read before the rites were: a copy saved meanwhile may hold newer words (an erasure).
@@ -88,7 +90,7 @@ public sealed class BlobRiteSnapshotStore : IRiteSnapshotStore
     public Task<Either<Error, Unit>> Discard(CancellationToken cancellationToken)
         => Attempt(async () =>
         {
-            var discarded = new RiteSnapshotDocument { WrittenAtUtc = DateTime.UtcNow, Discarded = true };
+            var discarded = new RiteSnapshotDocument { WrittenAtUtc = time.GetUtcNow().UtcDateTime, Discarded = true };
             await blob.UploadAsync(BinaryData.FromObjectAsJson(discarded, Json), overwrite: true, cancellationToken);
             return unit;
         });

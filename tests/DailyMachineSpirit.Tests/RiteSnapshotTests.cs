@@ -306,9 +306,9 @@ public sealed class RiteSnapshotTests : IAsyncLifetime
         Assert.Equal(4, snapshot.SavedRites.Count);
     }
 
-    private RiteRepository Rites => new(cosmos.Container, NullLogger<RiteRepository>.Instance);
+    private RiteRepository Rites => new(cosmos.Container, TimeProvider.System, NullLogger<RiteRepository>.Instance);
 
-    private RiteRepository Missing => new(cosmos.Container.Database.GetContainer("no-such-container"), NullLogger<RiteRepository>.Instance);
+    private RiteRepository Missing => new(cosmos.Container.Database.GetContainer("no-such-container"), TimeProvider.System, NullLogger<RiteRepository>.Instance);
 
     private RitesWithFallback Fallback(IRiteRepository rites) => new(rites, snapshot, time, NullLogger<RitesWithFallback>.Instance);
 

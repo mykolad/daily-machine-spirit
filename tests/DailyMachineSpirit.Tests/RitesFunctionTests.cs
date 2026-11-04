@@ -79,7 +79,7 @@ public sealed class RitesFunctionTests : IAsyncLifetime
     [Fact]
     public async Task Rites_WhenTheyCantBeRead_AreUnavailable_AndNotCached()
     {
-        var missing = new RiteRepository(cosmos.Container.Database.GetContainer("no-such-container"), NullLogger<RiteRepository>.Instance);
+        var missing = new RiteRepository(cosmos.Container.Database.GetContainer("no-such-container"), TimeProvider.System, NullLogger<RiteRepository>.Instance);
         var context = At("/api/v1/rites");
 
         var result = Assert.IsType<StatusCodeResult>(await Function(missing).Rites(context.Request, CancellationToken.None));
@@ -165,7 +165,7 @@ public sealed class RitesFunctionTests : IAsyncLifetime
         return context;
     }
 
-    private RiteRepository Repository => new(cosmos.Container, NullLogger<RiteRepository>.Instance);
+    private RiteRepository Repository => new(cosmos.Container, TimeProvider.System, NullLogger<RiteRepository>.Instance);
 
     private static RitesFunction Function(IRiteRepository rites) => new(rites, NullLogger<RitesFunction>.Instance);
 
