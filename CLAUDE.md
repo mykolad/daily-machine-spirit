@@ -70,6 +70,9 @@ skills/                           — Consult the Machine Spirit, a skill that p
   converted to `Option` where the data enters (e.g. `RiteDocument.Similarity`). The JSON serializers set
   `RespectNullableAnnotations`, so a null arriving in a non-nullable property fails at the boundary instead of
   slipping in.
+- **Package versions live in `Directory.Packages.props`**, once for all projects; a project names a package without
+  a version. A transitive package needing a fix gets its own line there (transitive pinning). Dependabot proposes
+  updates weekly, related packages grouped (`.github/dependabot.yml`), and the SDK is any 10.0 from `global.json`'s.
 - **One type per file**, so options, an interface and its implementation are separate files. Related files share a
   folder (`Generation/Judging/`), and the namespace follows the folder.
 - **Swappable services sit behind an interface** (`IChatClients`, `IRiteJudge`): the rest of the code never names the
