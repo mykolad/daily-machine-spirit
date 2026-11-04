@@ -13,9 +13,9 @@ public sealed class DraftJudgingTests : IAsyncLifetime
 {
     private readonly BacklogTestbed testbed = new();
 
-    public Task InitializeAsync() => testbed.InitializeAsync();
+    public ValueTask InitializeAsync() => testbed.InitializeAsync();
 
-    public Task DisposeAsync() => testbed.DisposeAsync();
+    public ValueTask DisposeAsync() => testbed.DisposeAsync();
 
     // An outage that's over heals: each refill judges the unjudged before it writes, so they get their scores, quality
     // and tags, recorded as the Machine Spirit's. The judged are left as they are.

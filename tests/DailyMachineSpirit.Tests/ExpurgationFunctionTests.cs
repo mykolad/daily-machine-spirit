@@ -17,9 +17,9 @@ public sealed partial class ExpurgationFunctionTests : IAsyncLifetime
     private readonly BacklogTestbed testbed = new();
     private readonly FakePageCache pages = new();
 
-    public Task InitializeAsync() => testbed.InitializeAsync();
+    public ValueTask InitializeAsync() => testbed.InitializeAsync();
 
-    public Task DisposeAsync() => testbed.DisposeAsync();
+    public ValueTask DisposeAsync() => testbed.DisposeAsync();
 
     [Fact]
     public async Task TheDesk_ListsTheNewestRites_AndOpensAnyByItsNumber()

@@ -93,9 +93,9 @@ public sealed class BacklogTestbed : IAsyncLifetime
     public static string Answer(string title)
         => FakeChatClients.Answer(title, "Press Re-run thrice, O Machine Spirit.", "The test is flaky: fix its race instead.");
 
-    public Task InitializeAsync() => cosmos.InitializeAsync();
+    public ValueTask InitializeAsync() => cosmos.InitializeAsync();
 
-    public Task DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         Probe.Dispose();
         return cosmos.DisposeAsync();
