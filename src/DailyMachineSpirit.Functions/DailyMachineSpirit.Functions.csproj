@@ -6,6 +6,19 @@
     <OutputType>Exe</OutputType>
   </PropertyGroup>
 
+  <!-- The package is compiled ahead of time for the Flex Consumption plan's Linux machines, so a cold start (#164)
+       doesn't wait for the JIT to compile the code its first requests run. Release only, the configuration CI builds,
+       tests and publishes once: a local Debug run stays a plain build for the machine it's on. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <PublishReadyToRun>true</PublishReadyToRun>
+  </PropertyGroup>
+  <!-- The compiler overflows on LanguageExt's deeply nested generic types (NETSDK1096), so its code stays JIT-compiled. -->
+  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+    <PublishReadyToRunExclude Include="LanguageExt.Core.dll" />
+  </ItemGroup>
+
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Azure.AI.OpenAI" Version="2.9.0-beta.1" />
