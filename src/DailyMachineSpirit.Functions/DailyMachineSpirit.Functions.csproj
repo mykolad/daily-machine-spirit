@@ -19,10 +19,14 @@
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
   </PropertyGroup>
-  <!-- The compiler overflows on LanguageExt's deeply nested generic types (NETSDK1096), so its code stays JIT-compiled. -->
-  <ItemGroup Condition="'$(Configuration)' == 'Release'">
-    <PublishReadyToRunExclude Include="LanguageExt.Core.dll" />
-  </ItemGroup>
+  <!-- Only the app's own assemblies: precompiling every package's made the package 20 MB bigger, and a fresh instance's
+       wait for it outweighed the JIT time saved. -->
+  <Target Name="ReadyToRunOnlyTheAppsOwn" BeforeTargets="_PrepareForReadyToRunCompilation">
+    <ItemGroup>
+      <PublishReadyToRunExclude Include="@(ResolvedFileToPublish->'%(Filename)%(Extension)')"
+                                Condition="'%(Extension)' == '.dll' and !$([System.String]::Copy('%(Filename)').StartsWith('DailyMachineSpirit'))" />
+    </ItemGroup>
+  </Target>
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
