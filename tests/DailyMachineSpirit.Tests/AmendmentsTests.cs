@@ -23,9 +23,9 @@ public sealed class AmendmentsTests : IAsyncLifetime
 
     private readonly BacklogTestbed testbed = new();
 
-    public Task InitializeAsync() => testbed.InitializeAsync();
+    public ValueTask InitializeAsync() => testbed.InitializeAsync();
 
-    public Task DisposeAsync() => testbed.DisposeAsync();
+    public ValueTask DisposeAsync() => testbed.DisposeAsync();
 
     // The scores describe what will be published, so the new words are judged again; the model that wrote the first
     // version stays known, and the decision keeps the words as they were, for the Augury to learn from.

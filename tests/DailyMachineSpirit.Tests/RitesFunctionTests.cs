@@ -16,9 +16,9 @@ public sealed class RitesFunctionTests : IAsyncLifetime
 {
     private readonly CosmosTestContainer cosmos = new();
 
-    public Task InitializeAsync() => cosmos.InitializeAsync();
+    public ValueTask InitializeAsync() => cosmos.InitializeAsync();
 
-    public Task DisposeAsync() => cosmos.DisposeAsync();
+    public ValueTask DisposeAsync() => cosmos.DisposeAsync();
 
     // Every published rite, newest first: its words as stored, its subjects by key and label, and its page's address on
     // the site asked, its Heretical Truth sealed. Kept at the edge until a new rite or an erasure purges it, and readable

@@ -13,9 +13,9 @@ public sealed class AuditTests : IAsyncLifetime
 {
     private readonly BacklogTestbed testbed = new();
 
-    public Task InitializeAsync() => testbed.InitializeAsync();
+    public ValueTask InitializeAsync() => testbed.InitializeAsync();
 
-    public Task DisposeAsync() => testbed.DisposeAsync();
+    public ValueTask DisposeAsync() => testbed.DisposeAsync();
 
     // The Scribe who acted, what they did to which draft, and where it went.
     [Fact]

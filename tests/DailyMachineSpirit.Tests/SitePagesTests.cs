@@ -23,9 +23,9 @@ public sealed class SitePagesTests : IAsyncLifetime
     private readonly CosmosTestContainer cosmos = new();
     private readonly FakeTimeProvider time = new(new DateTimeOffset(2026, 10, 9, 20, 48, 0, TimeSpan.Zero));
 
-    public Task InitializeAsync() => cosmos.InitializeAsync();
+    public ValueTask InitializeAsync() => cosmos.InitializeAsync();
 
-    public Task DisposeAsync() => cosmos.DisposeAsync();
+    public ValueTask DisposeAsync() => cosmos.DisposeAsync();
 
     [Fact]
     public async Task Today_BeforeTheFirstRite_SaysTheMachineSpiritSlumbers()
@@ -115,7 +115,7 @@ public sealed class SitePagesTests : IAsyncLifetime
     {
         await Add(Day.AddDays(-1), "Litany of the Clean Cache");
         await Add(Day, "The Rite of Re-Run");
-        var script = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "todays-rite.js"));
+        var script = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "todays-rite.js"), TestContext.Current.CancellationToken);
         var pattern = Regex.Match(script, @"const shown = /(?<pattern>.+)/\.exec").Groups["pattern"].Value;
 
         var (_, html) = await Today("");
@@ -130,7 +130,7 @@ public sealed class SitePagesTests : IAsyncLifetime
     public async Task TheDailyCheck_FindsTodaysRiteOnToday()
     {
         await Add(Day, "The Rite of Re-Run");
-        var workflow = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "check-todays-rite.yml"));
+        var workflow = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "check-todays-rite.yml"), TestContext.Current.CancellationToken);
         var marker = Regex.Match(workflow, "marker='(?<marker>[^']+)'").Groups["marker"].Value;
 
         var (_, html) = await Today("");

@@ -14,9 +14,9 @@ public sealed class DraftRepositoryTests : IAsyncLifetime
 
     private readonly CosmosTestContainer cosmos = new();
 
-    public Task InitializeAsync() => cosmos.InitializeAsync();
+    public ValueTask InitializeAsync() => cosmos.InitializeAsync();
 
-    public Task DisposeAsync() => cosmos.DisposeAsync();
+    public ValueTask DisposeAsync() => cosmos.DisposeAsync();
 
     [Fact]
     public async Task Add_ThenGetWaiting_ReturnsTheDraftAsSaved()
