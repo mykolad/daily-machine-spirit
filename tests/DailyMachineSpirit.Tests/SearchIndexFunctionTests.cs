@@ -15,9 +15,9 @@ public sealed class SearchIndexFunctionTests : IAsyncLifetime
 
     private readonly CosmosTestContainer cosmos = new();
 
-    public Task InitializeAsync() => cosmos.InitializeAsync();
+    public ValueTask InitializeAsync() => cosmos.InitializeAsync();
 
-    public Task DisposeAsync() => cosmos.DisposeAsync();
+    public ValueTask DisposeAsync() => cosmos.DisposeAsync();
 
     // What the search field matches, newest first: the words as stored (as the Archive's search reads them) and the
     // subjects a word may name. Kept at the edge until a new rite purges it.

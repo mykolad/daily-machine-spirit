@@ -25,9 +25,9 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
 
     private readonly BacklogTestbed testbed = new();
 
-    public Task InitializeAsync() => testbed.InitializeAsync();
+    public ValueTask InitializeAsync() => testbed.InitializeAsync();
 
-    public Task DisposeAsync() => testbed.DisposeAsync();
+    public ValueTask DisposeAsync() => testbed.DisposeAsync();
 
     [Fact]
     public async Task Page_ShowsEachPrecept_WhereItCameFrom_AndWhatCanBeDone()

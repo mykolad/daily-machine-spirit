@@ -22,9 +22,9 @@ public sealed class RiteSnapshotTests : IAsyncLifetime
     private readonly FakeTimeProvider time = new(new DateTimeOffset(2026, 10, 23, 9, 0, 0, TimeSpan.Zero));
     private readonly InMemoryRiteSnapshot snapshot = new();
 
-    public Task InitializeAsync() => cosmos.InitializeAsync();
+    public ValueTask InitializeAsync() => cosmos.InitializeAsync();
 
-    public Task DisposeAsync() => cosmos.DisposeAsync();
+    public ValueTask DisposeAsync() => cosmos.DisposeAsync();
 
     [Fact]
     public async Task TheSnapshot_AnswersEveryRead_AsCosmosDoes()

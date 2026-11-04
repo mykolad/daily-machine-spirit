@@ -22,7 +22,7 @@ public sealed class ConnectorTests : IAsyncLifetime
     private WebApplication app = WebApplication.Create();
     private HttpClient http = new();
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
@@ -35,7 +35,7 @@ public sealed class ConnectorTests : IAsyncLifetime
         http = app.GetTestClient();
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         http.Dispose();
         await app.DisposeAsync();
@@ -46,7 +46,7 @@ public sealed class ConnectorTests : IAsyncLifetime
     {
         await using var client = await Client();
 
-        var tools = await client.ListToolsAsync();
+        var tools = await client.ListToolsAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(["list_rites", "reveal_heretical_truth"], tools.Select(tool => tool.Name).Order());
         Assert.All(tools, tool => Assert.True(tool.ProtocolTool.Annotations?.ReadOnlyHint));
@@ -58,7 +58,7 @@ public sealed class ConnectorTests : IAsyncLifetime
     {
         await using var client = await Client();
 
-        var result = await client.CallToolAsync("list_rites");
+        var result = await client.CallToolAsync("list_rites", cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal((false, FakeRitesApi.Rites), (result.IsError ?? false, Text(result)));
         Assert.Equal(["/api/v1/rites"], api.Paths);
@@ -69,7 +69,7 @@ public sealed class ConnectorTests : IAsyncLifetime
     {
         await using var client = await Client();
 
-        var result = await client.CallToolAsync("reveal_heretical_truth", new Dictionary<string, object?> { ["number"] = 12 });
+        var result = await client.CallToolAsync("reveal_heretical_truth", new Dictionary<string, object?> { ["number"] = 12 }, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal((false, FakeRitesApi.TruthOf12), (result.IsError ?? false, Text(result)));
         Assert.Equal(["/api/v1/rites/12/heretical-truth"], api.Paths);
@@ -80,7 +80,7 @@ public sealed class ConnectorTests : IAsyncLifetime
     {
         await using var client = await Client();
 
-        var result = await client.CallToolAsync("reveal_heretical_truth", new Dictionary<string, object?> { ["number"] = 999 });
+        var result = await client.CallToolAsync("reveal_heretical_truth", new Dictionary<string, object?> { ["number"] = 999 }, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal((true, "No rite NO. 999 has been published."), (result.IsError ?? false, Text(result)));
     }
@@ -95,7 +95,7 @@ public sealed class ConnectorTests : IAsyncLifetime
         api.Unreachable = unreachable;
         await using var client = await Client();
 
-        var result = await client.CallToolAsync("list_rites");
+        var result = await client.CallToolAsync("list_rites", cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal((true, RiteTools.Unavailable), (result.IsError ?? false, Text(result)));
     }
@@ -112,17 +112,17 @@ public sealed class ConnectorTests : IAsyncLifetime
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
 
-        using var response = await http.SendAsync(request);
+        using var response = await http.SendAsync(request, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.False(response.Headers.Contains("Mcp-Session-Id"));
-        Assert.Contains("The Rite of Re-Run", await response.Content.ReadAsStringAsync());
+        Assert.Contains("The Rite of Re-Run", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
     public async Task Health_SaysWhichCommitItRuns()
     {
-        var health = JsonSerializer.Deserialize<JsonElement>(await http.GetStringAsync("/healthz"));
+        var health = JsonSerializer.Deserialize<JsonElement>(await http.GetStringAsync("/healthz", TestContext.Current.CancellationToken));
 
         Assert.Equal(("healthy", ConnectorVersion.Short), (health.GetProperty("status").GetString(), health.GetProperty("version").GetString()));
     }

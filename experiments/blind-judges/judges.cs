@@ -5,6 +5,7 @@
 #:package Microsoft.Extensions.AI.OpenAI@10.5.0
 #:package Newtonsoft.Json@13.0.4
 #:property PublishAot=false
+#:property ManagePackageVersionsCentrally=false
 
 // Blind test (#10): who should judge drafts for the Augury? Jev's quality, as now; the other model with a rubric; and
 // the other model given the rubric, the Precepts and the Scribes' recent judgments. A one-off, outside the app.

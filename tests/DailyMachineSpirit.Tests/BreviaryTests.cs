@@ -23,9 +23,9 @@ public sealed class BreviaryTests : IAsyncLifetime
         }),
         TimeProvider.System);
 
-    public Task InitializeAsync() => cosmos.InitializeAsync();
+    public ValueTask InitializeAsync() => cosmos.InitializeAsync();
 
-    public Task DisposeAsync() => cosmos.DisposeAsync();
+    public ValueTask DisposeAsync() => cosmos.DisposeAsync();
 
     [Fact]
     public async Task SignedOut_OffersTheSignIn_AndIsNeverCached()

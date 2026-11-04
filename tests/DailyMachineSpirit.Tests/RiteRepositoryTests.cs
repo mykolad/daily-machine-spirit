@@ -14,9 +14,9 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
 {
     private readonly CosmosTestContainer cosmos = new();
 
-    public Task InitializeAsync() => cosmos.InitializeAsync();
+    public ValueTask InitializeAsync() => cosmos.InitializeAsync();
 
-    public Task DisposeAsync() => cosmos.DisposeAsync();
+    public ValueTask DisposeAsync() => cosmos.DisposeAsync();
 
     [Fact]
     public async Task Add_SavesTheRite_ThenFindsItByNumberAndDay()
@@ -82,7 +82,7 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
         {
             id = "2026-10-07", partition = "rites", type = "rite", number = 1, publishedOnUtc = date, kind = "prayer",
             title = (string?)null, text = "", hereticalTruth = "", generatedByModel = "", generatedAtUtc = DateTime.UtcNow,
-        });
+        }, cancellationToken: TestContext.Current.CancellationToken);
 
         var result = await Repository.GetPublishedOn(date, CancellationToken.None);
 

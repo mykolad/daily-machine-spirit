@@ -14,9 +14,9 @@ public sealed class ScribeNameRepositoryTests : IAsyncLifetime
 
     private readonly CosmosTestContainer cosmos = new();
 
-    public Task InitializeAsync() => cosmos.InitializeAsync();
+    public ValueTask InitializeAsync() => cosmos.InitializeAsync();
 
-    public Task DisposeAsync() => cosmos.DisposeAsync();
+    public ValueTask DisposeAsync() => cosmos.DisposeAsync();
 
     [Fact]
     public async Task NamesSavedBefore_ReadBack_AndSaveInTheSameShape()
@@ -27,7 +27,7 @@ public sealed class ScribeNameRepositoryTests : IAsyncLifetime
             ["partition"] = CosmosCalls.SharedPartition,
             ["type"] = "scribe-names",
             ["names"] = new JsonArray(new JsonObject { ["accessId"] = Cache.Value, ["name"] = "Sister Cache" }),
-        }, CosmosCalls.SharedPartitionKey);
+        }, CosmosCalls.SharedPartitionKey, cancellationToken: TestContext.Current.CancellationToken);
         var repository = new ScribeNameRepository(cosmos.Container);
 
         var stored = Ok(await repository.GetAll(CancellationToken.None));
@@ -35,7 +35,7 @@ public sealed class ScribeNameRepositoryTests : IAsyncLifetime
             AuditEntries.Of(TimeProvider.System, Cache, AuditAction.ChooseName, None, None), CancellationToken.None));
 
         Assert.Equal([new ScribeName(Cache, "Sister Cache")], stored.Names);
-        var saved = (await cosmos.Container.ReadItemAsync<JsonObject>(ScribeNamesDocument.ScribeNamesId, CosmosCalls.SharedPartitionKey)).Resource;
+        var saved = (await cosmos.Container.ReadItemAsync<JsonObject>(ScribeNamesDocument.ScribeNamesId, CosmosCalls.SharedPartitionKey, cancellationToken: TestContext.Current.CancellationToken)).Resource;
         Assert.Equal("""[{"accessId":"1a2b3c4d-0000-0000-0000-00000000cafe","name":"Mother Cache"}]""", saved["names"]?.ToJsonString());
     }
 }
