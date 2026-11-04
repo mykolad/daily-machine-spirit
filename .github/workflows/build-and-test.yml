@@ -55,6 +55,7 @@ jobs:
         id: version
         run: echo "version=$(git rev-parse HEAD | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
+      # The newest 10.0 SDK, which global.json's band and roll-forward accept.
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
@@ -62,7 +63,7 @@ jobs:
       - uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'dotnet-tools.json') }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Packages.props', 'dotnet-tools.json') }}
           restore-keys: nuget-${{ runner.os }}-
 
       - name: Restore
@@ -72,6 +73,10 @@ jobs:
 
       - name: Build
         run: dotnet build DailyMachineSpirit.slnx -c Release --no-restore
+
+      # The build doesn't report some of .editorconfig's style rules (a needless `this.`, IDE0003); this does.
+      - name: Code style
+        run: dotnet format style DailyMachineSpirit.slnx --verify-no-changes --severity warn --no-restore
 
       # The Azure CLI on the runner compiles and lints the infrastructure; deploying it is a separate step (infra/README.md).
       - name: Bicep builds without warnings

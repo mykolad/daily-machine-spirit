@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Text;
+using System.Text.RegularExpressions;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Scriptorium;
@@ -6,9 +9,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using System.Globalization;
-using System.Text;
-using System.Text.RegularExpressions;
 using static DailyMachineSpirit.Tests.Expect;
 
 namespace DailyMachineSpirit.Tests;
@@ -18,9 +18,9 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
 {
     private readonly BacklogTestbed testbed = new();
 
-    public Task InitializeAsync() => testbed.InitializeAsync();
+    public ValueTask InitializeAsync() => testbed.InitializeAsync();
 
-    public Task DisposeAsync() => testbed.DisposeAsync();
+    public ValueTask DisposeAsync() => testbed.DisposeAsync();
 
     [Fact]
     public async Task Page_ShowsTheCalendar_AndTheJudgments_ButNotTheAshes()
@@ -679,7 +679,7 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Equal(2, html.Split("""<label for="note-""").Length - 1);
         // The script folds the cards and asks why before a burn; without it, every card is open and burns at once.
         Assert.Equal(2, html.Split("""aria-expanded="true" """).Length - 1);
-        Assert.Equal(2, Regex.Matches(html, """<div class="burn-panel" role="group" aria-labelledby="why-[^"]+" hidden>""").Count);
+        Assert.Equal(2, Regex.Count(html, """<div class="burn-panel" role="group" aria-labelledby="why-[^"]+" hidden>"""));
         Assert.Equal(2, html.Split("""<button type="button" class="reason" aria-pressed="false">The joke falls flat</button>""").Length - 1);
     }
 

@@ -1,11 +1,10 @@
 using System.Text.Json;
-using DailyMachineSpirit.Functions.Generation;
 using DailyMachineSpirit.Functions.Generation.Chat;
 using DailyMachineSpirit.Functions.Telemetry;
+using LanguageExt;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using LanguageExt;
 
 namespace DailyMachineSpirit.Functions.Scriptorium.Naming;
 

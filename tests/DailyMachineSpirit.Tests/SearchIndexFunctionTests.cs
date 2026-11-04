@@ -11,11 +11,13 @@ namespace DailyMachineSpirit.Tests;
 
 public sealed class SearchIndexFunctionTests : IAsyncLifetime
 {
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+
     private readonly CosmosTestContainer cosmos = new();
 
-    public Task InitializeAsync() => cosmos.InitializeAsync();
+    public ValueTask InitializeAsync() => cosmos.InitializeAsync();
 
-    public Task DisposeAsync() => cosmos.DisposeAsync();
+    public ValueTask DisposeAsync() => cosmos.DisposeAsync();
 
     // What the search field matches, newest first: the words as stored (as the Archive's search reads them) and the
     // subjects a word may name. Kept at the edge until a new rite purges it.
@@ -32,7 +34,7 @@ public sealed class SearchIndexFunctionTests : IAsyncLifetime
         Assert.Equal("application/json; charset=utf-8", result.ContentType);
         Assert.Equal(("public, max-age=60", "public, max-age=3600, stale-if-error=604800"),
             (context.Response.Headers.CacheControl.ToString(), context.Response.Headers["Cloudflare-CDN-Cache-Control"].ToString()));
-        var entries = JsonSerializer.Deserialize<SearchIndexEntry[]>(result.Content ?? "[]", new JsonSerializerOptions(JsonSerializerDefaults.Web)) ?? [];
+        var entries = JsonSerializer.Deserialize<SearchIndexEntry[]>(result.Content ?? "[]", Json) ?? [];
         Assert.Equal(
             [
                 "2 2026-10-09 ritual The Rite of Re-Run | Press Re-run thrice, intoning `it passed locally`. | Your test depends on `timing`. | caches",

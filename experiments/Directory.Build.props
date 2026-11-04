@@ -1,0 +1,6 @@
+<Project>
+
+  <!-- One-offs outside the app, run with `dotnet run <file>.cs`: the app's strict build (Directory.Build.props at the
+       root, which this one takes the place of) isn't for them. -->
+
+</Project>

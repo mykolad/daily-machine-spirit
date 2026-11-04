@@ -40,9 +40,9 @@ public sealed class VotesTests : IAsyncLifetime
         purges = new PurgeBatcher(pages, Options.Create(Settings.PagePurging), time);
     }
 
-    public Task InitializeAsync() => cosmos.InitializeAsync();
+    public ValueTask InitializeAsync() => cosmos.InitializeAsync();
 
-    public Task DisposeAsync() => cosmos.DisposeAsync();
+    public ValueTask DisposeAsync() => cosmos.DisposeAsync();
 
     [Fact]
     public async Task Vote_CountsANewVote()
@@ -132,7 +132,7 @@ public sealed class VotesTests : IAsyncLifetime
             ["generatedAtUtc"] = "2026-09-30T00:00:00Z",
             ["blessedCount"] = 7,
             ["heresyCount"] = 2,
-        }, new PartitionKey("rites"));
+        }, new PartitionKey("rites"), cancellationToken: TestContext.Current.CancellationToken);
 
         var rite = Assert.Single(Ok(await new RiteRepository(cosmos.Container, TimeProvider.System, NullLogger<RiteRepository>.Instance)
             .GetByNumbers([1], CancellationToken.None)));

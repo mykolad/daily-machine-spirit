@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using DailyMachineSpirit.Mcp;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using OpenTelemetry;
@@ -31,7 +30,7 @@ public sealed class ConnectorTelemetryTests : IAsyncLifetime
     private WebApplication app = WebApplication.Create();
     private HttpClient http = new();
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
@@ -48,7 +47,7 @@ public sealed class ConnectorTelemetryTests : IAsyncLifetime
         http = app.GetTestClient();
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         http.Dispose();
         await app.DisposeAsync();

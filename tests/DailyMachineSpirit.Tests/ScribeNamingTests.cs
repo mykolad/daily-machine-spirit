@@ -23,9 +23,9 @@ public sealed class ScribeNamingTests : IAsyncLifetime
 
     private readonly BacklogTestbed testbed = new();
 
-    public Task InitializeAsync() => testbed.InitializeAsync();
+    public ValueTask InitializeAsync() => testbed.InitializeAsync();
 
-    public Task DisposeAsync() => testbed.DisposeAsync();
+    public ValueTask DisposeAsync() => testbed.DisposeAsync();
 
     // Chosen, the name is the Scribe's on every entry, past ones too, and choosing it is recorded with the name before.
     [Fact]
