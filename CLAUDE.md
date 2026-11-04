@@ -63,7 +63,9 @@ skills/                           — Consult the Machine Spirit, a skill that p
   `Error.New(exception)` for everything else, which keeps the exception for the logs. Only cancellation still throws:
   the caller asked for it. Stick to the readable part of LanguageExt (Option, Either, Error); not `Fin`, `Eff`, `Aff`,
   `Try` or `Validation`.
-- **Nullable warnings are build errors** (`Directory.Build.props`), and there's no `null!`. Input and output can still
+- **Every warning is a build error** (`Directory.Build.props`), a NuGet security advisory included, even for a
+  package that only comes in through another: take the fixed version rather than silence it.
+- **Nullable warnings are build errors** too, and there's no `null!`. Input and output can still
   carry nulls (JSON documents, HTTP requests and responses, configuration, SDK results), so `T?` belongs only there,
   converted to `Option` where the data enters (e.g. `RiteDocument.Similarity`). The JSON serializers set
   `RespectNullableAnnotations`, so a null arriving in a non-nullable property fails at the boundary instead of
