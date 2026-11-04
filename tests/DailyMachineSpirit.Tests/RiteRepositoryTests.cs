@@ -280,7 +280,7 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
     public async Task EveryCall_ReturnsACosmosFailureAsAnError_InsteadOfThrowing()
     {
         // A container that doesn't exist: Cosmos answers every call with 404.
-        var missing = new RiteRepository(cosmos.Container.Database.GetContainer("no-such-container"), NullLogger<RiteRepository>.Instance);
+        var missing = new RiteRepository(cosmos.Container.Database.GetContainer("no-such-container"), TimeProvider.System, NullLogger<RiteRepository>.Instance);
         var date = new DateOnly(2026, 10, 7);
 
         Assert.True((await missing.GetPublishedOn(date, CancellationToken.None)).IsLeft);
@@ -302,7 +302,7 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
         => await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => Repository.GetNewest(1, new CancellationToken(canceled: true)));
 
-    private RiteRepository Repository => new(cosmos.Container, NullLogger<RiteRepository>.Instance);
+    private RiteRepository Repository => new(cosmos.Container, TimeProvider.System, NullLogger<RiteRepository>.Instance);
 
     private static Rite MakeRite(DateOnly date, string title) => new()
     {

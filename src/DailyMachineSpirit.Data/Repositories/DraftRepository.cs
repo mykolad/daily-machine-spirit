@@ -12,10 +12,12 @@ namespace DailyMachineSpirit.Data.Repositories;
 public class DraftRepository : IDraftRepository
 {
     private readonly Container container;
+    private readonly TimeProvider time;
 
-    public DraftRepository(Container container)
+    public DraftRepository(Container container, TimeProvider time)
     {
         this.container = container;
+        this.time = time;
     }
 
     // Every draft is written by the Machine Spirit (a refill): the record says so, in the same batch.
@@ -27,7 +29,7 @@ public class DraftRepository : IDraftRepository
                 .CreateItem(AuditEntryDocument.From(new AuditEntry
                 {
                     Id = Guid.NewGuid(),
-                    AtUtc = DateTime.UtcNow,
+                    AtUtc = time.GetUtcNow().UtcDateTime,
                     Actor = Actor.MachineSpirit,
                     Action = AuditAction.Write,
                     DraftId = draft.Id,

@@ -74,9 +74,9 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public MetricsProbe Probe { get; } = new();
 
-    public RiteRepository Rites => new(cosmos.Container, NullLogger<RiteRepository>.Instance);
+    public RiteRepository Rites => new(cosmos.Container, Time, NullLogger<RiteRepository>.Instance);
 
-    public DraftRepository Drafts => new(cosmos.Container);
+    public DraftRepository Drafts => new(cosmos.Container, Time);
 
     public ScriptoriumRepository Scriptorium => new(cosmos.Container);
 
@@ -176,14 +176,14 @@ public sealed class BacklogTestbed : IAsyncLifetime
     public TabCounting TabsWithoutCosmos()
     {
         var missing = cosmos.Container.Database.GetContainer("missing");
-        return new TabCounting(new DraftRepository(missing), new ScriptoriumRepository(missing), new PreceptRepository(missing), new AuditRepository(missing),
+        return new TabCounting(new DraftRepository(missing, TimeProvider.System), new ScriptoriumRepository(missing), new PreceptRepository(missing), new AuditRepository(missing),
             NullLogger<TabCounting>.Instance);
     }
 
     public Scribes ScribesWithoutCosmos()
     {
         var missing = cosmos.Container.Database.GetContainer("missing");
-        return new Scribes(new DraftRepository(missing), new RiteRepository(missing, NullLogger<RiteRepository>.Instance), new ScriptoriumRepository(missing),
+        return new Scribes(new DraftRepository(missing, TimeProvider.System), new RiteRepository(missing, TimeProvider.System, NullLogger<RiteRepository>.Instance), new ScriptoriumRepository(missing),
             Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages), Options.Create(Settings.Backlog), Time);
     }
 
