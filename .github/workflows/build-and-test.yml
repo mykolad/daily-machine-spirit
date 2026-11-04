@@ -65,11 +65,9 @@ jobs:
           key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'dotnet-tools.json') }}
           restore-keys: nuget-${{ runner.os }}-
 
-      # For Release, the configuration built below: its app is compiled for linux-x64 ahead of time, which needs that
-      # runtime's packages and the ReadyToRun compiler restored.
       - name: Restore
         run: |
-          dotnet restore DailyMachineSpirit.slnx -p:Configuration=Release
+          dotnet restore DailyMachineSpirit.slnx
           dotnet tool restore
 
       - name: Build

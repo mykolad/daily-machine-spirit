@@ -7,12 +7,17 @@
   </PropertyGroup>
 
   <!-- The package is compiled ahead of time for the Flex Consumption plan's Linux machines, so a cold start (#164)
-       doesn't wait for the JIT to compile the code its first requests run. Release only, the configuration CI builds,
-       tests and publishes once: a local Debug run stays a plain build for the machine it's on. -->
+       doesn't wait for the JIT to compile the code its first requests run. The Release build, which CI builds, tests
+       and publishes once, is for linux-x64; a local Debug run stays a plain build for the machine it's on. Any restore
+       brings linux-x64's packages and the ReadyToRun compiler, so a build for Release after it needs no restore of its
+       own. -->
+  <PropertyGroup>
+    <RuntimeIdentifiers>linux-x64</RuntimeIdentifiers>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <SelfContained>false</SelfContained>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
-    <SelfContained>false</SelfContained>
-    <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
   <!-- The compiler overflows on LanguageExt's deeply nested generic types (NETSDK1096), so its code stays JIT-compiled. -->
   <ItemGroup Condition="'$(Configuration)' == 'Release'">
