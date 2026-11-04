@@ -1,7 +1,6 @@
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
-using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Scriptorium.Expurgation;
 using DailyMachineSpirit.Functions.Scriptorium.SignIn;
 using Microsoft.AspNetCore.Http;

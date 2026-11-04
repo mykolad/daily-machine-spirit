@@ -1,6 +1,5 @@
 using System.Globalization;
 using DailyMachineSpirit.Data.Entities;
-using LanguageExt;
 using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Data.Repositories;

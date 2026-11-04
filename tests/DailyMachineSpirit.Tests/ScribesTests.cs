@@ -2,7 +2,6 @@ using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Scriptorium;
 using LanguageExt;
-using LanguageExt.Common;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;

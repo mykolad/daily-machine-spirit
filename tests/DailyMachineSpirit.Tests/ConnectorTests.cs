@@ -4,7 +4,6 @@ using System.Text;
 using System.Text.Json;
 using DailyMachineSpirit.Mcp;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;

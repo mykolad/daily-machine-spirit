@@ -1,6 +1,6 @@
 using DailyMachineSpirit.Functions.Caching;
-using Microsoft.Extensions.Time.Testing;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
 
 namespace DailyMachineSpirit.Tests;
 

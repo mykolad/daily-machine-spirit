@@ -74,6 +74,10 @@ jobs:
       - name: Build
         run: dotnet build DailyMachineSpirit.slnx -c Release --no-restore
 
+      # The build doesn't report some of .editorconfig's style rules (a needless `this.`, IDE0003); this does.
+      - name: Code style
+        run: dotnet format style DailyMachineSpirit.slnx --verify-no-changes --severity warn --no-restore
+
       # The Azure CLI on the runner compiles and lints the infrastructure; deploying it is a separate step (infra/README.md).
       - name: Bicep builds without warnings
         run: |

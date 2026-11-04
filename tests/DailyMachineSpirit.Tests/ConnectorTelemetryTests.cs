@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using DailyMachineSpirit.Mcp;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using OpenTelemetry;

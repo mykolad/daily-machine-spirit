@@ -1,12 +1,10 @@
 using System.Net;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Functions;
-using DailyMachineSpirit.Functions.Generation;
 using DailyMachineSpirit.Functions.Generation.Judging;
 using DailyMachineSpirit.Functions.Scriptorium;
 using DailyMachineSpirit.Functions.Scriptorium.SignIn;
 using LanguageExt;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
