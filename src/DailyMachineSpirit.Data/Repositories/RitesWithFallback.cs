@@ -12,7 +12,7 @@ namespace DailyMachineSpirit.Data.Repositories;
 /// minute's reads go to the snapshot without waiting on Cosmos DB again; with no snapshot, the failure is the read's, and
 /// the next read tries Cosmos DB. Nothing is saved through it: what saves reads <see cref="IRiteRepository"/>.
 /// </summary>
-public sealed class RitesWithFallback : IRiteReader
+public sealed class RitesWithFallback : IRiteReader, IDisposable
 {
     // Long enough that a page's few reads don't each wait for Cosmos DB's timeout while it's down, short enough that the
     // site writes again soon after it's back.
@@ -35,6 +35,8 @@ public sealed class RitesWithFallback : IRiteReader
         this.time = time;
         this.logger = logger;
     }
+
+    public void Dispose() => loading.Dispose();
 
     public Task<Either<Error, Option<Rite>>> GetPublishedOn(DateOnly utcDate, CancellationToken cancellationToken)
         => Read(source => source.GetPublishedOn(utcDate, cancellationToken), cancellationToken);

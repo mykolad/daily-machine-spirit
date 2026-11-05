@@ -83,8 +83,8 @@ builder.Services.AddSingleton(services =>
     services.GetRequiredService<CosmosClient>().GetContainer(cosmos.Database, RiteRepository.ContainerName));
 // The rites read from Cosmos DB, or from their snapshot outside the region while Cosmos DB doesn't answer (#112).
 var snapshot = builder.Configuration.GetSection(RiteSnapshotOptions.SectionName).Get<RiteSnapshotOptions>() ?? new RiteSnapshotOptions();
-builder.Services.AddSingleton<IRiteSnapshotStore>(_ => snapshot.ContainerUri.Length > 0
-    ? new BlobRiteSnapshotStore(new Uri(snapshot.ContainerUri))
+builder.Services.AddSingleton<IRiteSnapshotStore>(services => snapshot.ContainerUri.Length > 0
+    ? new BlobRiteSnapshotStore(new Uri(snapshot.ContainerUri), services.GetRequiredService<TimeProvider>())
     : new NoRiteSnapshot());
 // What saves reads Cosmos DB alone; the public pages, search and the rites API read through the fallback.
 builder.Services.AddSingleton<RiteRepository>();

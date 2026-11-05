@@ -1,12 +1,10 @@
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions;
-using DailyMachineSpirit.Functions.Generation;
 using DailyMachineSpirit.Functions.Generation.Precepts;
 using DailyMachineSpirit.Functions.Scriptorium;
 using DailyMachineSpirit.Functions.Scriptorium.SignIn;
 using LanguageExt.Common;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -27,9 +25,9 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
 
     private readonly BacklogTestbed testbed = new();
 
-    public Task InitializeAsync() => testbed.InitializeAsync();
+    public ValueTask InitializeAsync() => testbed.InitializeAsync();
 
-    public Task DisposeAsync() => testbed.DisposeAsync();
+    public ValueTask DisposeAsync() => testbed.DisposeAsync();
 
     [Fact]
     public async Task Page_ShowsEachPrecept_WhereItCameFrom_AndWhatCanBeDone()

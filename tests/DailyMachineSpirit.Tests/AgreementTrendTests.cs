@@ -14,9 +14,9 @@ public sealed class AgreementTrendTests : IAsyncLifetime
 {
     private readonly BacklogTestbed testbed = new();
 
-    public Task InitializeAsync() => testbed.InitializeAsync();
+    public ValueTask InitializeAsync() => testbed.InitializeAsync();
 
-    public Task DisposeAsync() => testbed.DisposeAsync();
+    public ValueTask DisposeAsync() => testbed.DisposeAsync();
 
     // The Augury orders the four by quality. Burning its first pick counts against it; anointing its third moves it two
     // places; anointing its second after it leaves it there, at #2; and humbling the first back to second moves it one

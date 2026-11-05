@@ -51,6 +51,10 @@ skills/                           — Consult the Machine Spirit, a skill that p
   to tell apart. Framework methods keep their names (`SaveChangesAsync`).
 - **Braces always**, even around a one-line body of `if`, `else`, `for`, `foreach` or `while`. The build enforces it
   (IDE0011 in `.editorconfig`); `dotnet format style --diagnostics IDE0011 --severity info` adds missing ones.
+- **The style and the analyzers are enforced**: `.editorconfig`'s rules (file-scoped namespaces, `this.` only for a
+  parameter's namesake, naming, unused usings) and .NET's recommended analyzers fail the build, and CI runs
+  `dotnet format style --verify-no-changes --severity warn` for the rules the build doesn't report. A rule that doesn't
+  fit the code is turned off in `.editorconfig` with its reason, never suppressed where it fires.
 - **No default arguments** on method parameters: callers always pass explicitly
   (e.g. `CancellationToken cancellationToken`, never `= default`).
 - **Tests check behaviour, not logs.** Assert on outcomes: what's saved, returned or sent. Never on log messages, and

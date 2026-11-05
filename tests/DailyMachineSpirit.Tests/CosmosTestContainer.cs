@@ -50,7 +50,7 @@ public sealed class CosmosTestContainer : IAsyncLifetime
         .Map(created => created.GetContainer(RiteRepository.ContainerName))
         .IfNone(() => throw new InvalidOperationException("The test database is created in InitializeAsync."));
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         if (emulatorGone || !await EmulatorAnswers.Value)
         {
@@ -76,7 +76,7 @@ public sealed class CosmosTestContainer : IAsyncLifetime
         await created.CreateContainerAsync(RiteRepository.ContainerName, RiteRepository.PartitionKeyPath);
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await database.IfSomeAsync(created => created.DeleteAsync());
         client.Dispose();

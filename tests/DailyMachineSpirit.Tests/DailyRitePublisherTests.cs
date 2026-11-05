@@ -1,8 +1,6 @@
 using DailyMachineSpirit.Functions;
-using DailyMachineSpirit.Functions.Generation;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using static DailyMachineSpirit.Tests.BacklogTestbed;
 using static DailyMachineSpirit.Tests.Expect;
 
@@ -13,9 +11,9 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
     private readonly BacklogTestbed testbed = new();
     private readonly FakePageCache pages = new();
 
-    public Task InitializeAsync() => testbed.InitializeAsync();
+    public ValueTask InitializeAsync() => testbed.InitializeAsync();
 
-    public Task DisposeAsync() => testbed.DisposeAsync();
+    public ValueTask DisposeAsync() => testbed.DisposeAsync();
 
     [Fact]
     public async Task PublishToday_PublishesTheTopOfTheCalendar_AndTheRestKeepWaiting()

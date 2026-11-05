@@ -2,7 +2,6 @@ using System.Net;
 using System.Text;
 using DailyMachineSpirit.Functions.Voters;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using static DailyMachineSpirit.Tests.Expect;
 
 namespace DailyMachineSpirit.Tests;

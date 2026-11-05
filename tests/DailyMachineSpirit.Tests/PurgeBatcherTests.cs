@@ -1,6 +1,6 @@
 using DailyMachineSpirit.Functions.Caching;
-using Microsoft.Extensions.Time.Testing;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
 
 namespace DailyMachineSpirit.Tests;
 
@@ -15,9 +15,9 @@ public sealed class PurgeBatcherTests : IAsyncLifetime
         batcher = new PurgeBatcher(pages, Options.Create(Settings.PagePurging), time);
     }
 
-    public Task InitializeAsync() => batcher.StartAsync(CancellationToken.None);
+    public ValueTask InitializeAsync() => new(batcher.StartAsync(CancellationToken.None));
 
-    public Task DisposeAsync() => batcher.StopAsync(CancellationToken.None);
+    public ValueTask DisposeAsync() => new(batcher.StopAsync(CancellationToken.None));
 
     // However many votes come in, a rite's pages are purged once a minute.
     [Fact]
