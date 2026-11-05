@@ -260,6 +260,9 @@ GitHub Actions deploys the app (`.github/workflows/`), signed in as the environm
   `master` only.
 - **Deploy Branch to Staging**: Actions → Deploy Branch to Staging → Run workflow, with a branch name, to try a PR
   on staging before merging. Staging keeps it until the next deployment.
+- **Dependabot Updates on Staging**: does the same for every Dependabot PR, on its own. Its check,
+  `dependabot-update-on-staging`, belongs in the `master: PR + checks` ruleset's required checks (Settings → Rules),
+  so an update merges only once it ran on staging.
 
 Each deployment ends with smoke tests (`tests/DailyMachineSpirit.SmokeTests`), and rolls back to the last good master
 if they fail. For them, the workflow briefly adds the runner's address to the app's access rules (`smoke-tests`), since

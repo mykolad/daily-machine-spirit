@@ -27,10 +27,11 @@ jobs:
     name: build-and-test
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # A newer push to a PR replaces its run in progress; a deployment's tests are never cancelled by another's.
+    # A newer push to a PR replaces its run in progress; a deployment's tests are never cancelled by another's. A
+    # deployment is told by the ref it passes, not the event: Dependabot Updates on Staging deploys from a PR's event.
     concurrency:
-      group: build-and-test-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
-      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+      group: build-and-test-${{ !inputs.ref && github.ref || github.run_id }}
+      cancel-in-progress: ${{ !inputs.ref }}
     outputs:
       version: ${{ steps.version.outputs.version }}
 
@@ -120,7 +121,7 @@ jobs:
       # version it should report, and the smoke tests from the same commit. Kept 90 days, as the package a later
       # deployment rolls back to.
       - name: Package the app
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ inputs.ref != '' }}
         run: |
           dotnet publish src/DailyMachineSpirit.Functions -c Release --no-build -o package/publish
           dotnet publish src/DailyMachineSpirit.Mcp -c Release --no-build -o package/connector
@@ -128,7 +129,7 @@ jobs:
           dotnet publish tests/DailyMachineSpirit.SmokeTests -c Release --no-build -o package/smoke-tests
 
       - name: Upload the package
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ inputs.ref != '' }}
         uses: actions/upload-artifact@v7
         with:
           name: app
