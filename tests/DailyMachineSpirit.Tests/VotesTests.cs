@@ -40,9 +40,9 @@ public sealed class VotesTests : IAsyncLifetime
         purges = new PurgeBatcher(pages, Options.Create(Settings.PagePurging), time);
     }
 
-    public Task InitializeAsync() => cosmos.InitializeAsync();
+    public ValueTask InitializeAsync() => cosmos.InitializeAsync();
 
-    public Task DisposeAsync() => cosmos.DisposeAsync();
+    public ValueTask DisposeAsync() => cosmos.DisposeAsync();
 
     [Fact]
     public async Task Vote_CountsANewVote()
@@ -132,9 +132,9 @@ public sealed class VotesTests : IAsyncLifetime
             ["generatedAtUtc"] = "2026-09-30T00:00:00Z",
             ["blessedCount"] = 7,
             ["heresyCount"] = 2,
-        }, new PartitionKey("rites"));
+        }, new PartitionKey("rites"), cancellationToken: TestContext.Current.CancellationToken);
 
-        var rite = Assert.Single(Ok(await new RiteRepository(cosmos.Container, NullLogger<RiteRepository>.Instance)
+        var rite = Assert.Single(Ok(await new RiteRepository(cosmos.Container, TimeProvider.System, NullLogger<RiteRepository>.Instance)
             .GetByNumbers([1], CancellationToken.None)));
         Assert.Equal((0, 0), (rite.BlessedCount, rite.HeresyCount));
         Assert.Equal(new ReactionCounts(1, 0), await Vote(Reader, Some(Reaction.Blessed)));
@@ -401,7 +401,7 @@ public sealed class VotesTests : IAsyncLifetime
     private async Task AddRite() => await AddRite(new DateOnly(2026, 10, 9));
 
     private async Task AddRite(DateOnly day)
-        => Ok(await new RiteRepository(cosmos.Container, NullLogger<RiteRepository>.Instance).Add(new Rite
+        => Ok(await new RiteRepository(cosmos.Container, TimeProvider.System, NullLogger<RiteRepository>.Instance).Add(new Rite
         {
             PublishedOnUtc = day,
             Writing = new RiteWriting

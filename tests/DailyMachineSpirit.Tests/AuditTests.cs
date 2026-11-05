@@ -13,9 +13,9 @@ public sealed class AuditTests : IAsyncLifetime
 {
     private readonly BacklogTestbed testbed = new();
 
-    public Task InitializeAsync() => testbed.InitializeAsync();
+    public ValueTask InitializeAsync() => testbed.InitializeAsync();
 
-    public Task DisposeAsync() => testbed.DisposeAsync();
+    public ValueTask DisposeAsync() => testbed.DisposeAsync();
 
     // The Scribe who acted, what they did to which draft, and where it went.
     [Fact]
@@ -59,15 +59,17 @@ public sealed class AuditTests : IAsyncLifetime
     [Fact]
     public async Task TheMachineSpirit_RecordsTheDraftsItWrites_AndTheRitesItPublishes()
     {
+        var written = testbed.Time.GetUtcNow().UtcDateTime;
         var draft = await testbed.AddDraft("The Rite of Re-Run", 0.9f);
+        testbed.Time.Advance(TimeSpan.FromMinutes(1));
 
         var rite = Ok(await testbed.Rites.Publish(draft.Id, Today, CancellationToken.None));
 
         var entries = await Entries();
         Assert.All(entries, entry => Assert.Equal(Actor.MachineSpirit, entry.Actor));
         Assert.Equal(
-            [(AuditAction.Publish, Some(rite.Number)), (AuditAction.Write, Option<int>.None)],
-            entries.Select(entry => (entry.Action, entry.RiteNumber)));
+            [(AuditAction.Publish, Some(rite.Number), written.AddMinutes(1)), (AuditAction.Write, Option<int>.None, written)],
+            entries.Select(entry => (entry.Action, entry.RiteNumber, entry.AtUtc)));
         Assert.All(entries, entry => Assert.Equal((Some(draft.Id), "The Rite of Re-Run"), (entry.DraftId, entry.Title)));
     }
 
@@ -89,12 +91,12 @@ public sealed class AuditTests : IAsyncLifetime
     {
         var one = await testbed.AddDraft("One", 0.9f);
         await testbed.AddDraft("Another", 0.5f);
+        testbed.Time.Advance(TimeSpan.FromMinutes(1));
         Ok(await testbed.Scribes().Burn(one.Id, "", Tester, CancellationToken.None));
 
         var record = Ok(await testbed.Audit.GetHistory(one.Id, CancellationToken.None));
 
-        // The Machine Spirit's entries take the real time, the Scribes' the test's clock: which is newer isn't the point.
-        Assert.Equal([AuditAction.Burn, AuditAction.Write], record.Select(entry => entry.Action).Order());
+        Assert.Equal([AuditAction.Burn, AuditAction.Write], record.Select(entry => entry.Action));
     }
 
     // Cosmos orders the stored strings: a time on the whole second must still sort before one half a second later.

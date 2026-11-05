@@ -16,9 +16,9 @@ public sealed class RitesFunctionTests : IAsyncLifetime
 {
     private readonly CosmosTestContainer cosmos = new();
 
-    public Task InitializeAsync() => cosmos.InitializeAsync();
+    public ValueTask InitializeAsync() => cosmos.InitializeAsync();
 
-    public Task DisposeAsync() => cosmos.DisposeAsync();
+    public ValueTask DisposeAsync() => cosmos.DisposeAsync();
 
     // Every published rite, newest first: its words as stored, its subjects by key and label, and its page's address on
     // the site asked, its Heretical Truth sealed. Kept at the edge until a new rite or an erasure purges it, and readable
@@ -79,7 +79,7 @@ public sealed class RitesFunctionTests : IAsyncLifetime
     [Fact]
     public async Task Rites_WhenTheyCantBeRead_AreUnavailable_AndNotCached()
     {
-        var missing = new RiteRepository(cosmos.Container.Database.GetContainer("no-such-container"), NullLogger<RiteRepository>.Instance);
+        var missing = new RiteRepository(cosmos.Container.Database.GetContainer("no-such-container"), TimeProvider.System, NullLogger<RiteRepository>.Instance);
         var context = At("/api/v1/rites");
 
         var result = Assert.IsType<StatusCodeResult>(await Function(missing).Rites(context.Request, CancellationToken.None));
@@ -165,7 +165,7 @@ public sealed class RitesFunctionTests : IAsyncLifetime
         return context;
     }
 
-    private RiteRepository Repository => new(cosmos.Container, NullLogger<RiteRepository>.Instance);
+    private RiteRepository Repository => new(cosmos.Container, TimeProvider.System, NullLogger<RiteRepository>.Instance);
 
     private static RitesFunction Function(IRiteRepository rites) => new(rites, NullLogger<RitesFunction>.Instance);
 

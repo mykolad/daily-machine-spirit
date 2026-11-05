@@ -1,6 +1,5 @@
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
-using LanguageExt;
 using Microsoft.Extensions.Logging.Abstractions;
 using static DailyMachineSpirit.Tests.Expect;
 using static LanguageExt.Prelude;
@@ -14,9 +13,9 @@ public sealed class DraftRepositoryTests : IAsyncLifetime
 
     private readonly CosmosTestContainer cosmos = new();
 
-    public Task InitializeAsync() => cosmos.InitializeAsync();
+    public ValueTask InitializeAsync() => cosmos.InitializeAsync();
 
-    public Task DisposeAsync() => cosmos.DisposeAsync();
+    public ValueTask DisposeAsync() => cosmos.DisposeAsync();
 
     [Fact]
     public async Task Add_ThenGetWaiting_ReturnsTheDraftAsSaved()
@@ -109,9 +108,9 @@ public sealed class DraftRepositoryTests : IAsyncLifetime
         Assert.Equal(RiteRepository.DraftNotWaiting, Failed(Assert.Single(results, result => result.IsLeft)));
     }
 
-    private RiteRepository Rites => new(cosmos.Container, NullLogger<RiteRepository>.Instance);
+    private RiteRepository Rites => new(cosmos.Container, TimeProvider.System, NullLogger<RiteRepository>.Instance);
 
-    private DraftRepository Drafts => new(cosmos.Container);
+    private DraftRepository Drafts => new(cosmos.Container, TimeProvider.System);
 
     private static Draft MakeDraft(string title) => new()
     {

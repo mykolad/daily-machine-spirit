@@ -34,7 +34,7 @@ public sealed class DeployedApp : IAsyncLifetime
 
     public JsonElement Health { get; private set; }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         var waited = Stopwatch.StartNew();
         var lastAnswer = "no answer";
@@ -87,10 +87,10 @@ public sealed class DeployedApp : IAsyncLifetime
         }
     }
 
-    public Task DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         http.Dispose();
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     private static TimeSpan Min(TimeSpan first, TimeSpan second) => first < second ? first : second;

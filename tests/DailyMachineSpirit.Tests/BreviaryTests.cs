@@ -23,9 +23,9 @@ public sealed class BreviaryTests : IAsyncLifetime
         }),
         TimeProvider.System);
 
-    public Task InitializeAsync() => cosmos.InitializeAsync();
+    public ValueTask InitializeAsync() => cosmos.InitializeAsync();
 
-    public Task DisposeAsync() => cosmos.DisposeAsync();
+    public ValueTask DisposeAsync() => cosmos.DisposeAsync();
 
     [Fact]
     public async Task SignedOut_OffersTheSignIn_AndIsNeverCached()
@@ -281,7 +281,7 @@ public sealed class BreviaryTests : IAsyncLifetime
     {
         var missing = cosmos.Container.Database.GetContainer("no-such-container");
         var function = new BreviaryFunction(
-            new VoteRepository(missing), new RiteRepository(missing, NullLogger<RiteRepository>.Instance), session,
+            new VoteRepository(missing), new RiteRepository(missing, TimeProvider.System, NullLogger<RiteRepository>.Instance), session,
             NullLogger<BreviaryFunction>.Instance);
 
         var (status, _, headers) = await Get(function, string.Empty, SignedIn());
@@ -293,7 +293,7 @@ public sealed class BreviaryTests : IAsyncLifetime
     private VoteRepository Votes => new(cosmos.Container);
 
     private BreviaryFunction Function()
-        => new(Votes, new RiteRepository(cosmos.Container, NullLogger<RiteRepository>.Instance), session, NullLogger<BreviaryFunction>.Instance);
+        => new(Votes, new RiteRepository(cosmos.Container, TimeProvider.System, NullLogger<RiteRepository>.Instance), session, NullLogger<BreviaryFunction>.Instance);
 
     private string VoterKey => session.VoterKeyFor("github", "583231");
 
@@ -344,7 +344,7 @@ public sealed class BreviaryTests : IAsyncLifetime
     // Numbered as added, a day apart.
     private async Task AddRite(int number, string title, string[] tags)
     {
-        var rites = new RiteRepository(cosmos.Container, NullLogger<RiteRepository>.Instance);
+        var rites = new RiteRepository(cosmos.Container, TimeProvider.System, NullLogger<RiteRepository>.Instance);
         Ok(await rites.Add(new Rite
         {
             PublishedOnUtc = new DateOnly(2026, 10, 8).AddDays(number),

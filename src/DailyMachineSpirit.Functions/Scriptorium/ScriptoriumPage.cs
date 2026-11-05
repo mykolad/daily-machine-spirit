@@ -4,7 +4,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Functions.Generation.Writing;
-using DailyMachineSpirit.Functions.Scriptorium.Naming;
 using DailyMachineSpirit.Functions.Tags;
 using LanguageExt;
 using static LanguageExt.Prelude;

@@ -20,11 +20,13 @@ public class RiteRepository : IRiteRepository, IRitePublishing
     public static readonly Error DraftNotWaiting = Error.New("That draft isn't waiting any more: it was published or changed meanwhile.");
 
     private readonly Container container;
+    private readonly TimeProvider time;
     private readonly ILogger<RiteRepository> logger;
 
-    public RiteRepository(Container container, ILogger<RiteRepository> logger)
+    public RiteRepository(Container container, TimeProvider time, ILogger<RiteRepository> logger)
     {
         this.container = container;
+        this.time = time;
         this.logger = logger;
     }
 
@@ -197,7 +199,7 @@ public class RiteRepository : IRiteRepository, IRitePublishing
             batch = batch.CreateItem(AuditEntryDocument.From(new AuditEntry
             {
                 Id = Guid.NewGuid(),
-                AtUtc = DateTime.UtcNow,
+                AtUtc = time.GetUtcNow().UtcDateTime,
                 Actor = Actor.MachineSpirit,
                 Action = AuditAction.Publish,
                 DraftId = fromDraft.Map(draft => Guid.Parse(draft.Published.Id)),

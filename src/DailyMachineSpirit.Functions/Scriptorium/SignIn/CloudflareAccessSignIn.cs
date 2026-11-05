@@ -18,7 +18,7 @@ namespace DailyMachineSpirit.Functions.Scriptorium.SignIn;
 /// when a token names a key they don't have (Access rotates them), at most every five minutes. A failed fetch waits as
 /// long before the next.
 /// </summary>
-public sealed class CloudflareAccessSignIn : IScribeSignIn
+public sealed class CloudflareAccessSignIn : IScribeSignIn, IDisposable
 {
     public const string TokenHeader = "Cf-Access-Jwt-Assertion";
     public const string HttpClientName = "cloudflare-access";
@@ -52,6 +52,8 @@ public sealed class CloudflareAccessSignIn : IScribeSignIn
         this.metrics = metrics;
         this.logger = logger;
     }
+
+    public void Dispose() => oneFetchAtATime.Dispose();
 
     /// <summary>
     /// The Scribe's Access id (the token's <c>sub</c>), stable for as long as their Access identity is. The record (#9)

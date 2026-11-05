@@ -1,4 +1,3 @@
-using DailyMachineSpirit.Data.Entities;
 namespace DailyMachineSpirit.Functions.Scriptorium.SignIn;
 
 /// <summary>

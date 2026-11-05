@@ -51,6 +51,10 @@ skills/                           — Consult the Machine Spirit, a skill that p
   to tell apart. Framework methods keep their names (`SaveChangesAsync`).
 - **Braces always**, even around a one-line body of `if`, `else`, `for`, `foreach` or `while`. The build enforces it
   (IDE0011 in `.editorconfig`); `dotnet format style --diagnostics IDE0011 --severity info` adds missing ones.
+- **The style and the analyzers are enforced**: `.editorconfig`'s rules (file-scoped namespaces, `this.` only for a
+  parameter's namesake, naming, unused usings) and .NET's recommended analyzers fail the build, and CI runs
+  `dotnet format style --verify-no-changes --severity warn` for the rules the build doesn't report. A rule that doesn't
+  fit the code is turned off in `.editorconfig` with its reason, never suppressed where it fires.
 - **No default arguments** on method parameters: callers always pass explicitly
   (e.g. `CancellationToken cancellationToken`, never `= default`).
 - **Tests check behaviour, not logs.** Assert on outcomes: what's saved, returned or sent. Never on log messages, and
@@ -63,11 +67,17 @@ skills/                           — Consult the Machine Spirit, a skill that p
   `Error.New(exception)` for everything else, which keeps the exception for the logs. Only cancellation still throws:
   the caller asked for it. Stick to the readable part of LanguageExt (Option, Either, Error); not `Fin`, `Eff`, `Aff`,
   `Try` or `Validation`.
-- **Nullable warnings are build errors** (`Directory.Build.props`), and there's no `null!`. Input and output can still
+- **Every warning is a build error** (`Directory.Build.props`), a NuGet security advisory included, even for a
+  package that only comes in through another: take the fixed version rather than silence it.
+- **Nullable warnings are build errors** too, and there's no `null!`. Input and output can still
   carry nulls (JSON documents, HTTP requests and responses, configuration, SDK results), so `T?` belongs only there,
   converted to `Option` where the data enters (e.g. `RiteDocument.Similarity`). The JSON serializers set
   `RespectNullableAnnotations`, so a null arriving in a non-nullable property fails at the boundary instead of
   slipping in.
+- **Package versions live in `Directory.Packages.props`**, once for all projects; a project names a package without
+  a version. A transitive package needing a fix gets its own line there (transitive pinning). Dependabot proposes
+  updates weekly, related packages grouped (`.github/dependabot.yml`), each tried on staging before it may merge
+  (Deploying), and the SDK is any 10.0 from `global.json`'s.
 - **One type per file**, so options, an interface and its implementation are separate files. Related files share a
   folder (`Generation/Judging/`), and the namespace follows the folder.
 - **Swappable services sit behind an interface** (`IChatClients`, `IRiteJudge`): the rest of the code never names the
@@ -714,6 +724,11 @@ repository tests. For a deployment it also packages the app (the `app` artifact,
   The branch stays there until the next deployment of staging: a merge to `master` while it deploys, or after, puts
   `master` back (Deploy Master waits for the lock, then deploys), so deploy the branch again once Deploy Master's
   staging job is done.
+- **Dependabot Updates on Staging** (`dependabot-updates-on-staging.yml`): every Dependabot PR is deployed to staging
+  the same way (it calls Deploy Branch to Staging with the PR's commit), since some updates break only a running app.
+  Its `dependabot-update-on-staging` check is required by the `master: PR + checks` ruleset; on any other PR it passes
+  at once. Build and Test tells a deployment from a PR's own run by its `ref` input, not the event, since this one
+  deploys from a PR's event.
 - Both call `deploy.yml`, which deploys the package as the GitHub environment's identity (OIDC: the environment's
   `AZURE_*` variables hold ids, not secrets), one deployment per environment at a time. Then:
   - **Smoke tests** (`tests/DailyMachineSpirit.SmokeTests`, published into the package, so a package is always checked

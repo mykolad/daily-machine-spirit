@@ -18,9 +18,9 @@ public sealed class PreceptsTests : IAsyncLifetime
 
     private readonly BacklogTestbed testbed = new();
 
-    public Task InitializeAsync() => testbed.InitializeAsync();
+    public ValueTask InitializeAsync() => testbed.InitializeAsync();
 
-    public Task DisposeAsync() => testbed.DisposeAsync();
+    public ValueTask DisposeAsync() => testbed.DisposeAsync();
 
     public static string Distilled(params string[] precepts) => JsonSerializer.Serialize(new { precepts });
 

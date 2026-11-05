@@ -1,0 +1,35 @@
+# Package updates as PRs, once a week, with related packages together: a few PRs a week, each through the usual build,
+# tests and review. Security updates come as soon as an advisory is out, whatever the schedule.
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    ignore:
+      # Version 5 is a rewrite of the API the code is written in (CLAUDE.md, "Code style rules"): a decision, not an update.
+      - dependency-name: LanguageExt.Core
+        update-types: [version-update:semver-major]
+    groups:
+      opentelemetry:
+        patterns: [OpenTelemetry*, Microsoft.Azure.Functions.Worker.OpenTelemetry]
+      functions:
+        patterns: [Microsoft.Azure.Functions.Worker*]
+      microsoft-extensions:
+        patterns: [Microsoft.Extensions.*, Microsoft.AspNetCore.*, Microsoft.IdentityModel.*]
+      azure:
+        patterns: [Azure.*, Microsoft.Azure.Cosmos]
+      tests:
+        patterns: [xunit*, Microsoft.NET.Test.Sdk, coverlet.*]
+
+  # The workflows' actions, and those our own composite actions use.
+  - package-ecosystem: github-actions
+    directories: [/, /.github/actions/*]
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ["*"]
