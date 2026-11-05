@@ -76,7 +76,8 @@ skills/                           — Consult the Machine Spirit, a skill that p
   slipping in.
 - **Package versions live in `Directory.Packages.props`**, once for all projects; a project names a package without
   a version. A transitive package needing a fix gets its own line there (transitive pinning). Dependabot proposes
-  updates weekly, related packages grouped (`.github/dependabot.yml`), and the SDK is any 10.0 from `global.json`'s.
+  updates weekly, related packages grouped (`.github/dependabot.yml`), each tried on staging before it may merge
+  (Deploying), and the SDK is any 10.0 from `global.json`'s.
 - **One type per file**, so options, an interface and its implementation are separate files. Related files share a
   folder (`Generation/Judging/`), and the namespace follows the folder.
 - **Swappable services sit behind an interface** (`IChatClients`, `IRiteJudge`): the rest of the code never names the
@@ -723,6 +724,11 @@ repository tests. For a deployment it also packages the app (the `app` artifact,
   The branch stays there until the next deployment of staging: a merge to `master` while it deploys, or after, puts
   `master` back (Deploy Master waits for the lock, then deploys), so deploy the branch again once Deploy Master's
   staging job is done.
+- **Dependabot Updates on Staging** (`dependabot-updates-on-staging.yml`): every Dependabot PR is deployed to staging
+  the same way (it calls Deploy Branch to Staging with the PR's commit), since some updates break only a running app.
+  Its `dependabot-update-on-staging` check is required by the `master: PR + checks` ruleset; on any other PR it passes
+  at once. Build and Test tells a deployment from a PR's own run by its `ref` input, not the event, since this one
+  deploys from a PR's event.
 - Both call `deploy.yml`, which deploys the package as the GitHub environment's identity (OIDC: the environment's
   `AZURE_*` variables hold ids, not secrets), one deployment per environment at a time. Then:
   - **Smoke tests** (`tests/DailyMachineSpirit.SmokeTests`, published into the package, so a package is always checked

@@ -2,7 +2,8 @@ name: Deploy Branch to Staging
 
 # Tries a PR's branch on staging before it's merged (Actions → Deploy Branch to Staging → Run workflow): tested,
 # deployed and smoke-tested like master, and replaced by the last good master if the smoke tests fail. Staging keeps
-# it until the next deployment; the next merge to master puts master back.
+# it until the next deployment; the next merge to master puts master back. Dependabot Updates on Staging calls it for
+# every Dependabot PR.
 on:
   workflow_dispatch:
     inputs:
@@ -11,6 +12,12 @@ on:
         type: string
         required: true
         default: master
+  workflow_call:
+    inputs:
+      branch:
+        description: The branch or commit to deploy.
+        type: string
+        required: true
 
 permissions:
   contents: read

@@ -1,0 +1,51 @@
+name: Dependabot Updates on Staging
+
+# Some package updates break only a running app (startup, bindings, the SDKs' calls), which the unit tests can't see. So
+# every Dependabot PR is deployed to staging and smoke-tested, as Deploy Branch to Staging would by hand, and its check
+# (dependabot-update-on-staging) is required before merging. Every other PR gets the same check passed at once: those
+# reach staging when someone deploys them.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  id-token: write
+  actions: read
+
+# Dependabot rebases its PRs after every merge: a newer push replaces the PR's run still waiting for staging, never one
+# that's deploying.
+concurrency:
+  group: dependabot-updates-on-staging-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  staging:
+    name: staging
+    if: ${{ github.event.pull_request.user.login == 'dependabot[bot]' }}
+    uses: ./.github/workflows/deploy-branch-to-staging.yml
+    with:
+      # The commit, not the branch, which Dependabot may move meanwhile.
+      branch: ${{ github.event.pull_request.head.sha }}
+
+  # The required check. It needs the staging job's outcome, so it runs whatever that was, skipped included.
+  dependabot-update-on-staging:
+    name: dependabot-update-on-staging
+    needs: staging
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Staging passed
+        env:
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          STAGING: ${{ needs.staging.result }}
+        run: |
+          if [ "$AUTHOR" != "dependabot[bot]" ]; then
+            echo "Not a Dependabot PR: nothing to try on staging."
+            exit 0
+          fi
+          if [ "$STAGING" != success ]; then
+            echo "::error title=Staging::The update didn't pass on staging ($STAGING): see the staging jobs."
+            exit 1
+          fi
+          echo "The update deployed to staging and passed its smoke tests."
