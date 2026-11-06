@@ -6,6 +6,28 @@
     <OutputType>Exe</OutputType>
   </PropertyGroup>
 
+  <!-- The package is compiled ahead of time for the Flex Consumption plan's Linux machines, so a cold start (#164)
+       doesn't wait for the JIT to compile the code its first requests run. The Release build, which CI builds, tests
+       and publishes once, is for linux-x64; a local Debug run stays a plain build for the machine it's on. Any restore
+       brings linux-x64's packages and the ReadyToRun compiler, so a build for Release after it needs no restore of its
+       own. -->
+  <PropertyGroup>
+    <RuntimeIdentifiers>linux-x64</RuntimeIdentifiers>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <SelfContained>false</SelfContained>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
+  </PropertyGroup>
+  <!-- Only the app's own assemblies: precompiling every package's made the package 20 MB bigger, and a fresh instance's
+       wait for it outweighed the JIT time saved. -->
+  <Target Name="ReadyToRunOnlyTheAppsOwn" BeforeTargets="_PrepareForReadyToRunCompilation">
+    <ItemGroup>
+      <PublishReadyToRunExclude Include="@(ResolvedFileToPublish->'%(Filename)%(Extension)')"
+                                Condition="'%(Extension)' == '.dll' and !$([System.String]::Copy('%(Filename)').StartsWith('DailyMachineSpirit'))" />
+    </ItemGroup>
+  </Target>
+
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Azure.AI.OpenAI" />
