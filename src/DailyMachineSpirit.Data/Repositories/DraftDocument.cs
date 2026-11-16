@@ -26,6 +26,8 @@ internal sealed record DraftDocument
 
     public string? Ailment { get; init; }
 
+    public string? Form { get; init; }
+
     public string GeneratedByModel { get; init; } = string.Empty;
 
     public DateTime GeneratedAtUtc { get; init; }
@@ -62,6 +64,7 @@ internal sealed record DraftDocument
         Text = draft.Writing.Text,
         HereticalTruth = draft.Writing.HereticalTruth,
         Ailment = draft.Writing.Ailment.OrNull(),
+        Form = draft.Writing.Form.OrNull(),
         GeneratedByModel = draft.Writing.GeneratedByModel,
         GeneratedAtUtc = Utc.From(draft.Writing.GeneratedAtUtc),
         Edited = draft.Writing.Edited,
@@ -87,6 +90,7 @@ internal sealed record DraftDocument
             Text = Text,
             HereticalTruth = HereticalTruth,
             Ailment = Optional(Ailment),
+            Form = Optional(Form),
             GeneratedByModel = GeneratedByModel,
             GeneratedAtUtc = GeneratedAtUtc,
             Edited = Edited,

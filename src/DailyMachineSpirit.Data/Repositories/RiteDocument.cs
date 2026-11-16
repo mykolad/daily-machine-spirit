@@ -29,6 +29,8 @@ internal sealed record RiteDocument
 
     public string? Ailment { get; init; }
 
+    public string? Form { get; init; }
+
     public string GeneratedByModel { get; init; } = string.Empty;
 
     public DateTime GeneratedAtUtc { get; init; }
@@ -59,6 +61,7 @@ internal sealed record RiteDocument
         Text = rite.Writing.Text,
         HereticalTruth = rite.Writing.HereticalTruth,
         Ailment = rite.Writing.Ailment.OrNull(),
+        Form = rite.Writing.Form.OrNull(),
         GeneratedByModel = rite.Writing.GeneratedByModel,
         GeneratedAtUtc = Utc.From(rite.Writing.GeneratedAtUtc),
         Edited = rite.Writing.Edited,
@@ -79,6 +82,7 @@ internal sealed record RiteDocument
             Text = Text,
             HereticalTruth = HereticalTruth,
             Ailment = Optional(Ailment),
+            Form = Optional(Form),
             GeneratedByModel = GeneratedByModel,
             GeneratedAtUtc = GeneratedAtUtc,
             Edited = Edited,

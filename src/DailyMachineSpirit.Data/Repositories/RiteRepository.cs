@@ -79,7 +79,7 @@ public class RiteRepository : IRiteRepository, IRitePublishing
     // Only the words, the tags and where each rite stands: the scores alone would be most of every document.
     public Task<Either<Error, List<RiteWords>>> GetAllWords(CancellationToken cancellationToken)
         => Attempt(async () => (await container.Query<RiteWordsDocument>(
-            new QueryDefinition("SELECT c.number, c.publishedOnUtc, c.kind, c.title, c.text, c.hereticalTruth, c.tags FROM c WHERE c.type = @type ORDER BY c.number DESC")
+            new QueryDefinition("SELECT c.number, c.publishedOnUtc, c.kind, c.title, c.text, c.hereticalTruth, c.tags, c.form FROM c WHERE c.type = @type ORDER BY c.number DESC")
                 .WithParameter("@type", RiteDocument.RiteType),
             cancellationToken)).Select(document => document.ToRiteWords()).ToList());
 

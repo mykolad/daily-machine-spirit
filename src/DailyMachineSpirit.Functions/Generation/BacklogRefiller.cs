@@ -14,6 +14,9 @@ namespace DailyMachineSpirit.Functions.Generation;
 /// <summary>Keeps <see cref="BacklogOptions.DraftsWaiting"/> drafts waiting, so moderators always have a choice.</summary>
 public sealed class BacklogRefiller
 {
+    // Among some thirty rites and twenty drafts, an image in four of them is a habit: in the Archive, readers notice it.
+    private const int TimesAnImageIsWorn = 4;
+
     private readonly IDraftRepository drafts;
     private readonly IRiteRepository rites;
     private readonly IScriptoriumRepository scriptorium;
@@ -76,10 +79,11 @@ public sealed class BacklogRefiller
     }
 
     /// <summary>
-    /// Writes, judges and saves one draft, of the kind the backlog has fewer of, repeating no rite already written. The
-    /// prompt lists the recent rites, the <paramref name="waiting"/> drafts and the recently burned ones (they teach the
-    /// model what the Scribes didn't want), each with its truth; then a model checks the draft against those and every
-    /// rite ever published. One that repeats a rite is written again, up to
+    /// Writes, judges and saves one draft, of the kind the backlog has fewer of, in the form the recent rites and waiting
+    /// drafts took least, resting the images they lean on (#193), and repeating no rite already written. The prompt
+    /// lists the recent rites, the <paramref name="waiting"/> drafts and the recently burned ones (they teach the model
+    /// what the Scribes didn't want), each with its truth; then a model checks the draft against those and every rite
+    /// ever published. One that repeats a rite is written again, up to
     /// <see cref="BacklogOptions.RewritesOfARepeatedRite"/> times, then kept, marked with what it repeats, for the Scribes to judge.
     /// </summary>
     public Task<Either<Error, Draft>> AddDraft(IReadOnlyList<Draft> waiting, CancellationToken cancellationToken)
@@ -88,10 +92,12 @@ public sealed class BacklogRefiller
                 .BindAsync(burned =>
                 {
                     List<TakenRite> drafted = [.. waiting.Select(Taken), .. burned.Select(Taken)];
-                    var recent = published.Take(options.Value.RecentRitesInPrompt).Select(Taken);
+                    var newest = published.Take(options.Value.RecentRitesInPrompt).ToList();
+                    var kind = KindToWrite(waiting);
                     return Unrepeated(
-                        KindToWrite(waiting),
-                        [.. recent, .. drafted],
+                        kind,
+                        Variety(kind, newest, waiting),
+                        [.. newest.Select(Taken), .. drafted],
                         [.. published.Select(Taken), .. drafted],
                         options.Value.RewritesOfARepeatedRite,
                         cancellationToken);
@@ -101,20 +107,20 @@ public sealed class BacklogRefiller
 
     // A draft that repeats a rite is written again, told of that rite; once the rewrites run out, it's kept and marked.
     private Task<Either<Error, Draft>> Unrepeated(
-        RiteKind kind, IReadOnlyList<TakenRite> listed, IReadOnlyList<TakenRite> taken, int rewritesLeft, CancellationToken cancellationToken)
-        => writer.Write(kind, listed, cancellationToken)
+        RiteKind kind, RiteVariety variety, IReadOnlyList<TakenRite> listed, IReadOnlyList<TakenRite> taken, int rewritesLeft, CancellationToken cancellationToken)
+        => writer.Write(kind, variety, listed, cancellationToken)
             .BindAsync(async draft => await (await Repeated(draft, await WithDraftsSavedMeanwhile(taken, cancellationToken), cancellationToken)).Match(
                 Some: same => rewritesLeft > 0
-                    ? RewrittenOrMarked(draft, same, kind, [.. listed, same], taken, rewritesLeft - 1, cancellationToken)
+                    ? RewrittenOrMarked(draft, same, kind, variety, [.. listed, same], taken, rewritesLeft - 1, cancellationToken)
                     : Task.FromResult(Right<Error, Draft>(draft with { Resembles = same.Title })),
                 None: () => Task.FromResult(Right<Error, Draft>(draft))));
 
     // A rewrite that fails on every model keeps the draft already written, marked, rather than losing it: the backlog,
     // or tonight's rite when the backlog is empty, needs a draft more than it needs a new one.
     private async Task<Either<Error, Draft>> RewrittenOrMarked(
-        Draft repeating, TakenRite same, RiteKind kind, IReadOnlyList<TakenRite> listed, IReadOnlyList<TakenRite> taken, int rewritesLeft,
-        CancellationToken cancellationToken)
-        => (await Unrepeated(kind, listed, taken, rewritesLeft, cancellationToken)).BindLeft(error =>
+        Draft repeating, TakenRite same, RiteKind kind, RiteVariety variety, IReadOnlyList<TakenRite> listed, IReadOnlyList<TakenRite> taken,
+        int rewritesLeft, CancellationToken cancellationToken)
+        => (await Unrepeated(kind, variety, listed, taken, rewritesLeft, cancellationToken)).BindLeft(error =>
         {
             logger.LogWarning(error.ToException(), "Draft {Title} repeats {Repeated} and couldn't be written again: {Reason}",
                 repeating.Writing.Title, same.Title, error.Message);
@@ -177,6 +183,16 @@ public sealed class BacklogRefiller
     private static TakenRite Taken(RiteWords rite) => new(rite.Title, rite.HereticalTruth);
 
     private static TakenRite Taken(Draft draft) => new(draft.Writing.Title, draft.Writing.HereticalTruth);
+
+    // The form the newest rites and the waiting drafts took least, and the images their words lean on, to rest (#193).
+    private static RiteVariety Variety(RiteKind kind, IReadOnlyList<RiteWords> newest, IReadOnlyList<Draft> waiting)
+    {
+        var forms = newest.Select(rite => RiteForms.Of(rite.Form, rite.Title))
+            .Concat(waiting.Select(draft => RiteForms.Of(draft.Writing.Form, draft.Writing.Title)))
+            .Somes();
+        var texts = newest.Select(rite => rite.Text).Concat(waiting.Select(draft => draft.Writing.Text));
+        return new RiteVariety(RiteForms.ToWrite(kind, forms), WornImages.In(texts, TimesAnImageIsWorn));
+    }
 
     private static RiteKind KindToWrite(IReadOnlyList<Draft> waiting)
         => waiting.Count(draft => draft.Writing.Kind == RiteKind.Prayer) <= waiting.Count(draft => draft.Writing.Kind == RiteKind.Ritual)

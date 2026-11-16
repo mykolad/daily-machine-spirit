@@ -48,7 +48,8 @@ public sealed class SnapshotRites : IRiteReader
 
     public Task<Either<Error, List<RiteWords>>> GetAllWords(CancellationToken cancellationToken)
         => Answer(rites.Select(rite => new RiteWords(
-            rite.Number, rite.PublishedOnUtc, rite.Writing.Kind, rite.Writing.Title, rite.Writing.Text, rite.Writing.HereticalTruth, rite.Tags.IfNone([]))).ToList());
+            rite.Number, rite.PublishedOnUtc, rite.Writing.Kind, rite.Writing.Title, rite.Writing.Text, rite.Writing.HereticalTruth, rite.Tags.IfNone([]),
+            rite.Writing.Form)).ToList());
 
     public Task<Either<Error, List<UnrevealedRite>>> GetAllUnrevealed(CancellationToken cancellationToken)
         => Answer(rites.Select(rite => new UnrevealedRite(

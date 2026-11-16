@@ -29,7 +29,7 @@ public sealed class RiteWriterTests : IDisposable
     {
         models.Answers(Sol, FakeChatClients.Answer("  The Rite of Re-Run ", " Press Re-run thrice. ", " It's flaky. ", " A build that passes on the second run. "));
 
-        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, [], CancellationToken.None));
+        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, Variety(RiteKind.Ritual), [], CancellationToken.None));
 
         Assert.Equal("The Rite of Re-Run", draft.Writing.Title);
         Assert.Equal("Press Re-run thrice.", draft.Writing.Text);
@@ -47,7 +47,7 @@ public sealed class RiteWriterTests : IDisposable
     {
         models.Answers(Sol, GoodAnswer);
 
-        await Writer(retryDelaySeconds: 0).Write(RiteKind.Prayer,
+        await Writer(retryDelaySeconds: 0).Write(RiteKind.Prayer, Variety(RiteKind.Prayer),
             [new TakenRite("Litany of the Clean Cache", "A stale cache hides a missing invalidation."), new TakenRite("The Rite of Re-Run", "The test is flaky.")],
             CancellationToken.None);
 
@@ -66,6 +66,34 @@ public sealed class RiteWriterTests : IDisposable
         Assert.Equal("Write a prayer.", messages.Single(message => message.Role == ChatRole.User).Text);
     }
 
+    // So twenty rites in the Archive don't blur (#193): the draft takes the form it's asked for, which its writing keeps,
+    // and the images the recent rites lean on rest.
+    [Fact]
+    public async Task Write_AsksForTheForm_AndToRestTheWornImages()
+    {
+        models.Answers(Sol, GoodAnswer);
+        var vigil = RiteForms.Find("vigil").IfNone(() => throw new InvalidOperationException("No vigil."));
+
+        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, new RiteVariety(vigil, ["gate", "seal"]), [], CancellationToken.None));
+
+        var instructions = models.Requests.Single().Messages.Single(message => message.Role == ChatRole.System).Text;
+        Assert.Contains("Its form is the vigil: waiting and counting, watching for a sign that the machine has answered. Its title names the form (\"Vigil of the …\"", instructions);
+        Assert.Contains("- The recent rites lean on the same few images: gate, seal. Rest them here: reach for", instructions);
+        Assert.Contains("(forges, ledgers, lamps", instructions);
+        Assert.Equal(Some("vigil"), draft.Writing.Form);
+    }
+
+    // Nothing to rest, nothing said about it.
+    [Fact]
+    public async Task Write_WithNoWornImage_SaysNothingOfImages()
+    {
+        models.Answers(Sol, GoodAnswer);
+
+        await Writer(retryDelaySeconds: 0).Write(RiteKind.Prayer, Variety(RiteKind.Prayer), [], CancellationToken.None);
+
+        Assert.DoesNotContain("lean on the same few images", models.Requests.Single().Messages.Single(message => message.Role == ChatRole.System).Text);
+    }
+
     // So drafts improve at the source, not only in the ranking (#12): a rewrite follows them too.
     [Fact]
     public async Task WriteAndRewrite_FollowThePrecepts()
@@ -73,7 +101,7 @@ public sealed class RiteWriterTests : IDisposable
         precepts.Hold("Prefer rites whose Heretical Truth names the real fix.", "Avoid `node_modules` this month.");
         models.Answers(Sol, GoodAnswer, GoodAnswer);
 
-        await Writer(retryDelaySeconds: 0).Write(RiteKind.Prayer, [], CancellationToken.None);
+        await Writer(retryDelaySeconds: 0).Write(RiteKind.Prayer, Variety(RiteKind.Prayer), [], CancellationToken.None);
         await Writer(retryDelaySeconds: 0).Rewrite(
             RiteKind.Prayer, new RiteContent("The Rite of Re-Run", "Press Re-run.", "It's flaky.", "A build that fails, then passes when re-run."), "Shorter.", CancellationToken.None);
 
@@ -93,7 +121,7 @@ public sealed class RiteWriterTests : IDisposable
         precepts.Stored = LanguageExt.Common.Error.New("Cosmos is down.");
         models.Answers(Sol, GoodAnswer);
 
-        Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Prayer, [], CancellationToken.None));
+        Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Prayer, Variety(RiteKind.Prayer), [], CancellationToken.None));
 
         Assert.DoesNotContain("Precepts", models.Requests.Single().Messages.Single(message => message.Role == ChatRole.System).Text);
     }
@@ -103,7 +131,7 @@ public sealed class RiteWriterTests : IDisposable
     {
         models.Answers(Sol, FakeChatClients.Answer("The Rite of `--force`", "Text.", "Truth."));
 
-        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, [], CancellationToken.None));
+        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, Variety(RiteKind.Ritual), [], CancellationToken.None));
 
         Assert.Equal("The Rite of --force", draft.Writing.Title);
         Assert.Single(models.Requests);
@@ -118,7 +146,7 @@ public sealed class RiteWriterTests : IDisposable
     {
         models.Answers(Sol, unusable, GoodAnswer);
 
-        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, [], CancellationToken.None));
+        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, Variety(RiteKind.Ritual), [], CancellationToken.None));
 
         Assert.Equal("The Rite of Re-Run", draft.Writing.Title);
         Assert.Equal(2, models.Requests.Count);
@@ -137,7 +165,7 @@ public sealed class RiteWriterTests : IDisposable
             field == "ailment" ? tooLong : "A slow build."),
             GoodAnswer);
 
-        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, [], CancellationToken.None));
+        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, Variety(RiteKind.Ritual), [], CancellationToken.None));
 
         Assert.Equal("The Rite of Re-Run", draft.Writing.Title);
         Assert.Equal(2, models.Requests.Count);
@@ -169,7 +197,7 @@ public sealed class RiteWriterTests : IDisposable
     {
         models.Answers(Sol, FakeChatClients.Answer(title, text, hereticalTruth), GoodAnswer);
 
-        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(kind, [], CancellationToken.None));
+        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(kind, Variety(kind), [], CancellationToken.None));
 
         Assert.Equal("The Rite of Re-Run", draft.Writing.Title);
     }
@@ -185,7 +213,7 @@ public sealed class RiteWriterTests : IDisposable
     {
         models.Answers(Sol, FakeChatClients.Answer("Title", "Text.", "Truth.", ailment), GoodAnswer);
 
-        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Prayer, [], CancellationToken.None));
+        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Prayer, Variety(RiteKind.Prayer), [], CancellationToken.None));
 
         Assert.Equal("The Rite of Re-Run", draft.Writing.Title);
     }
@@ -200,7 +228,7 @@ public sealed class RiteWriterTests : IDisposable
     {
         models.Answers(Sol, FakeChatClients.Answer("Title", "Text.", truth));
 
-        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, [], CancellationToken.None));
+        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, Variety(RiteKind.Ritual), [], CancellationToken.None));
 
         Assert.Equal(truth, draft.Writing.HereticalTruth);
     }
@@ -210,7 +238,7 @@ public sealed class RiteWriterTests : IDisposable
     {
         models.Answers(Sol, FakeChatClients.Answer("Title", "O Omnissiah, let the build pass.", "Truth."));
 
-        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Prayer, [], CancellationToken.None));
+        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Prayer, Variety(RiteKind.Prayer), [], CancellationToken.None));
 
         Assert.Equal("O Omnissiah, let the build pass.", draft.Writing.Text);
     }
@@ -220,7 +248,7 @@ public sealed class RiteWriterTests : IDisposable
     {
         models.Fails(Sol, 3).Answers(Luna, GoodAnswer);
 
-        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, [], CancellationToken.None));
+        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, Variety(RiteKind.Ritual), [], CancellationToken.None));
 
         Assert.Equal(Luna, draft.Writing.GeneratedByModel);
         Assert.Equal([Sol, Sol, Sol, Luna], models.Requests.Select(request => request.Model));
@@ -234,7 +262,7 @@ public sealed class RiteWriterTests : IDisposable
             .Answers(Sol, FakeChatClients.Answer("A Warhammer of Builds", "Text.", "Truth."), "not json at all")
             .Answers(Luna, GoodAnswer);
 
-        Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, [], CancellationToken.None));
+        Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, Variety(RiteKind.Ritual), [], CancellationToken.None));
 
         Assert.Equal(
             [$"model={Sol} outcome=failed", $"model={Sol} outcome=refused", $"model={Sol} outcome=failed", $"model={Luna} outcome=accepted"],
@@ -246,7 +274,7 @@ public sealed class RiteWriterTests : IDisposable
     {
         models.Fails(Sol, 3).Fails(Luna, 3);
 
-        var result = await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, [], CancellationToken.None);
+        var result = await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, Variety(RiteKind.Ritual), [], CancellationToken.None);
 
         Assert.Contains("gpt-6-luna, try 3: The model is overloaded.", Failed(result).Message);
         Assert.Equal(6, models.Requests.Count);
@@ -257,7 +285,7 @@ public sealed class RiteWriterTests : IDisposable
     {
         models.Fails(Sol, 1).Answers(Sol, GoodAnswer);
 
-        var writing = Writer(retryDelaySeconds: 30).Write(RiteKind.Ritual, [], CancellationToken.None);
+        var writing = Writer(retryDelaySeconds: 30).Write(RiteKind.Ritual, Variety(RiteKind.Ritual), [], CancellationToken.None);
         time.Advance(TimeSpan.FromSeconds(29));
         Assert.Single(models.Requests);
         time.Advance(TimeSpan.FromSeconds(1));
@@ -273,7 +301,7 @@ public sealed class RiteWriterTests : IDisposable
         models.Answers(Sol, GoodAnswer);
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, [], new CancellationToken(canceled: true)));
+            () => Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, Variety(RiteKind.Ritual), [], new CancellationToken(canceled: true)));
     }
 
     // A Scribe waits for a rewrite: each model is asked once, without pausing, rather than three times 30 seconds apart.
@@ -310,6 +338,9 @@ public sealed class RiteWriterTests : IDisposable
             MetricsProbe.Tags(answerTimes, "model", "asked", "outcome"));
         Assert.Equal([limit.TotalSeconds, 0], answerTimes.GetMeasurementSnapshot().Select(measurement => measurement.Value));
     }
+
+    // The first form of the kind, resting nothing: what a refill asks for when nothing came before.
+    private static RiteVariety Variety(RiteKind kind) => new(RiteForms.ToWrite(kind, []), []);
 
     private RiteWriter Writer(int retryDelaySeconds)
         => new(models, precepts, Options.Create(Settings.RiteWriting with { Patience = Settings.RiteWriting.Patience with { PauseBetweenTries = TimeSpan.FromSeconds(retryDelaySeconds) } }), time, probe.Metrics, NullLogger<RiteWriter>.Instance);
