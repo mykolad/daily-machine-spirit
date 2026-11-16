@@ -878,10 +878,11 @@ public static class Script
             const to = event.key === 'ArrowLeft' ? stepTo('prev') : event.key === 'ArrowRight' ? stepTo('next') : undefined;
             if (to) location.href = to;
           });
-          // A swipe in something that scrolls sideways is that thing's own.
+          // A swipe in something the reader can scroll sideways is that thing's own; what only clips (the frame, around the
+          // rite's glow) doesn't count.
           const scrollsSideways = (element) => {
             for (let at = element; at && at !== document.body; at = at.parentElement) {
-              if (at.scrollWidth > at.clientWidth && getComputedStyle(at).overflowX !== 'visible') return true;
+              if (at.scrollWidth > at.clientWidth && ['auto', 'scroll'].includes(getComputedStyle(at).overflowX)) return true;
             }
             return false;
           };
