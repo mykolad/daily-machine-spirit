@@ -33,6 +33,7 @@ public static class ArchivePage
         var left = $"""
             <aside class="marginalia" aria-label="About the Archive">
             {ArchiveSheet.Note("Rites kept", $"""<p class="margin-number">{Html.Count(days.Count)}</p>""")}
+            {Witnessed(days.Count)}
             {since}
             {ArchiveSheet.Countdown(now)}
             </aside>
@@ -135,4 +136,18 @@ public static class ArchivePage
     }
 
     private static string Rites(int count) => count == 1 ? "1 rite" : $"{Html.Count(count)} rites";
+
+    // How many rites the reader has witnessed (#198), which only their browser knows: the same for everyone here, hidden,
+    // for the script to count and show, with the toggle and the way to forget. Without the script, nothing of it shows.
+    private static string Witnessed(int kept)
+        => kept == 0
+            ? string.Empty
+            : $"""
+                <div class="margin-witnessed" hidden>
+                <p class="margin-label">Witnessed</p>
+                <p class="witnessed-count">You have witnessed <span data-witnessed>0</span> of {Html.Count(kept)}</p>
+                <label class="witnessed-only"><input type="checkbox" data-unwitnessed-only> Unwitnessed only</label>
+                <button type="button" class="text-button" data-forget-witnessed>Forget</button>
+                </div>
+                """;
 }

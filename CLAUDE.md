@@ -197,6 +197,11 @@ skills/                           — Consult the Machine Spirit, a skill that p
     `/robots.txt` keeps crawlers out of the Scriptorium, the Breviary, sign-in and the APIs, and names `/sitemap.xml`
     (`SearchEnginesFunction`: every public page, each rite with its day; numbers and days only, kept at Cloudflare
     until a new rite purges it).
+  - **Witnessed rites** (#198): breaking a rite's seal records its number in the browser alone
+    (`localStorage`, `dms-witnessed-v1`; never sent, signed in or not). The script marks those rows wherever rows are
+    (a check and a quieter title, "witnessed" for a screen reader), fills the Archive's hidden margin note ("You have
+    witnessed 12 of 214"), and offers "Unwitnessed only" and "Forget". Without the script nothing of it shows; the
+    footer says where that memory is kept.
   - The tab's icon is the logo's cog, inline in each page (the Scriptorium's too) as an SVG data URI (`Svg.Favicon`):
     no request for it, and browsers don't ask for `/favicon.ico`.
   - Routes: `/` (Today: the newest rite), `/archive` (`?before=<number>` for older pages, which the archive also

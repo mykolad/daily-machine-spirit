@@ -793,6 +793,23 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.All(pages, page => Assert.DoesNotContain("noindex", page.Html));
     }
 
+    // What a reader has witnessed (#198) only their browser knows: the Archive is the same for everyone, its count hidden
+    // for the script to fill, and every page says where that memory is kept.
+    [Fact]
+    public async Task Archive_LeavesTheWitnessedCountToTheReadersBrowser()
+    {
+        var (_, empty) = await Archive("");
+        await AddRites(3);
+
+        var (_, archive) = await Archive("");
+        var (_, today) = await Today("");
+
+        Assert.Contains("""<div class="margin-witnessed" hidden>""", archive);
+        Assert.Contains("""<p class="witnessed-count">You have witnessed <span data-witnessed>0</span> of 3</p>""", archive);
+        Assert.DoesNotContain("""<div class="margin-witnessed""", empty);
+        Assert.All([archive, today], html => Assert.Contains("The rites you have read are remembered only in your browser.", html));
+    }
+
     // Whatever anyone searched for must never become a page in an index, nor a missing page.
     [Fact]
     public async Task SearchResultsAndMissingPages_AreKeptOutOfIndexes()

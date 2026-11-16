@@ -15,6 +15,8 @@ public static class Script
               const open = seal.getAttribute('aria-expanded') !== 'true';
               seal.setAttribute('aria-expanded', String(open));
               panel.hidden = !open;
+              // The reader has the whole joke now: the rite is witnessed (#198).
+              if (open) witness(Number(document.querySelector('[data-rite]')?.dataset.rite));
               seal.querySelector('.seal-label').textContent = open ? 'Reseal the truth' : 'Break the seal';
               seal.querySelector('.seal-sub').textContent = open ? 'Hide the Heretical Truth' : 'Reveal the Heretical Truth';
             });
@@ -866,6 +868,53 @@ public static class Script
               date.removeAttribute('data-open');
               date.setAttribute('data-dismissed', '');
             });
+          });
+
+          // The rites the reader has witnessed (#198): those whose seal they broke, kept only in this browser and never
+          // sent, signed in or not. The pages are the same for everyone, so the rows are marked here, after loading, as
+          // the archive loads more of them.
+          const witnessedKey = 'dms-witnessed-v1';
+          const witnessed = () => {
+            try { return new Set(JSON.parse(localStorage.getItem(witnessedKey) ?? '[]')); } catch { return new Set(); }
+          };
+          const keepWitnessed = (numbers) => {
+            try { localStorage.setItem(witnessedKey, JSON.stringify([...numbers].sort((a, b) => a - b))); } catch { /* not kept, then */ }
+          };
+          const witnessNote = document.querySelector('.margin-witnessed');
+          const markWitnessed = () => {
+            const known = witnessed();
+            document.querySelectorAll('.rows > .row').forEach((row) => {
+              const number = Number(row.querySelector('.row-title')?.getAttribute('href')?.split('/').pop());
+              const was = row.classList.contains('witnessed');
+              if (known.has(number) === was) return;
+              row.classList.toggle('witnessed', !was);
+              const title = row.querySelector('.row-title');
+              if (was) title.querySelector('.witnessed-mark')?.remove();
+              else title.insertAdjacentHTML('beforeend', '<span class="witnessed-mark"><span aria-hidden="true"> ✓</span><span class="sr-only">, witnessed</span></span>');
+            });
+            // Changed only when it differs: every change is a mutation the observer below would answer again.
+            if (witnessNote) {
+              witnessNote.hidden = false;
+              const count = witnessNote.querySelector('[data-witnessed]');
+              if (count.textContent !== String(known.size)) count.textContent = String(known.size);
+            }
+          };
+          function witness(number) {
+            if (!Number.isInteger(number) || number < 1) return;
+            const known = witnessed();
+            known.add(number);
+            keepWitnessed(known);
+          }
+          markWitnessed();
+          const rowLists = document.querySelector('main');
+          if (rowLists && document.querySelector('.rows')) new MutationObserver(markWitnessed).observe(rowLists, { childList: true, subtree: true });
+          document.querySelector('[data-unwitnessed-only]')?.addEventListener('change', (event) => {
+            document.body.classList.toggle('unwitnessed-only', event.target.checked);
+          });
+          document.querySelector('[data-forget-witnessed]')?.addEventListener('click', () => {
+            keepWitnessed([]);
+            markWitnessed();
+            say('Forgotten. Every rite is unwitnessed again.');
           });
         })();
         """;

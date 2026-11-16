@@ -409,6 +409,13 @@ public static class Styles
         .margin-since{margin:0;font-family:var(--serif);font-style:italic;font-size:20px;color:#cdbd9e}
         .margin-sought{margin:0;font-family:var(--serif);font-style:italic;font-size:22px;color:#ede3cf;overflow-wrap:anywhere}
         .margin-clear{font-weight:600;text-decoration:none}
+        .margin-witnessed[hidden]{display:none}
+        .witnessed-count{margin:0 0 8px}
+        .witnessed-only{display:flex;align-items:center;gap:8px;min-height:44px}
+        .witnessed-only input{width:18px;height:18px;accent-color:#c9a25a}
+        .row.witnessed .row-title{color:#5a4632}
+        .witnessed-mark{color:#8f2a20}
+        .unwitnessed-only .row.witnessed{display:none}
         .month-index,.chapter-index,.other-subjects{grid-column:3;grid-row:1;align-self:start;display:flex;flex-direction:column;align-items:stretch;gap:12px;width:auto;margin-top:80px;padding-left:28px;border-left:1px solid #2f2820;text-align:left}
         .month-index .margin-label,.chapter-index .margin-label{margin:0}
         .month-index ul,.chapter-index ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
