@@ -22,14 +22,15 @@ public sealed class SearchEnginesFunction
         this.logger = logger;
     }
 
-    // Kept at the edge until a new rite purges it (DailyRiteFunction). Any query string would be its own cache entry: one
-    // address answers for all.
+    // Kept at the edge until a new rite purges it (DailyRiteFunction), which names one address. Cloudflare keeps any other
+    // spelling apart (a query string, /Sitemap.xml, a trailing slash), and a purge would never reach it: they all
+    // redirect, which reads nothing.
     [Function("Sitemap")]
     public async Task<IActionResult> Sitemap(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "sitemap.xml")] HttpRequest request,
         CancellationToken cancellationToken)
     {
-        if (request.QueryString.HasValue)
+        if (request.QueryString.HasValue || !string.Equals(request.Path.Value, Paths.Sitemap, StringComparison.Ordinal))
         {
             return new RedirectResult(Paths.Sitemap, permanent: true);
         }
