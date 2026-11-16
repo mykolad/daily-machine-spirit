@@ -29,7 +29,7 @@ public sealed class SearchEnginesFunctionTests : IAsyncLifetime
     {
         await Add(new DateOnly(2026, 10, 8), "The Litany of the Warm Cache");
         await Add(new DateOnly(2026, 10, 9), "The Rite of Re-Run");
-        var context = Request("");
+        var context = Request("/sitemap.xml", "");
 
         var result = Assert.IsType<ContentResult>(await Function(Repository).Sitemap(context.Request, CancellationToken.None));
 
@@ -49,11 +49,14 @@ public sealed class SearchEnginesFunctionTests : IAsyncLifetime
             urls);
     }
 
-    // Any query string would be its own cache entry, and its own read of every rite: one address answers for all.
-    [Fact]
-    public async Task Sitemap_WithAQueryString_RedirectsToTheOneAddress()
+    // Cloudflare would keep any other spelling apart, where a new rite's purge never reaches: one address answers for all.
+    [Theory]
+    [InlineData("/sitemap.xml", "?page=2")]
+    [InlineData("/Sitemap.xml", "")]
+    [InlineData("/sitemap.xml/", "")]
+    public async Task Sitemap_SpelledAnotherWay_RedirectsToTheOneAddress(string path, string query)
     {
-        var context = Request("?page=2");
+        var context = Request(path, query);
 
         var result = Assert.IsType<RedirectResult>(await Function(Repository).Sitemap(context.Request, CancellationToken.None));
 
@@ -64,7 +67,7 @@ public sealed class SearchEnginesFunctionTests : IAsyncLifetime
     public async Task Sitemap_WhenTheRitesCantBeRead_IsUnavailable_AndNotCached()
     {
         var missing = new RiteRepository(cosmos.Container.Database.GetContainer("no-such-container"), TimeProvider.System, NullLogger<RiteRepository>.Instance);
-        var context = Request("");
+        var context = Request("/sitemap.xml", "");
 
         var result = Assert.IsType<StatusCodeResult>(await Function(missing).Sitemap(context.Request, CancellationToken.None));
 
@@ -76,7 +79,7 @@ public sealed class SearchEnginesFunctionTests : IAsyncLifetime
     [Fact]
     public void Robots_KeepsCrawlersToThePublicPages_AndNamesTheSitemap()
     {
-        var context = Request("");
+        var context = Request("/robots.txt", "");
 
         var result = Assert.IsType<ContentResult>(Function(Repository).Robots(context.Request));
 
@@ -90,10 +93,11 @@ public sealed class SearchEnginesFunctionTests : IAsyncLifetime
 
     private static SearchEnginesFunction Function(IRiteRepository rites) => new(rites, NullLogger<SearchEnginesFunction>.Instance);
 
-    private static DefaultHttpContext Request(string query)
+    private static DefaultHttpContext Request(string path, string query)
     {
         var context = new DefaultHttpContext();
         context.Request.Host = new HostString(Site);
+        context.Request.Path = path;
         context.Request.QueryString = new QueryString(query);
         return context;
     }
