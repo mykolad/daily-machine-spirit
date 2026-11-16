@@ -201,7 +201,7 @@ skills/                           — Consult the Machine Spirit, a skill that p
   - **The feed** (`/feed.xml`, `Feeds/`, #192): the newest 30 rites as Atom, each its title, page, day (00:00 UTC),
     kind and subjects, and its text as HTML ending with a link to break the seal (never the truth). Every page's head
     names it (`rel="alternate"`), and the footer links it. A contract with outside clients like the API
-    (`docs/api.md`): kept at Cloudflare until a new rite or an erasure purges it; a query string redirects. What a
+    (`docs/api.md`): kept at Cloudflare until a new rite or an erasure purges it; any other spelling redirects. What a
     model wrote is HTML-encoded, then XML-escaped by XLinq; characters XML can't carry are dropped.
   - The tab's icon is the logo's cog, inline in each page (the Scriptorium's too) as an SVG data URI (`Svg.Favicon`):
     no request for it, and browsers don't ask for `/favicon.ico`.

@@ -72,7 +72,7 @@ As on the site, each rite's **Heretical Truth** stays sealed until it's asked fo
 readers and for automations that post each new rite. Each entry is a rite: its title, its page as the link and the
 id, its day at 00:00 UTC as `published`, its kind and subjects as categories, and its text as HTML content, ending
 with a link to break the seal on its page. The Heretical Truth isn't in it. Cached and redirected like the API (a
-query string leads to the address without it); the address stays.
+query string or another spelling leads to this address); the address stays.
 
 ## The MCP connector
 

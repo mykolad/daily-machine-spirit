@@ -31,7 +31,7 @@ public sealed class FeedFunctionTests : IAsyncLifetime
         await Add(new DateOnly(2026, 10, 8), RiteKind.Prayer, "The Litany of the Warm Cache", "Bless the cache.");
         await Add(new DateOnly(2026, 10, 9), RiteKind.Ritual, "The Rite of Re-Run", "Press Re-run thrice.");
         await Tag(new DateOnly(2026, 10, 9), "builds", "testing");
-        var context = Request("");
+        var context = Request("/feed.xml", "");
 
         var result = Assert.IsType<ContentResult>(await Function(Repository).Feed(context.Request, CancellationToken.None));
 
@@ -63,7 +63,7 @@ public sealed class FeedFunctionTests : IAsyncLifetime
     public async Task Feed_EncodesWhatTheModelWrote()
     {
         await Add(new DateOnly(2026, 10, 9), RiteKind.Ritual, "Fish & <Chips>", "If a < b && `rm -rf` 💀\u0001 then pray.");
-        var context = Request("");
+        var context = Request("/feed.xml", "");
 
         var result = Assert.IsType<ContentResult>(await Function(Repository).Feed(context.Request, CancellationToken.None));
 
@@ -76,18 +76,21 @@ public sealed class FeedFunctionTests : IAsyncLifetime
     [Fact]
     public async Task Feed_WithoutRites_IsEmpty_AsOfNow()
     {
-        var result = Assert.IsType<ContentResult>(await Function(Repository).Feed(Request("").Request, CancellationToken.None));
+        var result = Assert.IsType<ContentResult>(await Function(Repository).Feed(Request("/feed.xml", "").Request, CancellationToken.None));
 
         var feed = Parse(result);
         Assert.Equal("2026-10-09T20:48:00Z", feed.Element(Atom + "updated")?.Value);
         Assert.Empty(feed.Elements(Atom + "entry"));
     }
 
-    // Any query string would be its own cache entry, and its own read: one address answers for all.
-    [Fact]
-    public async Task Feed_WithAQueryString_RedirectsToTheOneAddress()
+    // Cloudflare would keep any other spelling apart, where a purge never reaches: one address answers for all.
+    [Theory]
+    [InlineData("/feed.xml", "?utm_source=reader")]
+    [InlineData("/Feed.xml", "")]
+    [InlineData("/feed.xml/", "")]
+    public async Task Feed_SpelledAnotherWay_RedirectsToTheOneAddress(string path, string query)
     {
-        var result = Assert.IsType<RedirectResult>(await Function(Repository).Feed(Request("?utm_source=reader").Request, CancellationToken.None));
+        var result = Assert.IsType<RedirectResult>(await Function(Repository).Feed(Request(path, query).Request, CancellationToken.None));
 
         Assert.Equal(("/feed.xml", true), (result.Url, result.Permanent));
     }
@@ -96,7 +99,7 @@ public sealed class FeedFunctionTests : IAsyncLifetime
     public async Task Feed_WhenTheRitesCantBeRead_IsUnavailable_AndNotCached()
     {
         var missing = new RiteRepository(cosmos.Container.Database.GetContainer("no-such-container"), TimeProvider.System, NullLogger<RiteRepository>.Instance);
-        var context = Request("");
+        var context = Request("/feed.xml", "");
 
         var result = Assert.IsType<StatusCodeResult>(await Function(missing).Feed(context.Request, CancellationToken.None));
 
@@ -113,10 +116,11 @@ public sealed class FeedFunctionTests : IAsyncLifetime
     private static string Link(XElement element, string rel)
         => element.Elements(Atom + "link").Where(link => link.Attribute("rel")?.Value == rel).Select(link => link.Attribute("href")?.Value ?? "").FirstOrDefault() ?? "";
 
-    private static DefaultHttpContext Request(string query)
+    private static DefaultHttpContext Request(string path, string query)
     {
         var context = new DefaultHttpContext();
         context.Request.Host = new HostString(Site);
+        context.Request.Path = path;
         context.Request.QueryString = new QueryString(query);
         return context;
     }

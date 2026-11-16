@@ -28,14 +28,15 @@ public sealed class FeedFunction
         this.logger = logger;
     }
 
-    // Kept at the edge until a new rite or an erasure purges it, with the search index and the rites API. Any query
-    // string would be its own cache entry: one address answers for all.
+    // Kept at the edge until a new rite or an erasure purges it, with the search index and the rites API, naming one
+    // address. Cloudflare keeps any other spelling apart (a query string, /Feed.xml, a trailing slash), and a purge would
+    // never reach it: they all redirect, which reads nothing.
     [Function("Feed")]
     public async Task<IActionResult> Feed(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "feed.xml")] HttpRequest request,
         CancellationToken cancellationToken)
     {
-        if (request.QueryString.HasValue)
+        if (request.QueryString.HasValue || !string.Equals(request.Path.Value, Paths.Feed, StringComparison.Ordinal))
         {
             return new RedirectResult(Paths.Feed, permanent: true);
         }
