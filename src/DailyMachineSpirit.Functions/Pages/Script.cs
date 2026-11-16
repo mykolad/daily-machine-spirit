@@ -880,7 +880,6 @@ public static class Script
           const keepWitnessed = (numbers) => {
             try { localStorage.setItem(witnessedKey, JSON.stringify([...numbers].sort((a, b) => a - b))); } catch { /* not kept, then */ }
           };
-          const witnessNote = document.querySelector('.margin-witnessed');
           const markWitnessed = () => {
             const known = witnessed();
             document.querySelectorAll('.rows > .row').forEach((row) => {
@@ -892,11 +891,14 @@ public static class Script
               if (was) title.querySelector('.witnessed-mark')?.remove();
               else title.insertAdjacentHTML('beforeend', '<span class="witnessed-mark"><span aria-hidden="true"> ✓</span><span class="sr-only">, witnessed</span></span>');
             });
-            // Changed only when it differs: every change is a mutation the observer below would answer again.
-            if (witnessNote) {
-              witnessNote.hidden = false;
-              const count = witnessNote.querySelector('[data-witnessed]');
+            // Found again each time: the Archive's live search replaces its margins. Its text is changed only when it
+            // differs, since every change is a mutation the observer below would answer again.
+            const note = document.querySelector('.margin-witnessed');
+            if (note) {
+              note.hidden = false;
+              const count = note.querySelector('[data-witnessed]');
               if (count.textContent !== String(known.size)) count.textContent = String(known.size);
+              note.querySelector('[data-unwitnessed-only]').checked = document.body.classList.contains('unwitnessed-only');
             }
           };
           function witness(number) {
@@ -906,12 +908,18 @@ public static class Script
             keepWitnessed(known);
           }
           markWitnessed();
+          // Rows come later too: the Archive's next pages, and its live search (even from a search that found none).
           const rowLists = document.querySelector('main');
-          if (rowLists && document.querySelector('.rows')) new MutationObserver(markWitnessed).observe(rowLists, { childList: true, subtree: true });
-          document.querySelector('[data-unwitnessed-only]')?.addEventListener('change', (event) => {
+          if (rowLists) new MutationObserver(markWitnessed).observe(rowLists, { childList: true, subtree: true });
+          // A page the browser kept on going back may predate the seal just broken.
+          addEventListener('pageshow', (event) => { if (event.persisted) markWitnessed(); });
+          // From the document, as the controls are replaced with the margins.
+          document.addEventListener('change', (event) => {
+            if (!event.target.matches?.('[data-unwitnessed-only]')) return;
             document.body.classList.toggle('unwitnessed-only', event.target.checked);
           });
-          document.querySelector('[data-forget-witnessed]')?.addEventListener('click', () => {
+          document.addEventListener('click', (event) => {
+            if (!event.target.closest?.('[data-forget-witnessed]')) return;
             keepWitnessed([]);
             markWitnessed();
             say('Forgotten. Every rite is unwitnessed again.');

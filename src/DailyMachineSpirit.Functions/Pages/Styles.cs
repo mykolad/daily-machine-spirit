@@ -213,6 +213,9 @@ public static class Styles
         .row-main{min-width:0;display:flex;flex-direction:column;gap:2px}
         .row-title{font-family:Cinzel,serif;font-weight:700;font-size:17px;line-height:1.2;color:#8f2a20;text-decoration:none}
         .row-title:hover{color:#8f2a20}
+        .row.witnessed .row-title{color:#5a4632}
+        .witnessed-mark{color:#8f2a20}
+        .unwitnessed-only .row.witnessed{display:none}
         .row-title:focus-visible{outline:none}
         .row-title::after{content:'';position:absolute;inset:0;border-radius:8px}
         .row-line{font-family:var(--serif);font-size:16px;line-height:1.45;color:#2b2117;text-wrap:pretty}
@@ -413,9 +416,6 @@ public static class Styles
         .witnessed-count{margin:0 0 8px}
         .witnessed-only{display:flex;align-items:center;gap:8px;min-height:44px}
         .witnessed-only input{width:18px;height:18px;accent-color:#c9a25a}
-        .row.witnessed .row-title{color:#5a4632}
-        .witnessed-mark{color:#8f2a20}
-        .unwitnessed-only .row.witnessed{display:none}
         .month-index,.chapter-index,.other-subjects{grid-column:3;grid-row:1;align-self:start;display:flex;flex-direction:column;align-items:stretch;gap:12px;width:auto;margin-top:80px;padding-left:28px;border-left:1px solid #2f2820;text-align:left}
         .month-index .margin-label,.chapter-index .margin-label{margin:0}
         .month-index ul,.chapter-index ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
