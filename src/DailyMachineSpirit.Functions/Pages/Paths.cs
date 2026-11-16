@@ -57,6 +57,12 @@ public static class Paths
     /// <summary>The Breviary, the signed-in reader's own page: the rites they voted on.</summary>
     public const string Breviary = "/breviary";
 
+    /// <summary>Every public page's address, for search engines (<c>SearchEngines/Sitemap</c>).</summary>
+    public const string Sitemap = "/sitemap.xml";
+
+    /// <summary>What crawlers may read, and where the sitemap is.</summary>
+    public const string Robots = "/robots.txt";
+
     /// <summary>
     /// The reader's rites with the verdict (<c>?verdict=blessed</c> or <c>heresy</c>), in the chapter (its subject's
     /// key), and holding the words typed, each only if given. In the order the Breviary's search form sends them.

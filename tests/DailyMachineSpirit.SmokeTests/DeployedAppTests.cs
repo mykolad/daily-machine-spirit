@@ -97,6 +97,20 @@ public sealed partial class DeployedAppTests
         }
     }
 
+    // What search engines read first: robots.txt names the sitemap, and the sitemap lists the pages, from the deployed
+    // database (a new environment's lists no rite yet, but Today all the same).
+    [Fact]
+    public async Task SearchEngines_FindTheSitemap_AndEveryPageInIt()
+    {
+        var robots = await app.Get("/robots.txt");
+        Assert.True(robots.Status == HttpStatusCode.OK, $"{robots.Path} answered {(int)robots.Status}, not 200.");
+        var named = SitemapLine().Match(robots.Text);
+        Assert.True(named.Success, $"{robots.Path} names no sitemap.");
+        Assert.EndsWith("/sitemap.xml", named.Groups["url"].Value);
+
+        AssertAnswers(await app.Get("/sitemap.xml"), HttpStatusCode.OK, "/catechism</loc>");
+    }
+
     // A reader's own page: signed out, the smoke tests are asked to sign in.
     [Fact]
     public async Task TheBreviary_Answers()
@@ -218,4 +232,7 @@ public sealed partial class DeployedAppTests
 
     [GeneratedRegex("data-rite=\"(?<number>[0-9]+)\"")]
     private static partial Regex TodaysRite();
+
+    [GeneratedRegex(@"^Sitemap: (?<url>\S+)$", RegexOptions.Multiline)]
+    private static partial Regex SitemapLine();
 }

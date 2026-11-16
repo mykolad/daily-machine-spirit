@@ -6,7 +6,7 @@ namespace DailyMachineSpirit.Functions.Pages;
 /// <summary>The frame around every page: head, skip link, header and navigation, footer, and the toast region.</summary>
 public static class Layout
 {
-    private const string SiteName = "The Daily Machine Spirit";
+    public const string SiteName = "The Daily Machine Spirit";
 
     /// <summary>The site's motto: in the footer, or on Today under the rite, where it's seen (and not twice).</summary>
     public const string Motto = "Knowledge is lost. The rituals remain.";
@@ -25,7 +25,8 @@ public static class Layout
 
     /// <param name="title">The page's own title, or empty for Today, whose title is the site's name.</param>
     /// <param name="description">Plain text for search results and link previews.</param>
-    public static string Page(string title, string description, Section section, string main)
+    /// <param name="listing">The page's canonical address and what else search engines read, or that it's unlisted.</param>
+    public static string Page(string title, string description, SearchListing listing, Section section, string main)
     {
         var fullTitle = title.Length == 0 ? SiteName : $"{title} · {SiteName}";
         return $"""
@@ -39,7 +40,8 @@ public static class Layout
             <meta property="og:site_name" content="{SiteName}">
             <meta property="og:title" content="{Html.Encode(title.Length == 0 ? SiteName : title)}">
             <meta property="og:description" content="{Html.Encode(description)}">
-            <meta property="og:type" content="website">
+            <meta property="og:type" content="{listing.OpenGraphType}">
+            {Listed(listing)}
             <meta name="theme-color" content="#100e0b">
             <link rel="icon" type="image/svg+xml" href="{Svg.Favicon}">
             <link rel="preload" href="/fonts/cinzel.woff2" as="font" type="font/woff2" crossorigin>
@@ -79,4 +81,13 @@ public static class Layout
     }
 
     private static string Current(bool isCurrent) => isCurrent ? " aria-current=\"page\"" : string.Empty;
+
+    private static string Listed(SearchListing listing)
+        => listing.Canonical.Match(
+            Some: url => $"""
+                <link rel="canonical" href="{Html.Encode(url)}">
+                <meta property="og:url" content="{Html.Encode(url)}">
+                {listing.StructuredData.Map(json => $"""<script type="application/ld+json">{json}</script>""").IfNone(string.Empty)}
+                """,
+            None: () => """<meta name="robots" content="noindex">""");
 }

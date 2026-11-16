@@ -52,7 +52,7 @@ public sealed class RitesFunction
             return NotFound(request);
         }
 
-        var site = $"https://{request.Host}";
+        var site = SiteOrigin.Of(request);
         return (await rites.GetAllUnrevealed(cancellationToken)).Match(
             Right: all => Answer(request, new PublishedRites(all.Select(rite => Published(rite, site)).ToList())),
             Left: error => Unavailable(request, error, "The rites API couldn't be served"));
