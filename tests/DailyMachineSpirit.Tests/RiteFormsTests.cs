@@ -15,6 +15,8 @@ public class RiteFormsTests
     [InlineData(null, "The Vigil of the Green Check", "vigil")]
     [InlineData(null, "Sacred Restart", null)]
     [InlineData(null, "Prayer for the Seventh Litany", null)]
+    [InlineData(null, "Rite of Invocation", "rite")]
+    [InlineData(null, "The Vigil of Lament", "vigil")]
     [InlineData("penance", "The Rite of Atonement", "penance")]
     [InlineData("no-such-form", "The Litany of Retries", "litany")]
     public void Of_IsTheStoredForm_ElseTheOneTheTitleNames(string? stored, string title, string? form)

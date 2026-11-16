@@ -49,7 +49,9 @@ public static class RiteForms
 
     private static Option<RiteForm> Named(string title)
     {
-        var words = title.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(3).ToList();
-        return All.Where(form => words.Contains(form.Name, StringComparer.OrdinalIgnoreCase)).HeadOrNone();
+        // In the title's order: "Rite of Invocation" is a rite, whatever the list's order.
+        return title.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(3)
+            .SelectMany(word => All.Where(form => string.Equals(form.Name, word, StringComparison.OrdinalIgnoreCase)))
+            .HeadOrNone();
     }
 }
