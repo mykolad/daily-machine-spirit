@@ -58,8 +58,8 @@ public sealed class SitePages
         var placed = await places;
         return newest.Match(
             Right: found => found.HeadOrNone().Match(
-                Some: rite => Page(request, StatusCodes.Status200OK, TodayPage.Render(rite, found.Skip(1).ToList(), placed, now), EdgeLifetime.UntilPurged),
-                None: () => Page(request, StatusCodes.Status200OK, TodayPage.Slumbering(now), EdgeLifetime.UntilPurged)),
+                Some: rite => Page(request, StatusCodes.Status200OK, TodayPage.Render(rite, found.Skip(1).ToList(), placed, now, SearchListing.At(SiteOrigin.Of(request), Paths.Today)), EdgeLifetime.UntilPurged),
+                None: () => Page(request, StatusCodes.Status200OK, TodayPage.Slumbering(now, SearchListing.At(SiteOrigin.Of(request), Paths.Today)), EdgeLifetime.UntilPurged)),
             Left: error => Failed(request, error));
     }
 
@@ -84,7 +84,7 @@ public sealed class SitePages
             return await found.Match<Task<IActionResult>>(
                 Right: rite => rite.Match<Task<IActionResult>>(
                     Some: async shown => Page(request, StatusCodes.Status200OK,
-                        RitePage.Render(shown, await MoreRites(shown, cancellationToken), placed, now), EdgeLifetime.UntilPurged),
+                        RitePage.Render(shown, await MoreRites(shown, cancellationToken), placed, now, SearchListing.At(SiteOrigin.Of(request), Paths.Rite(number))), EdgeLifetime.UntilPurged),
                     None: () => Task.FromResult<IActionResult>(Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(id)))),
                 Left: error => Task.FromResult(Failed(request, error)));
         });
@@ -94,7 +94,7 @@ public sealed class SitePages
     // it's kept briefly.
     [Function("About")]
     public IActionResult About([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "catechism")] HttpRequest request)
-        => Page(request, StatusCodes.Status200OK, AboutPage.Render(time.GetUtcNow()));
+        => Page(request, StatusCodes.Status200OK, AboutPage.Render(time.GetUtcNow(), SearchListing.At(SiteOrigin.Of(request), Paths.About)));
 
     /// <summary>
     /// The readers' most venerated rites: every rite's counts (a few hundred numbers), ranked here, then the few kept.
@@ -112,7 +112,7 @@ public sealed class SitePages
                 .BindAsync(numbers => rites.GetByNumbers(numbers, cancellationToken)
                     .MapAsync(found => numbers.SelectMany(number => found.Where(rite => rite.Number == number)).ToList()));
             return kept.Match(
-                Right: shown => Page(request, StatusCodes.Status200OK, ReliquaryPage.Render(shown, now), EdgeLifetime.UntilPurged),
+                Right: shown => Page(request, StatusCodes.Status200OK, ReliquaryPage.Render(shown, now, SearchListing.At(SiteOrigin.Of(request), Paths.Reliquary)), EdgeLifetime.UntilPurged),
                 Left: error => Failed(request, error));
         });
 
@@ -171,8 +171,11 @@ public sealed class SitePages
                     : rites.GetOlderThan(before, options.Value.ArchivePageSize + 1, cancellationToken)))
                 .Map(page => (Days: days, Page: OnePage(page))));
         var listedPlaces = await places;
+        // An older page lists other rites, so its ?before= is part of its address (a tag's pages likewise); a search's
+        // results are unlisted (ArchivePage.Results).
         return archive.Match(
-            Right: found => Page(request, StatusCodes.Status200OK, ArchivePage.Render(found.Page.Shown, found.Page.OlderThan, found.Days, listedPlaces, now)),
+            Right: found => Page(request, StatusCodes.Status200OK, ArchivePage.Render(found.Page.Shown, found.Page.OlderThan, found.Days, listedPlaces, now,
+                SearchListing.At(SiteOrigin.Of(request), isFirstPage ? Paths.Archive : Paths.ArchiveBefore(before)))),
             Left: error => Failed(request, error));
     }
 
@@ -214,7 +217,8 @@ public sealed class SitePages
             Right: found =>
             {
                 var (shown, olderThan) = OnePage(found);
-                return Page(request, StatusCodes.Status200OK, TagPage.Render(tag, shown, olderThan, isFirstPage: before == int.MaxValue, placed, now));
+                return Page(request, StatusCodes.Status200OK, TagPage.Render(tag, shown, olderThan, isFirstPage: before == int.MaxValue, placed, now,
+                    SearchListing.At(SiteOrigin.Of(request), before == int.MaxValue ? Paths.Tag(tag.Key) : Paths.TagBefore(tag.Key, before))));
             },
             Left: error => Failed(request, error));
     }

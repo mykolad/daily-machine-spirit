@@ -11,13 +11,13 @@ public static class TodayPage
 
     /// <param name="recent">The rites before today's, newest first; the section is left out when there are none.</param>
     /// <param name="places">The places of the rites the Reliquary keeps, for the rite's badge.</param>
-    public static string Render(Rite rite, IReadOnlyList<Rite> recent, IReadOnlyDictionary<int, int> places, DateTimeOffset now)
+    public static string Render(Rite rite, IReadOnlyList<Rite> recent, IReadOnlyDictionary<int, int> places, DateTimeOffset now, SearchListing listing)
     {
         var countdown = Countdown.ToNextRite(now);
         // On a wide screen the countdown moves to the left margin, and the line under the actions (with its candles)
         // hides, so one countdown shows at a time.
         var marginCountdown = $"""<div class="margin-countdown"><p class="margin-label">Next litany in</p><p class="margin-value" {Countdown.Attribute(now)}>{countdown}</p></div>""";
-        return Layout.Page(string.Empty, Html.FirstLine(rite.Writing.Text.Replace("`", string.Empty)), Section.Today, $"""
+        return Layout.Page(string.Empty, Html.FirstLine(rite.Writing.Text.Replace("`", string.Empty)), listing, Section.Today, $"""
             {Masthead.Render(isHeading: true)}
             {RiteCard.Render(rite, ownPage: false, countedAt: now, marginNotes: marginCountdown, places)}
             <div class="countdown">
@@ -30,8 +30,8 @@ public static class TodayPage
     }
 
     /// <summary>Before the first rite: the Machine Spirit sleeps until midnight.</summary>
-    public static string Slumbering(DateTimeOffset now)
-        => Layout.Page(string.Empty, Masthead.Tagline, Section.Today, $"""
+    public static string Slumbering(DateTimeOffset now, SearchListing listing)
+        => Layout.Page(string.Empty, Masthead.Tagline, listing, Section.Today, $"""
             {Masthead.Render(isHeading: true)}
             <div class="state">
             {Svg.SleepingSkull}

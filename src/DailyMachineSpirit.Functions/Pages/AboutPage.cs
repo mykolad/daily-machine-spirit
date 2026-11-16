@@ -31,7 +31,7 @@ public static class AboutPage
     private static readonly string[] Numerals = ["I", "II", "III", "IV", "V", "VI"];
 
     /// <param name="now">Today's Imperial date is the example of how one is read.</param>
-    public static string Render(DateTimeOffset now)
+    public static string Render(DateTimeOffset now, SearchListing listing)
     {
         var questions = new (string Question, string Answer)[]
         {
@@ -68,7 +68,7 @@ public static class AboutPage
                 """),
         };
         var numbered = questions.Select((question, index) => (Number: index + 1, Numeral: Numerals[index], question.Question, question.Answer)).ToList();
-        return Layout.Page("The Catechism", Description, Section.About, $"""
+        return Layout.Page("The Catechism", Description, listing, Section.About, $"""
             {Masthead.Render(isHeading: false)}
             <div class="hero catechism-hero">
             <article class="sheet catechism">

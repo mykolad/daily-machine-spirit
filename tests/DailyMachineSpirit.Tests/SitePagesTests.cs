@@ -18,6 +18,8 @@ namespace DailyMachineSpirit.Tests;
 
 public sealed class SitePagesTests : IAsyncLifetime
 {
+    private const string Site = "dailymachinespirit.test";
+
     private static readonly DateOnly Day = new(2026, 10, 9);
 
     private readonly CosmosTestContainer cosmos = new();
@@ -762,6 +764,73 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.All([archive, tag, withQuery], page => Assert.Equal("public, max-age=60, stale-if-error=604800", page.AtCloudflare));
     }
 
+    // A search engine indexes each page once, at the address it names, whatever query string reached it (a tracking
+    // parameter, a link from a chat). The Archive's and a subject's older pages list other rites, so they keep theirs.
+    [Fact]
+    public async Task EveryPublicPage_NamesItsOneAddress()
+    {
+        await AddRites(3);
+        await Tag(Day, "caches");
+
+        var pages = new[]
+        {
+            await Read(context => Pages().Today(context.Request, "", CancellationToken.None), "/", "?utm_source=feed"),
+            await Read(context => Pages().Rite(context.Request, "2", CancellationToken.None), "/r/2", "?ref=chat"),
+            await Read(context => Pages().Archive(context.Request, CancellationToken.None), "/archive", ""),
+            await Read(context => Pages().Archive(context.Request, CancellationToken.None), "/archive", "?before=2"),
+            await Read(context => Pages().Tag(context.Request, "caches", CancellationToken.None), "/tags/caches", "?utm_source=feed"),
+            await Read(context => Pages().Tag(context.Request, "caches", CancellationToken.None), "/tags/caches", "?before=3"),
+            await Read(context => Pages().Reliquary(context.Request, CancellationToken.None), "/reliquary", ""),
+            await Read(context => Task.FromResult<IActionResult>(Pages().About(context.Request)), "/catechism", "?from=nav"),
+        };
+
+        Assert.Equal(
+            [
+                $"https://{Site}/", $"https://{Site}/r/2", $"https://{Site}/archive", $"https://{Site}/archive?before=2",
+                $"https://{Site}/tags/caches", $"https://{Site}/tags/caches?before=3", $"https://{Site}/reliquary", $"https://{Site}/catechism",
+            ],
+            pages.Select(page => Canonical(page.Html)));
+        Assert.All(pages, page => Assert.DoesNotContain("noindex", page.Html));
+    }
+
+    // Whatever anyone searched for must never become a page in an index, nor a missing page.
+    [Fact]
+    public async Task SearchResultsAndMissingPages_AreKeptOutOfIndexes()
+    {
+        await Add(Day, "The Rite of Re-Run");
+
+        var (_, searched) = await Searched("Re-Run", "");
+        var (_, missing) = await Rite("99");
+        var (_, notFound) = await Today("no-such-page");
+
+        Assert.All([searched, missing, notFound], html =>
+        {
+            Assert.Contains("""<meta name="robots" content="noindex">""", html);
+            Assert.DoesNotContain("""rel="canonical""", html);
+        });
+    }
+
+    // What a search engine shows of a rite: its title, opening words, day and subjects. Never its truth, sealed on the
+    // page. Whatever the model wrote can't end the script element that carries it.
+    [Fact]
+    public async Task Rite_DescribesItselfForSearchEngines_WithoutItsTruth()
+    {
+        await Add(Day, "The Rite of </script> Re-Run");
+        await Tag(Day, "caches", "builds");
+
+        var (_, html) = await Rite("1");
+
+        Assert.Contains("""<meta property="og:type" content="article">""", html);
+        var json = Regex.Match(html, """<script type="application/ld\+json">(.*?)</script>""").Groups[1].Value;
+        var data = JsonSerializer.Deserialize<JsonElement>(json);
+        Assert.Equal(
+            ("CreativeWork", "The Rite of </script> Re-Run", "Press Re-run thrice, intoning it passed locally, for the Machine Spirit rewards the persistent.",
+                "2026-10-09", $"https://{Site}/r/1", "Caches, Builds"),
+            (data.GetProperty("@type").GetString(), data.GetProperty("name").GetString(), data.GetProperty("description").GetString(),
+                data.GetProperty("datePublished").GetString(), data.GetProperty("url").GetString(), data.GetProperty("keywords").GetString()));
+        Assert.DoesNotContain("timing", json);
+    }
+
     // Blessings less heresies rank the rites; a tie goes to the more blessed. A rite as often called heresy as blessed,
     // or never voted on, isn't venerated. Kept at the edge until a vote purges it.
     [Fact]
@@ -990,11 +1059,20 @@ public sealed class SitePagesTests : IAsyncLifetime
         Func<HttpContext, Task<IActionResult>> serve, string path, string query)
     {
         var context = new DefaultHttpContext();
+        context.Request.Host = new HostString(Site);
         context.Request.Path = path;
         context.Request.QueryString = new QueryString(query);
         var result = Assert.IsType<ContentResult>(await serve(context));
         return (result.StatusCode ?? 0, result.Content ?? "", context.Response.Headers.CacheControl.ToString(),
             context.Response.Headers["Cloudflare-CDN-Cache-Control"].ToString());
+    }
+
+    // The page's canonical address, which its link previews name too.
+    private static string Canonical(string html)
+    {
+        var url = Regex.Match(html, """<link rel="canonical" href="([^"]+)">""").Groups[1].Value;
+        Assert.Contains($"""<meta property="og:url" content="{url}">""", html);
+        return url;
     }
 
     // The More rites cards' titles, in order.

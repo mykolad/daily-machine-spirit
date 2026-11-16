@@ -28,6 +28,7 @@ chatbots, and they're about habits any developer knows, not one tool's commands 
 src/DailyMachineSpirit.Functions  — the Functions app (HTTP, timer and queue functions)
   Generation/                     — the backlog and the daily rite: Writing/, Chat/ (models), Judging/ (Jev, the rubric), Precepts/
   Pages/                          — the public pages, rendered on the server (Today, the archive, a rite's page)
+  SearchEngines/                  — robots.txt and the sitemap
   Tags/                           — the tags' vocabulary
 src/DailyMachineSpirit.Data       — Cosmos DB: entities, documents, repositories
 src/DailyMachineSpirit.Mcp        — the MCP connector: the rites API's reads as MCP tools, in apps of its own (#119)
@@ -189,6 +190,13 @@ skills/                           — Consult the Machine Spirit, a skill that p
     jumped. EB Garamond swaps from Times New Roman sized to match it (`size-adjust` and the metric overrides, measured
     in Chrome), so a late file rarely moves a line. The small print and the code use the system's own fonts (`--ui`,
     `--mono`). Pages name the stacks (`var(--serif)`), never a font.
+  - **For search engines** (#190): each public page names its one address (`SearchListing`: `<link rel="canonical">`
+    and `og:url`, from `SiteOrigin`), without the query string that reached it, except the `?before=` of the Archive's
+    and a tag's older pages; a search's results, the Breviary and the error pages are `noindex` instead. A rite's page
+    is an `article` with JSON-LD (`RiteStructuredData`: title, opening words, day, subjects; never the truth).
+    `/robots.txt` keeps crawlers out of the Scriptorium, the Breviary, sign-in and the APIs, and names `/sitemap.xml`
+    (`SearchEnginesFunction`: every public page, each rite with its day; numbers and days only, kept at Cloudflare
+    until a new rite purges it).
   - The tab's icon is the logo's cog, inline in each page (the Scriptorium's too) as an SVG data URI (`Svg.Favicon`):
     no request for it, and browsers don't ask for `/favicon.ico`.
   - Routes: `/` (Today: the newest rite), `/archive` (`?before=<number>` for older pages, which the archive also
@@ -233,7 +241,7 @@ skills/                           — Consult the Machine Spirit, a skill that p
     them (`IPageCache`, `CloudflarePageCache`): a vote that changed something (`SavedVote.Changed`: not the same
     vote sent again) adds its rite's page and Today
     (`Paths.ShowingVotesOf`) to the minute's batch (`PurgeBatcher`), so a vote never waits for Cloudflare and a page is
-    purged at most once a minute per instance; a new rite purges Today, the search index and the rites API at once. The archive and a
+    purged at most once a minute per instance; a new rite purges Today, the search index, the rites API and the sitemap at once. The archive and a
     tag's page, which no purge can find, stay a minute, as does any address with a query string (Cloudflare caches each
     apart). Purges go 30 URLs to a request. A purge never fails the change: it's logged and counted (`dms.pages.purges`), and the page
     refreshes within the hour. Cloudflare's header also carries `stale-if-error` (a week): while the app fails, Cloudflare
@@ -732,7 +740,7 @@ repository tests. For a deployment it also packages the app (the `app` artifact,
 - Both call `deploy.yml`, which deploys the package as the GitHub environment's identity (OIDC: the environment's
   `AZURE_*` variables hold ids, not secrets), one deployment per environment at a time. Then:
   - **Smoke tests** (`tests/DailyMachineSpirit.SmokeTests`, published into the package, so a package is always checked
-    by its own): `/healthz` reports the new commit, and Today, the archive, a rite, a tag's page, a search (and the old address), the rites API, the votes
+    by its own): `/healthz` reports the new commit, and Today, the archive, a rite, a tag's page, a search (and the old address), robots.txt and the sitemap, the rites API, the votes
     API, the 404 page and a font answer as they should. They read the app's address and expected version from
     `SMOKE_TEST_BASE_URL` and `SMOKE_TEST_VERSION`, so they can also run from your machine against staging. They call
     the app's own address (production's past Cloudflare's cache), and both apps admit only some addresses (staging its
