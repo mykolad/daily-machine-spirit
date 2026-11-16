@@ -41,11 +41,11 @@ public static class SearchWords
         => words.Select(word => new SoughtWord(word, RiteTags.Named(word).Select(tag => tag.Key).ToList())).ToList();
 
     /// <summary>
-    /// Whether every word is somewhere in the rite's title, text or Heretical Truth, ignoring case, or names one of its
-    /// subjects: what the Archive's search asks of the database, for rites already read.
+    /// Whether every word is somewhere in the rite's title, text, Heretical Truth or ailment, ignoring case, or names one
+    /// of its subjects: what the Archive's search asks of the database, for rites already read.
     /// </summary>
     public static bool FoundIn(Rite rite, IReadOnlyList<string> words)
-        => words.All(word => new[] { rite.Writing.Title, rite.Writing.Text, rite.Writing.HereticalTruth }
+        => words.All(word => new[] { rite.Writing.Title, rite.Writing.Text, rite.Writing.HereticalTruth, rite.Writing.Ailment.IfNone(string.Empty) }
             .Any(part => part.Contains(word, StringComparison.OrdinalIgnoreCase))
             || RiteTags.Of(rite.Tags).Any(tag => RiteTags.Names(tag, word)));
 }

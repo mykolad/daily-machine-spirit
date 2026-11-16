@@ -19,8 +19,8 @@ public sealed class SearchIndexFunctionTests : IAsyncLifetime
 
     public ValueTask DisposeAsync() => cosmos.DisposeAsync();
 
-    // What the search field matches, newest first: the words as stored (as the Archive's search reads them) and the
-    // subjects a word may name. Kept at the edge until a new rite purges it.
+    // What the search field matches, newest first: the words as stored (as the Archive's search reads them), the
+    // ailment (#197) and the subjects a word may name. Kept at the edge until a new rite purges it.
     [Fact]
     public async Task Index_ListsEveryRitesWordsAndSubjects_NewestFirst()
     {
@@ -37,10 +37,10 @@ public sealed class SearchIndexFunctionTests : IAsyncLifetime
         var entries = JsonSerializer.Deserialize<SearchIndexEntry[]>(result.Content ?? "[]", Json) ?? [];
         Assert.Equal(
             [
-                "2 2026-10-09 ritual The Rite of Re-Run | Press Re-run thrice, intoning `it passed locally`. | Your test depends on `timing`. | caches",
-                "1 2026-10-08 prayer The Litany of the Warm Cache | Press Re-run thrice, intoning `it passed locally`. | Your test depends on `timing`. | caches",
+                "2 2026-10-09 ritual The Rite of Re-Run | Press Re-run thrice, intoning `it passed locally`. | Your test depends on `timing`. | a build that passes on the second run | caches",
+                "1 2026-10-08 prayer The Litany of the Warm Cache | Press Re-run thrice, intoning `it passed locally`. | Your test depends on `timing`. | a build that passes on the second run | caches",
             ],
-            entries.Select(entry => $"{entry.Number} {entry.Day} {entry.Kind} {entry.Title} | {entry.Text} | {entry.Truth} | {string.Join(' ', entry.Tags)}"));
+            entries.Select(entry => $"{entry.Number} {entry.Day} {entry.Kind} {entry.Title} | {entry.Text} | {entry.Truth} | {entry.Ailment} | {string.Join(' ', entry.Tags)}"));
     }
 
     // Any query string would be its own cache entry, and its own read of every rite: one address answers for all.
@@ -81,6 +81,7 @@ public sealed class SearchIndexFunctionTests : IAsyncLifetime
                 Title = title,
                 Text = "Press Re-run thrice, intoning `it passed locally`.",
                 HereticalTruth = "Your test depends on `timing`.",
+                Ailment = LanguageExt.Prelude.Some("a build that passes on the second run"),
                 GeneratedByModel = "gpt-6-sol",
                 GeneratedAtUtc = day.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
             },
