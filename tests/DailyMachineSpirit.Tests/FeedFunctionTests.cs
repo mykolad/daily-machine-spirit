@@ -2,11 +2,13 @@ using System.Xml.Linq;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Feeds;
+using LanguageExt;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using static DailyMachineSpirit.Tests.Expect;
+using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Tests;
 
@@ -72,6 +74,24 @@ public sealed class FeedFunctionTests : IAsyncLifetime
         Assert.StartsWith("<p>If a &lt; b &amp;&amp; <code>rm -rf</code> 💀 then pray.</p>", entry.Element(Atom + "content")?.Value);
     }
 
+    // An erasure changes a rite's words, so its entry is updated then, and so is the feed: a reader that kept the old
+    // words replaces them. The day it was published stays.
+    [Fact]
+    public async Task Feed_UpdatesAnEntry_WhenItsWordsWereErased()
+    {
+        var erasedAt = new DateTime(2026, 10, 9, 14, 30, 0, DateTimeKind.Utc);
+        await Add(new DateOnly(2026, 10, 8), RiteKind.Prayer, "The Litany of the 💀 Cache", "Bless the cache.", Some(erasedAt));
+        await Add(new DateOnly(2026, 10, 9), RiteKind.Ritual, "The Rite of Re-Run", "Press Re-run thrice.");
+
+        var result = Assert.IsType<ContentResult>(await Function(Repository).Feed(Request("/feed.xml", "").Request, CancellationToken.None));
+
+        var feed = Parse(result);
+        Assert.Equal("2026-10-09T14:30:00Z", feed.Element(Atom + "updated")?.Value);
+        Assert.Equal(
+            ["2026-10-09T00:00:00Z 2026-10-09T00:00:00Z", "2026-10-08T00:00:00Z 2026-10-09T14:30:00Z"],
+            feed.Elements(Atom + "entry").Select(entry => $"{entry.Element(Atom + "published")?.Value} {entry.Element(Atom + "updated")?.Value}"));
+    }
+
     // A new environment's feed is valid, and empty.
     [Fact]
     public async Task Feed_WithoutRites_IsEmpty_AsOfNow()
@@ -130,10 +150,13 @@ public sealed class FeedFunctionTests : IAsyncLifetime
         => await cosmos.Container.PatchItemAsync<RiteDocument>(RiteDocument.IdFor(day), CosmosCalls.SharedPartitionKey,
             [Microsoft.Azure.Cosmos.PatchOperation.Set("/tags", tags)]);
 
-    private async Task Add(DateOnly day, RiteKind kind, string title, string text)
+    private Task Add(DateOnly day, RiteKind kind, string title, string text) => Add(day, kind, title, text, None);
+
+    private async Task Add(DateOnly day, RiteKind kind, string title, string text, Option<DateTime> wordsErasedAtUtc)
         => Ok(await Repository.Add(new Rite
         {
             PublishedOnUtc = day,
+            WordsErasedAtUtc = wordsErasedAtUtc,
             Writing = new RiteWriting
             {
                 Kind = kind,

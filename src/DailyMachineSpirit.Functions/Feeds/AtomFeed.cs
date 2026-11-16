@@ -16,10 +16,10 @@ public static class AtomFeed
     private static readonly XNamespace Atom = "http://www.w3.org/2005/Atom";
 
     /// <param name="newestFirst">The rites to list, newest first.</param>
-    /// <param name="now">The feed's time when it lists no rite yet; otherwise it's the newest rite's.</param>
+    /// <param name="now">The feed's time when it lists no rite yet; otherwise it's its latest entry's.</param>
     public static string Render(string origin, IReadOnlyList<Rite> newestFirst, DateTimeOffset now)
     {
-        var updated = newestFirst.Count == 0 ? now : Midnight(newestFirst[0].PublishedOnUtc);
+        var updated = newestFirst.Count == 0 ? now : newestFirst.Max(Updated);
         var feed = new XElement(Atom + "feed",
             new XElement(Atom + "title", Layout.SiteName),
             new XElement(Atom + "subtitle", Masthead.Tagline),
@@ -38,6 +38,7 @@ public static class AtomFeed
     {
         var page = origin + Paths.Rite(rite.Number);
         var day = Timestamp(Midnight(rite.PublishedOnUtc));
+        var updated = Timestamp(Updated(rite));
         var (kind, kindLabel) = rite.Writing.Kind == RiteKind.Prayer ? ("prayer", "Prayer") : ("ritual", "Ritual");
         var content = $"""<p>{Html.WithInlineCode(XmlSafe(rite.Writing.Text))}</p><p>The Heretical Truth is sealed. Break the seal: <a href="{Html.Encode(page)}">{Html.Encode(page)}</a></p>""";
         return new XElement(Atom + "entry",
@@ -45,11 +46,16 @@ public static class AtomFeed
             new XElement(Atom + "id", page),
             new XElement(Atom + "link", new XAttribute("rel", "alternate"), new XAttribute("type", "text/html"), new XAttribute("href", page)),
             new XElement(Atom + "published", day),
-            new XElement(Atom + "updated", day),
+            new XElement(Atom + "updated", updated),
             new XElement(Atom + "category", new XAttribute("term", kind), new XAttribute("label", kindLabel)),
             RiteTags.Of(rite.Tags).Select(tag => new XElement(Atom + "category", new XAttribute("term", tag.Key), new XAttribute("label", tag.Label))),
             new XElement(Atom + "content", new XAttribute("type", "html"), content));
     }
+
+    // A rite's words change only when an Expurgator erases some: then its entry is updated, so a reader that kept the
+    // old words replaces them.
+    private static DateTimeOffset Updated(Rite rite)
+        => rite.WordsErasedAtUtc.Map(erased => new DateTimeOffset(erased, TimeSpan.Zero)).IfNone(() => Midnight(rite.PublishedOnUtc));
 
     private static DateTimeOffset Midnight(DateOnly day) => new(day.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
 
