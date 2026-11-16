@@ -97,6 +97,11 @@ public class RiteRepository : IRiteRepository, IRitePublishing
                 .WithParameter("@number", number),
             cancellationToken)).HeadOrNone());
 
+    public Task<Either<Error, RiteNeighbours>> GetNeighbours(int number, CancellationToken cancellationToken)
+        => Attempt(async () => new RiteNeighbours(
+            await Heading("c.number < @number ORDER BY c.number DESC", number, cancellationToken),
+            await Heading("c.number > @number ORDER BY c.number ASC", number, cancellationToken)));
+
     public Task<Either<Error, List<RiteDay>>> GetDays(CancellationToken cancellationToken)
         => Attempt(async () => await container.Query<RiteDay>(
             new QueryDefinition("SELECT c.number, c.publishedOnUtc FROM c WHERE c.type = @type ORDER BY c.number DESC")
@@ -158,6 +163,14 @@ public class RiteRepository : IRiteRepository, IRitePublishing
     // subject it names. Each word and subject is a parameter, so what a reader typed never becomes part of the query's
     // text. A plain CONTAINS reads every rite, which costs little at a few hundred; Cosmos's full-text index can take
     // over if that grows.
+    // The nearest rite on one side of the number: its number and title alone.
+    private async Task<Option<RiteHeading>> Heading(string beyond, int number, CancellationToken cancellationToken)
+        => (await container.Query<RiteHeading>(
+            new QueryDefinition($"SELECT TOP 1 c.number, c.title FROM c WHERE c.type = @type AND {beyond}")
+                .WithParameter("@type", RiteDocument.RiteType)
+                .WithParameter("@number", number),
+            cancellationToken)).HeadOrNone();
+
     private static QueryDefinition Holding(IReadOnlyList<SoughtWord> words, Option<string> tag, string select, string rest)
     {
         var conditions = words.Select((word, index) =>

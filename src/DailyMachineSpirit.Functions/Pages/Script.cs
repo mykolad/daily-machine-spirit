@@ -1,7 +1,8 @@
 namespace DailyMachineSpirit.Functions.Pages;
 
 /// <summary>
-/// The pages' only script: breaking the seal, copying links and text, the toast, the countdown's tick, and voting.
+/// The pages' only script: breaking the seal, copying links and text, the toast, the countdown's tick, voting, and
+/// stepping to the rite before or after by key or swipe.
 /// Everything it touches is already in the server's HTML, and without it a rite's truth is still shown (a noscript style).
 /// </summary>
 public static class Script
@@ -867,6 +868,38 @@ public static class Script
               date.setAttribute('data-dismissed', '');
             });
           });
+
+          // The rites before and after (#195): the arrow keys and a swipe follow the head's rel=prev and rel=next, as the
+          // links under a rite do. Not while typing or choosing in a field, nor with a modifier (the browser's own keys).
+          const stepTo = (rel) => document.querySelector(`link[rel=${rel}]`)?.href;
+          document.addEventListener('keydown', (event) => {
+            if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+            if (event.target.closest?.('input, textarea, select, [contenteditable], [role=combobox], [role=listbox]')) return;
+            const to = event.key === 'ArrowLeft' ? stepTo('prev') : event.key === 'ArrowRight' ? stepTo('next') : undefined;
+            if (to) location.href = to;
+          });
+          // A swipe in something that scrolls sideways is that thing's own.
+          const scrollsSideways = (element) => {
+            for (let at = element; at && at !== document.body; at = at.parentElement) {
+              if (at.scrollWidth > at.clientWidth && getComputedStyle(at).overflowX !== 'visible') return true;
+            }
+            return false;
+          };
+          let touchStart;
+          document.addEventListener('touchstart', (event) => {
+            touchStart = event.touches.length === 1 && !scrollsSideways(event.target) ? event.touches[0] : undefined;
+          }, { passive: true });
+          document.addEventListener('touchend', (event) => {
+            if (!touchStart) return;
+            const across = event.changedTouches[0].clientX - touchStart.clientX;
+            const down = event.changedTouches[0].clientY - touchStart.clientY;
+            touchStart = undefined;
+            // A long, mostly sideways swipe, as a page is turned: a scroll or a tap never counts. No slide, so reduced
+            // motion has nothing to stop.
+            if (Math.abs(across) < 80 || Math.abs(across) < 2 * Math.abs(down)) return;
+            const to = stepTo(across > 0 ? 'prev' : 'next');
+            if (to) location.href = to;
+          }, { passive: true });
         })();
         """;
 }

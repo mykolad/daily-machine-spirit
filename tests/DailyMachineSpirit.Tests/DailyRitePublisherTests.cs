@@ -178,6 +178,18 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
         Assert.Equal(["/", "/api/search-index", "/api/v1/rites", "/sitemap.xml"], Assert.Single(pages.Purges));
     }
 
+    // Yesterday's rite now has a next one to lead to (#195), so its page is purged too.
+    [Fact]
+    public async Task TimerFunction_PublishingTheSecondRite_PurgesThePageOfTheFirst()
+    {
+        await testbed.AddRite(Today.AddDays(-1), "Yesterday's");
+        await testbed.AddDraft("Next up", 0.9f);
+
+        await Function().Run(new TimerInfo(), CancellationToken.None);
+
+        Assert.Contains("/r/1", Assert.Single(pages.Purges));
+    }
+
     // A retry later in the day: the page already shows the day's rite.
     [Fact]
     public async Task TimerFunction_WhenTheDayAlreadyHasItsRite_PurgesNothing()

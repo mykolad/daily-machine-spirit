@@ -197,6 +197,11 @@ skills/                           — Consult the Machine Spirit, a skill that p
     `/robots.txt` keeps crawlers out of the Scriptorium, the Breviary, sign-in and the APIs, and names `/sitemap.xml`
     (`SearchEnginesFunction`: every public page, each rite with its day; numbers and days only, kept at Cloudflare
     until a new rite purges it).
+  - **The rites before and after** (#195, `RiteSteps`): a rite's page links to them under its card, by number
+    (`IRiteReader.GetNeighbours`: the nearest each way, so a gap is stepped over), and its head names them
+    (`rel="prev"`, `rel="next"`); the script follows those on the arrow keys (not in a field, not with a modifier) and
+    a long sideways swipe. Today names only the rite before, in its head: its list of recent rites shows it already.
+    A new rite purges the page of the rite before it, which now has a next.
   - The tab's icon is the logo's cog, inline in each page (the Scriptorium's too) as an SVG data URI (`Svg.Favicon`):
     no request for it, and browsers don't ask for `/favicon.ico`.
   - Routes: `/` (Today: the newest rite), `/archive` (`?before=<number>` for older pages, which the archive also
