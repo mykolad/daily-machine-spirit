@@ -43,7 +43,8 @@ As on the site, each rite's **Heretical Truth** stays sealed until it's asked fo
 - `ailment`: optional. The trouble the rite is for, in a line, without its fix ("a test that fails at random and passes
   when re-run"): the best thing to match a trouble on. Optional: empty for a rite that has none yet.
 - `subjects`: what it's filed under, from the site's own vocabulary; `key` is the subject's page
-  (`/tags/<key>`). Empty for a rite filed under nothing.
+  (`/tags/<key>`). Empty for a rite filed under nothing. A subject's `key` never changes; its `label` may, so
+  match on the key.
 - `url`: the rite's page, where its Heretical Truth is a click away.
 
 ## A rite's Heretical Truth
