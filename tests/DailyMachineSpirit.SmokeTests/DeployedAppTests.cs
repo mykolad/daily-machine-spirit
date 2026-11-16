@@ -111,6 +111,12 @@ public sealed partial class DeployedAppTests
         AssertAnswers(await app.Get("/sitemap.xml"), HttpStatusCode.OK, "/catechism</loc>");
     }
 
+    // Drawing a rite without the script: a redirect to a random rite, from the deployed database (a new environment's
+    // leads to Today, which has the site's name alone as its title).
+    [Fact]
+    public async Task DrawingARite_LeadsToOne()
+        => AssertAnswers(await app.Get("/draw"), HttpStatusCode.OK, $"{SiteName}</title>");
+
     // A reader's own page: signed out, the smoke tests are asked to sign in.
     [Fact]
     public async Task TheBreviary_Answers()

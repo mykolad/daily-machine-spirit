@@ -793,6 +793,22 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.All(pages, page => Assert.DoesNotContain("noindex", page.Html));
     }
 
+    // Drawing a rite (#196) is in the nav on every page, and in the Archive's margin once there's a rite to draw.
+    [Fact]
+    public async Task EveryPage_OffersToDrawARite_AndTheArchiveToo_OnceThereAreRites()
+    {
+        var (_, emptyArchive) = await Archive("");
+        await AddRites(3);
+
+        var (_, today) = await Today("");
+        var (_, archive) = await Archive("");
+
+        Assert.All([today, archive, emptyArchive], html =>
+            Assert.Contains("""<a class="nav-draw" href="/draw" aria-label="Draw a rite" title="Draw a rite">""", html));
+        Assert.Contains("""<a class="margin-draw" href="/draw">Draw a rite</a>""", archive);
+        Assert.DoesNotContain("<a class=\"margin-draw\"", emptyArchive);
+    }
+
     // Whatever anyone searched for must never become a page in an index, nor a missing page.
     [Fact]
     public async Task SearchResultsAndMissingPages_AreKeptOutOfIndexes()

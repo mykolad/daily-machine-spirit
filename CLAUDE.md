@@ -197,6 +197,11 @@ skills/                           — Consult the Machine Spirit, a skill that p
     `/robots.txt` keeps crawlers out of the Scriptorium, the Breviary, sign-in and the APIs, and names `/sitemap.xml`
     (`SearchEnginesFunction`: every public page, each rite with its day; numbers and days only, kept at Cloudflare
     until a new rite purges it).
+  - **Drawing a rite** (#196): the nav's dice and the Archive's margin lead to `/draw`. The script draws in the
+    browser, from the search index (so pages stay the same for everyone, and no request says what was drawn): never
+    the rite shown, nor one drawn this session (`sessionStorage`) until every one has been. Without it, `/draw`
+    redirects to a random rite (`DrawFunction`, `no-store`, rate-limited at Cloudflare). Either way the page gets
+    `?drawn`, which the script announces in a toast and drops from the address.
   - The tab's icon is the logo's cog, inline in each page (the Scriptorium's too) as an SVG data URI (`Svg.Favicon`):
     no request for it, and browsers don't ask for `/favicon.ico`.
   - Routes: `/` (Today: the newest rite), `/archive` (`?before=<number>` for older pages, which the archive also
