@@ -15,12 +15,15 @@ public static class WornImages
     /// <summary>Images that would rest well instead: none of them is watched for wear.</summary>
     public static IReadOnlyList<string> Fresh { get; } = ["forges", "ledgers", "lamps", "wells", "looms", "tides", "roads", "anvils", "orchards", "clocks"];
 
-    /// <summary>The watched images used at least <paramref name="atLeast"/> times in the texts, the most used first.</summary>
+    /// <summary>
+    /// The watched images in at least <paramref name="atLeast"/> of the texts, the most used first. Each text counts
+    /// once: a litany's refrain repeats its image, and that's one rite leaning on it, not a habit.
+    /// </summary>
     public static List<string> In(IEnumerable<string> texts, int atLeast)
     {
-        var all = string.Join('\n', texts);
+        var all = texts.ToList();
         return Watched
-            .Select(image => (Image: image, Count: Regex.Count(all, $@"\b{Regex.Escape(image)}s?\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)))
+            .Select(image => (Image: image, Count: all.Count(text => Regex.IsMatch(text, $@"\b{Regex.Escape(image)}s?\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))))
             .Where(used => used.Count >= atLeast)
             .OrderByDescending(used => used.Count)
             .Select(used => used.Image)

@@ -56,6 +56,15 @@ public class RiteFormsTests
         Assert.Equal(["ask not"], WornImages.In(texts, 3));
     }
 
+    // A litany's refrain repeats its image: that's one rite leaning on it, not a habit.
+    [Fact]
+    public void WornImages_CountEachTextOnce()
+    {
+        string[] texts = ["At the gate, the gate, the gate, O gate, we wait.", "Keep the seal.", "Bless the seal."];
+
+        Assert.Equal(["seal"], WornImages.In(texts, 2));
+    }
+
     // What the writer is offered instead mustn't be worn itself.
     [Fact]
     public void FreshImages_AreNoneOfTheWatchedOnes()

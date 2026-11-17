@@ -72,7 +72,7 @@ public sealed class RiteWriter
                     Text = written.Content.Text,
                     HereticalTruth = written.Content.HereticalTruth,
                     Ailment = Some(written.Content.Ailment),
-                    Form = Some(variety.Form.Key),
+                    Form = RiteForms.Taken(kind, Some(variety.Form), written.Content.Title).Map(form => form.Key),
                     GeneratedByModel = written.Model,
                     GeneratedAtUtc = time.GetUtcNow().UtcDateTime,
                 },

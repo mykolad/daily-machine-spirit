@@ -71,7 +71,7 @@ public sealed class RiteWriterTests : IDisposable
     [Fact]
     public async Task Write_AsksForTheForm_AndToRestTheWornImages()
     {
-        models.Answers(Sol, GoodAnswer);
+        models.Answers(Sol, FakeChatClients.Answer("The Vigil of the Green Check", "Watch, and count the runs.", "Waiting for a rerun hides a race."));
         var vigil = RiteForms.Find("vigil").IfNone(() => throw new InvalidOperationException("No vigil."));
 
         var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, new RiteVariety(vigil, ["gate", "seal"]), [], CancellationToken.None));
@@ -81,6 +81,22 @@ public sealed class RiteWriterTests : IDisposable
         Assert.Contains("- The recent rites lean on the same few images: gate, seal. Rest them here: reach for", instructions);
         Assert.Contains("(forges, ledgers, lamps", instructions);
         Assert.Equal(Some("vigil"), draft.Writing.Form);
+    }
+
+    // A writer asked for a vigil may title it another of the kind's forms: what readers see is what the turns count. A
+    // title naming no form, or another kind's, leaves the form asked for.
+    [Theory]
+    [InlineData("The Rite of Re-Run", "rite")]
+    [InlineData("Sacred Restart", "vigil")]
+    [InlineData("The Litany of Re-Run", "vigil")]
+    public async Task Write_KeepsTheFormItsTitleNames_ElseTheOneAskedFor(string title, string form)
+    {
+        models.Answers(Sol, FakeChatClients.Answer(title, "Watch, and count the runs.", "Waiting for a rerun hides a race."));
+        var vigil = RiteForms.Find("vigil").IfNone(() => throw new InvalidOperationException("No vigil."));
+
+        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, new RiteVariety(vigil, []), [], CancellationToken.None));
+
+        Assert.Equal(Some(form), draft.Writing.Form);
     }
 
     // Nothing to rest, nothing said about it.

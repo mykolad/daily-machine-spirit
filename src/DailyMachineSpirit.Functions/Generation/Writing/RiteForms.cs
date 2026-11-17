@@ -27,13 +27,24 @@ public static class RiteForms
     public static Option<RiteForm> Find(string key) => All.Where(form => form.Key == key).HeadOrNone();
 
     /// <summary>
-    /// A rite's or draft's form: the one it was asked for (its stored key), or for one written before forms took turns,
-    /// the first form its title names in its first few words ("The Litany of…"), None when it names none.
+    /// A rite's or draft's form: the one stored with it, or for one written before forms took turns, the first form its
+    /// title names in its first few words ("The Litany of…"), None when it names none.
     /// </summary>
-    public static Option<RiteForm> Of(Option<string> asked, string title)
+    public static Option<RiteForm> Of(Option<string> stored, string title)
     {
-        var stored = asked.Bind(Find);
-        return stored.IsSome ? stored : Named(title);
+        var kept = stored.Bind(Find);
+        return kept.IsSome ? kept : Named(title, All);
+    }
+
+    /// <summary>
+    /// The form to store with words of the kind: the one of the kind's forms their title names, else the one
+    /// <paramref name="asked"/> for. The writer asked for a vigil may still title it "The Rite of …", and a Scribe may
+    /// amend a vigil into a rite: the title is what readers see, so it's what the turns count.
+    /// </summary>
+    public static Option<RiteForm> Taken(RiteKind kind, Option<RiteForm> asked, string title)
+    {
+        var named = Named(title, All.Where(form => form.Kind == kind).ToList());
+        return named.IsSome ? named : asked;
     }
 
     /// <summary>
@@ -47,11 +58,11 @@ public static class RiteForms
         return forms.MinBy(form => counts.GetValueOrDefault(form.Key)) ?? forms[0];
     }
 
-    private static Option<RiteForm> Named(string title)
+    private static Option<RiteForm> Named(string title, IReadOnlyList<RiteForm> forms)
     {
         // In the title's order: "Rite of Invocation" is a rite, whatever the list's order.
         return title.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(3)
-            .SelectMany(word => All.Where(form => string.Equals(form.Name, word, StringComparison.OrdinalIgnoreCase)))
+            .SelectMany(word => forms.Where(form => string.Equals(form.Name, word, StringComparison.OrdinalIgnoreCase)))
             .HeadOrNone();
     }
 }

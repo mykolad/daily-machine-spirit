@@ -80,10 +80,19 @@ public sealed class Amendments
                 .ToEither(ScriptoriumRepository.ChangedMeanwhile)));
 
     // Its old scores, quality, tags and likeness to another rite describe the old words, so they go; judging gives the new
-    // ones, and the Scribe who amended it has read it.
+    // ones, and the Scribe who amended it has read it. Its form is the one its new title names, else the one it had: a
+    // vigil amended into a rite counts as a rite in the turns forms take (#193).
     private static Draft WithNewWords(Draft draft, RiteContent words) => draft with
     {
-        Writing = draft.Writing with { Title = words.Title, Text = words.Text, HereticalTruth = words.HereticalTruth, Ailment = Some(words.Ailment), Edited = true },
+        Writing = draft.Writing with
+        {
+            Title = words.Title,
+            Text = words.Text,
+            HereticalTruth = words.HereticalTruth,
+            Ailment = Some(words.Ailment),
+            Form = RiteForms.Taken(draft.Writing.Kind, RiteForms.Of(draft.Writing.Form, draft.Writing.Title), words.Title).Map(form => form.Key),
+            Edited = true,
+        },
         Similarity = None,
         Augury = None,
         Tags = None,

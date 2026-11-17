@@ -426,9 +426,10 @@ skills/                           — Consult the Machine Spirit, a skill that p
     is of the kind there are fewer of, repeating no rite already written (above).
   - **Forms and images take turns** (#193): each kind has its forms (`RiteForms`: a litany, a canticle, a lament,
     a benediction, an invocation; a rite, a vigil, a penance, an exorcism, a catechism). The refill asks for the form
-    the 30 newest rites and the waiting drafts took least, and the draft keeps it (`RiteWriting.Form`); a rite from
-    before forms were stored is known by its title's first words. The prompt also names the images those rites lean on
-    (`WornImages`: gate, seal, green…, used four times or more) and offers fresh ones. The timer asks for a
+    the 30 newest rites and the waiting drafts took least. The draft keeps the form its title names, else the one asked for (`RiteWriting.Form`), and an
+    amendment takes its new title's: the title is what readers see. A rite from before forms were stored is known by its
+    title's first words. The prompt also names the images those rites lean on (`WornImages`: gate, seal, green…, in four
+    of them or more) and offers fresh ones. The timer asks for a
     refill after publishing, by a message on the `backlog-refills` queue: a full refill takes minutes, longer than a
     request should wait. `host.json` takes one message at a time and tries a message 3 times, 10 minutes apart. The
     queue is declared in `infra/`. Instances can refill at once, but each counts the waiting drafts before every draft
