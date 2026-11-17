@@ -312,6 +312,7 @@ public static class Styles
         .site-footer{margin-top:72px;padding-bottom:48px;display:flex;flex-direction:column;align-items:center;gap:12px;max-width:600px}
         .motto{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:16px;letter-spacing:.08em;color:#c9a25a}
         .disclaimer{margin:0;font-size:14px;line-height:1.6;color:#b6a98f}
+        .feed-link{display:inline-flex;align-items:center;gap:6px}
         .sheet.catechism{padding:0}
         .catechism .sheet-inner{padding:clamp(44px,7vw,68px) clamp(28px,9vw,76px) clamp(40px,6vw,60px)}
         .catechism .sheet-kicker{margin-bottom:10px}
