@@ -45,7 +45,7 @@ public sealed class ExpurgationRepository : IExpurgationRepository
         {
             var batch = changed.Aggregate(container.CreateTransactionalBatch(SharedPartitionKey), (patched, copy) => patched.PatchItem(
                 copy.DocumentId,
-                copy.Fields.Select(field => PatchOperation.Set(field.Key, field.Value)).ToList(),
+                Operations(copy, audit.AtUtc),
                 new TransactionalBatchPatchItemRequestOptions { IfMatchEtag = copy.ETag }));
             using var response = await batch.CreateItem(AuditEntryDocument.From(audit)).ExecuteAsync(cancellationToken);
             if (response.IsSuccessStatusCode)
@@ -56,6 +56,17 @@ public sealed class ExpurgationRepository : IExpurgationRepository
                 ? ScriptoriumRepository.ChangedMeanwhile
                 : Error.New($"Erasing the words failed: {response.StatusCode}. {response.ErrorMessage}");
         });
+    }
+
+    // The rite's own copy also says when its words were erased (Rite.WordsErasedAtUtc), for the feed's readers.
+    private static List<PatchOperation> Operations(WordsKept copy, DateTime erasedAtUtc)
+    {
+        var operations = copy.Fields.Select(field => PatchOperation.Set(field.Key, field.Value)).ToList();
+        if (RiteDocument.IsRiteId(copy.DocumentId))
+        {
+            operations.Add(PatchOperation.Set(RiteDocument.WordsErasedAtUtcField, Utc.From(erasedAtUtc)));
+        }
+        return operations;
     }
 
     // The rite's id is its day, which the draft it was published from keeps; the draft's id leads to the decisions and

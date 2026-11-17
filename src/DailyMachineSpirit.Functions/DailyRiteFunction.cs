@@ -34,11 +34,11 @@ public sealed class DailyRiteFunction
         var result = await publisher.PublishToday(cancellationToken);
         if (result.Case is PublishedRite { IsNew: true } published)
         {
-            // Today showed yesterday's rite (or the slumbering page), and the search field's index, the rites API and
-            // the sitemap lacked the new one: all are kept at the edge until purged. So is yesterday's rite's page, which
-            // now has a next rite (#195). Rites are numbered one after another, and never removed, so it's the number
-            // before; were one ever missing, that page would catch up within its hour.
-            List<string> stale = [Paths.Today, Paths.SearchIndex, Paths.RitesApi, Paths.Sitemap];
+            // Today showed yesterday's rite (or the slumbering page), and the search field's index, the rites API, the
+            // sitemap and the feed lacked the new one: all are kept at the edge until purged. So is yesterday's rite's
+            // page, which now has a next rite (#195). Rites are numbered one after another, and never removed, so it's the
+            // number before; were one ever missing, that page would catch up within its hour.
+            List<string> stale = [Paths.Today, Paths.SearchIndex, Paths.RitesApi, Paths.Sitemap, Paths.Feed];
             if (published.Rite.Number > 1)
             {
                 stale.Add(Paths.Rite(published.Rite.Number - 1));

@@ -166,8 +166,8 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
         Assert.Equal(["Next up"], testbed.Snapshot.SavedRites.Select(rite => rite.Writing.Title));
     }
 
-    // Today showed the rite before, and the search field's index, the rites API and the sitemap lacked the new one, all
-    // kept at the edge until purged.
+    // Today showed the rite before, and the search field's index, the rites API, the sitemap and the feed lacked the new
+    // one, all kept at the edge until purged.
     [Fact]
     public async Task TimerFunction_PublishingANewRite_PurgesToday_AndWhatListsTheRites()
     {
@@ -175,7 +175,7 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
 
         await Function().Run(new TimerInfo(), CancellationToken.None);
 
-        Assert.Equal(["/", "/api/search-index", "/api/v1/rites", "/sitemap.xml"], Assert.Single(pages.Purges));
+        Assert.Equal(["/", "/api/search-index", "/api/v1/rites", "/sitemap.xml", "/feed.xml"], Assert.Single(pages.Purges));
     }
 
     // Yesterday's rite now has a next one to lead to (#195), so its page is purged too.
