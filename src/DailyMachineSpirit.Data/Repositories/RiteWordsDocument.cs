@@ -1,4 +1,5 @@
 using DailyMachineSpirit.Data.Entities;
+using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Data.Repositories;
 
@@ -17,8 +18,10 @@ internal sealed record RiteWordsDocument
 
     public string HereticalTruth { get; init; } = string.Empty;
 
+    public string? Ailment { get; init; }
+
     // Null for a rite judged before tags existed, or never judged: the JSON serializer doesn't know Option.
     public string[]? Tags { get; init; }
 
-    public RiteWords ToRiteWords() => new(Number, PublishedOnUtc, Kind, Title, Text, HereticalTruth, Tags ?? []);
+    public RiteWords ToRiteWords() => new(Number, PublishedOnUtc, Kind, Title, Text, HereticalTruth, Optional(Ailment), Tags ?? []);
 }

@@ -17,7 +17,7 @@ public static class ArchivePage
     /// <param name="olderThan">Where the next page starts, or None when these are the oldest.</param>
     /// <param name="days">Every rite's number and day, newest first: Today's, then the Archive's.</param>
     /// <param name="places">The places of the rites the Reliquary keeps, each worn as a badge.</param>
-    public static string Render(IReadOnlyList<Rite> rites, Option<int> olderThan, IReadOnlyList<RiteDay> days, IReadOnlyDictionary<int, int> places, DateTimeOffset now)
+    public static string Render(IReadOnlyList<Rite> rites, Option<int> olderThan, IReadOnlyList<RiteDay> days, IReadOnlyDictionary<int, int> places, DateTimeOffset now, SearchListing listing)
     {
         // Today shows the newest rite, so the Archive's list and its months start with the one before.
         var listed = days.Skip(1).ToList();
@@ -40,7 +40,7 @@ public static class ArchivePage
         var right = ArchiveSheet.MonthIndex(months, month => first.Exists(number => number == month.Newest)
             ? $"{Paths.Archive}#{month.Anchor}"
             : $"{Paths.ArchiveBefore(month.Newest + 1)}#{month.Anchor}");
-        return Layout.Page("The Archive", Description, Section.Archive, $"""
+        return Layout.Page("The Archive", Description, listing, Section.Archive, $"""
             {Masthead.Render(isHeading: false)}
             {ArchiveSheet.Render(
                 kicker: string.Empty,
@@ -98,7 +98,7 @@ public static class ArchivePage
             : $"{Paths.ArchiveSearchBefore(typed, tagKey, month.Newest + 1)}#{month.Anchor}");
         // The count is in the title too, which a screen reader reads first when the results load.
         var title = $"{quoted}{tag.Map(filter => $" in {filter.Label}").IfNone(string.Empty)}: {(found == 0 ? "no rites" : Rites(found))}";
-        return Layout.Page(title, Description, Section.Archive, $"""
+        return Layout.Page(title, Description, SearchListing.Unlisted, Section.Archive, $"""
             {Masthead.Render(isHeading: false)}
             {ArchiveSheet.Render(
                 kicker: "Search the Archive",

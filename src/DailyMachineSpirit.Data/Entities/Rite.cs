@@ -19,4 +19,10 @@ public sealed record Rite
     public Option<RiteSimilarity> Similarity { get; init; }
 
     public Option<string[]> Tags { get; init; }
+
+    /// <summary>
+    /// When an Expurgator last erased words from it, None if never: a feed's readers learn from it that the entry
+    /// changed (its <c>updated</c>), so they don't keep the erased words.
+    /// </summary>
+    public Option<DateTime> WordsErasedAtUtc { get; init; }
 }

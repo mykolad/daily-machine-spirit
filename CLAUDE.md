@@ -28,6 +28,8 @@ chatbots, and they're about habits any developer knows, not one tool's commands 
 src/DailyMachineSpirit.Functions  — the Functions app (HTTP, timer and queue functions)
   Generation/                     — the backlog and the daily rite: Writing/, Chat/ (models), Judging/ (Jev, the rubric), Precepts/
   Pages/                          — the public pages, rendered on the server (Today, the archive, a rite's page)
+  Feeds/                          — the Atom feed of the newest rites
+  SearchEngines/                  — robots.txt and the sitemap
   Tags/                           — the tags' vocabulary
 src/DailyMachineSpirit.Data       — Cosmos DB: entities, documents, repositories
 src/DailyMachineSpirit.Mcp        — the MCP connector: the rites API's reads as MCP tools, in apps of its own (#119)
@@ -189,6 +191,18 @@ skills/                           — Consult the Machine Spirit, a skill that p
     jumped. EB Garamond swaps from Times New Roman sized to match it (`size-adjust` and the metric overrides, measured
     in Chrome), so a late file rarely moves a line. The small print and the code use the system's own fonts (`--ui`,
     `--mono`). Pages name the stacks (`var(--serif)`), never a font.
+  - **For search engines** (#190): each public page names its one address (`SearchListing`: `<link rel="canonical">`
+    and `og:url`, from `SiteOrigin`), without the query string that reached it, except the `?before=` of the Archive's
+    and a tag's older pages; a search's results, the Breviary and the error pages are `noindex` instead. A rite's page
+    is an `article` with JSON-LD (`RiteStructuredData`: title, opening words, day, subjects; never the truth).
+    `/robots.txt` keeps crawlers out of the Scriptorium, the Breviary, sign-in and the APIs, and names `/sitemap.xml`
+    (`SearchEnginesFunction`: every public page, each rite with its day; numbers and days only, kept at Cloudflare
+    until a new rite purges it).
+  - **The feed** (`/feed.xml`, `Feeds/`, #192): the newest 30 rites as Atom, each its title, page, day (00:00 UTC),
+    kind and subjects, and its text as HTML ending with a link to break the seal (never the truth). Every page's head
+    names it (`rel="alternate"`), and the footer links it. A contract with outside clients like the API
+    (`docs/api.md`): kept at Cloudflare until a new rite or an erasure purges it; any other spelling redirects. What a
+    model wrote is HTML-encoded, then XML-escaped by XLinq; characters XML can't carry are dropped.
   - The tab's icon is the logo's cog, inline in each page (the Scriptorium's too) as an SVG data URI (`Svg.Favicon`):
     no request for it, and browsers don't ask for `/favicon.ico`.
   - Routes: `/` (Today: the newest rite), `/archive` (`?before=<number>` for older pages, which the archive also
@@ -233,7 +247,7 @@ skills/                           — Consult the Machine Spirit, a skill that p
     them (`IPageCache`, `CloudflarePageCache`): a vote that changed something (`SavedVote.Changed`: not the same
     vote sent again) adds its rite's page and Today
     (`Paths.ShowingVotesOf`) to the minute's batch (`PurgeBatcher`), so a vote never waits for Cloudflare and a page is
-    purged at most once a minute per instance; a new rite purges Today, the search index and the rites API at once. The archive and a
+    purged at most once a minute per instance; a new rite purges Today, the search index, the rites API, the sitemap and the feed at once. The archive and a
     tag's page, which no purge can find, stay a minute, as does any address with a query string (Cloudflare caches each
     apart). Purges go 30 URLs to a request. A purge never fails the change: it's logged and counted (`dms.pages.purges`), and the page
     refreshes within the hour. Cloudflare's header also carries `stale-if-error` (a week): while the app fails, Cloudflare
@@ -257,9 +271,9 @@ skills/                           — Consult the Machine Spirit, a skill that p
     title link covers the row, so its tag links can sit inside it.
     - **Changing how tags are given** (another threshold) applies to drafts judged from then on; the rest keep theirs.
   - **Search** (`/archive?q=`, #7): the Archive filtered to the rites holding every word typed (at most 6, quotes
-    ignored) in their title, text or Heretical Truth, ignoring case, or by naming one of their subjects (#159: a word
-    starting a word of the subject's name, "build" for Builds, `RiteTags.Names`, as a `SoughtWord` with the tags it
-    names), newest first, Today's too. Each row marks the words (`Highlight`), in its subject chips too, and shows the
+    ignored) in their title, text, Heretical Truth or ailment (#197), ignoring case, or by naming one of their
+    subjects (#159: a word starting a word of the subject's name, "build" for Builds, `RiteTags.Names`, as a
+    `SoughtWord` with the tags it names), newest first, Today's too. Each row marks the words (`Highlight`), in its subject chips too, and shows the
     words around the first match in the text (`RowLine`); a rite found by its truth alone
     shows its opening words, the truth staying sealed until the reader opens the rite. A plain `CONTAINS` over a few
     hundred rites (each word a query parameter), plus their numbers, days and tags for the count, the month index and
@@ -281,8 +295,8 @@ skills/                           — Consult the Machine Spirit, a skill that p
       while "Only my Breviary" is ticked, as it is at first): the icon opens a combobox. Elsewhere, or unticked, up to
       five rites holding every word drop down under it. They're matched in the browser against
       the search index (`/api/search-index`, `SearchIndexFunction`: not the rites, only each one's number, day, kind
-      and words as stored, and its tags, so it matches what the Archive's search matches), loaded once when the field
-      first opens and kept at Cloudflare until a new rite purges it (`DailyRiteFunction`; any query string is redirected
+      and words as stored (its ailment too), and its tags, so it matches what the Archive's search matches), loaded
+      once when the field first opens and kept at Cloudflare until a new rite purges it (`DailyRiteFunction`; any query string is redirected
       to the one address, so it can't cause a read of its own), so what's typed there never leaves the browser until the reader
       searches. Without the script the icon is a link to the Archive's field.
       Above the rites, up to three **subjects** (#69) whose name, or what their rites are about (`Tag.About`), has a
@@ -732,7 +746,7 @@ repository tests. For a deployment it also packages the app (the `app` artifact,
 - Both call `deploy.yml`, which deploys the package as the GitHub environment's identity (OIDC: the environment's
   `AZURE_*` variables hold ids, not secrets), one deployment per environment at a time. Then:
   - **Smoke tests** (`tests/DailyMachineSpirit.SmokeTests`, published into the package, so a package is always checked
-    by its own): `/healthz` reports the new commit, and Today, the archive, a rite, a tag's page, a search (and the old address), the rites API, the votes
+    by its own): `/healthz` reports the new commit, and Today, the archive, a rite, a tag's page, a search (and the old address), robots.txt, the sitemap and the feed, the rites API, the votes
     API, the 404 page and a font answer as they should. They read the app's address and expected version from
     `SMOKE_TEST_BASE_URL` and `SMOKE_TEST_VERSION`, so they can also run from your machine against staging. They call
     the app's own address (production's past Cloudflare's cache), and both apps admit only some addresses (staging its

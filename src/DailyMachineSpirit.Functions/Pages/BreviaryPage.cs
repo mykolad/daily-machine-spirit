@@ -28,7 +28,7 @@ public static class BreviaryPage
 
     /// <summary>For a reader who isn't signed in: what the page keeps, and the way to sign in.</summary>
     public static string SignedOut()
-        => Layout.Page(Title, Description, Section.Breviary, ArchiveSheet.Render(
+        => Layout.Page(Title, Description, SearchListing.Unlisted, Section.Breviary, ArchiveSheet.Render(
             kicker: "Rites you have judged",
             heading: Title,
             sub: Description,
@@ -75,7 +75,7 @@ public static class BreviaryPage
         var title = words.Count == 0
             ? chapter.Map(subject => $"{subject.Label} in your Breviary").IfNone(Title)
             : $"“{typed}” in {chapter.Map(subject => $"{subject.Label}, in ").IfNone(string.Empty)}your Breviary: {(shown.Count == 0 ? "no rites" : Rites(shown.Count))}";
-        return Layout.Page(title, Description, Section.Breviary, ArchiveSheet.Render(
+        return Layout.Page(title, Description, SearchListing.Unlisted, Section.Breviary, ArchiveSheet.Render(
             kicker: "Rites you have judged",
             heading: Title,
             sub: Sub(chapter.IsSome ? inChapter.Count : yours.Count, chapter.IsSome, words.Count == 0 ? None : Some(shown.Count)),

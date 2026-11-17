@@ -31,7 +31,7 @@ public static class AboutPage
     private static readonly string[] Numerals = ["I", "II", "III", "IV", "V", "VI"];
 
     /// <param name="now">Today's Imperial date is the example of how one is read.</param>
-    public static string Render(DateTimeOffset now)
+    public static string Render(DateTimeOffset now, SearchListing listing)
     {
         var questions = new (string Question, string Answer)[]
         {
@@ -59,6 +59,7 @@ public static class AboutPage
                 """),
             ("Can other machines read the rites?", $"""
                 <p>Yes. Every published rite is at <code>{Paths.RitesApi}</code>, open to any site. Each Heretical Truth is left out unless it’s asked for; <a href="{Repository}/blob/master/docs/api.md">the API’s documentation</a> says how.</p>
+                <p>A feed reader can follow the shrine too: <a href="{Paths.Feed}">its feed</a> brings each new rite to you, its truth still sealed. It knows nothing of who reads it.</p>
                 """),
             ("What does the shrine remember of me?", """
                 <p>Nothing, unless you vote. A vote keeps a one-way key made from your GitHub account’s id: never your name, email or GitHub token. Signing in keeps a cookie for up to 30 days, so you stay signed in. No ads, and no trackers: the only measuring is Cloudflare’s, of how fast pages load, as the foot of the page says.</p>
@@ -68,7 +69,7 @@ public static class AboutPage
                 """),
         };
         var numbered = questions.Select((question, index) => (Number: index + 1, Numeral: Numerals[index], question.Question, question.Answer)).ToList();
-        return Layout.Page("The Catechism", Description, Section.About, $"""
+        return Layout.Page("The Catechism", Description, listing, Section.About, $"""
             {Masthead.Render(isHeading: false)}
             <div class="hero catechism-hero">
             <article class="sheet catechism">
