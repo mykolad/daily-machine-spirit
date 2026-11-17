@@ -59,6 +59,7 @@ public static class AboutPage
                 """),
             ("Can other machines read the rites?", $"""
                 <p>Yes. Every published rite is at <code>{Paths.RitesApi}</code>, open to any site. Each Heretical Truth is left out unless it’s asked for; <a href="{Repository}/blob/master/docs/api.md">the API’s documentation</a> says how.</p>
+                <p>A feed reader can follow the shrine too: <a href="{Paths.Feed}">its feed</a> brings each new rite to you, its truth still sealed. It knows nothing of who reads it.</p>
                 """),
             ("What does the shrine remember of me?", """
                 <p>Nothing, unless you vote. A vote keeps a one-way key made from your GitHub account’s id: never your name, email or GitHub token. Signing in keeps a cookie for up to 30 days, so you stay signed in. No ads, and no trackers: the only measuring is Cloudflare’s, of how fast pages load, as the foot of the page says.</p>
