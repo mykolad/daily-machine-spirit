@@ -27,6 +27,7 @@ public sealed class DraftRepositoryTests : IAsyncLifetime
             Tags = new[] { "restarts" },
             Augury = new Augury { Quality = 0.8f, JudgedBy = "jev/quality-q1", JudgedAtUtc = judgedAt.ToLocalTime() },
         };
+        draft = draft with { Writing = draft.Writing with { Form = Some("vigil") } };
 
         Ok(await Drafts.Add(draft, CancellationToken.None));
         var saved = Assert.Single(Ok(await Drafts.GetWaiting(CancellationToken.None)));
@@ -40,6 +41,7 @@ public sealed class DraftRepositoryTests : IAsyncLifetime
         Assert.Equal(Some(judgedAt), saved.Augury.Map(augury => augury.JudgedAtUtc));
         Assert.Equal(Some(DateTimeKind.Utc), saved.Augury.Map(augury => augury.JudgedAtUtc.Kind));
         Assert.Equal([0.25f, 0.75f], saved.Similarity.Map(similarity => similarity.Scores).IfNone([]));
+        Assert.Equal(Some("vigil"), saved.Writing.Form);
         Assert.Equal(Some(new[] { "restarts" }), saved.Tags);
         Assert.True(saved.PublishedOnUtc.IsNone);
     }

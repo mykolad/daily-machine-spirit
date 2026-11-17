@@ -33,7 +33,7 @@ public static class RiteRules
         $"- Title: at most {RitePrompt.TitleLength} characters, like the name of a rite (\"The Rite of Re-Run\", \"Litany of the Clean Cache\").",
         $"- Text: one to three sentences, at most {RitePrompt.TextLength} characters, in solemn liturgical language (thee, thy, O Machine Spirit).",
         $"- Heretical Truth: one or two sentences, at most {RitePrompt.HereticalTruthLength} characters, in plain modern English.",
-        $"- Ailment: one line, at most {RitePrompt.AilmentLength} characters, in plain modern English: the trouble as a developer\n  would describe it when asking for help (\"a test that fails at random and passes when re-run\"), never its cause or\n  its fix, which only the Heretical Truth reveals.",
+        $"- Ailment: one line, at most {RitePrompt.AilmentLength} characters, in plain modern English: the trouble as a developer\n  would describe it when asking for help (\"a test that fails at random and passes when re-run\"), never its cause or\n  its fix, which only the Heretical Truth reveals. A fragment, as in an index: lower case, no full stop, and not in the\n  first person (\"a service no other machine can reach\", not \"My service can't be reached.\").",
         "- Plain words over code. If a command or file name is truly needed, use at most one, widely known, without flags\n  or parameters (`node_modules`, `git push`), and put it in `backticks`. The title has no code and no backticks.",
         "- Never mention AI, artificial intelligence, models, LLMs, chatbots, prompts or vibe coding: this future forgot them.",
         Original,

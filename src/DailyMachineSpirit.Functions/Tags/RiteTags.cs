@@ -14,7 +14,9 @@ public static class RiteTags
         new("dependencies", "Dependencies", "packages, dependencies, versions, lock files, upgrades"),
         new("caches", "Caches", "caches, temporary files, clean installs, leftover state"),
         new("restarts", "Restarts", "restarting or reinstalling apps, services, machines, routers"),
-        new("ai", "AI", "AI assistants, prompts, generated code, vibe coding"),
+        // In the fiction, the AI is long forgotten (#194): its rites are about the oracles. The key stays, so stored rites,
+        // /tags/ai and the API's keys don't change, and "AI" stays in what it's about, which the nav's search matches too.
+        new("ai", "Oracles", "oracles that answer and write code: AI assistants, prompts, generated code, vibe coding"),
         new("testing", "Testing", "tests, test coverage, mocks"),
         new("deployment", "Deployment", "deployments, releases, production, rollbacks"),
         new("debugging", "Debugging", "debugging, logs, errors, stack traces"),

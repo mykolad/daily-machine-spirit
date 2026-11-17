@@ -13,4 +13,7 @@ public sealed record AuguryOptions
 
     /// <summary>Taken off when it's of the same kind as the rite before it.</summary>
     public float SameKindPenalty { get; init; }
+
+    /// <summary>Taken off in full when every one of the newest rites compared took its form, in part for some (#193).</summary>
+    public float SameFormPenalty { get; init; }
 }

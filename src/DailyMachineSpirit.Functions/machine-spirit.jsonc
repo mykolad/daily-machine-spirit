@@ -66,7 +66,9 @@
     "ResemblancePenalty": 0.5,
     // Following the same kind loses a little, enough to decide between drafts of similar quality, so prayers and rituals
     // take turns.
-    "SameKindPenalty": 0.1
+    "SameKindPenalty": 0.1,
+    // Taking the form most of the week's rites took loses as much, so the forms take turns too (#193).
+    "SameFormPenalty": 0.1
   },
 
   // The Augury's quality (#10): the model that didn't write a draft scores it against a rubric, from 1 to 10, this many

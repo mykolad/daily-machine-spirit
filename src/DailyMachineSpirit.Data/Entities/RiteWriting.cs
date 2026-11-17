@@ -26,6 +26,12 @@ public sealed record RiteWriting
     /// </summary>
     public Option<string> Ailment { get; init; }
 
+    /// <summary>
+    /// The form the writer was asked for (a litany, a vigil, a penance: <c>RiteForms</c> in the Functions app), by its key;
+    /// None for a rite written before forms took turns (#193), whose form its title tells.
+    /// </summary>
+    public Option<string> Form { get; init; }
+
     public string GeneratedByModel { get; init; } = string.Empty;
 
     public DateTime GeneratedAtUtc { get; init; }

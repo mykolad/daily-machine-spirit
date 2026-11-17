@@ -276,9 +276,9 @@ skills/                           — Consult the Machine Spirit, a skill that p
     title link covers the row, so its tag links can sit inside it.
     - **Changing how tags are given** (another threshold) applies to drafts judged from then on; the rest keep theirs.
   - **Search** (`/archive?q=`, #7): the Archive filtered to the rites holding every word typed (at most 6, quotes
-    ignored) in their title, text or Heretical Truth, ignoring case, or by naming one of their subjects (#159: a word
-    starting a word of the subject's name, "build" for Builds, `RiteTags.Names`, as a `SoughtWord` with the tags it
-    names), newest first, Today's too. Each row marks the words (`Highlight`), in its subject chips too, and shows the
+    ignored) in their title, text, Heretical Truth or ailment (#197), ignoring case, or by naming one of their
+    subjects (#159: a word starting a word of the subject's name, "build" for Builds, `RiteTags.Names`, as a
+    `SoughtWord` with the tags it names), newest first, Today's too. Each row marks the words (`Highlight`), in its subject chips too, and shows the
     words around the first match in the text (`RowLine`); a rite found by its truth alone
     shows its opening words, the truth staying sealed until the reader opens the rite. A plain `CONTAINS` over a few
     hundred rites (each word a query parameter), plus their numbers, days and tags for the count, the month index and
@@ -300,8 +300,8 @@ skills/                           — Consult the Machine Spirit, a skill that p
       while "Only my Breviary" is ticked, as it is at first): the icon opens a combobox. Elsewhere, or unticked, up to
       five rites holding every word drop down under it. They're matched in the browser against
       the search index (`/api/search-index`, `SearchIndexFunction`: not the rites, only each one's number, day, kind
-      and words as stored, and its tags, so it matches what the Archive's search matches), loaded once when the field
-      first opens and kept at Cloudflare until a new rite purges it (`DailyRiteFunction`; any query string is redirected
+      and words as stored (its ailment too), and its tags, so it matches what the Archive's search matches), loaded
+      once when the field first opens and kept at Cloudflare until a new rite purges it (`DailyRiteFunction`; any query string is redirected
       to the one address, so it can't cause a read of its own), so what's typed there never leaves the browser until the reader
       searches. Without the script the icon is a link to the Archive's field.
       Above the rites, up to three **subjects** (#69) whose name, or what their rites are about (`Tag.About`), has a
@@ -413,6 +413,8 @@ skills/                           — Consult the Machine Spirit, a skill that p
     - Better drafts go first, by the rubric judge's quality (below).
     - A draft much like the week's rites before it waits.
     - Prayers and rituals take turns when their qualities are close.
+    - So do the forms (#193): a draft whose form most of the week's rites took waits, by that share of
+      `Augury:SameFormPenalty`.
     - Drafts without a quality (judging failing), or with an older judge's, go last.
   - **No rite twice:** the writer's prompt lists the 30 newest rites, the waiting drafts and the recently burned ones,
     each a title and its Heretical Truth (`TakenRite`): the truth says the habit and the lesson, and a new title on an
@@ -426,7 +428,13 @@ skills/                           — Consult the Machine Spirit, a skill that p
     rite among broad topics (unrelated rites on one topic score nearly the same), and two wordings of one lesson share
     few words.
   - **Refilling:** the `RefillBacklog` function keeps 20 drafts waiting (`Backlog:DraftsWaiting`). Each draft
-    is of the kind there are fewer of, repeating no rite already written (above). The timer asks for a
+    is of the kind there are fewer of, repeating no rite already written (above).
+  - **Forms and images take turns** (#193): each kind has its forms (`RiteForms`: a litany, a canticle, a lament,
+    a benediction, an invocation; a rite, a vigil, a penance, an exorcism, a catechism). The refill asks for the form
+    the 30 newest rites and the waiting drafts took least. The draft keeps the form its title names, else the one asked for (`RiteWriting.Form`), and an
+    amendment takes its new title's: the title is what readers see. A rite from before forms were stored is known by its
+    title's first words. The prompt also names the images those rites lean on (`WornImages`: gate, seal, green…, in four
+    of them or more) and offers fresh ones. The timer asks for a
     refill after publishing, by a message on the `backlog-refills` queue: a full refill takes minutes, longer than a
     request should wait. `host.json` takes one message at a time and tries a message 3 times, 10 minutes apart. The
     queue is declared in `infra/`. Instances can refill at once, but each counts the waiting drafts before every draft
