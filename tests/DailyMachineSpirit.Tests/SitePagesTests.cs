@@ -681,6 +681,19 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.DoesNotContain("""name="tag" """, unknown);
     }
 
+    // A reader searches by their trouble (#197): "flaky" finds the rite for it, though the rite's own words never say so.
+    [Fact]
+    public async Task Archive_WithWordsOnlyInTheAilment_ListsTheRite()
+    {
+        await Add(Day.AddDays(-1), "The Rite of the Warm Cache");
+        await Add(Day, "The Rite of Re-Run");
+        await Ail(Day, "a flaky test that passes when re-run");
+
+        var (_, html) = await Searched("flaky", "");
+
+        Assert.Equal(["The Rite of Re-Run"], Titles(html));
+    }
+
     // A rite found by its Heretical Truth alone is listed, but its truth stays sealed: the row shows the opening words,
     // and breaking the seal is the reader's choice, on the rite's own page.
     [Fact]
@@ -1172,6 +1185,11 @@ public sealed class SitePagesTests : IAsyncLifetime
             await Add(Day.AddDays(i - count), $"Rite {i}");
         }
     }
+
+    // As a rite whose writer wrote it the trouble it's for (#115).
+    private async Task Ail(DateOnly day, string ailment)
+        => await cosmos.Container.PatchItemAsync<RiteDocument>(RiteDocument.IdFor(day), CosmosCalls.SharedPartitionKey,
+            [Microsoft.Azure.Cosmos.PatchOperation.Set("/ailment", ailment)]);
 
     // As a rite judged with these tags has them: only judging writes a rite's tags.
     private async Task Tag(DateOnly day, params string[] tags)

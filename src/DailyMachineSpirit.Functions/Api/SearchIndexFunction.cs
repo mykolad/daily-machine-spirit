@@ -69,5 +69,6 @@ public sealed class SearchIndexFunction
         rite.Title,
         rite.Text,
         rite.HereticalTruth,
+        rite.Ailment.IfNone(string.Empty),
         rite.Tags);
 }

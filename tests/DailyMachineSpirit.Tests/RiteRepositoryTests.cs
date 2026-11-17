@@ -33,6 +33,22 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
         Assert.Equal(Some(saved.Number), byDay.Map(rite => rite.Number));
     }
 
+    // The form the writer was asked for (#193) is kept, and the refill reads it with the words; a rite from before has none.
+    [Fact]
+    public async Task Add_KeepsTheRitesForm_WhichItsWordsCarry()
+    {
+        var older = await AddOrFail(MakeRite(new DateOnly(2026, 10, 6), "The Rite of Re-Run"));
+        var vigil = MakeRite(new DateOnly(2026, 10, 7), "Vigil of the Green Check");
+        var newer = await AddOrFail(vigil with { Writing = vigil.Writing with { Form = Some("vigil") } });
+
+        var found = Ok(await Repository.GetByNumbers([newer.Number], CancellationToken.None));
+        var words = Ok(await Repository.GetAllWords(CancellationToken.None));
+
+        Assert.Equal(Some("vigil"), Assert.Single(found).Writing.Form);
+        Assert.Equal([Some("vigil"), None], words.Select(rite => rite.Form));
+        Assert.Equal([newer.Number, older.Number], words.Select(rite => rite.Number));
+    }
+
     [Fact]
     public async Task Add_NumbersRitesOneAfterAnother()
     {
@@ -336,6 +352,22 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
     }
 
     private static string Said(Option<RiteHeading> rite) => rite.Match(Some: found => $"{found.Number} {found.Title}", None: () => "-");
+
+    // The fallback's copy finds a rite by its ailment too (#197), as the database does.
+    [Fact]
+    public async Task SearchOlderThan_FromTheSnapshot_FindsARiteByItsAilment()
+    {
+        var reRun = MakeRite(new DateOnly(2026, 10, 7), "The Rite of Re-Run");
+        var copy = new SnapshotRites(
+        [
+            reRun with { Number = 2, Writing = reRun.Writing with { Ailment = Some("a flaky test that passes when re-run") } },
+            MakeRite(new DateOnly(2026, 10, 6), "The Rite of the Warm Cache") with { Number = 1 },
+        ]);
+
+        var found = Ok(await copy.SearchOlderThan([new SoughtWord("flaky", [])], None, int.MaxValue, 10, CancellationToken.None));
+
+        Assert.Equal(["The Rite of Re-Run"], found.Select(rite => rite.Writing.Title));
+    }
 
     private static Rite MakeRite(DateOnly date, string title) => new()
     {
