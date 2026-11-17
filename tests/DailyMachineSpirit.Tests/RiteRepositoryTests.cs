@@ -320,6 +320,22 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
 
     private RiteRepository Repository => new(cosmos.Container, TimeProvider.System, NullLogger<RiteRepository>.Instance);
 
+    // The fallback's copy finds a rite by its ailment too (#197), as the database does.
+    [Fact]
+    public async Task SearchOlderThan_FromTheSnapshot_FindsARiteByItsAilment()
+    {
+        var reRun = MakeRite(new DateOnly(2026, 10, 7), "The Rite of Re-Run");
+        var copy = new SnapshotRites(
+        [
+            reRun with { Number = 2, Writing = reRun.Writing with { Ailment = Some("a flaky test that passes when re-run") } },
+            MakeRite(new DateOnly(2026, 10, 6), "The Rite of the Warm Cache") with { Number = 1 },
+        ]);
+
+        var found = Ok(await copy.SearchOlderThan([new SoughtWord("flaky", [])], None, int.MaxValue, 10, CancellationToken.None));
+
+        Assert.Equal(["The Rite of Re-Run"], found.Select(rite => rite.Writing.Title));
+    }
+
     private static Rite MakeRite(DateOnly date, string title) => new()
     {
         PublishedOnUtc = date,

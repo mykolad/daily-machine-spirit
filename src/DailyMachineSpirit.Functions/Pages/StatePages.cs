@@ -5,7 +5,7 @@ public static class StatePages
 {
     /// <summary>The data couldn't be read (served as 503). "Try again" reloads the same address.</summary>
     public static string Failed(string path)
-        => Layout.Page("The rite has failed", "The Machine Spirit did not answer.", Section.Other, $"""
+        => Layout.Page("The rite has failed", "The Machine Spirit did not answer.", SearchListing.Unlisted, Section.Other, $"""
             <div class="state" role="alert">
             <h1>The rite has failed.</h1>
             <p class="state-body">The Machine Spirit did not answer. This is usually the network, not a curse.</p>
@@ -16,7 +16,7 @@ public static class StatePages
 
     /// <param name="id">What the address named, shown back as it was typed.</param>
     public static string NotFound(string id)
-        => Layout.Page("No such rite exists", "No such rite exists.", Section.Other, $"""
+        => Layout.Page("No such rite exists", "No such rite exists.", SearchListing.Unlisted, Section.Other, $"""
             <div class="state">
             {Svg.AwakeSkull}
             <p class="state-eyebrow">ERROR 404</p>
@@ -31,7 +31,7 @@ public static class StatePages
 
     /// <param name="key">The tag the address named, shown back as it was typed.</param>
     public static string NoSuchTag(string key)
-        => Layout.Page("No such subject", "No such subject.", Section.Other, $"""
+        => Layout.Page("No such subject", "No such subject.", SearchListing.Unlisted, Section.Other, $"""
             <div class="state">
             {Svg.AwakeSkull}
             <p class="state-eyebrow">ERROR 404</p>

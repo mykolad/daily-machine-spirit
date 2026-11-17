@@ -614,7 +614,8 @@ public static class Script
                   .filter((subject) => subject.label.toLowerCase().split(' ').some((part) => part.startsWith(word)))
                   .map((subject) => subject.key));
                 const found = index.filter((rite) => {
-                  const words2 = `${rite.title}\n${rite.text}\n${rite.truth}`.toLowerCase();
+                  // The ailment too (#197); an index Cloudflare kept from before it had ailments has none.
+                  const words2 = `${rite.title}\n${rite.text}\n${rite.truth}\n${rite.ailment ?? ''}`.toLowerCase();
                   return words.every((word, at) => words2.includes(word) || named[at].some((key) => (rite.tags ?? []).includes(key)));
                 });
                 const quoted = `“${typed}”`;

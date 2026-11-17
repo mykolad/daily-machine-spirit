@@ -9,6 +9,9 @@ internal sealed record RiteDocument
 {
     public const string RiteType = "rite";
 
+    /// <summary>Where an erasure's patch writes its time (<see cref="Rite.WordsErasedAtUtc"/>).</summary>
+    public const string WordsErasedAtUtcField = "/wordsErasedAtUtc";
+
     public string Id { get; init; } = string.Empty;
 
     public string Partition { get; init; } = CosmosCalls.SharedPartition;
@@ -49,7 +52,12 @@ internal sealed record RiteDocument
     // Null until its judge tagged it.
     public string[]? Tags { get; init; }
 
+    public DateTime? WordsErasedAtUtc { get; init; }
+
     public static string IdFor(DateOnly publishedOnUtc) => publishedOnUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    /// <summary>Whether a document's id is a rite's: its day, as no other document's id is (a draft's is a Guid).</summary>
+    public static bool IsRiteId(string id) => DateOnly.TryParseExact(id, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _);
 
     public static RiteDocument From(Rite rite, int number) => new()
     {
@@ -69,6 +77,7 @@ internal sealed record RiteDocument
         HeresyVotes = rite.HeresyCount,
         Similarity = rite.Similarity.Map(Utc.From).OrNull(),
         Tags = rite.Tags.OrNull(),
+        WordsErasedAtUtc = rite.WordsErasedAtUtc.Map(Utc.From).OrNullable(),
     };
 
     public Rite ToRite() => new()
@@ -91,5 +100,6 @@ internal sealed record RiteDocument
         HeresyCount = HeresyVotes,
         Similarity = Optional(Similarity),
         Tags = Optional(Tags),
+        WordsErasedAtUtc = Optional(WordsErasedAtUtc).Map(Utc.From),
     };
 }
