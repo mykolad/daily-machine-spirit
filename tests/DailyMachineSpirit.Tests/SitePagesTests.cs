@@ -806,6 +806,23 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.All(pages, page => Assert.DoesNotContain("noindex", page.Html));
     }
 
+    // A feed reader given any page's address finds the feed (its head says where), and a reader finds it at the foot.
+    [Fact]
+    public async Task EveryPage_LeadsToTheFeed()
+    {
+        await Add(Day, "The Rite of Re-Run");
+
+        var (_, today) = await Today("");
+        var (_, rite) = await Rite("1");
+        var (_, notFound) = await Today("no-such-page");
+
+        Assert.All([today, rite, notFound], html =>
+        {
+            Assert.Contains("""<link rel="alternate" type="application/atom+xml" title="The Daily Machine Spirit" href="/feed.xml">""", html);
+            Assert.Contains("""<a class="feed-link" href="/feed.xml">""", html);
+        });
+    }
+
     // Whatever anyone searched for must never become a page in an index, nor a missing page.
     [Fact]
     public async Task SearchResultsAndMissingPages_AreKeptOutOfIndexes()
