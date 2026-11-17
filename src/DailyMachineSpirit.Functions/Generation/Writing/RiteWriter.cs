@@ -49,10 +49,13 @@ public sealed class RiteWriter
         this.logger = logger;
     }
 
-    /// <summary>A new draft of the kind, repeating none of the <paramref name="taken"/> rites; not judged or saved yet.</summary>
-    public async Task<Either<Error, Draft>> Write(RiteKind kind, IReadOnlyList<TakenRite> taken, CancellationToken cancellationToken)
+    /// <summary>
+    /// A new draft of the kind, in the variety's form, repeating none of the <paramref name="taken"/> rites; not judged or
+    /// saved yet.
+    /// </summary>
+    public async Task<Either<Error, Draft>> Write(RiteKind kind, RiteVariety variety, IReadOnlyList<TakenRite> taken, CancellationToken cancellationToken)
         => (await Answer(
-                [new(ChatRole.System, RitePrompt.Instructions(kind, taken, await Precepts(cancellationToken))), new(ChatRole.User, RitePrompt.Request(kind))],
+                [new(ChatRole.System, RitePrompt.Instructions(kind, Some(variety), taken, await Precepts(cancellationToken))), new(ChatRole.User, RitePrompt.Request(kind))],
                 kind,
                 options.Value.Patience,
                 "write",
@@ -69,6 +72,7 @@ public sealed class RiteWriter
                     Text = written.Content.Text,
                     HereticalTruth = written.Content.HereticalTruth,
                     Ailment = Some(written.Content.Ailment),
+                    Form = RiteForms.Taken(kind, Some(variety.Form), written.Content.Title).Map(form => form.Key),
                     GeneratedByModel = written.Model,
                     GeneratedAtUtc = time.GetUtcNow().UtcDateTime,
                 },
@@ -80,7 +84,7 @@ public sealed class RiteWriter
     /// </summary>
     public async Task<Either<Error, RiteContent>> Rewrite(RiteKind kind, RiteContent words, string note, CancellationToken cancellationToken)
         => (await Answer(
-                [new(ChatRole.System, RitePrompt.Instructions(kind, [], await Precepts(cancellationToken))), new(ChatRole.User, RitePrompt.Rewrite(kind, words, note))],
+                [new(ChatRole.System, RitePrompt.Instructions(kind, None, [], await Precepts(cancellationToken))), new(ChatRole.User, RitePrompt.Rewrite(kind, words, note))],
                 kind,
                 options.Value.PatienceWhileTheScribeWaits,
                 "rewrite",

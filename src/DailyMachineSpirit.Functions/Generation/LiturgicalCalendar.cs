@@ -1,4 +1,5 @@
 using DailyMachineSpirit.Data.Entities;
+using DailyMachineSpirit.Functions.Generation.Writing;
 using LanguageExt;
 
 namespace DailyMachineSpirit.Functions.Generation;
@@ -6,8 +7,9 @@ namespace DailyMachineSpirit.Functions.Generation;
 /// <summary>
 /// The order the waiting drafts are published in, first next. The drafts the Scribes placed come first, in their order.
 /// The Augury orders the rest: better drafts first, but a draft much like the rites just before it waits, and prayers
-/// and rituals take turns where the qualities allow, so the days vary. Drafts without a quality (judging failing)
-/// follow, oldest first, and so do drafts judged by an older judge: a quality is only comparable with the same judge's.
+/// and rituals take turns where the qualities allow, as do the forms (a litany, a vigil), so the days vary. Drafts
+/// without a quality (judging failing) follow, oldest first, and so do drafts judged by an older judge: a quality is only
+/// comparable with the same judge's.
 /// </summary>
 public static class LiturgicalCalendar
 {
@@ -21,8 +23,8 @@ public static class LiturgicalCalendar
         var unplaced = waiting.Where(draft => !placedIds.Contains(draft.Id)).ToList();
 
         // Oldest first: each pick joins the end, as the rite before the next one.
-        var before = recent.Take(augury.RecentRitesCompared).Reverse().Select(rite => (rite.Writing.Kind, rite.Similarity))
-            .Concat(ordered.Select(draft => (draft.Writing.Kind, draft.Similarity)))
+        var before = recent.Take(augury.RecentRitesCompared).Reverse().Select(rite => Before(rite.Writing, rite.Similarity))
+            .Concat(ordered.Select(draft => Before(draft.Writing, draft.Similarity)))
             .ToList();
         var judge = NewestJudge(waiting);
         bool IsJudged(Draft draft) => JudgedBy(draft, judge);
@@ -35,7 +37,7 @@ public static class LiturgicalCalendar
             var next = judged.OrderByDescending(draft => Value(draft, before, augury)).First();
             judged.Remove(next);
             ordered.Add(next);
-            before.Add((next.Writing.Kind, next.Similarity));
+            before.Add(Before(next.Writing, next.Similarity));
         }
 
         ordered.AddRange(unplaced.Where(draft => !IsJudged(draft)).OrderBy(draft => draft.Writing.GeneratedAtUtc).ThenBy(draft => draft.Id));
@@ -55,15 +57,22 @@ public static class LiturgicalCalendar
     private static bool JudgedBy(Draft draft, Option<string> judge)
         => draft.Augury.Exists(augury => judge.Exists(newest => newest == augury.JudgedBy));
 
-    private static float Value(Draft draft, List<(RiteKind Kind, Option<RiteSimilarity> Similarity)> before, AuguryOptions augury)
+    private static (RiteKind Kind, Option<string> Form, Option<RiteSimilarity> Similarity) Before(RiteWriting writing, Option<RiteSimilarity> similarity)
+        => (writing.Kind, RiteForms.Of(writing.Form, writing.Title).Map(form => form.Key), similarity);
+
+    private static float Value(Draft draft, List<(RiteKind Kind, Option<string> Form, Option<RiteSimilarity> Similarity)> before, AuguryOptions augury)
     {
         var quality = draft.Augury.Map(judgment => judgment.Quality).IfNone(0f);
-        var resemblance = before.TakeLast(augury.RecentRitesCompared)
+        var week = before.TakeLast(augury.RecentRitesCompared).ToList();
+        var resemblance = week
             .Select(rite => Resemblance(draft.Similarity, rite.Similarity))
             .DefaultIfEmpty(0f)
             .Max();
         var sameKind = before.Count > 0 && before[^1].Kind == draft.Writing.Kind ? augury.SameKindPenalty : 0f;
-        return quality - augury.ResemblancePenalty * resemblance - sameKind;
+        // The more of the week's rites took the draft's form, the more it waits (#193): all of them, the whole penalty.
+        var form = RiteForms.Of(draft.Writing.Form, draft.Writing.Title).Map(found => found.Key);
+        var sameForm = week.Count == 0 || form.IsNone ? 0f : augury.SameFormPenalty * week.Count(rite => rite.Form == form) / week.Count;
+        return quality - augury.ResemblancePenalty * resemblance - sameKind - sameForm;
     }
 
     // Cosine similarity of the scores: 1 for the same subject and act, 0 for nothing in common. Unknown, or from

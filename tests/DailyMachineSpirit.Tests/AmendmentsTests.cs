@@ -68,6 +68,21 @@ public sealed class AmendmentsTests : IAsyncLifetime
         Assert.Contains("The build is slow every time the cache is cleared.", PreceptPrompt.Request([decision], [], []));
     }
 
+    // A Scribe may amend a litany into a lament: the turns forms take count what the title now says. A new title naming
+    // no form keeps the form the draft had.
+    [Theory]
+    [InlineData("The Lament for the Cold Cache", "lament")]
+    [InlineData("Cold Cache, Warm Heart", "litany")]
+    public async Task Save_TakesTheFormItsNewTitleNames_ElseKeepsItsOwn(string title, string form)
+    {
+        var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
+        var amendable = Ok(await testbed.Amendments().FindWaiting(draft.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Not amendable."));
+
+        Ok(await testbed.Amendments().SaveAndJudgeAgain(draft.Id, amendable.ETag, Words(draft) with { Title = title }, "Retitled.", BacklogTestbed.Tester, CancellationToken.None));
+
+        Assert.Equal(Some(form), Assert.Single(await testbed.Waiting()).Writing.Form);
+    }
+
     // The mark said the old words repeated a rite; the Scribe who amended them has read them.
     [Fact]
     public async Task Save_ClearsTheMarkOfRepeatingARite()

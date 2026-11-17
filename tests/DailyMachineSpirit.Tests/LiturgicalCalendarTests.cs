@@ -57,6 +57,20 @@ public class LiturgicalCalendarTests
         Assert.Equal("Ritual", ordered[0].Writing.Title);
     }
 
+    // The forms take turns too (#193): after a week of rites, a slightly better rite waits for a vigil. A rite written
+    // before forms were stored is known by its title.
+    [Fact]
+    public void Order_LetsADraftInTheWeeksFormWait_BetweenDraftsOfSimilarQuality()
+    {
+        Rite[] week = [.. new[] { "The Rite of Re-Run", "The Rite of the Clean Cache", "The Rite of Restarting" }.Select(Titled)];
+        var anotherRite = InForm(MakeDraft("Another rite", RiteKind.Ritual, 0.75f, AboutCaches), "rite");
+        var vigil = MakeDraft("Vigil of the Green Check", RiteKind.Ritual, 0.7f, AboutCaches);
+
+        var ordered = LiturgicalCalendar.Order([anotherRite, vigil], week, [], Settings.Augury);
+
+        Assert.Equal(["Vigil of the Green Check", "Another rite"], Titles(ordered));
+    }
+
     [Fact]
     public void Order_PutsDraftsWithoutAQualityLast_OldestFirst()
     {
@@ -161,6 +175,14 @@ public class LiturgicalCalendarTests
         Similarity = new RiteSimilarity { ScoresGeneratorVersion = "jev/q1", Scores = scores },
         Augury = new Augury { Quality = quality, JudgedBy = "jev/quality-q1" },
     };
+
+    private static Rite Titled(string title)
+    {
+        var rite = MakeRite(RiteKind.Ritual, AboutBuilds);
+        return rite with { Writing = rite.Writing with { Title = title } };
+    }
+
+    private static Draft InForm(Draft draft, string form) => draft with { Writing = draft.Writing with { Form = Prelude.Some(form) } };
 
     private static Rite MakeRite(RiteKind kind, float[] scores) => new()
     {

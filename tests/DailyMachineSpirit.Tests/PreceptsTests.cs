@@ -2,6 +2,7 @@ using System.Text.Json;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Generation.Precepts;
+using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Scriptorium;
 using Microsoft.Extensions.AI;
 using static DailyMachineSpirit.Tests.BacklogTestbed;
@@ -184,7 +185,7 @@ public sealed class PreceptsTests : IAsyncLifetime
         var abuse = "Nothing abusive, hateful, racist, sexist or otherwise discriminating";
         Assert.Contains(abuse, PreceptPrompt.Instructions(3));
         Assert.Contains("Never propose a precept that would have the writer break one of its rules", PreceptPrompt.Instructions(3));
-        Assert.Contains(abuse, DailyMachineSpirit.Functions.Generation.Writing.RitePrompt.Instructions(RiteKind.Ritual, [], []));
+        Assert.Contains(abuse, RitePrompt.Instructions(RiteKind.Ritual, None, [], []));
         Assert.Contains("never in a title, a Heretical Truth, an ailment or a ritual", PreceptPrompt.Instructions(3));
     }
 

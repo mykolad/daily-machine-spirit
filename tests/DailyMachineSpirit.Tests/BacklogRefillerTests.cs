@@ -66,6 +66,24 @@ public sealed class BacklogRefillerTests : IAsyncLifetime
         Assert.Equal(RiteKind.Ritual, (await testbed.Waiting()).Single(draft => draft.Writing.Title == "Second").Writing.Kind);
     }
 
+    // The forms take turns (#193): the rites before were rites, by their titles (written before forms were stored), so
+    // the next ritual is the first ritual form none of them took, and its draft keeps it.
+    [Fact]
+    public async Task Refill_AsksForTheFormTheRecentRitesAndDraftsTookLeast()
+    {
+        testbed.BacklogSize = 2;
+        await testbed.AddRite(Today.AddDays(-2), "The Rite of Re-Run");
+        await testbed.AddRite(Today.AddDays(-1), "The Rite of the Warm Cache");
+        await testbed.AddDraft("Litany of the Clean Cache", 0.5f);
+        testbed.Models.Answers(Sol, Answer("Second"));
+
+        await testbed.Refiller().Refill(CancellationToken.None);
+
+        var instructions = testbed.Models.Requests.Single(request => request.Model == Sol).Messages.Single(message => message.Role == ChatRole.System).Text;
+        Assert.Contains("Its form is the vigil:", instructions);
+        Assert.Equal(Some("vigil"), (await testbed.Waiting()).Single(draft => draft.Writing.Title == "Second").Writing.Form);
+    }
+
     [Fact]
     public async Task Refill_AsksForSubjects_NeitherTheRitesNorTheWaitingDraftsHave()
     {
