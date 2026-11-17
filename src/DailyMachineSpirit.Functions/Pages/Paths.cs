@@ -69,6 +69,9 @@ public static class Paths
     /// <summary>What crawlers may read, and where the sitemap is.</summary>
     public const string Robots = "/robots.txt";
 
+    /// <summary>The newest rites as an Atom feed (<c>Feeds/AtomFeed</c>), for feed readers: a contract like the API.</summary>
+    public const string Feed = "/feed.xml";
+
     /// <summary>
     /// The reader's rites with the verdict (<c>?verdict=blessed</c> or <c>heresy</c>), in the chapter (its subject's
     /// key), and holding the words typed, each only if given. In the order the Breviary's search form sends them.

@@ -117,6 +117,11 @@ public sealed partial class DeployedAppTests
     public async Task DrawingARite_LeadsToOne()
         => AssertAnswers(await app.Get("/draw"), HttpStatusCode.OK, $"{SiteName}</title>");
 
+    // The feed readers follow, a contract like the API (docs/api.md): Atom, from the deployed database.
+    [Fact]
+    public async Task TheFeed_Answers()
+        => AssertAnswers(await app.Get("/feed.xml"), HttpStatusCode.OK, """<feed xmlns="http://www.w3.org/2005/Atom">""");
+
     // A reader's own page: signed out, the smoke tests are asked to sign in.
     [Fact]
     public async Task TheBreviary_Answers()
