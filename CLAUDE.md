@@ -408,6 +408,8 @@ skills/                           — Consult the Machine Spirit, a skill that p
     - Better drafts go first, by the rubric judge's quality (below).
     - A draft much like the week's rites before it waits.
     - Prayers and rituals take turns when their qualities are close.
+    - So do the forms (#193): a draft whose form most of the week's rites took waits, by that share of
+      `Augury:SameFormPenalty`.
     - Drafts without a quality (judging failing), or with an older judge's, go last.
   - **No rite twice:** the writer's prompt lists the 30 newest rites, the waiting drafts and the recently burned ones,
     each a title and its Heretical Truth (`TakenRite`): the truth says the habit and the lesson, and a new title on an
@@ -421,7 +423,13 @@ skills/                           — Consult the Machine Spirit, a skill that p
     rite among broad topics (unrelated rites on one topic score nearly the same), and two wordings of one lesson share
     few words.
   - **Refilling:** the `RefillBacklog` function keeps 20 drafts waiting (`Backlog:DraftsWaiting`). Each draft
-    is of the kind there are fewer of, repeating no rite already written (above). The timer asks for a
+    is of the kind there are fewer of, repeating no rite already written (above).
+  - **Forms and images take turns** (#193): each kind has its forms (`RiteForms`: a litany, a canticle, a lament,
+    a benediction, an invocation; a rite, a vigil, a penance, an exorcism, a catechism). The refill asks for the form
+    the 30 newest rites and the waiting drafts took least. The draft keeps the form its title names, else the one asked for (`RiteWriting.Form`), and an
+    amendment takes its new title's: the title is what readers see. A rite from before forms were stored is known by its
+    title's first words. The prompt also names the images those rites lean on (`WornImages`: gate, seal, green…, in four
+    of them or more) and offers fresh ones. The timer asks for a
     refill after publishing, by a message on the `backlog-refills` queue: a full refill takes minutes, longer than a
     request should wait. `host.json` takes one message at a time and tries a message 3 times, 10 minutes apart. The
     queue is declared in `infra/`. Instances can refill at once, but each counts the waiting drafts before every draft

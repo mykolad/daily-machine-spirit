@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using DailyMachineSpirit.Data.Entities;
+using LanguageExt;
 
 namespace DailyMachineSpirit.Functions.Generation.Writing;
 
@@ -12,8 +13,9 @@ public static class RitePrompt
     public const int HereticalTruthLength = 250;
     public const int AilmentLength = 120;
 
+    /// <param name="variety">For a new rite, the form to take and the images to rest; None for a rewrite, which keeps its own.</param>
     /// <param name="precepts">The Scribes' Precepts (#12), learned from what they chose and burned.</param>
-    public static string Instructions(RiteKind kind, IReadOnlyList<TakenRite> taken, IReadOnlyList<string> precepts)
+    public static string Instructions(RiteKind kind, Option<RiteVariety> variety, IReadOnlyList<TakenRite> taken, IReadOnlyList<string> precepts)
     {
         var sb = new StringBuilder();
         sb.AppendLine("You write for The Daily Machine Spirit, a satirical website. Its joke: AI and vibe coding turned software");
@@ -26,6 +28,8 @@ public static class RitePrompt
         sb.AppendLine(kind == RiteKind.Prayer
             ? "Write one PRAYER to the Machine Spirit: a short, solemn plea that a computer, build, service or device works."
             : "Write one RITUAL: a solemn procedure performed to make a computer, build, service or device work.");
+        variety.IfSome(asked => sb.AppendLine(
+            $"Its form is the {asked.Form.Name.ToLowerInvariant()}: {asked.Form.Shape}. Its title names the form (\"{asked.Form.Name} of the …\", \"The {asked.Form.Name} for …\")."));
         sb.AppendLine("Base it on a common software habit people follow without understanding it, one any developer recognises:");
         sb.AppendLine("re-running a failed build until it passes, clearing caches, deleting and reinstalling dependencies, restarting");
         sb.AppendLine("things, adding sleeps, raising timeouts, copying answers without reading them, and so on. Not a habit that");
@@ -44,6 +48,12 @@ public static class RitePrompt
         {
             sb.AppendLine(rule);
         }
+
+        variety.Filter(asked => asked.WornImages.Count > 0).IfSome(asked =>
+        {
+            sb.AppendLine($"- The recent rites lean on the same few images: {string.Join(", ", asked.WornImages)}. Rest them here: reach for");
+            sb.AppendLine($"  others ({string.Join(", ", WornImages.Fresh)}), or none.");
+        });
 
         if (precepts.Count > 0)
         {

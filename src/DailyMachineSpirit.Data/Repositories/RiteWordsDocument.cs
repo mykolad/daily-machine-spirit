@@ -23,5 +23,7 @@ internal sealed record RiteWordsDocument
     // Null for a rite judged before tags existed, or never judged: the JSON serializer doesn't know Option.
     public string[]? Tags { get; init; }
 
-    public RiteWords ToRiteWords() => new(Number, PublishedOnUtc, Kind, Title, Text, HereticalTruth, Optional(Ailment), Tags ?? []);
+    public string? Form { get; init; }
+
+    public RiteWords ToRiteWords() => new(Number, PublishedOnUtc, Kind, Title, Text, HereticalTruth, Optional(Ailment), Tags ?? [], Optional(Form));
 }
