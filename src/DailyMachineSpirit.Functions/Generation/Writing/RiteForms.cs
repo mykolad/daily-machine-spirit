@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using DailyMachineSpirit.Data.Entities;
 using LanguageExt;
 
@@ -60,8 +61,10 @@ public static class RiteForms
 
     private static Option<RiteForm> Named(string title, IReadOnlyList<RiteForm> forms)
     {
-        // In the title's order: "Rite of Invocation" is a rite, whatever the list's order.
+        // In the title's order: "Rite of Invocation" is a rite, whatever the list's order. A word's punctuation isn't part of
+        // it: "The Vigil: Watching the Build" is a vigil.
         return title.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(3)
+            .Select(word => Regex.Replace(word, @"^\P{L}+|\P{L}+$", string.Empty))
             .SelectMany(word => forms.Where(form => string.Equals(form.Name, word, StringComparison.OrdinalIgnoreCase)))
             .HeadOrNone();
     }
