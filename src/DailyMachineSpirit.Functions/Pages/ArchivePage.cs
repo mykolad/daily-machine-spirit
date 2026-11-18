@@ -47,7 +47,7 @@ public static class ArchivePage
                 kicker: string.Empty,
                 heading: "The Archive",
                 sub: sub,
-                search: ArchiveSheet.Search(string.Empty, None) + ArchiveSheet.Orders(byVeneration: false),
+                search: ArchiveSheet.Search(string.Empty, None) + ArchiveSheet.Orders(byVeneration: false) + WitnessedLine(days.Count),
                 body: ArchiveRows.Months(rites, [], ArchiveRows.NoVotes, places),
                 below: ArchiveRows.More(olderThan.Map(Paths.ArchiveBefore), "Load older rites", "The archive ends here. Earlier knowledge is lost.", ArchiveSheet.Closing(days.Count)),
                 left: left,
@@ -143,9 +143,22 @@ public static class ArchivePage
         => kept == 0
             ? string.Empty
             : $"""
-                <div class="margin-witnessed" hidden>
+                <div class="margin-witnessed" data-witnessed-note hidden>
                 <p class="margin-label">Witnessed</p>
                 <p class="witnessed-count">You have witnessed <span data-witnessed>0</span> of {Html.Count(kept)}</p>
+                <label class="witnessed-only"><input type="checkbox" data-unwitnessed-only> Unwitnessed only</label>
+                <button type="button" class="text-button" data-forget-witnessed>Forget</button>
+                </div>
+                """;
+
+    // The same, as one line on the sheet under the orders, for a screen too narrow for the margins: the stylesheet shows
+    // one or the other, never both.
+    private static string WitnessedLine(int kept)
+        => kept == 0
+            ? string.Empty
+            : $"""
+                <div class="sheet-witnessed" data-witnessed-note hidden>
+                <span>Witnessed <span data-witnessed>0</span> of {Html.Count(kept)}</span>
                 <label class="witnessed-only"><input type="checkbox" data-unwitnessed-only> Unwitnessed only</label>
                 <button type="button" class="text-button" data-forget-witnessed>Forget</button>
                 </div>

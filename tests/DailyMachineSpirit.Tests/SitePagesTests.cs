@@ -822,7 +822,8 @@ public sealed class SitePagesTests : IAsyncLifetime
     }
 
     // What a reader has witnessed (#198) only their browser knows: the Archive is the same for everyone, its count hidden
-    // for the script to fill, and every page says where that memory is kept.
+    // for the script to fill (in the margin, and on the sheet for a narrow screen), and every page says where that memory
+    // is kept.
     [Fact]
     public async Task Archive_LeavesTheWitnessedCountToTheReadersBrowser()
     {
@@ -832,9 +833,11 @@ public sealed class SitePagesTests : IAsyncLifetime
         var (_, archive) = await Archive("");
         var (_, today) = await Today("");
 
-        Assert.Contains("""<div class="margin-witnessed" hidden>""", archive);
+        Assert.Contains("""<div class="margin-witnessed" data-witnessed-note hidden>""", archive);
         Assert.Contains("""<p class="witnessed-count">You have witnessed <span data-witnessed>0</span> of 3</p>""", archive);
-        Assert.DoesNotContain("""<div class="margin-witnessed""", empty);
+        Assert.Contains("""<div class="sheet-witnessed" data-witnessed-note hidden>""", archive);
+        Assert.Contains("""<span>Witnessed <span data-witnessed>0</span> of 3</span>""", archive);
+        Assert.DoesNotContain("data-witnessed-note hidden", empty);
         Assert.All([archive, today], html => Assert.Contains("The rites you have read are remembered only in your browser.", html));
     }
 

@@ -900,16 +900,17 @@ public static class Script
             });
             // Found again each time: the Archive's live search replaces its margins. Its text is changed only when it
             // differs, since every change is a mutation the observer below would answer again.
-            const note = document.querySelector('.margin-witnessed');
+            // Two notes, the margin's and the narrow screen's line on the sheet, kept alike.
+            const notes = document.querySelectorAll('[data-witnessed-note]');
             // A live search's results have no note, so no checkbox to undo the filter: it's dropped rather than hiding
             // witnessed matches unseen. The full Archive's note comes back unchecked.
-            if (!note) document.body.classList.remove('unwitnessed-only');
-            if (note) {
+            if (notes.length === 0) document.body.classList.remove('unwitnessed-only');
+            notes.forEach((note) => {
               note.hidden = false;
               const count = note.querySelector('[data-witnessed]');
               if (count.textContent !== String(known.size)) count.textContent = String(known.size);
               note.querySelector('[data-unwitnessed-only]').checked = document.body.classList.contains('unwitnessed-only');
-            }
+            });
           };
           function witness(number) {
             if (!Number.isInteger(number) || number < 1) return;
@@ -927,6 +928,8 @@ public static class Script
           document.addEventListener('change', (event) => {
             if (!event.target.matches?.('[data-unwitnessed-only]')) return;
             document.body.classList.toggle('unwitnessed-only', event.target.checked);
+            // The other note's checkbox follows, for a window resized across the margins' width.
+            markWitnessed();
           });
           document.addEventListener('click', (event) => {
             if (!event.target.closest?.('[data-forget-witnessed]')) return;

@@ -200,9 +200,10 @@ skills/                           — Consult the Machine Spirit, a skill that p
     until a new rite purges it).
   - **Witnessed rites** (#198): breaking a rite's seal records its number in the browser alone
     (`localStorage`, `dms-witnessed-v1`; never sent, signed in or not). The script marks those rows wherever rows are
-    (a check and a quieter title, "witnessed" for a screen reader), fills the Archive's hidden margin note ("You have
-    witnessed 12 of 214"), and offers "Unwitnessed only" and "Forget". Without the script nothing of it shows; the
-    footer says where that memory is kept.
+    (a red check on a row in grey, "witnessed" for a screen reader), fills the Archive's hidden margin note ("You have
+    witnessed 12 of 214"), and offers "Unwitnessed only" and "Forget". Below 1280px, without margins, the same is one
+    line on the sheet under the orders. Without the script nothing of it shows; the footer says where that memory is
+    kept.
   - **The rites before and after** (#195, `RiteSteps`): a rite's page links to them under its card, by number
     (`IRiteReader.GetNeighbours`: the nearest each way, so a gap is stepped over), and its head names them
     (`rel="prev"`, `rel="next"`); the script follows those on the arrow keys (not in a field, not with a modifier) and

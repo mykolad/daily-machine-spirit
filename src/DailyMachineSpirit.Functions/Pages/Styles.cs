@@ -213,9 +213,17 @@ public static class Styles
         .row-main{min-width:0;display:flex;flex-direction:column;gap:2px}
         .row-title{font-family:Cinzel,serif;font-weight:700;font-size:17px;line-height:1.2;color:#8f2a20;text-decoration:none}
         .row-title:hover{color:#8f2a20}
-        .row.witnessed .row-title{color:#5a4632}
+        .row.witnessed :is(.row-title,.row-title:hover,.row-line,.row-date,.row-number,.kind,.row-counts){color:#58514a}
+        .row.witnessed .row-tags .tag{border-color:rgba(88,81,74,.45);color:#58514a}
         .witnessed-mark{color:#8f2a20}
         .unwitnessed-only .row.witnessed{display:none}
+        .witnessed-only{display:flex;align-items:center;gap:8px;min-height:44px}
+        .witnessed-only input{width:18px;height:18px;accent-color:#c9a25a}
+        .sheet-witnessed{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;column-gap:16px;margin:0 0 8px;font-size:15px;color:#5c4a33}
+        .sheet-witnessed[hidden]{display:none}
+        .sheet-witnessed .witnessed-only input{accent-color:#8f2a20}
+        .sheet-witnessed .text-button{min-height:44px;color:#8f2a20}
+        .sheet-witnessed .text-button:hover{color:#5a1a14}
         .row-title:focus-visible{outline:none}
         .row-title::after{content:'';position:absolute;inset:0;border-radius:8px}
         .row-line{font-family:var(--serif);font-size:16px;line-height:1.45;color:#2b2117;text-wrap:pretty}
@@ -415,8 +423,7 @@ public static class Styles
         .margin-clear{font-weight:600;text-decoration:none}
         .margin-witnessed[hidden]{display:none}
         .witnessed-count{margin:0 0 8px}
-        .witnessed-only{display:flex;align-items:center;gap:8px;min-height:44px}
-        .witnessed-only input{width:18px;height:18px;accent-color:#c9a25a}
+        .sheet-witnessed{display:none}
         .month-index,.chapter-index,.other-subjects{grid-column:3;grid-row:1;align-self:start;display:flex;flex-direction:column;align-items:stretch;gap:12px;width:auto;margin-top:80px;padding-left:28px;border-left:1px solid #2f2820;text-align:left}
         .month-index .margin-label,.chapter-index .margin-label{margin:0}
         .month-index ul,.chapter-index ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
