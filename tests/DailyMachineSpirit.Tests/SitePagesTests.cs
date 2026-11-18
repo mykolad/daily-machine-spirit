@@ -821,6 +821,22 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.All(pages, page => Assert.DoesNotContain("noindex", page.Html));
     }
 
+    // Drawing a rite (#196) is in the nav on every page, and in the Archive's margin once there's a rite to draw.
+    [Fact]
+    public async Task EveryPage_OffersToDrawARite_AndTheArchiveToo_OnceThereAreRites()
+    {
+        var (_, emptyArchive) = await Archive("");
+        await AddRites(3);
+
+        var (_, today) = await Today("");
+        var (_, archive) = await Archive("");
+
+        Assert.All([today, archive, emptyArchive], html =>
+            Assert.Contains("""<a class="nav-draw" href="/draw" aria-label="Draw a rite" title="Draw a rite">""", html));
+        Assert.Contains("""<a class="margin-draw" href="/draw">Draw a rite</a>""", archive);
+        Assert.DoesNotContain("<a class=\"margin-draw\"", emptyArchive);
+    }
+
     // The rites read one after another (#195): a rite's page leads to the one before and the one after, as links and in
     // its head (which the arrow keys follow); the first has no previous, the newest no next. The newest is Today's, so the
     // step to it leads to Today, where the step back came from.

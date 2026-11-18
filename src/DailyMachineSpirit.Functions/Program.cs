@@ -73,6 +73,8 @@ if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOIN
 }
 
 builder.Services.AddSingleton(TimeProvider.System);
+// Drawing a rite (#196) without the script; tests seed their own.
+builder.Services.AddSingleton(Random.Shared);
 builder.Services.AddMetrics();
 builder.Services.AddSingleton<SiteMetrics>();
 

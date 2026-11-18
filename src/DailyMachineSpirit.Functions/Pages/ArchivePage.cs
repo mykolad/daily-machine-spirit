@@ -33,6 +33,7 @@ public static class ArchivePage
         var left = $"""
             <aside class="marginalia" aria-label="About the Archive">
             {ArchiveSheet.Note("Rites kept", $"""<p class="margin-number">{Html.Count(days.Count)}</p>""")}
+            {(days.Count == 0 ? string.Empty : $"""<a class="margin-draw" href="{Paths.Draw}">Draw a rite</a>""")}
             {since}
             {ArchiveSheet.Countdown(now)}
             </aside>

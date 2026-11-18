@@ -1,8 +1,8 @@
 namespace DailyMachineSpirit.Functions.Pages;
 
 /// <summary>
-/// The pages' only script: breaking the seal, copying links and text, the toast, the countdown's tick, voting, and
-/// stepping to the rite before or after by key or swipe.
+/// The pages' only script: breaking the seal, copying links and text, the toast, the countdown's tick, voting,
+/// drawing a rite, and stepping to the rite before or after by key or swipe.
 /// Everything it touches is already in the server's HTML, and without it a rite's truth is still shown (a noscript style).
 /// </summary>
 public static class Script
@@ -870,6 +870,38 @@ public static class Script
             });
           });
 
+          // Drawing a rite (#196): chosen here, from the search index Cloudflare keeps, so every page stays the same for
+          // everyone and no request says what was drawn. Never the rite shown, nor one drawn this session until every one
+          // has been. A failure falls back to /draw, which draws on the server.
+          const drawnKey = 'dms-drawn';
+          const drawnSoFar = () => {
+            try { return JSON.parse(sessionStorage.getItem(drawnKey) ?? '[]'); } catch { return []; }
+          };
+          document.addEventListener('click', async (event) => {
+            const draw = event.target.closest?.('a[href="/draw"]');
+            if (!draw || event.button !== 0 || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+            event.preventDefault();
+            try {
+              const response = await fetch('/api/search-index');
+              if (!response.ok) throw new Error(String(response.status));
+              const shown = Number(document.querySelector('[data-rite]')?.dataset.rite);
+              const all = (await response.json()).map((rite) => rite.number).filter((number) => number !== shown);
+              let drawn = drawnSoFar();
+              let left = all.filter((number) => !drawn.includes(number));
+              if (left.length === 0) { drawn = []; left = all; }
+              if (left.length === 0) { location.href = draw.href; return; }
+              const number = left[Math.floor(Math.random() * left.length)];
+              try { sessionStorage.setItem(drawnKey, JSON.stringify([...drawn, number])); } catch { /* drawn again, then */ }
+              location.href = `/r/${number}?drawn`;
+            } catch {
+              location.href = draw.href;
+            }
+          });
+          // Arriving by a draw, the lots are announced, and the address drops ?drawn, so a link shared from here is the rite's.
+          if (new URLSearchParams(location.search).has('drawn')) {
+            say(`The lots have fallen · No. ${location.pathname.split('/').pop()}`);
+            history.replaceState(null, '', location.pathname + location.hash);
+          }
           // The rites before and after (#195): the arrow keys and a swipe follow the head's rel=prev and rel=next, as the
           // links under a rite do. Not while typing or choosing in a field, nor with a modifier (the browser's own keys).
           const stepTo = (rel) => document.querySelector(`link[rel=${rel}]`)?.href;
