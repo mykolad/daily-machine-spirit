@@ -85,7 +85,7 @@ is resolved once they stop, instead of repeating until the old ones leave its wi
 | **No rite today** | Today doesn't show today's rite at 02:00 UTC, after the timer and its retries. A workflow (**Check Today's Rite**), not Grafana: it reads the page readers get, through Cloudflare's cache, and opens an issue. |
 | **Refills failing** | a backlog refill failed all three tries within an hour (its error logs) |
 | **Backlog ran empty** | publishing found no waiting draft more than once in a week (its warning logs) |
-| **Drafts not fully judged** | two or more drafts in a day joined the backlog without their scores or repeat check: the quality judge, Jev or the repeat check failed (the refiller's warning logs, whose Reason says which) |
+| **Drafts not fully judged** | two or more refill warnings in a day: a draft joined the backlog without its scores, repeat check or rewrite, or unscored drafts couldn't be scored later (the refiller's warning logs, whose message says which step failed and Reason why; one draft can warn twice) |
 | **Server errors** | more than 5% of requests answered 5xx for ten minutes, over at least ten requests |
 | **Today unreachable or stale** | more than half of the last 45 minutes' synthetic checks of Today failed (six runs): no 200, a `STALE` copy from Cloudflare (the app didn't answer), or yesterday's rite after 01:30 UTC (below) |
 | **No telemetry from production** | nothing for 26 hours: the midnight timer wakes the app every day, so silence means a broken export or a dead app |

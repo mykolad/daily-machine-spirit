@@ -74,7 +74,7 @@
           "model": {
             "refId": "Warnings",
             "queryType": "instant",
-            "legendFormat": "drafts not fully judged in the day before",
+            "legendFormat": "refill warnings in the day before",
             "expr": "sum(count_over_time({service_name=\"machinespirit-app\"} | scope_name=\"DailyMachineSpirit.Functions.Generation.BacklogRefiller\" | detected_level=\"warn\" [1d])) and sum(count_over_time({service_name=\"machinespirit-app\"} | scope_name=\"DailyMachineSpirit.Functions.Generation.BacklogRefiller\" | detected_level=\"warn\" [10m])) > 0"
           }
         },
@@ -88,8 +88,8 @@
       "execErrState": "Error",
       "for": "0s",
       "annotations": {
-        "summary": "{{ printf \"%.0f\" $values.Warnings.Value }} drafts in the last day joined the backlog without their scores or repeat check (it alerts at 2).",
-        "description": "What it means: a model behind the refill failed, either the quality judge, Jev (the scores for More rites) or the repeat check. One a day can be a passing blip; a refill after publishing writes about one draft a day. The drafts still join the backlog: an unscored one goes last in the Augury until the next refill scores it, and one not checked for repeats is never checked again. It fires while warnings keep coming, and is resolved ten minutes after the last, so a day's count doesn't email every four hours. What to do: each warning's Reason says which model failed and why, e.g. a 429 rate limit (two Summons at once), an expired key, or a model down. Explore, the logs data source, {service_name=\"machinespirit-app\"} | scope_name=\"DailyMachineSpirit.Functions.Generation.BacklogRefiller\" | detected_level=\"warn\". Read any draft the warnings say wasn't checked for repeats yourself."
+        "summary": "{{ printf \"%.0f\" $values.Warnings.Value }} refill warnings in the last day: drafts that joined the backlog not fully judged, or drafts that couldn't be scored later (it alerts at 2).",
+        "description": "What it means: a step of the refill failed. Each warning is one of these: a draft joined the backlog without its scores (the quality judge or Jev, the scores for More rites), wasn't checked for repeats, or repeats an older rite and couldn't be written again; an unscored draft couldn't be scored at the next refill; or the unscored drafts couldn't be listed (the database). One draft can warn twice, so the count is warnings, not drafts. One a day can be a passing blip; a refill after publishing writes about one draft a day. The drafts still join the backlog: an unscored one goes last in the Augury until the next refill scores it, and one not checked for repeats is never checked again. It fires while warnings keep coming, and is resolved ten minutes after the last, so a day's count doesn't email every four hours. What to do: each warning's message says which step failed, and its Reason why, e.g. a 429 rate limit (two Summons at once), an expired key, a model down, or the database unreachable. Explore, the logs data source, {service_name=\"machinespirit-app\"} | scope_name=\"DailyMachineSpirit.Functions.Generation.BacklogRefiller\" | detected_level=\"warn\". Read any draft the warnings say wasn't checked for repeats yourself."
       }
     },
     {
