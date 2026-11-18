@@ -203,6 +203,12 @@ skills/                           — Consult the Machine Spirit, a skill that p
     the rite shown, nor one drawn this session (`sessionStorage`) until every one has been. Without it, `/draw`
     redirects to a random rite (`DrawFunction`, `no-store`, rate-limited at Cloudflare). Either way the page gets
     `?drawn`, which the script announces in a toast and drops from the address.
+  - **The rites before and after** (#195, `RiteSteps`): a rite's page links to them under its card, by number
+    (`IRiteReader.GetNeighbours`: the nearest each way, so a gap is stepped over), and its head names them
+    (`rel="prev"`, `rel="next"`); the script follows those on the arrow keys (not in a field, not with a modifier) and
+    a long sideways swipe. Today names only the rite before, in its head: its list of recent rites shows it already.
+    The step to the newest rite leads to Today, so left then right comes back there. A new rite purges the pages of
+    the two rites before it: the one before now has a next, and the one before that leads to it instead of Today.
   - **The feed** (`/feed.xml`, `Feeds/`, #192): the newest 30 rites as Atom, each its title, page, day (00:00 UTC),
     kind and subjects, and its text as HTML ending with a link to break the seal (never the truth). Every page's head
     names it (`rel="alternate"`), and the footer links it. A contract with outside clients like the API

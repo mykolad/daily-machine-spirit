@@ -44,6 +44,9 @@ public sealed class SwitchableRites : IRiteRepository
 
     public Task<Either<Error, List<RiteDay>>> GetDays(CancellationToken cancellationToken) => Counted(() => Current.GetDays(cancellationToken));
 
+    public Task<Either<Error, RiteNeighbours>> GetNeighbours(int number, CancellationToken cancellationToken)
+        => Counted(() => Current.GetNeighbours(number, cancellationToken));
+
     public Task<Either<Error, List<RiteVotes>>> GetVotes(CancellationToken cancellationToken) => Counted(() => Current.GetVotes(cancellationToken));
 
     public Task<Either<Error, List<RiteWords>>> GetAllWords(CancellationToken cancellationToken) => Counted(() => Current.GetAllWords(cancellationToken));

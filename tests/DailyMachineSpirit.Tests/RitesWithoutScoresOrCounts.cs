@@ -40,6 +40,8 @@ public sealed class RitesWithoutScoresOrCounts : IRiteRepository
 
     public Task<Either<Error, List<RiteDay>>> GetDays(CancellationToken cancellationToken) => rites.GetDays(cancellationToken);
 
+    public Task<Either<Error, RiteNeighbours>> GetNeighbours(int number, CancellationToken cancellationToken) => rites.GetNeighbours(number, cancellationToken);
+
     public Task<Either<Error, List<RiteVotes>>> GetVotes(CancellationToken cancellationToken)
         => Task.FromResult<Either<Error, List<RiteVotes>>>(Error.New("Cosmos didn't answer."));
 
