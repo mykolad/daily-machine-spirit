@@ -32,9 +32,6 @@ public static class Svg
     public const string RubricDivider =
         """<svg class="divider" viewBox="0 0 120 12" width="120" height="12" fill="none" aria-hidden="true"><path d="M0 6h46M74 6h46" stroke="#8f2a20" stroke-width="1.2"></path><path d="M60 0l6 6-6 6-6-6z" fill="#8f2a20"></path></svg>""";
 
-    public const string BrassDivider =
-        """<svg class="divider" viewBox="0 0 120 12" width="120" height="12" fill="none" aria-hidden="true"><path d="M0 6h46M74 6h46" stroke="#84662c" stroke-width="1.2"></path><path d="M60 0l6 6-6 6-6-6z" fill="#84662c"></path></svg>""";
-
     /// <summary>The Archive's seal at its end: Today's wax seal, whole and never broken.</summary>
     public const string ClosingSeal = $"""<span class="closing-seal">{WaxSeal}</span>""";
 

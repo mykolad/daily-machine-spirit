@@ -1,4 +1,3 @@
-using System.Text;
 using DailyMachineSpirit.Data.Entities;
 using static LanguageExt.Prelude;
 
@@ -45,33 +44,15 @@ public static class TodayPage
             {Epigraph}
             """);
 
-    // Small parchments, kind and day and title alone: enough to pick one, and the archive is a link away. Each card is
-    // one link, its focus ring outside it on the dark ground.
+    // The archive is a link away, after the cards.
     private static string Recent(IReadOnlyList<Rite> recent)
-    {
-        if (recent.Count == 0)
-        {
-            return string.Empty;
-        }
-
-        var cards = new StringBuilder();
-        foreach (var other in recent)
-        {
-            cards.Append($"""
-                <li><a class="recent-card" href="{Paths.Rite(other.Number)}">
-                <span class="recent-kicker">A {(other.Writing.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL")} · {ImperialDate.InALink(other.PublishedOnUtc, "recent-date")}</span>
-                <span class="recent-title">{Html.Encode(other.Writing.Title)}</span>
-                {Svg.SmallSeal}
-                </a></li>
-                """);
-        }
-
-        return $"""
-            <section class="recent" aria-labelledby="recent-rites">
-            <h2 id="recent-rites">Recent rites</h2>
-            <ul class="recent-list">{cards}</ul>
-            <a class="recent-archive" href="{Paths.Archive}">Open the Archive<span aria-hidden="true"> →</span></a>
-            </section>
-            """;
-    }
+        => recent.Count == 0
+            ? string.Empty
+            : $"""
+                <section class="shelf" aria-labelledby="recent-rites">
+                <h2 id="recent-rites">Recent rites</h2>
+                {ParchmentCards.List(recent)}
+                <a class="shelf-archive" href="{Paths.Archive}">Open the Archive<span aria-hidden="true"> →</span></a>
+                </section>
+                """;
 }
