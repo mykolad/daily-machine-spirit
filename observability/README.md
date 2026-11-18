@@ -72,15 +72,18 @@ Nothing about the caller: ASP.NET Core's request spans aren't exported (they car
 
 ## The alerts
 
-Production only (the service `machinespirit-app`), so staging's experiments never wake anyone. Each one's description says
-what to look at.
+Production only (the service `machinespirit-app`), so staging's experiments never wake anyone. Each email should be
+readable without Grafana: its summary gives the number counted and where the rule fires, and its description says what
+that means and what to do. In Values, each query is named for what it counts (`Warnings=4`), and `Firing=1` is the
+rule's own condition. On the rule's page in Grafana, the line is that count and the red line is where the rule fires;
+it fires while the line is past the red one.
 
 | Alert | Fires when |
 |---|---|
 | **No rite today** | Today doesn't show today's rite at 02:00 UTC, after the timer and its retries. A workflow (**Check Today's Rite**), not Grafana: it reads the page readers get, through Cloudflare's cache, and opens an issue. |
 | **Refills failing** | a backlog refill failed all three tries within an hour (its error logs) |
 | **Backlog ran empty** | publishing found no waiting draft more than once in a week (its warning logs) |
-| **Jev failing** | two or more drafts in a day couldn't be judged (the refiller's warning logs) |
+| **Drafts not fully judged** | two or more drafts in a day joined the backlog without their scores or repeat check: the quality judge, Jev or the repeat check failed (the refiller's warning logs, whose Reason says which) |
 | **Server errors** | more than 5% of requests answered 5xx for ten minutes, over at least ten requests |
 | **Today unreachable or stale** | more than half of the last 45 minutes' synthetic checks of Today failed (six runs): no 200, a `STALE` copy from Cloudflare (the app didn't answer), or yesterday's rite after 01:30 UTC (below) |
 | **No telemetry from production** | nothing for 26 hours: the midnight timer wakes the app every day, so silence means a broken export or a dead app |
