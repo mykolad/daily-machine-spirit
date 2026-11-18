@@ -45,7 +45,7 @@
             "refId": "EmptyBacklog",
             "queryType": "instant",
             "legendFormat": "times publishing found no draft, in the week before",
-            "expr": "sum(count_over_time({service_name=\"machinespirit-app\"} | scope_name=\"DailyMachineSpirit.Functions.Generation.DailyRitePublisher\" | detected_level=\"warn\" [7d]))"
+            "expr": "sum(count_over_time({service_name=\"machinespirit-app\"} | scope_name=\"DailyMachineSpirit.Functions.Generation.DailyRitePublisher\" | detected_level=\"warn\" [7d])) and sum(count_over_time({service_name=\"machinespirit-app\"} | scope_name=\"DailyMachineSpirit.Functions.Generation.DailyRitePublisher\" | detected_level=\"warn\" [10m])) > 0"
           }
         },
         {
@@ -59,7 +59,7 @@
       "for": "0s",
       "annotations": {
         "summary": "Publishing found the backlog empty {{ printf \"%.0f\" $values.EmptyBacklog.Value }} times this week (it alerts at 2).",
-        "description": "What it means: each of those days, the rite was written on the spot and published unmoderated. Refills aren't keeping up. What to do: check whether Refills failing fired too, then Summon New Rites in the Scriptorium."
+        "description": "What it means: each of those days, the rite was written on the spot and published unmoderated. Refills aren't keeping up. It fires when publishing finds the backlog empty again, and is resolved ten minutes later, so a week's count doesn't email every four hours. What to do: check whether Refills failing fired too, then Summon New Rites in the Scriptorium."
       }
     },
     {
@@ -75,7 +75,7 @@
             "refId": "Warnings",
             "queryType": "instant",
             "legendFormat": "drafts not fully judged in the day before",
-            "expr": "sum(count_over_time({service_name=\"machinespirit-app\"} | scope_name=\"DailyMachineSpirit.Functions.Generation.BacklogRefiller\" | detected_level=\"warn\" [1d]))"
+            "expr": "sum(count_over_time({service_name=\"machinespirit-app\"} | scope_name=\"DailyMachineSpirit.Functions.Generation.BacklogRefiller\" | detected_level=\"warn\" [1d])) and sum(count_over_time({service_name=\"machinespirit-app\"} | scope_name=\"DailyMachineSpirit.Functions.Generation.BacklogRefiller\" | detected_level=\"warn\" [10m])) > 0"
           }
         },
         {
@@ -89,7 +89,7 @@
       "for": "0s",
       "annotations": {
         "summary": "{{ printf \"%.0f\" $values.Warnings.Value }} drafts in the last day joined the backlog without their scores or repeat check (it alerts at 2).",
-        "description": "What it means: a model behind the refill failed, either the quality judge, Jev (the scores for More rites) or the repeat check. One a day can be a passing blip; a refill after publishing writes about one draft a day. The drafts still join the backlog: an unscored one goes last in the Augury until the next refill scores it, and one not checked for repeats is never checked again. What to do: each warning's Reason says which model failed and why, e.g. a 429 rate limit (two Summons at once), an expired key, or a model down. Explore, the logs data source, {service_name=\"machinespirit-app\"} | scope_name=\"DailyMachineSpirit.Functions.Generation.BacklogRefiller\" | detected_level=\"warn\". Read any draft the warnings say wasn't checked for repeats yourself."
+        "description": "What it means: a model behind the refill failed, either the quality judge, Jev (the scores for More rites) or the repeat check. One a day can be a passing blip; a refill after publishing writes about one draft a day. The drafts still join the backlog: an unscored one goes last in the Augury until the next refill scores it, and one not checked for repeats is never checked again. It fires while warnings keep coming, and is resolved ten minutes after the last, so a day's count doesn't email every four hours. What to do: each warning's Reason says which model failed and why, e.g. a 429 rate limit (two Summons at once), an expired key, or a model down. Explore, the logs data source, {service_name=\"machinespirit-app\"} | scope_name=\"DailyMachineSpirit.Functions.Generation.BacklogRefiller\" | detected_level=\"warn\". Read any draft the warnings say wasn't checked for repeats yourself."
       }
     },
     {

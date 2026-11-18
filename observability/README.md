@@ -76,7 +76,9 @@ Production only (the service `machinespirit-app`), so staging's experiments neve
 readable without Grafana: its summary gives the number counted and where the rule fires, and its description says what
 that means and what to do. In Values, each query is named for what it counts (`Warnings=4`), and `Firing=1` is the
 rule's own condition. On the rule's page in Grafana, the line is that count and the red line is where the rule fires;
-it fires while the line is past the red one.
+it fires while the line is past the red one. A firing alert is emailed again every four hours (the default notification
+policy), so a rule counting over a day or a week fires only while new events come (one in the last ten minutes), and
+is resolved once they stop, instead of repeating until the old ones leave its window.
 
 | Alert | Fires when |
 |---|---|
