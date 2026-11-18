@@ -152,11 +152,11 @@ public static class Styles
         .shelf h2::before,.shelf h2::after{content:'';width:clamp(40px,12vw,100px);height:1px;background:#84662c}
         .parchments{align-self:stretch;list-style:none;margin:0 calc(-1*clamp(16px,4vw,40px));padding:8px clamp(16px,4vw,40px);display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:clamp(16px,4vw,40px)}
         .parchments li{flex:none;width:150px;display:flex;scroll-snap-align:start}
-        .parchment{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;gap:10px;padding:22px 16px 20px;border-radius:14px;background:#ebdfc2;color:#8f2a20;text-align:center;text-decoration:none;box-shadow:0 12px 30px rgba(0,0,0,.45)}
-        .parchment::before{content:'';position:absolute;inset:8px;border:1px solid #8f2a20;border-radius:8px;pointer-events:none}
-        .parchment:hover{background:#f6eedb;color:#8f2a20}
-        .parchment-kicker{font-family:Cinzel,serif;font-weight:700;font-size:12px;letter-spacing:.2em}
-        .parchment-title{flex:1;font-family:Cinzel,serif;font-weight:700;font-size:18px;line-height:1.15;text-wrap:balance}
+        .parchment-card{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;gap:10px;padding:22px 16px 20px;border-radius:14px;background:#ebdfc2;color:#8f2a20;text-align:center;text-decoration:none;box-shadow:0 12px 30px rgba(0,0,0,.45)}
+        .parchment-card::before{content:'';position:absolute;inset:8px;border:1px solid #8f2a20;border-radius:8px;pointer-events:none}
+        .parchment-card:hover{background:#f6eedb;color:#8f2a20}
+        .parchment-card-kicker{font-family:Cinzel,serif;font-weight:700;font-size:12px;letter-spacing:.2em}
+        .parchment-card-title{flex:1;font-family:Cinzel,serif;font-weight:700;font-size:18px;line-height:1.15;text-wrap:balance}
         .shelf-archive{display:inline-flex;align-items:center;min-height:44px;font-weight:600;text-decoration:none}
         @media (min-width:700px){
         .shelf{margin-top:clamp(44px,10vw,128px);gap:24px}

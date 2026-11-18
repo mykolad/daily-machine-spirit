@@ -173,7 +173,7 @@ public sealed class SitePagesTests : IAsyncLifetime
 
         Assert.Contains("""<h2 class="rite-title" id="rite-title">Rite 6</h2>""", html);
         Assert.Equal(
-            new[] { 5, 4, 3, 2 }.Select(number => $"/r/{number} A RITUAL · {ImperialDate.InALink(Day.AddDays(number - 6), "parchment-date")} Rite {number}"),
+            new[] { 5, 4, 3, 2 }.Select(number => $"/r/{number} A RITUAL · {ImperialDate.InALink(Day.AddDays(number - 6), "parchment-card-date")} Rite {number}"),
             Parchments(html));
     }
 
@@ -189,7 +189,7 @@ public sealed class SitePagesTests : IAsyncLifetime
         var (_, html) = await Rite("1");
 
         Assert.Equal(
-            new[] { 4, 3, 2 }.Select(number => $"/r/{number} A RITUAL · {ImperialDate.InALink(Day.AddDays(number - 4), "parchment-date")} Rite {number}"),
+            new[] { 4, 3, 2 }.Select(number => $"/r/{number} A RITUAL · {ImperialDate.InALink(Day.AddDays(number - 4), "parchment-card-date")} Rite {number}"),
             Parchments(html));
         Assert.Contains("""<ul class="parchments parchments-few">""", html);
     }
@@ -1178,13 +1178,13 @@ public sealed class SitePagesTests : IAsyncLifetime
 
     // The small parchments (Today's recent rites, More rites): each one's address, kicker and title, in order.
     private static List<string> Parchments(string html)
-        => Regex.Matches(html, """<a class="parchment" href="(/r/\d+)">\s*<span class="parchment-kicker">(.+?)</span>\s*<span class="parchment-title">([^<]+)</span>""")
+        => Regex.Matches(html, """<a class="parchment-card" href="(/r/\d+)">\s*<span class="parchment-card-kicker">(.+?)</span>\s*<span class="parchment-card-title">([^<]+)</span>""")
             .Select(card => $"{card.Groups[1].Value} {card.Groups[2].Value} {card.Groups[3].Value}")
             .ToList();
 
     // The small parchments' titles, in order: More rites on a rite's page.
     private static List<string> MoreTitles(string html)
-        => html.Split("""<span class="parchment-title">""").Skip(1).Select(part => part[..part.IndexOf("</span>", StringComparison.Ordinal)]).ToList();
+        => html.Split("""<span class="parchment-card-title">""").Skip(1).Select(part => part[..part.IndexOf("</span>", StringComparison.Ordinal)]).ToList();
 
     // The archive rows' titles, in order, without a search's marks.
     private static List<string> Titles(string html)

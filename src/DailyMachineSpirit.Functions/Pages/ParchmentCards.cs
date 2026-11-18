@@ -17,9 +17,9 @@ public static class ParchmentCards
         foreach (var rite in rites)
         {
             cards.Append($"""
-                <li><a class="parchment" href="{Paths.Rite(rite.Number)}">
-                <span class="parchment-kicker">A {(rite.Writing.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL")} · {ImperialDate.InALink(rite.PublishedOnUtc, "parchment-date")}</span>
-                <span class="parchment-title">{Html.Encode(rite.Writing.Title)}</span>
+                <li><a class="parchment-card" href="{Paths.Rite(rite.Number)}">
+                <span class="parchment-card-kicker">A {(rite.Writing.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL")} · {ImperialDate.InALink(rite.PublishedOnUtc, "parchment-card-date")}</span>
+                <span class="parchment-card-title">{Html.Encode(rite.Writing.Title)}</span>
                 {Svg.SmallSeal}
                 </a></li>
                 """);
