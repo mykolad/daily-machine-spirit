@@ -263,7 +263,7 @@ public sealed class SitePages
             Left: error =>
             {
                 logger.LogWarning(error.ToException(), "Rite NO. {Number} is shown without the rites before and after: {Reason}", number, error.Message);
-                return new RiteNeighbours(None, None);
+                return new RiteNeighbours(None, None, false);
             });
 
     // Read beside the page's own rites, so it adds no wait.

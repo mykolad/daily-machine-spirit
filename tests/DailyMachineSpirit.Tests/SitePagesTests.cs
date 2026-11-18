@@ -807,21 +807,25 @@ public sealed class SitePagesTests : IAsyncLifetime
     }
 
     // The rites read one after another (#195): a rite's page leads to the one before and the one after, as links and in
-    // its head (which the arrow keys follow); the first has no previous, the newest no next.
+    // its head (which the arrow keys follow); the first has no previous, the newest no next. The newest is Today's, so the
+    // step to it leads to Today, where the step back came from.
     [Fact]
     public async Task ARitesPage_LeadsToTheRitesBeforeAndAfter()
     {
-        await AddRites(3);
+        await AddRites(4);
 
         var (_, first) = await Rite("1");
         var (_, middle) = await Rite("2");
-        var (_, newest) = await Rite("3");
+        var (_, beforeTodays) = await Rite("3");
+        var (_, newest) = await Rite("4");
 
-        Assert.Equal(["next 2 Rite 2"], Steps(first));
-        Assert.Equal(["prev 1 Rite 1", "next 3 Rite 3"], Steps(middle));
-        Assert.Equal(["prev 2 Rite 2"], Steps(newest));
+        Assert.Equal(["next /r/2 Rite 2"], Steps(first));
+        Assert.Equal(["prev /r/1 Rite 1", "next /r/3 Rite 3"], Steps(middle));
+        Assert.Equal(["prev /r/2 Rite 2", "next / Rite 4"], Steps(beforeTodays));
+        Assert.Equal(["prev /r/3 Rite 3"], Steps(newest));
         Assert.Contains("""<link rel="prev" href="/r/1">""", middle);
         Assert.Contains("""<link rel="next" href="/r/3">""", middle);
+        Assert.Contains("""<link rel="next" href="/">""", beforeTodays);
         Assert.DoesNotContain("""rel="next""", newest);
         Assert.Contains("""<span class="sr-only">Previous rite, </span><span class="rite-step-number"><span aria-hidden="true">← NO. </span>1</span>""", middle);
     }
@@ -1145,7 +1149,7 @@ public sealed class SitePagesTests : IAsyncLifetime
 
     // The links to the rites before and after, in order: which way, the number and the title.
     private static List<string> Steps(string html)
-        => Regex.Matches(html, """<a class="rite-step[^"]*" href="/r/(\d+)" rel="(prev|next)">.*?<span class="rite-step-title">(.*?)</span></a>""")
+        => Regex.Matches(html, """<a class="rite-step[^"]*" href="([^"]+)" rel="(prev|next)">.*?<span class="rite-step-title">(.*?)</span></a>""")
             .Select(match => $"{match.Groups[2].Value} {match.Groups[1].Value} {match.Groups[3].Value}")
             .ToList();
 

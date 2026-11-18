@@ -320,7 +320,8 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
 
     private RiteRepository Repository => new(cosmos.Container, TimeProvider.System, NullLogger<RiteRepository>.Instance);
 
-    // The rites just before and after, by number: the first has none before, the newest none after.
+    // The rites just before and after, by number: the first has none before, the newest none after. Only the one before
+    // the newest has the newest after it.
     [Fact]
     public async Task GetNeighbours_AreTheRitesJustBeforeAndAfter()
     {
@@ -331,8 +332,8 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
         var around = await Task.WhenAll(new[] { 1, 2, 3 }.Select(number => Repository.GetNeighbours(number, CancellationToken.None)));
 
         Assert.Equal(
-            ["- 2 Second", "1 First 3 Third", "2 Second -"],
-            around.Select(Ok).Select(found => $"{Said(found.Previous)} {Said(found.Next)}"));
+            ["- 2 Second", "1 First 3 Third (newest)", "2 Second -"],
+            around.Select(Ok).Select(Said));
     }
 
     // The fallback's copy answers the same, and steps over a number that's missing.
@@ -346,10 +347,13 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
             MakeRite(new DateOnly(2026, 10, 4), "First") with { Number = 1 },
         ]);
 
-        var found = Ok(await copy.GetNeighbours(2, CancellationToken.None));
+        var around = await Task.WhenAll(new[] { 1, 2 }.Select(number => copy.GetNeighbours(number, CancellationToken.None)));
 
-        Assert.Equal("1 First 4 Fourth", $"{Said(found.Previous)} {Said(found.Next)}");
+        Assert.Equal(["- 2 Second", "1 First 4 Fourth (newest)"], around.Select(Ok).Select(Said));
     }
+
+    private static string Said(RiteNeighbours neighbours)
+        => $"{Said(neighbours.Previous)} {Said(neighbours.Next)}{(neighbours.NextIsNewest ? " (newest)" : string.Empty)}";
 
     private static string Said(Option<RiteHeading> rite) => rite.Match(Some: found => $"{found.Number} {found.Title}", None: () => "-");
 

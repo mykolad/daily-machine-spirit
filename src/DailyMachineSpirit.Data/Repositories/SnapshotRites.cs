@@ -42,9 +42,13 @@ public sealed class SnapshotRites : IRiteReader
 
     // Newest first: the first older one is just before, the last newer one just after.
     public Task<Either<Error, RiteNeighbours>> GetNeighbours(int number, CancellationToken cancellationToken)
-        => Answer(new RiteNeighbours(
+    {
+        var after = rites.Where(rite => rite.Number > number).ToList();
+        return Answer(new RiteNeighbours(
             rites.Where(rite => rite.Number < number).Select(Heading).HeadOrNone(),
-            rites.Where(rite => rite.Number > number).Select(Heading).LastOrNone()));
+            after.Select(Heading).LastOrNone(),
+            after.Count == 1));
+    }
 
     public Task<Either<Error, List<RiteDay>>> GetDays(CancellationToken cancellationToken)
         => Answer(rites.Select(rite => new RiteDay(rite.Number, rite.PublishedOnUtc)).ToList());

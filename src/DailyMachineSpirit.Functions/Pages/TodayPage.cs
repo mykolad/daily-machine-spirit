@@ -20,7 +20,7 @@ public static class TodayPage
         var marginCountdown = $"""<div class="margin-countdown"><p class="margin-label">Next litany in</p><p class="margin-value" {Countdown.Attribute(now)}>{countdown}</p></div>""";
         // The rite before is the first of the recent ones, which the page lists already: only the head names it (and the
         // arrow keys follow it), so it isn't shown twice.
-        var before = new RiteNeighbours(recent.HeadOrNone().Map(previous => new RiteHeading(previous.Number, previous.Writing.Title)), None);
+        var before = new RiteNeighbours(recent.HeadOrNone().Map(previous => new RiteHeading(previous.Number, previous.Writing.Title)), None, false);
         return Layout.Page(string.Empty, Html.FirstLine(rite.Writing.Text.Replace("`", string.Empty)), RiteSteps.Listed(listing, before), Section.Today, $"""
             {Masthead.Render(isHeading: true)}
             {RiteCard.Render(rite, ownPage: false, countedAt: now, marginNotes: marginCountdown, places)}
