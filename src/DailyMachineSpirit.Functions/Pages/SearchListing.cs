@@ -29,5 +29,11 @@ public sealed record SearchListing
     /// <summary>JSON-LD describing the page's subject (<see cref="RiteStructuredData"/>), when it has one.</summary>
     public Option<string> StructuredData { get; init; }
 
+    /// <summary>The page before this one in a sequence (the rite before), which the head names as <c>rel="prev"</c>.</summary>
+    public Option<string> Previous { get; init; }
+
+    /// <summary>The page after it (the rite after), as <c>rel="next"</c>.</summary>
+    public Option<string> Next { get; init; }
+
     public static SearchListing At(string origin, string path) => new(Some(origin + path));
 }

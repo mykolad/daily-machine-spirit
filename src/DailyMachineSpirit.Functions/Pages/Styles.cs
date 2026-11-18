@@ -173,6 +173,12 @@ public static class Styles
         .more-list li{display:flex}
         .more-card{flex:1;display:flex;flex-direction:column;gap:10px;padding:22px;border-radius:20px;background:#1a1612;border:1px solid rgba(237,227,207,.1);color:#ede3cf;text-decoration:none}
         .more-card:hover{background:#231e18;border-color:#c9a25a;color:#ede3cf}
+        .rite-steps{display:flex;justify-content:space-between;gap:16px;width:100%;margin:28px 0 8px;text-align:left}
+        .rite-step{display:flex;flex-direction:column;gap:4px;min-height:44px;max-width:calc(50% - 8px);padding:10px 4px;color:#ede3cf;text-decoration:none}
+        .rite-step-next{margin-left:auto;align-items:flex-end;text-align:right}
+        .rite-step-number{font-family:Cinzel,serif;font-weight:700;font-size:13px;letter-spacing:.16em;color:#c9a25a}
+        .rite-step-title{font-size:17px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+        .rite-step:hover .rite-step-title{text-decoration:underline}
         .more-title{font-family:Cinzel,serif;font-weight:700;font-size:19px;line-height:1.2}
         .sheet{position:relative;width:100%;max-width:740px;padding:12px;border-radius:18px;background:#ebdfc2;color:#2b2117;text-align:left;box-shadow:0 0 120px rgba(240,180,90,.16),0 24px 70px rgba(0,0,0,.55),inset 0 0 80px rgba(140,100,40,.2)}
         .sheet::before{content:'';position:absolute;left:50%;top:320px;z-index:-1;width:600px;height:920px;transform:translate(-50%,-50%);background:radial-gradient(ellipse 300px 460px,#2b2117 0%,#18140f 55%,rgba(16,14,11,0) 100%);pointer-events:none}
