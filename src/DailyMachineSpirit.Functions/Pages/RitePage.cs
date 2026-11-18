@@ -1,4 +1,3 @@
-using System.Text;
 using DailyMachineSpirit.Data.Entities;
 
 namespace DailyMachineSpirit.Functions.Pages;
@@ -19,31 +18,14 @@ public static class RitePage
     private static SearchListing AboutTheRite(Rite rite, SearchListing listing)
         => listing with { OpenGraphType = "article", StructuredData = listing.Canonical.Map(url => RiteStructuredData.Json(rite, url)) };
 
+    // The same small parchments as Today's recent rites.
     private static string MoreRites(IReadOnlyList<Rite> more)
-    {
-        if (more.Count == 0)
-        {
-            return string.Empty;
-        }
-
-        var cards = new StringBuilder();
-        foreach (var other in more)
-        {
-            cards.Append($"""
-                <li><a class="more-card" href="{Paths.Rite(other.Number)}">
-                <span class="kind">{(other.Writing.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL")} · {ImperialDate.InALink(other.PublishedOnUtc, "more-date")}</span>
-                <span class="more-title">{Html.Encode(other.Writing.Title)}</span>
-                <span class="row-first">{Html.WithInlineCode(Html.FirstLine(other.Writing.Text))}</span>
-                </a></li>
-                """);
-        }
-
-        return $"""
-            <section class="more" aria-labelledby="more-rites">
-            <h2 id="more-rites">More rites</h2>
-            {Svg.BrassDivider}
-            <ul class="more-list">{cards}</ul>
-            </section>
-            """;
-    }
+        => more.Count == 0
+            ? string.Empty
+            : $"""
+                <section class="shelf" aria-labelledby="more-rites">
+                <h2 id="more-rites">More rites</h2>
+                {ParchmentCards.List(more)}
+                </section>
+                """;
 }

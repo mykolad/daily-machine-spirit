@@ -229,7 +229,8 @@ skills/                           — Consult the Machine Spirit, a skill that p
   - **More rites** (a rite's own page): the three rites whose similarity scores are closest (cosine, `RelatedRites`),
     topped up with the newest others when there aren't enough scored ones. If it fails, the page goes without it.
   - **Recent rites** (Today): the four before today's, read with it in one query, so a new rite's purge of Today
-    refreshes them too. The motto sits between the countdown and them.
+    refreshes them too. The motto sits between the countdown and them. They and More rites are the same small
+    parchments (`ParchmentCards`: kind, day and title); fewer than four share the row evenly.
   - **Wide screens** (1280px and up) give the rite margins: the countdown and tags on the left, the votes on the right,
     nothing the parchment already says. The markup stays in reading order and the stylesheet places it
     (`docs/design/accessibility.md`). The Scriptorium puts its heading on the same altar: candles beside it, the glow
