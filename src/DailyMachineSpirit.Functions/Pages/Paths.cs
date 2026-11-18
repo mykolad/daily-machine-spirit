@@ -26,6 +26,12 @@ public static class Paths
 
     public static string Rite(int number) => $"/r/{number}";
 
+    /// <summary>A rite drawn at random (#196): <c>?drawn</c> has the page announce the lots, then drop it from the address.</summary>
+    public static string Drawn(int number) => $"{Rite(number)}?drawn";
+
+    /// <summary>Draws a rite without the script, which draws in the browser (<see cref="DrawFunction"/>).</summary>
+    public const string Draw = "/draw";
+
     public static string ArchiveBefore(int number) => $"{Archive}?before={number}";
 
     public static string Tag(string key) => $"/tags/{key}";

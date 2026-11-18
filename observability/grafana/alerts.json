@@ -5,167 +5,173 @@
     {
       "uid": "dms-refills-failing",
       "title": "Refills failing",
-      "condition": "C",
+      "condition": "Firing",
       "data": [
         {
-          "refId": "A",
+          "refId": "FailedTries",
           "relativeTimeRange": { "from": 3600, "to": 0 },
           "datasourceUid": "${loki}",
           "model": {
-            "refId": "A",
+            "refId": "FailedTries",
             "queryType": "instant",
+            "legendFormat": "failed refill tries in the hour before",
             "expr": "sum(count_over_time({service_name=\"machinespirit-app\"} | scope_name=\"DailyMachineSpirit.Functions.RefillBacklogFunction\" | detected_level=\"error\" [1h]))"
           }
         },
         {
-          "refId": "C",
+          "refId": "Firing",
           "datasourceUid": "__expr__",
-          "model": { "refId": "C", "type": "threshold", "expression": "A", "conditions": [{ "evaluator": { "type": "gt", "params": [2] } }] }
+          "model": { "refId": "Firing", "type": "threshold", "expression": "FailedTries", "conditions": [{ "evaluator": { "type": "gt", "params": [2] } }] }
         }
       ],
       "noDataState": "OK",
       "execErrState": "Error",
       "for": "0s",
       "annotations": {
-        "summary": "Backlog refills failed three times in the last hour.",
-        "description": "Counted from the error each failed try logs, whichever refill it was for: one refill's three tries (ten minutes apart), or failures of separate refills (after publishing, Summon). Either way refills keep failing, and a single passing failure doesn't alert. The logs say why: a model, Jev or Cosmos DB. The backlog shrinks by one a day until refills work again; Summon New Rites in the Scriptorium tries again."
+        "summary": "Backlog refills failed {{ printf \"%.0f\" $values.FailedTries.Value }} times in the last hour (it alerts at 3).",
+        "description": "What it means: refills keep failing, whether one refill's three tries (ten minutes apart) or separate refills (after publishing, Summon); a single passing failure doesn't alert. No new drafts are written, and the backlog shrinks by one a day until refills work again. What to do: the refill's error logs say why (a model, Jev or Cosmos DB): Explore, the logs data source, {service_name=\"machinespirit-app\"} | scope_name=\"DailyMachineSpirit.Functions.RefillBacklogFunction\" | detected_level=\"error\". Once that's fixed, Summon New Rites in the Scriptorium."
       }
     },
     {
       "uid": "dms-backlog-empty",
       "title": "Backlog ran empty",
-      "condition": "C",
+      "condition": "Firing",
       "data": [
         {
-          "refId": "A",
+          "refId": "EmptyBacklog",
           "relativeTimeRange": { "from": 604800, "to": 0 },
           "datasourceUid": "${loki}",
           "model": {
-            "refId": "A",
+            "refId": "EmptyBacklog",
             "queryType": "instant",
-            "expr": "sum(count_over_time({service_name=\"machinespirit-app\"} | scope_name=\"DailyMachineSpirit.Functions.Generation.DailyRitePublisher\" | detected_level=\"warn\" [7d]))"
+            "legendFormat": "times publishing found no draft, in the week before",
+            "expr": "sum(count_over_time({service_name=\"machinespirit-app\"} | scope_name=\"DailyMachineSpirit.Functions.Generation.DailyRitePublisher\" | detected_level=\"warn\" [7d])) and sum(count_over_time({service_name=\"machinespirit-app\"} | scope_name=\"DailyMachineSpirit.Functions.Generation.DailyRitePublisher\" | detected_level=\"warn\" [10m])) > 0"
           }
         },
         {
-          "refId": "C",
+          "refId": "Firing",
           "datasourceUid": "__expr__",
-          "model": { "refId": "C", "type": "threshold", "expression": "A", "conditions": [{ "evaluator": { "type": "gt", "params": [1] } }] }
+          "model": { "refId": "Firing", "type": "threshold", "expression": "EmptyBacklog", "conditions": [{ "evaluator": { "type": "gt", "params": [1] } }] }
         }
       ],
       "noDataState": "OK",
       "execErrState": "Error",
       "for": "0s",
       "annotations": {
-        "summary": "Publishing found the backlog empty more than once this week.",
-        "description": "Counted from the warning DailyRitePublisher logs each time. Each time, the day's rite was written on the spot, unmoderated. Refills aren't keeping up: check the Refills failing alert, and summon new rites in the Scriptorium."
+        "summary": "Publishing found the backlog empty {{ printf \"%.0f\" $values.EmptyBacklog.Value }} times this week (it alerts at 2).",
+        "description": "What it means: each of those days, the rite was written on the spot and published unmoderated. Refills aren't keeping up. It fires when publishing finds the backlog empty again, and is resolved ten minutes later, so a week's count doesn't email every four hours. What to do: check whether Refills failing fired too, then Summon New Rites in the Scriptorium."
       }
     },
     {
-      "uid": "dms-jev-failing",
-      "title": "Jev failing",
-      "condition": "C",
+      "uid": "dms-drafts-unjudged",
+      "title": "Drafts not fully judged",
+      "condition": "Firing",
       "data": [
         {
-          "refId": "A",
+          "refId": "Warnings",
           "relativeTimeRange": { "from": 86400, "to": 0 },
           "datasourceUid": "${loki}",
           "model": {
-            "refId": "A",
+            "refId": "Warnings",
             "queryType": "instant",
-            "expr": "sum(count_over_time({service_name=\"machinespirit-app\"} | scope_name=\"DailyMachineSpirit.Functions.Generation.BacklogRefiller\" | detected_level=\"warn\" [1d]))"
+            "legendFormat": "refill warnings in the day before",
+            "expr": "sum(count_over_time({service_name=\"machinespirit-app\"} | scope_name=\"DailyMachineSpirit.Functions.Generation.BacklogRefiller\" | detected_level=\"warn\" [1d])) and sum(count_over_time({service_name=\"machinespirit-app\"} | scope_name=\"DailyMachineSpirit.Functions.Generation.BacklogRefiller\" | detected_level=\"warn\" [10m])) > 0"
           }
         },
         {
-          "refId": "C",
+          "refId": "Firing",
           "datasourceUid": "__expr__",
-          "model": { "refId": "C", "type": "threshold", "expression": "A", "conditions": [{ "evaluator": { "type": "gt", "params": [1] } }] }
+          "model": { "refId": "Firing", "type": "threshold", "expression": "Warnings", "conditions": [{ "evaluator": { "type": "gt", "params": [1] } }] }
         }
       ],
       "noDataState": "OK",
       "execErrState": "Error",
       "for": "0s",
       "annotations": {
-        "summary": "Two or more drafts in the last day couldn't be judged.",
-        "description": "Counted from the warning BacklogRefiller logs for each draft Jev couldn't judge; one can be a passing blip, a second in a day isn't (a refill after publishing writes about one draft a day). The drafts still join the backlog, but without a quality or scores, so the Augury puts them last and More rites falls back to the newest. The warnings say why: an expired Jev key, or Jev down."
+        "summary": "{{ printf \"%.0f\" $values.Warnings.Value }} refill warnings in the last day: drafts that joined the backlog not fully judged, or drafts that couldn't be scored later (it alerts at 2).",
+        "description": "What it means: a step of the refill failed. Each warning is one of these: a draft joined the backlog without its scores (the quality judge or Jev, the scores for More rites), wasn't checked for repeats, or repeats an older rite and couldn't be written again; an unscored draft couldn't be scored at the next refill; or the unscored drafts couldn't be listed (the database). One draft can warn twice, so the count is warnings, not drafts. One a day can be a passing blip; a refill after publishing writes about one draft a day. The drafts still join the backlog: an unscored one goes last in the Augury until the next refill scores it, and one not checked for repeats is never checked again. It fires while warnings keep coming, and is resolved ten minutes after the last, so a day's count doesn't email every four hours. What to do: each warning's message says which step failed, and its Reason why, e.g. a 429 rate limit (two Summons at once), an expired key, a model down, or the database unreachable. Explore, the logs data source, {service_name=\"machinespirit-app\"} | scope_name=\"DailyMachineSpirit.Functions.Generation.BacklogRefiller\" | detected_level=\"warn\". Read any draft the warnings say wasn't checked for repeats yourself."
       }
     },
     {
       "uid": "dms-errors",
       "title": "Server errors",
-      "condition": "C",
+      "condition": "Firing",
       "data": [
         {
-          "refId": "A",
+          "refId": "FailedShare",
           "relativeTimeRange": { "from": 600, "to": 0 },
           "datasourceUid": "${prometheus}",
           "model": {
-            "refId": "A",
+            "refId": "FailedShare",
             "instant": true,
+            "legendFormat": "share of requests that failed, over ten minutes",
             "expr": "(sum(increase(dms_invocation_duration_seconds_count{job=\"machinespirit-app\", function!~\"DailyRite|RefillBacklog\", outcome=~\"5..|failed\"}[10m])) / sum(increase(dms_invocation_duration_seconds_count{job=\"machinespirit-app\", function!~\"DailyRite|RefillBacklog\"}[10m]))) and on() (sum(increase(dms_invocation_duration_seconds_count{job=\"machinespirit-app\", function!~\"DailyRite|RefillBacklog\"}[10m])) >= 10)"
           }
         },
         {
-          "refId": "C",
+          "refId": "Firing",
           "datasourceUid": "__expr__",
-          "model": { "refId": "C", "type": "threshold", "expression": "A", "conditions": [{ "evaluator": { "type": "gt", "params": [0.05] } }] }
+          "model": { "refId": "Firing", "type": "threshold", "expression": "FailedShare", "conditions": [{ "evaluator": { "type": "gt", "params": [0.05] } }] }
         }
       ],
       "noDataState": "OK",
       "execErrState": "Error",
       "for": "10m",
       "annotations": {
-        "summary": "More than 5% of production's requests failed (5xx) for ten minutes.",
-        "description": "Only counted over at least ten requests in ten minutes, so one failure on a quiet night doesn't alert. A counter's first value in a new process isn't counted, but errors that last ten minutes come many to a process. The dashboard's Traffic row shows which function; its error logs say why (often Cosmos DB)."
+        "summary": "{{ humanizePercentage $values.FailedShare.Value }} of production's requests failed (5xx) over ten minutes (it alerts above 5% for ten minutes).",
+        "description": "What it means: readers are getting errors. It counts only when there were at least ten requests in ten minutes, so one failure on a quiet night doesn't alert. What to do: the dashboard's Traffic row shows which function; its error logs say why (often Cosmos DB)."
       }
     },
     {
       "uid": "dms-today-failing",
       "title": "Today unreachable or stale",
-      "condition": "C",
+      "condition": "Firing",
       "data": [
         {
-          "refId": "A",
+          "refId": "Passed",
           "relativeTimeRange": { "from": 2700, "to": 0 },
           "datasourceUid": "${prometheus}",
           "model": {
-            "refId": "A",
+            "refId": "Passed",
             "instant": true,
+            "legendFormat": "share of Today's checks that passed, over 45 minutes",
             "expr": "sum(increase(probe_all_success_sum{job=\"Daily Machine Spirit Today\"}[45m])) / sum(increase(probe_all_success_count{job=\"Daily Machine Spirit Today\"}[45m]))"
           }
         },
         {
-          "refId": "C",
+          "refId": "Firing",
           "datasourceUid": "__expr__",
-          "model": { "refId": "C", "type": "threshold", "expression": "A", "conditions": [{ "evaluator": { "type": "lt", "params": [0.5] } }] }
+          "model": { "refId": "Firing", "type": "threshold", "expression": "Passed", "conditions": [{ "evaluator": { "type": "lt", "params": [0.5] } }] }
         }
       ],
       "noDataState": "Alerting",
       "execErrState": "Error",
       "for": "0s",
       "annotations": {
-        "summary": "More than half of the last 45 minutes' checks of Today failed.",
-        "description": "Synthetic Monitoring's check (Daily Machine Spirit Today, observability/synthetics/todays-rite.js) loads Today through Cloudflare, as readers do, every 15 minutes from two probes. Six runs in 45 minutes: one probe failing alone (half of them) doesn't alert. It fails when Today doesn't answer 200, when Cloudflare served a STALE copy because the app didn't answer (readers still see the site, read-only), or when Today doesn't show today's rite after 01:30 UTC. The check's own logs in Synthetic Monitoring say which. No data means the check was paused or deleted: run tools/grafana-synthetics.ps1."
+        "summary": "{{ if eq (len $values) 0 }}No checks of Today ran in the last 45 minutes.{{ else }}Only {{ humanizePercentage $values.Passed.Value }} of the last 45 minutes' checks of Today passed (it alerts below 50%).{{ end }}",
+        "description": "What it means: Synthetic Monitoring loads Today through Cloudflare, as readers do, every 15 minutes from two probes (Daily Machine Spirit Today, observability/synthetics/todays-rite.js), six runs in 45 minutes; one probe failing alone doesn't alert. A check fails when Today doesn't answer 200, when Cloudflare served a STALE copy because the app didn't answer (readers still see the site, read-only), or when Today doesn't show today's rite after 01:30 UTC. What to do: the check's own logs in Synthetic Monitoring say which. If no checks ran, the check was paused or deleted: run tools/grafana-synthetics.ps1."
       }
     },
     {
       "uid": "dms-no-telemetry",
       "title": "No telemetry from production",
-      "condition": "C",
+      "condition": "Firing",
       "data": [
         {
-          "refId": "A",
+          "refId": "Processes",
           "relativeTimeRange": { "from": 93600, "to": 0 },
           "datasourceUid": "${prometheus}",
           "model": {
-            "refId": "A",
+            "refId": "Processes",
             "instant": true,
+            "legendFormat": "app processes that reported in the 26 hours before",
             "expr": "count(last_over_time(target_info{job=\"machinespirit-app\"}[26h]))"
           }
         },
         {
-          "refId": "C",
+          "refId": "Firing",
           "datasourceUid": "__expr__",
-          "model": { "refId": "C", "type": "threshold", "expression": "A", "conditions": [{ "evaluator": { "type": "lt", "params": [1] } }] }
+          "model": { "refId": "Firing", "type": "threshold", "expression": "Processes", "conditions": [{ "evaluator": { "type": "lt", "params": [1] } }] }
         }
       ],
       "noDataState": "Alerting",
@@ -173,7 +179,7 @@
       "for": "0s",
       "annotations": {
         "summary": "Production has sent no telemetry for 26 hours.",
-        "description": "The app sleeps when nobody visits, but the DailyRite timer wakes it every midnight, so a day of silence means the export is broken (the OtlpHeaders token, revoked or read-only) or the app is down. Every other alert is blind until this is fixed."
+        "description": "What it means: the app sleeps when nobody visits, but the DailyRite timer wakes it every midnight, so a day of silence means the export is broken or the app is down. Every other alert is blind until this is fixed. What to do: check that the site answers, then production's OtlpHeaders token (revoked, or read-only)."
       }
     }
   ]

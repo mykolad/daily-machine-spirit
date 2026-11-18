@@ -272,9 +272,9 @@ public static class Styles
         .row .relic{position:relative;z-index:1;min-height:28px;padding:2px 12px;font-size:13px}
         .other-subjects{width:100%;margin-top:56px;display:flex;flex-direction:column;align-items:center;gap:12px}
         .other-subjects h2{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:22px}
-        .site-header nav>.nav-search,.site-header nav>.nav-breviary{display:grid;place-items:center;width:44px;height:44px;padding:0;color:#d9b874}
+        .site-header nav>.nav-search,.site-header nav>.nav-breviary,.site-header nav>.nav-draw{display:grid;place-items:center;width:44px;height:44px;padding:0;color:#d9b874}
         .site-header nav>.nav-breviary[hidden]{display:none}
-        @media (max-width:419px){.site-header nav{gap:0}.site-header nav>a{padding:2px 6px 0;letter-spacing:.04em}.site-header nav>.nav-search,.site-header nav>.nav-breviary{width:36px}}
+        @media (max-width:419px){.site-header nav{gap:0}.site-header nav>a{padding:2px 6px 0;letter-spacing:.04em}.site-header nav>.nav-search,.site-header nav>.nav-breviary,.site-header nav>.nav-draw{width:36px}}
         @media (max-width:359px){.site-header nav>a{padding:2px 5px 0;font-size:13px}}
         .nav-find{position:relative;display:flex;align-items:center;width:44px;height:44px;border:1px solid transparent;border-radius:999px;transition:width 250ms ease}
         .nav-find.open{width:320px;border-color:#84662c}
@@ -420,7 +420,7 @@ public static class Styles
         .margin-number{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:32px;line-height:1.1;color:#ede3cf}
         .margin-since{margin:0;font-family:var(--serif);font-style:italic;font-size:20px;color:#cdbd9e}
         .margin-sought{margin:0;font-family:var(--serif);font-style:italic;font-size:22px;color:#ede3cf;overflow-wrap:anywhere}
-        .margin-clear{font-weight:600;text-decoration:none}
+        .margin-clear,.margin-draw{font-weight:600;text-decoration:none}
         .margin-witnessed[hidden]{display:none}
         .witnessed-count{margin:0 0 8px}
         .sheet-witnessed{display:none}

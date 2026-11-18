@@ -204,6 +204,11 @@ skills/                           — Consult the Machine Spirit, a skill that p
     witnessed 12 of 214"), and offers "Unwitnessed only" and "Forget". Below 1280px, without margins, the same is one
     line on the sheet under the orders. Without the script nothing of it shows; the footer says where that memory is
     kept.
+  - **Drawing a rite** (#196): the nav's dice and the Archive's margin lead to `/draw`. The script draws in the
+    browser, from the search index (so pages stay the same for everyone, and no request says what was drawn): never
+    the rite shown, nor one drawn this session (`sessionStorage`) until every one has been. Without it, `/draw`
+    redirects to a random rite (`DrawFunction`, `no-store`, rate-limited at Cloudflare). Either way the page gets
+    `?drawn`, which the script announces in a toast and drops from the address.
   - **The rites before and after** (#195, `RiteSteps`): a rite's page links to them under its card, by number
     (`IRiteReader.GetNeighbours`: the nearest each way, so a gap is stepped over), and its head names them
     (`rel="prev"`, `rel="next"`); the script follows those on the arrow keys (not in a field, not with a modifier) and
