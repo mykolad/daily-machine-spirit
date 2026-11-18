@@ -315,7 +315,12 @@ public static class Script
               focusWhenLoaded ||= more.contains(document.activeElement);
               more.replaceChildren(...(next ? [...next.childNodes].map((node) => document.importNode(node, true)) : []));
               announcer.textContent = `${added.length} older ${added.length === 1 ? 'rite' : 'rites'} loaded.`;
-              if (focusWhenLoaded && added.length > 0) added[0].querySelector('a').focus();
+              // Marked before focus moves, not after by the observer: with "Unwitnessed only" a witnessed row is hidden,
+              // and focus on it would be lost. If every new row is hidden, the link to the next page takes it.
+              markWitnessed();
+              const unwitnessedOnly = document.body.classList.contains('unwitnessed-only');
+              const shown = added.find((row) => !unwitnessedOnly || !row.classList.contains('witnessed'));
+              if (focusWhenLoaded && added.length > 0) (shown ?? more).querySelector('a')?.focus();
               // Watched again, so a short page that still shows the end loads the next one too. Only after a load
               // that worked: after a failure the link stays for the reader to try again, not a loop.
               watchOlder();
@@ -896,6 +901,9 @@ public static class Script
             // Found again each time: the Archive's live search replaces its margins. Its text is changed only when it
             // differs, since every change is a mutation the observer below would answer again.
             const note = document.querySelector('.margin-witnessed');
+            // A live search's results have no note, so no checkbox to undo the filter: it's dropped rather than hiding
+            // witnessed matches unseen. The full Archive's note comes back unchecked.
+            if (!note) document.body.classList.remove('unwitnessed-only');
             if (note) {
               note.hidden = false;
               const count = note.querySelector('[data-witnessed]');
