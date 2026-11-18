@@ -957,7 +957,11 @@ public static class Script
               let left = all.filter((number) => !drawn.includes(number));
               if (left.length === 0) { drawn = []; left = all; }
               if (left.length === 0) { location.href = draw.href; return; }
-              const number = left[Math.floor(Math.random() * left.length)];
+              // A rite the reader hasn't witnessed (#198) first; once they've witnessed them all, any.
+              const known = witnessed();
+              const unwitnessed = left.filter((number) => !known.has(number));
+              const lots = unwitnessed.length > 0 ? unwitnessed : left;
+              const number = lots[Math.floor(Math.random() * lots.length)];
               try { sessionStorage.setItem(drawnKey, JSON.stringify([...drawn, number])); } catch { /* drawn again, then */ }
               location.href = `/r/${number}?drawn`;
             } catch {

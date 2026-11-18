@@ -217,11 +217,17 @@ public static class Styles
         .row.witnessed .row-tags .tag{border-color:rgba(88,81,74,.45);color:#58514a}
         .witnessed-mark{color:#8f2a20}
         .unwitnessed-only .row.witnessed{display:none}
-        .witnessed-only{display:flex;align-items:center;gap:8px;min-height:44px}
-        .witnessed-only input{width:18px;height:18px;accent-color:#c9a25a}
+        .witnessed-only{position:relative;display:inline-flex;align-items:center;min-height:44px;padding:8px 18px;border:1px solid rgba(201,162,90,.45);border-radius:999px;font-weight:600;font-size:15px;color:#d9b874;cursor:pointer}
+        .witnessed-only input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+        .witnessed-only:hover{border-color:#c9a25a;color:#f0d59a}
+        .witnessed-only:has(input:checked){border-color:#c9a25a;background:#c9a25a;color:#1f160a}
+        .witnessed-only:has(input:focus-visible){outline:2px solid #f0d59a;outline-offset:2px}
+        .sheet-witnessed .witnessed-only{border-color:#8f2a20;color:#8f2a20}
+        .sheet-witnessed .witnessed-only:hover{background:#e0d0a8}
+        .sheet-witnessed .witnessed-only:has(input:checked){background:#8f2a20;color:#f6eedb}
+        .sheet-witnessed .witnessed-only:has(input:focus-visible){outline-color:#8f2a20}
         .sheet-witnessed{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;column-gap:16px;margin:0 0 8px;font-size:15px;color:#5c4a33}
         .sheet-witnessed[hidden]{display:none}
-        .sheet-witnessed .witnessed-only input{accent-color:#8f2a20}
         .sheet-witnessed .text-button{min-height:44px;color:#8f2a20}
         .sheet-witnessed .text-button:hover{color:#5a1a14}
         .row-title:focus-visible{outline:none}
