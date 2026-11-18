@@ -54,4 +54,10 @@ public interface IRiteReader
 
     /// <summary>At most <paramref name="count"/> rites with this tag, the newest first.</summary>
     Task<Either<Error, List<Rite>>> GetTaggedOlderThan(string tag, int number, int count, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The rites just before and after the number, read by number rather than one less and one more, so a gap (a rite
+    /// ever removed) is stepped over.
+    /// </summary>
+    Task<Either<Error, RiteNeighbours>> GetNeighbours(int number, CancellationToken cancellationToken);
 }

@@ -7,11 +7,14 @@ public static class RitePage
 {
     /// <param name="more">Rites to read next; the section is left out when there are none (the site's first rite).</param>
     /// <param name="places">The places of the rites the Reliquary keeps, for the rite's badge.</param>
+    /// <param name="neighbours">The rites before and after it, to read on to (#195).</param>
     /// <param name="listing">The rite's address; the page adds what search engines read about the rite itself.</param>
-    public static string Render(Rite rite, IReadOnlyList<Rite> more, IReadOnlyDictionary<int, int> places, DateTimeOffset countedAt, SearchListing listing)
-        => Layout.Page(rite.Writing.Title, Html.FirstLine(rite.Writing.Text.Replace("`", string.Empty)), AboutTheRite(rite, listing), Section.Other, $"""
+    public static string Render(
+        Rite rite, IReadOnlyList<Rite> more, IReadOnlyDictionary<int, int> places, DateTimeOffset countedAt, RiteNeighbours neighbours, SearchListing listing)
+        => Layout.Page(rite.Writing.Title, Html.FirstLine(rite.Writing.Text.Replace("`", string.Empty)), AboutTheRite(rite, RiteSteps.Listed(listing, neighbours)), Section.Other, $"""
             <a class="back" href="{Paths.Archive}">{Svg.BackIcon}Back to the Archive</a>
             {RiteCard.Render(rite, ownPage: true, countedAt, marginNotes: string.Empty, places)}
+            {RiteSteps.Render(neighbours)}
             {MoreRites(more)}
             """);
 

@@ -320,6 +320,43 @@ public sealed class RiteRepositoryTests : IAsyncLifetime
 
     private RiteRepository Repository => new(cosmos.Container, TimeProvider.System, NullLogger<RiteRepository>.Instance);
 
+    // The rites just before and after, by number: the first has none before, the newest none after. Only the one before
+    // the newest has the newest after it.
+    [Fact]
+    public async Task GetNeighbours_AreTheRitesJustBeforeAndAfter()
+    {
+        await AddOrFail(MakeRite(new DateOnly(2026, 10, 5), "First"));
+        await AddOrFail(MakeRite(new DateOnly(2026, 10, 6), "Second"));
+        await AddOrFail(MakeRite(new DateOnly(2026, 10, 7), "Third"));
+
+        var around = await Task.WhenAll(new[] { 1, 2, 3 }.Select(number => Repository.GetNeighbours(number, CancellationToken.None)));
+
+        Assert.Equal(
+            ["- 2 Second", "1 First 3 Third (newest)", "2 Second -"],
+            around.Select(Ok).Select(Said));
+    }
+
+    // The fallback's copy answers the same, and steps over a number that's missing.
+    [Fact]
+    public async Task GetNeighbours_FromTheSnapshot_StepOverAMissingNumber()
+    {
+        var copy = new SnapshotRites(
+        [
+            MakeRite(new DateOnly(2026, 10, 7), "Fourth") with { Number = 4 },
+            MakeRite(new DateOnly(2026, 10, 5), "Second") with { Number = 2 },
+            MakeRite(new DateOnly(2026, 10, 4), "First") with { Number = 1 },
+        ]);
+
+        var around = await Task.WhenAll(new[] { 1, 2 }.Select(number => copy.GetNeighbours(number, CancellationToken.None)));
+
+        Assert.Equal(["- 2 Second", "1 First 4 Fourth (newest)"], around.Select(Ok).Select(Said));
+    }
+
+    private static string Said(RiteNeighbours neighbours)
+        => $"{Said(neighbours.Previous)} {Said(neighbours.Next)}{(neighbours.NextIsNewest ? " (newest)" : string.Empty)}";
+
+    private static string Said(Option<RiteHeading> rite) => rite.Match(Some: found => $"{found.Number} {found.Title}", None: () => "-");
+
     // The fallback's copy finds a rite by its ailment too (#197), as the database does.
     [Fact]
     public async Task SearchOlderThan_FromTheSnapshot_FindsARiteByItsAilment()
