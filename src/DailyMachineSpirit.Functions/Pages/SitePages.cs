@@ -79,12 +79,14 @@ public sealed class SitePages
             // shows that vote's answer, which has the vote, rather than counts that might not.
             var now = time.GetUtcNow();
             var places = Places(cancellationToken);
+            var neighbours = Neighbours(number, cancellationToken);
             var found = (await rites.GetByNumbers([number], cancellationToken)).Map(matches => matches.HeadOrNone());
             var placed = await places;
+            var around = await neighbours;
             return await found.Match<Task<IActionResult>>(
                 Right: rite => rite.Match<Task<IActionResult>>(
                     Some: async shown => Page(request, StatusCodes.Status200OK,
-                        RitePage.Render(shown, await MoreRites(shown, cancellationToken), placed, now, SearchListing.At(SiteOrigin.Of(request), Paths.Rite(number))), EdgeLifetime.UntilPurged),
+                        RitePage.Render(shown, await MoreRites(shown, cancellationToken), placed, now, around, SearchListing.At(SiteOrigin.Of(request), Paths.Rite(number))), EdgeLifetime.UntilPurged),
                     None: () => Task.FromResult<IActionResult>(Page(request, StatusCodes.Status404NotFound, StatePages.NotFound(id)))),
                 Left: error => Task.FromResult(Failed(request, error)));
         });
@@ -253,6 +255,16 @@ public sealed class SitePages
                 return [];
             });
     }
+
+    // The rites before and after a rite's, read beside it. A nicety too: if the read fails, the page goes without them.
+    private async Task<RiteNeighbours> Neighbours(int number, CancellationToken cancellationToken)
+        => (await rites.GetNeighbours(number, cancellationToken)).Match(
+            Right: found => found,
+            Left: error =>
+            {
+                logger.LogWarning(error.ToException(), "Rite NO. {Number} is shown without the rites before and after: {Reason}", number, error.Message);
+                return new RiteNeighbours(None, None, false);
+            });
 
     // Read beside the page's own rites, so it adds no wait.
     private Task<IReadOnlyDictionary<int, int>> Places(CancellationToken cancellationToken) => RelicPlaces.Read(rites, logger, cancellationToken);

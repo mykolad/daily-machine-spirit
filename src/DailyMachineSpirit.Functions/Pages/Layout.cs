@@ -89,6 +89,8 @@ public static class Layout
             Some: url => $"""
                 <link rel="canonical" href="{Html.Encode(url)}">
                 <meta property="og:url" content="{Html.Encode(url)}">
+                {listing.Previous.Map(path => $"""<link rel="prev" href="{path}">""").IfNone(string.Empty)}
+                {listing.Next.Map(path => $"""<link rel="next" href="{path}">""").IfNone(string.Empty)}
                 {listing.StructuredData.Map(json => $"""<script type="application/ld+json">{json}</script>""").IfNone(string.Empty)}
                 """,
             None: () => """<meta name="robots" content="noindex">""");

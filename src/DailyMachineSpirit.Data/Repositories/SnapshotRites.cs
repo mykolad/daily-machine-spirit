@@ -40,6 +40,16 @@ public sealed class SnapshotRites : IRiteReader
     public Task<Either<Error, List<FoundRite>>> FindDaysAndTags(IReadOnlyList<SoughtWord> words, Option<string> tag, CancellationToken cancellationToken)
         => Answer(Holding(words, tag).Select(rite => new FoundRite(rite.Number, rite.PublishedOnUtc, rite.Tags.IfNone([]))).ToList());
 
+    // Newest first: the first older one is just before, the last newer one just after.
+    public Task<Either<Error, RiteNeighbours>> GetNeighbours(int number, CancellationToken cancellationToken)
+    {
+        var after = rites.Where(rite => rite.Number > number).ToList();
+        return Answer(new RiteNeighbours(
+            rites.Where(rite => rite.Number < number).Select(Heading).HeadOrNone(),
+            after.Select(Heading).LastOrNone(),
+            after.Count == 1));
+    }
+
     public Task<Either<Error, List<RiteDay>>> GetDays(CancellationToken cancellationToken)
         => Answer(rites.Select(rite => new RiteDay(rite.Number, rite.PublishedOnUtc)).ToList());
 
@@ -80,4 +90,6 @@ public sealed class SnapshotRites : IRiteReader
             && tag.ForAll(key => FiledUnder(rite, key)));
 
     private static bool FiledUnder(Rite rite, string tag) => rite.Tags.Exists(tags => tags.Contains(tag));
+
+    private static RiteHeading Heading(Rite rite) => new(rite.Number, rite.Writing.Title);
 }

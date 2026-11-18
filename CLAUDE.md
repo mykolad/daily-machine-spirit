@@ -203,6 +203,12 @@ skills/                           — Consult the Machine Spirit, a skill that p
     (a check and a quieter title, "witnessed" for a screen reader), fills the Archive's hidden margin note ("You have
     witnessed 12 of 214"), and offers "Unwitnessed only" and "Forget". Without the script nothing of it shows; the
     footer says where that memory is kept.
+  - **The rites before and after** (#195, `RiteSteps`): a rite's page links to them under its card, by number
+    (`IRiteReader.GetNeighbours`: the nearest each way, so a gap is stepped over), and its head names them
+    (`rel="prev"`, `rel="next"`); the script follows those on the arrow keys (not in a field, not with a modifier) and
+    a long sideways swipe. Today names only the rite before, in its head: its list of recent rites shows it already.
+    The step to the newest rite leads to Today, so left then right comes back there. A new rite purges the pages of
+    the two rites before it: the one before now has a next, and the one before that leads to it instead of Today.
   - **The feed** (`/feed.xml`, `Feeds/`, #192): the newest 30 rites as Atom, each its title, page, day (00:00 UTC),
     kind and subjects, and its text as HTML ending with a link to break the seal (never the truth). Every page's head
     names it (`rel="alternate"`), and the footer links it. A contract with outside clients like the API
