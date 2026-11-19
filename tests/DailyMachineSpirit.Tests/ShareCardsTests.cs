@@ -58,6 +58,45 @@ public sealed class ShareCardsTests : IAsyncLifetime
         Assert.Equal(1200, card.Width);
     }
 
+    // A word wider than the card (a long path in code, a long name in the title) is set smaller, never past its edge
+    // and never failing the card.
+    [Fact]
+    public async Task ARiteWithAWordWiderThanTheCard_StillHasOne()
+    {
+        await AddRite(
+            "The Rite of java.util.concurrent.ConcurrentModificationExceptionAndItsManyCousinsFromTheStandardLibrary",
+            "Invoke `/usr/local/lib/node_modules/some-package/node_modules/another-package/dist/cjs/index.js` and wait.");
+
+        var (status, _, png) = await Get(Function(), "1");
+
+        Assert.Equal(StatusCodes.Status200OK, status);
+        using var card = SKBitmap.Decode(png);
+        Assert.Equal(1200, card.Width);
+    }
+
+    // Cloudflare keeps every spelling of an address apart, and an erasure purges only the card's own: no other is served.
+    [Theory]
+    [InlineData("01", "/r/01/card.png")]
+    [InlineData("1", "/R/1/card.png")]
+    [InlineData("1", "/r/1/Card.png")]
+    public async Task AnotherSpellingOfTheAddress_HasNoCard(string id, string path)
+    {
+        await AddRite("Press Re-run thrice.");
+
+        Assert.Equal(StatusCodes.Status404NotFound, (await Get(Function(), id, path)).Status);
+    }
+
+    // An erasure's emoji, which the card's fonts lack, is drawn as Noto Emoji draws it rather than as a missing glyph.
+    [Fact]
+    public void AnErasuresEmoji_IsDrawnWithTheEmojiFont()
+    {
+        using var font = new CardFont(CardAssets.Garamond, 48);
+        using var emoji = new CardFont(CardAssets.Emoji, 48);
+
+        Assert.Equal(Pixels(emoji, "💀"), Pixels(font, "💀"));
+        Assert.NotEqual(Pixels(font, "a"), Pixels(font, "💀"));
+    }
+
     [Theory]
     [InlineData("2")]
     [InlineData("0")]
@@ -97,10 +136,14 @@ public sealed class ShareCardsTests : IAsyncLifetime
         => new(new RiteRepository(cosmos.Container, TimeProvider.System, NullLogger<RiteRepository>.Instance), new RiteCards(),
             NullLogger<ShareCardsFunction>.Instance);
 
-    private static async Task<(int Status, IHeaderDictionary Headers, byte[] Png)> Get(ShareCardsFunction function, string id)
+    private static Task<(int Status, IHeaderDictionary Headers, byte[] Png)> Get(ShareCardsFunction function, string id)
+        => Get(function, id, $"/r/{id}/card.png");
+
+    private static async Task<(int Status, IHeaderDictionary Headers, byte[] Png)> Get(ShareCardsFunction function, string id, string path)
     {
         var request = new DefaultHttpContext().Request;
         request.Host = new HostString("dailymachinespirit.test");
+        request.Path = path;
         var result = await function.RiteCard(request, id, CancellationToken.None);
         var headers = request.HttpContext.Response.Headers;
         return result switch
@@ -111,14 +154,28 @@ public sealed class ShareCardsTests : IAsyncLifetime
         };
     }
 
-    private async Task AddRite(string text)
+    // The text as drawn, pixel by pixel.
+    private static byte[] Pixels(CardFont font, string text)
+    {
+        using var surface = SKSurface.Create(new SKImageInfo(96, 96));
+        surface.Canvas.Clear(SKColors.Transparent);
+        using var paint = new SKPaint { Color = SKColors.Black, IsAntialias = true };
+        font.Draw(surface.Canvas, text, 8, 72, paint);
+        using var image = surface.Snapshot();
+        using var pixels = image.PeekPixels();
+        return pixels.GetPixelSpan().ToArray();
+    }
+
+    private Task AddRite(string text) => AddRite("The Rite of the Elevated Hand", text);
+
+    private async Task AddRite(string title, string text)
         => Ok(await new RiteRepository(cosmos.Container, TimeProvider.System, NullLogger<RiteRepository>.Instance).Add(new Rite
         {
             PublishedOnUtc = new DateOnly(2026, 10, 9),
             Writing = new RiteWriting
             {
                 Kind = RiteKind.Ritual,
-                Title = "The Rite of the Elevated Hand",
+                Title = title,
                 Text = text,
                 HereticalTruth = "Borrowed authority leaves root-owned files behind.",
                 GeneratedByModel = "gpt-6-sol",

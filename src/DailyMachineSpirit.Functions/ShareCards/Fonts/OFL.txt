@@ -1,8 +1,9 @@
 Cinzel: Copyright 2020 The Cinzel Project Authors (https://github.com/NDISCOVER/Cinzel)
 EB Garamond: Copyright 2017 The EB Garamond Project Authors (https://github.com/octaviopardo/EBGaramond12)
 JetBrains Mono: Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)
+Noto Emoji: Copyright 2013 Google LLC (https://github.com/googlefonts/noto-emoji), from google/fonts
 
-The files here are the projects' own static TTF files, which the share cards are drawn with (the pages use the
+The files here are the projects' own TTF files, which the share cards are drawn with (the pages use the
 WOFF2 files in Pages/Fonts). Each font is licensed under the SIL Open Font License, Version 1.1, whose text follows.
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.

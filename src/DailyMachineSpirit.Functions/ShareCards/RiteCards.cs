@@ -2,6 +2,7 @@ using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Functions.Pages;
 using LanguageExt;
 using SkiaSharp;
+using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Functions.ShareCards;
 
@@ -9,7 +10,8 @@ namespace DailyMachineSpirit.Functions.ShareCards;
 /// The rite as a parchment card, drawn with Skia to the design's numbers (docs/design/share-card.md): the
 /// kicker, the title, the divider and the text centred in the content box, the date and address at the foot, and the
 /// seal across the sheet's lower edge, always whole. Around the sheet the card is transparent but for its shadow, so a
-/// chat's own background shows. Long texts take a size or two down, then the title alone.
+/// chat's own background shows. Long texts take a size or two down, then the title alone; nothing is drawn past the
+/// content's width, however long a word.
 /// </summary>
 public sealed class RiteCards : IRiteCards
 {
@@ -28,12 +30,17 @@ public sealed class RiteCards : IRiteCards
     private const float TextLeading = 1.36f;
     private const float DividerWidth = 160;
     private const float DividerHeight = 16;
+    private const float FootSize = 22;
     private const float FootBaseline = 564;
+    // Right of the seal (to x 644, and a little room).
+    private const float AddressRoom = ContentLeft + ContentWidth - 660;
     // The margins' code, as on the rite's page: "READ THE CODE" in hex, "KNOW" in binary.
     private const string LeftCode = "52 45 41 44 20 54 48 45 20 43 4F 44 45 · ";
     private const string RightCode = "01001011 01001110 01001111 01010111 · ";
 
     private static readonly float[] TextSizes = [48, 44, 40];
+    // A title the design's sizes can't fit (a word wider than the card) goes on down until it fits.
+    private static readonly float[] SmallerTitles = [40, 34, 28, 24, 20, 16];
 
     private static readonly SKColor Rubric = SKColor.Parse("#8f2a20");
     private static readonly SKColor Ink = SKColor.Parse("#2b2117");
@@ -53,7 +60,7 @@ public sealed class RiteCards : IRiteCards
         canvas.Clear(SKColors.Transparent);
         DrawSheet(canvas);
         DrawContent(canvas, rite);
-        DrawFoot(canvas, $"{ImperialDate.Of(rite.PublishedOnUtc)}", $"{host}{Paths.Rite(rite.Number)}");
+        DrawFoot(canvas, ImperialDate.Of(rite.PublishedOnUtc), $"{host}{Paths.Rite(rite.Number)}");
         canvas.DrawImage(CardAssets.Seal, new SKRect(556, 538, 644, 626), Smooth);
         using var image = surface.Snapshot();
         using var png = image.Encode(SKEncodedImageFormat.Png, 100);
@@ -114,13 +121,12 @@ public sealed class RiteCards : IRiteCards
     {
         const float top = 134;
         const float length = 496 - top;
-        using var font = Font(CardAssets.Mono, 13);
+        using var font = new CardFont(CardAssets.Mono, 13);
         canvas.Save();
         canvas.Translate(x, top);
         canvas.RotateDegrees(90);
         canvas.ClipRect(new SKRect(0, -20, length, 20));
-        var repeated = string.Concat(Enumerable.Repeat(code, 8));
-        Spaced(canvas, repeated, 0, font.Metrics.CapHeight / 2, font, HexInk, 13 * 0.4f);
+        Spaced(canvas, string.Concat(Enumerable.Repeat(code, 8)), 0, font.Metrics.CapHeight / 2, font, HexInk, 13 * 0.4f);
         canvas.Restore();
     }
 
@@ -130,44 +136,46 @@ public sealed class RiteCards : IRiteCards
         var titleWords = rite.Writing.Title.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
         var textWords = CardText.Words(rite.Writing.Text);
 
-        var (titleSize, titleLines) = TitleAt(titleWords, 56, 2).Match(
-            Some: lines => (56f, lines),
-            None: () => (48f, TitleAt(titleWords, 48, 3).IfNone(() => Greedy(titleWords, 48))));
+        var (titleSize, titleLines) = TitleAt(titleWords, 56, 2)
+            .Map(lines => (56f, lines))
+            .IfNone(() => FittedTitle(titleWords, [48, .. SmallerTitles], 3));
         foreach (var textSize in TextSizes)
         {
-            using var textFont = Font(CardAssets.Garamond, textSize);
-            var lines = TextLines(textWords, textFont, textSize);
-            var height = KickerLine + 10 + titleLines.Count * titleSize * TitleLeading + 16 + DividerHeight + 22 + lines.Count * textSize * TextLeading;
-            if (height <= ContentHeight)
+            using var textFont = new CardFont(CardAssets.Garamond, textSize);
+            var fits = TextLines(textWords, textFont).Bind(lines =>
             {
-                var top = ContentTop + (ContentHeight - height) / 2;
-                var below = Heading(canvas, kicker, titleLines, titleSize, top);
-                DrawText(canvas, lines, textFont, textSize, below + 22);
+                var height = KickerLine + 10 + titleLines.Count * titleSize * TitleLeading + 16 + DividerHeight + 22 + lines.Count * textSize * TextLeading;
+                return height <= ContentHeight ? Some((Lines: lines, Height: height)) : None;
+            });
+            if (fits.Case is (IReadOnlyList<IReadOnlyList<IReadOnlyList<CardRun>>> lines, float height))
+            {
+                var below = Heading(canvas, kicker, titleLines, titleSize, ContentTop + (ContentHeight - height) / 2);
+                DrawText(canvas, lines, textFont, below + 22);
                 return;
             }
         }
 
-        // Too long at the smallest size: the title alone, larger, the text left to the page.
-        var alone = TitleAt(titleWords, 64, 3).IfNone(() => Greedy(titleWords, 64));
-        var aloneHeight = KickerLine + 10 + alone.Count * 64 * TitleLeading + 16 + DividerHeight;
-        Heading(canvas, kicker, alone, 64, ContentTop + (TitleOnlyHeight - aloneHeight) / 2);
+        // Too long (or too wide) at the smallest size: the title alone, larger, the text left to the page.
+        var (aloneSize, alone) = FittedTitle(titleWords, [64, 56, 48, .. SmallerTitles], 3);
+        var aloneHeight = KickerLine + 10 + alone.Count * aloneSize * TitleLeading + 16 + DividerHeight;
+        Heading(canvas, kicker, alone, aloneSize, ContentTop + (TitleOnlyHeight - aloneHeight) / 2);
     }
 
     // The kicker, the title and the divider from the top given; answers where the divider ends.
     private static float Heading(SKCanvas canvas, string kicker, IReadOnlyList<string> titleLines, float titleSize, float top)
     {
-        using var kickerFont = Font(CardAssets.Cinzel, KickerSize);
+        using var kickerFont = new CardFont(CardAssets.Cinzel, KickerSize);
         var spacing = KickerSize * 0.22f;
         var kickerWidth = SpacedWidth(kicker, kickerFont, spacing);
         Spaced(canvas, kicker, Width / 2f - kickerWidth / 2, Baseline(kickerFont, top, KickerLine), kickerFont, Rubric, spacing);
 
-        using var titleFont = Font(CardAssets.Cinzel, titleSize);
+        using var titleFont = new CardFont(CardAssets.Cinzel, titleSize);
         using var titlePaint = new SKPaint { Color = Rubric, IsAntialias = true };
         var titleLine = titleSize * TitleLeading;
         var lineTop = top + KickerLine + 10;
         foreach (var line in titleLines)
         {
-            canvas.DrawText(line, Width / 2f, Baseline(titleFont, lineTop, titleLine), SKTextAlign.Center, titleFont, titlePaint);
+            titleFont.Draw(canvas, line, Width / 2f - titleFont.Measure(line) / 2, Baseline(titleFont, lineTop, titleLine), titlePaint);
             lineTop += titleLine;
         }
 
@@ -192,13 +200,13 @@ public sealed class RiteCards : IRiteCards
         canvas.Restore();
     }
 
-    private static void DrawText(SKCanvas canvas, IReadOnlyList<IReadOnlyList<IReadOnlyList<CardRun>>> lines, SKFont font, float size, float top)
+    private static void DrawText(SKCanvas canvas, IReadOnlyList<IReadOnlyList<IReadOnlyList<CardRun>>> lines, CardFont font, float top)
     {
         using var ink = new SKPaint { Color = Ink, IsAntialias = true };
-        using var codeFont = Font(CardAssets.Mono, size * 0.76f);
+        using var codeFont = new CardFont(CardAssets.Mono, font.Size * 0.76f);
         using var chip = new SKPaint { Color = ChipFill, IsAntialias = true };
-        var space = font.MeasureText(" ");
-        var lineHeight = size * TextLeading;
+        var space = font.Measure(" ");
+        var lineHeight = font.Size * TextLeading;
         var lineTop = top;
         foreach (var line in lines)
         {
@@ -210,8 +218,7 @@ public sealed class RiteCards : IRiteCards
                 {
                     if (!run.IsCode)
                     {
-                        canvas.DrawText(run.Text, x, baseline, font, ink);
-                        x += font.MeasureText(run.Text);
+                        x = font.Draw(canvas, run.Text, x, baseline, ink);
                         continue;
                     }
                     // The chip around the code, its padding in the code's own size, as the page's CSS has it.
@@ -219,7 +226,7 @@ public sealed class RiteCards : IRiteCards
                     var width = CodeWidth(run.Text, codeFont);
                     var box = new SKRect(x, baseline + codeFont.Metrics.Ascent - 0.06f * codeSize, x + width, baseline + codeFont.Metrics.Descent + 0.1f * codeSize);
                     canvas.DrawRoundRect(box, 8, 8, chip);
-                    canvas.DrawText(run.Text, x + 0.32f * codeSize, baseline, codeFont, ink);
+                    codeFont.Draw(canvas, run.Text, x + 0.32f * codeSize, baseline, ink);
                     x += width;
                 }
                 x += space;
@@ -230,50 +237,58 @@ public sealed class RiteCards : IRiteCards
 
     private static void DrawFoot(SKCanvas canvas, string date, string address)
     {
-        using var font = Font(CardAssets.MonoBold, 22);
+        using var font = new CardFont(CardAssets.MonoBold, FootSize);
         using var paint = new SKPaint { Color = Faded, IsAntialias = true };
-        canvas.DrawText(date, ContentLeft, FootBaseline, font, paint);
-        // Right of the seal (to x 644, and a little room): a longer host than the site's own, as staging's, shrinks to fit.
-        const float room = ContentLeft + ContentWidth - 660;
-        var width = font.MeasureText(address);
-        using var addressFont = Font(CardAssets.MonoBold, width <= room ? 22 : 22 * room / width);
-        canvas.DrawText(address, ContentLeft + ContentWidth, FootBaseline, SKTextAlign.Right, addressFont, paint);
+        font.Draw(canvas, date, ContentLeft, FootBaseline, paint);
+        // A longer host than the site's own, as staging's, shrinks to stay clear of the seal.
+        var width = font.Measure(address);
+        using var addressFont = new CardFont(CardAssets.MonoBold, width <= AddressRoom ? FootSize : FootSize * AddressRoom / width);
+        addressFont.Draw(canvas, address, ContentLeft + ContentWidth - addressFont.Measure(address), FootBaseline, paint);
     }
 
-    // The title in at most this many lines at this size; two lines are balanced, broken where they're closest in width.
+    // The title at the first of these sizes where it fits in so many lines; at the last, as it breaks, whatever it takes.
+    private static (float Size, IReadOnlyList<string> Lines) FittedTitle(string[] words, float[] sizes, int maxLines)
+    {
+        foreach (var size in sizes)
+        {
+            if (TitleAt(words, size, maxLines).Case is IReadOnlyList<string> lines)
+            {
+                return (size, lines);
+            }
+        }
+        using var smallest = new CardFont(CardAssets.Cinzel, sizes[^1]);
+        return (sizes[^1], Greedy(words, smallest));
+    }
+
+    // The title in at most this many lines at this size, every line within the content's width; two lines are balanced,
+    // broken where they're closest in width.
     private static Option<IReadOnlyList<string>> TitleAt(string[] words, float size, int maxLines)
     {
-        using var font = Font(CardAssets.Cinzel, size);
+        using var font = new CardFont(CardAssets.Cinzel, size);
         var greedy = Greedy(words, font);
-        if (greedy.Count > maxLines)
+        if (greedy.Count > maxLines || greedy.Exists(line => font.Measure(line) > ContentWidth))
         {
-            return Option<IReadOnlyList<string>>.None;
+            return None;
         }
         if (greedy.Count != 2)
         {
-            return Option<IReadOnlyList<string>>.Some(greedy);
+            return Some<IReadOnlyList<string>>(greedy);
         }
         var best = Enumerable.Range(1, words.Length - 1)
             .Select(split => (First: string.Join(' ', words[..split]), Second: string.Join(' ', words[split..])))
-            .Where(pair => font.MeasureText(pair.First) <= ContentWidth && font.MeasureText(pair.Second) <= ContentWidth)
-            .MinBy(pair => Math.Abs(font.MeasureText(pair.First) - font.MeasureText(pair.Second)));
-        return Option<IReadOnlyList<string>>.Some(new[] { best.First, best.Second });
+            .Where(pair => font.Measure(pair.First) <= ContentWidth && font.Measure(pair.Second) <= ContentWidth)
+            .MinBy(pair => Math.Abs(font.Measure(pair.First) - font.Measure(pair.Second)));
+        return Some<IReadOnlyList<string>>([best.First, best.Second]);
     }
 
-    private static IReadOnlyList<string> Greedy(string[] words, float size)
-    {
-        using var font = Font(CardAssets.Cinzel, size);
-        return Greedy(words, font);
-    }
-
-    private static List<string> Greedy(string[] words, SKFont font)
+    private static List<string> Greedy(string[] words, CardFont font)
     {
         var lines = new List<string>();
         var line = string.Empty;
         foreach (var word in words)
         {
             var longer = line.Length == 0 ? word : $"{line} {word}";
-            if (line.Length > 0 && font.MeasureText(longer) > ContentWidth)
+            if (line.Length > 0 && font.Measure(longer) > ContentWidth)
             {
                 lines.Add(line);
                 line = word;
@@ -290,15 +305,19 @@ public sealed class RiteCards : IRiteCards
         return lines;
     }
 
-    // The text broken greedily into lines of the content's width; a lone last word takes one more from the line before,
-    // when the line before can give it.
-    private static List<IReadOnlyList<IReadOnlyList<CardRun>>> TextLines(IReadOnlyList<IReadOnlyList<CardRun>> words, SKFont font, float size)
+    // The text broken greedily into lines of the content's width, or None when a word (long code, a path) is wider than
+    // a line at this size. A lone last word takes one more from the line before, when the line before can give it.
+    private static Option<IReadOnlyList<IReadOnlyList<IReadOnlyList<CardRun>>>> TextLines(IReadOnlyList<IReadOnlyList<CardRun>> words, CardFont font)
     {
-        using var codeFont = Font(CardAssets.Mono, size * 0.76f);
-        var space = font.MeasureText(" ");
-        float WordWidth(IReadOnlyList<CardRun> word) => word.Sum(run => run.IsCode ? CodeWidth(run.Text, codeFont) : font.MeasureText(run.Text));
+        using var codeFont = new CardFont(CardAssets.Mono, font.Size * 0.76f);
+        var space = font.Measure(" ");
+        float WordWidth(IReadOnlyList<CardRun> word) => word.Sum(run => run.IsCode ? CodeWidth(run.Text, codeFont) : font.Measure(run.Text));
         float LineWidth(IReadOnlyList<IReadOnlyList<CardRun>> line) => line.Sum(WordWidth) + space * Math.Max(0, line.Count - 1);
 
+        if (words.Any(word => WordWidth(word) > ContentWidth))
+        {
+            return None;
+        }
         var lines = new List<List<IReadOnlyList<CardRun>>>();
         var current = new List<IReadOnlyList<CardRun>>();
         foreach (var word in words)
@@ -323,34 +342,29 @@ public sealed class RiteCards : IRiteCards
                 lines[^1].Insert(0, given);
             }
         }
-        return [.. lines.Select(line => (IReadOnlyList<IReadOnlyList<CardRun>>)line)];
+        return Some<IReadOnlyList<IReadOnlyList<IReadOnlyList<CardRun>>>>([.. lines.Select(line => (IReadOnlyList<IReadOnlyList<CardRun>>)line)]);
     }
 
-    private static float CodeWidth(string code, SKFont codeFont) => codeFont.MeasureText(code) + 2 * 0.32f * codeFont.Size;
+    private static float CodeWidth(string code, CardFont codeFont) => codeFont.Measure(code) + 2 * 0.32f * codeFont.Size;
 
     // Text with letter spacing, a character at a time (Skia has none of its own).
-    private static void Spaced(SKCanvas canvas, string text, float x, float baseline, SKFont font, SKColor color, float spacing)
+    private static void Spaced(SKCanvas canvas, string text, float x, float baseline, CardFont font, SKColor color, float spacing)
     {
         using var paint = new SKPaint { Color = color, IsAntialias = true };
         foreach (var character in text.EnumerateRunes())
         {
-            var glyph = character.ToString();
-            canvas.DrawText(glyph, x, baseline, font, paint);
-            x += font.MeasureText(glyph) + spacing;
+            x = font.Draw(canvas, character.ToString(), x, baseline, paint) + spacing;
         }
     }
 
-    private static float SpacedWidth(string text, SKFont font, float spacing)
-        => text.EnumerateRunes().Sum(character => font.MeasureText(character.ToString())) + spacing * (text.Length - 1);
+    private static float SpacedWidth(string text, CardFont font, float spacing)
+        => text.EnumerateRunes().Sum(character => font.Measure(character.ToString())) + spacing * (text.EnumerateRunes().Count() - 1);
 
     // Where a line's baseline falls in its line box, as CSS places it: the leading split above and below the glyphs.
-    private static float Baseline(SKFont font, float lineTop, float lineHeight)
+    private static float Baseline(CardFont font, float lineTop, float lineHeight)
     {
         var ascent = -font.Metrics.Ascent;
         var descent = font.Metrics.Descent;
         return lineTop + (lineHeight - (ascent + descent)) / 2 + ascent;
     }
-
-    private static SKFont Font(SKTypeface typeface, float size)
-        => new(typeface, size) { Edging = SKFontEdging.Antialias, Subpixel = true };
 }

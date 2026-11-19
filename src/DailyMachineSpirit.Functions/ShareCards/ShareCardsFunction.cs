@@ -31,7 +31,10 @@ public sealed class ShareCardsFunction
         string id,
         CancellationToken cancellationToken)
     {
-        if (!int.TryParse(id, NumberStyles.None, CultureInfo.InvariantCulture, out var number) || number < 1)
+        // At its one address only: Cloudflare keeps every spelling apart (/r/01/card.png, /R/1/card.png), and an erasure
+        // purges just this one, so another would show the erased words for its hour.
+        if (!int.TryParse(id, NumberStyles.None, CultureInfo.InvariantCulture, out var number) || number < 1
+            || !string.Equals(request.Path.Value, Paths.RiteCard(number), StringComparison.Ordinal))
         {
             return NotServed(request, StatusCodes.Status404NotFound);
         }

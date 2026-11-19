@@ -14,6 +14,7 @@ public static class CardAssets
     private static readonly Lazy<SKTypeface> GaramondRegular = new(() => Typeface("Fonts.EBGaramond-Regular.ttf"));
     private static readonly Lazy<SKTypeface> MonoRegular = new(() => Typeface("Fonts.JetBrainsMono-Regular.ttf"));
     private static readonly Lazy<SKTypeface> MonoMedium = new(() => Typeface("Fonts.JetBrainsMono-Medium.ttf"));
+    private static readonly Lazy<SKTypeface> NotoEmoji = new(() => Typeface("Fonts.NotoEmoji.ttf"));
     private static readonly Lazy<SKImage> ParchmentImage = new(() => Image("Assets.parchment-1152x582.png"));
     private static readonly Lazy<SKImage> SealImage = new(() => Image("Assets.seal-176.png"));
     private static readonly Lazy<byte[]> SiteCardBytes = new(() => Bytes("Assets.card-site.png"));
@@ -29,6 +30,9 @@ public static class CardAssets
 
     /// <summary>JetBrains Mono 500: the foot's date and address.</summary>
     public static SKTypeface MonoBold => MonoMedium.Value;
+
+    /// <summary>Noto Emoji, in one colour: the characters the other fonts lack, an erasure's emoji (<see cref="CardFont"/>).</summary>
+    public static SKTypeface Emoji => NotoEmoji.Value;
 
     /// <summary>The sheet's texture, 1152 × 582, its vignette baked in.</summary>
     public static SKImage Parchment => ParchmentImage.Value;
