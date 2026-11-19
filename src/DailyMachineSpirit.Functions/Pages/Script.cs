@@ -16,6 +16,8 @@ public static class Script
               const open = seal.getAttribute('aria-expanded') !== 'true';
               seal.setAttribute('aria-expanded', String(open));
               panel.hidden = !open;
+              // The reader has the whole joke now: the rite is witnessed (#198).
+              if (open) witness(Number(document.querySelector('[data-rite]')?.dataset.rite));
               seal.querySelector('.seal-label').textContent = open ? 'Reseal the truth' : 'Break the seal';
               seal.querySelector('.seal-sub').textContent = open ? 'Hide the Heretical Truth' : 'Reveal the Heretical Truth';
             });
@@ -315,7 +317,12 @@ public static class Script
               focusWhenLoaded ||= more.contains(document.activeElement);
               more.replaceChildren(...(next ? [...next.childNodes].map((node) => document.importNode(node, true)) : []));
               announcer.textContent = `${added.length} older ${added.length === 1 ? 'rite' : 'rites'} loaded.`;
-              if (focusWhenLoaded && added.length > 0) added[0].querySelector('a').focus();
+              // Marked before focus moves, not after by the observer: with "Hide witnessed" a witnessed row is hidden,
+              // and focus on it would be lost. If every new row is hidden, the link to the next page takes it.
+              markWitnessed();
+              const unwitnessedOnly = document.body.classList.contains('unwitnessed-only');
+              const shown = added.find((row) => !unwitnessedOnly || !row.classList.contains('witnessed'));
+              if (focusWhenLoaded && added.length > 0) (shown ?? more).querySelector('a')?.focus();
               // Watched again, so a short page that still shows the end loads the next one too. Only after a load
               // that worked: after a failure the link stays for the reader to try again, not a loop.
               watchOlder();
@@ -872,6 +879,99 @@ public static class Script
             });
           });
 
+          // The rites the reader has witnessed (#198): those whose seal they broke, kept only in this browser and never
+          // sent, signed in or not. The pages are the same for everyone, so the rows are marked here, after loading, as
+          // the archive loads more of them.
+          const witnessedKey = 'dms-witnessed-v1';
+          const witnessed = () => {
+            try { return new Set(JSON.parse(localStorage.getItem(witnessedKey) ?? '[]')); } catch { return new Set(); }
+          };
+          const keepWitnessed = (numbers) => {
+            try { localStorage.setItem(witnessedKey, JSON.stringify([...numbers].sort((a, b) => a - b))); } catch { /* not kept, then */ }
+          };
+          // A witnessed row wears a broken seal at the end of its meta; the title's link says "witnessed" to a screen reader.
+          const brokenSeal = '<svg class="witnessed-seal" aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="20" height="20"><g transform="translate(-1.3 .5) rotate(-12 12 12)"><path d="M12 2A10 10 0 0 0 12 22L13 18L11 14L13 10L11 6Z" fill="#8f2a20"/><path d="M12 5.5A6.5 6.5 0 0 0 12 18.5" fill="none" stroke="#6b1c14" stroke-width="1.4"/></g><g transform="translate(1.4 1) rotate(9 12 12)"><path d="M12 2A10 10 0 0 1 12 22L13 18L11 14L13 10L11 6Z" fill="#8f2a20"/><path d="M12 5.5A6.5 6.5 0 0 1 12 18.5" fill="none" stroke="#6b1c14" stroke-width="1.4"/></g></svg>';
+          const markWitnessed = () => {
+            const known = witnessed();
+            document.querySelectorAll('.rows > .row').forEach((row) => {
+              const number = Number(row.querySelector('.row-title')?.getAttribute('href')?.split('/').pop());
+              const was = row.classList.contains('witnessed');
+              if (known.has(number) === was) return;
+              row.classList.toggle('witnessed', !was);
+              if (was) {
+                row.querySelector('.witnessed-seal')?.remove();
+                row.querySelector('.witnessed-said')?.remove();
+              } else {
+                row.querySelector('.row-meta').insertAdjacentHTML('beforeend', brokenSeal);
+                row.querySelector('.row-title').insertAdjacentHTML('beforeend', '<span class="sr-only witnessed-said">, witnessed</span>');
+              }
+            });
+            // Found again each time: the Archive's live search replaces its margins. Its text is changed only when it
+            // differs, since every change is a mutation the observer below would answer again.
+            // Two notes, the margin's and the narrow screen's line on the sheet, kept alike.
+            const notes = document.querySelectorAll('[data-witnessed-note]');
+            // A live search's results have no note, so no checkbox to undo the filter: it's dropped rather than hiding
+            // witnessed matches unseen. The full Archive's note comes back unchecked.
+            if (notes.length === 0) document.body.classList.remove('unwitnessed-only');
+            notes.forEach((note) => {
+              note.hidden = false;
+              note.querySelectorAll('[data-witnessed]').forEach((count) => {
+                if (count.textContent !== String(known.size)) count.textContent = String(known.size);
+              });
+              note.querySelector('[data-unwitnessed-only]').checked = document.body.classList.contains('unwitnessed-only');
+              // Nothing to forget, nothing offered; nor while the note is asking.
+              note.querySelector('[data-forget-ask]').hidden = known.size === 0 || !note.querySelector('[data-forget-question]').hidden;
+            });
+          };
+          function witness(number) {
+            if (!Number.isInteger(number) || number < 1) return;
+            const known = witnessed();
+            known.add(number);
+            keepWitnessed(known);
+          }
+          markWitnessed();
+          // Rows come later too: the Archive's next pages, and its live search (even from a search that found none).
+          const rowLists = document.querySelector('main');
+          if (rowLists) new MutationObserver(markWitnessed).observe(rowLists, { childList: true, subtree: true });
+          // A page the browser kept on going back may predate the seal just broken.
+          addEventListener('pageshow', (event) => { if (event.persisted) markWitnessed(); });
+          // From the document, as the controls are replaced with the margins.
+          document.addEventListener('change', (event) => {
+            if (!event.target.matches?.('[data-unwitnessed-only]')) return;
+            document.body.classList.toggle('unwitnessed-only', event.target.checked);
+            // The other note's checkbox follows, for a window resized across the margins' width.
+            markWitnessed();
+          });
+          // Forgetting asks first, in the note that was pressed. Keep (or Esc) goes back to "Forget them…"; Forget goes to
+          // the checkbox, since "Forget them…" is hidden once there's nothing to forget.
+          const closeForget = (note, backToAsk) => {
+            note.querySelector('[data-forget-question]').hidden = true;
+            const ask = note.querySelector('[data-forget-ask]');
+            ask.hidden = witnessed().size === 0;
+            if (backToAsk) ask.focus();
+          };
+          document.addEventListener('click', (event) => {
+            const note = event.target.closest?.('[data-witnessed-note]');
+            if (!note) return;
+            if (event.target.closest('[data-forget-ask]')) {
+              note.querySelector('[data-forget-ask]').hidden = true;
+              note.querySelector('[data-forget-question]').hidden = false;
+              note.querySelector('[data-forget-keep]').focus();
+            } else if (event.target.closest('[data-forget-keep]')) {
+              closeForget(note, true);
+            } else if (event.target.closest('[data-forget-witnessed]')) {
+              keepWitnessed([]);
+              closeForget(note, false);
+              markWitnessed();
+              note.querySelector('[data-unwitnessed-only]').focus();
+              say('Forgotten. Every rite is unwitnessed again.');
+            }
+          });
+          document.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape') return;
+            const note = event.target.closest?.('[data-forget-question]')?.closest('[data-witnessed-note]');
+            if (note) closeForget(note, true);
+          });
           // Drawing a rite (#196): chosen here, from the search index Cloudflare keeps, so every page stays the same for
           // everyone and no request says what was drawn. Never the rite shown, nor one drawn this session until every one
           // has been. A failure falls back to /draw, which draws on the server.
@@ -892,7 +992,11 @@ public static class Script
               let left = all.filter((number) => !drawn.includes(number));
               if (left.length === 0) { drawn = []; left = all; }
               if (left.length === 0) { location.href = draw.href; return; }
-              const number = left[Math.floor(Math.random() * left.length)];
+              // A rite the reader hasn't witnessed (#198) first; once they've witnessed them all, any.
+              const known = witnessed();
+              const unwitnessed = left.filter((number) => !known.has(number));
+              const lots = unwitnessed.length > 0 ? unwitnessed : left;
+              const number = lots[Math.floor(Math.random() * lots.length)];
               try { sessionStorage.setItem(drawnKey, JSON.stringify([...drawn, number])); } catch { /* drawn again, then */ }
               location.href = `/r/${number}?drawn`;
             } catch {

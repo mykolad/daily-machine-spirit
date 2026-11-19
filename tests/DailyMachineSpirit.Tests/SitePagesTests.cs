@@ -821,6 +821,28 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.All(pages, page => Assert.DoesNotContain("noindex", page.Html));
     }
 
+    // What a reader has witnessed (#198) only their browser knows: the Archive is the same for everyone, its count hidden
+    // for the script to fill (in the margin, and on the sheet for a narrow screen), and every page says where that memory
+    // is kept.
+    [Fact]
+    public async Task Archive_LeavesTheWitnessedCountToTheReadersBrowser()
+    {
+        var (_, empty) = await Archive("");
+        await AddRites(3);
+
+        var (_, archive) = await Archive("");
+        var (_, today) = await Today("");
+
+        Assert.Contains("""<div class="margin-witnessed" data-witnessed-note hidden>""", archive);
+        Assert.Contains("""<p class="witnessed-count"><span data-witnessed>0</span> of 3 rites</p>""", archive);
+        Assert.Contains("""<div class="sheet-witnessed" data-witnessed-note hidden>""", archive);
+        Assert.Contains("""Hide witnessed rites <span class="witnessed-tally">· <span data-witnessed>0</span> of 3</span></label>""", archive);
+        // Forgetting asks first, and isn't offered until the script has counted something to forget.
+        Assert.Contains("""<button type="button" class="forget-ask" data-forget-ask hidden>Forget them…</button>""", archive);
+        Assert.DoesNotContain("data-witnessed-note hidden", empty);
+        Assert.All([archive, today], html => Assert.Contains("The rites you have read are remembered only in your browser.", html));
+    }
+
     // Drawing a rite (#196) is in the nav on every page, and in the Archive's margin once there's a rite to draw.
     [Fact]
     public async Task EveryPage_OffersToDrawARite_AndTheArchiveToo_OnceThereAreRites()

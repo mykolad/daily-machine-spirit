@@ -198,11 +198,17 @@ skills/                           — Consult the Machine Spirit, a skill that p
     `/robots.txt` keeps crawlers out of the Scriptorium, the Breviary, sign-in and the APIs, and names `/sitemap.xml`
     (`SearchEnginesFunction`: every public page, each rite with its day; numbers and days only, kept at Cloudflare
     until a new rite purges it).
+  - **Witnessed rites** (#198): breaking a rite's seal records its number in the browser alone
+    (`localStorage`, `dms-witnessed-v1`; never sent, signed in or not). The script marks those rows wherever rows are
+    (a broken seal on a row in sepia ink, "witnessed" for a screen reader), fills the Archive's hidden margin note
+    ("12 of 214 rites"), and offers "Hide witnessed" (a drawn box over a real checkbox) and "Forget them…", which asks
+    first. Below 1280px, without margins, the same is one line on the sheet under the orders, the count in the
+    checkbox's words. Without the script nothing of it shows; the footer says where that memory is kept.
   - **Drawing a rite** (#196): the nav's dice and the Archive's margin lead to `/draw`. The script draws in the
     browser, from the search index (so pages stay the same for everyone, and no request says what was drawn): never
-    the rite shown, nor one drawn this session (`sessionStorage`) until every one has been. Without it, `/draw`
-    redirects to a random rite (`DrawFunction`, `no-store`, rate-limited at Cloudflare). Either way the page gets
-    `?drawn`, which the script announces in a toast and drops from the address.
+    the rite shown, nor one drawn this session (`sessionStorage`) until every one has been, and one not yet witnessed
+    while there is one. Without it, `/draw` redirects to a random rite (`DrawFunction`, `no-store`, rate-limited at
+    Cloudflare). Either way the page gets `?drawn`, which the script announces in a toast and drops from the address.
   - **The rites before and after** (#195, `RiteSteps`): a rite's page links to them under its card, by number
     (`IRiteReader.GetNeighbours`: the nearest each way, so a gap is stepped over), and its head names them
     (`rel="prev"`, `rel="next"`); the script follows those on the arrow keys (not in a field, not with a modifier) and
