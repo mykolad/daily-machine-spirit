@@ -346,19 +346,19 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.Equal((StatusCodes.Status200OK, "public, max-age=60, stale-if-error=604800"), (page.Status, page.AtCloudflare));
     }
 
+    // Every rite is in the Archive, Today's first, so its count, its months and its list agree.
     [Fact]
-    public async Task Archive_LeavesOutTodaysRite_AndPagesOlderOnes()
+    public async Task Archive_ListsTodaysRiteFirst_AndPagesOlderOnes()
     {
         await AddRites(23);
 
         var (status, first) = await Archive("");
-        var (_, second) = await Archive("3");
+        var (_, second) = await Archive("4");
 
         Assert.Equal(StatusCodes.Status200OK, status);
-        Assert.DoesNotContain(">Rite 23<", first);
-        Assert.Equal(Enumerable.Range(3, 20).Reverse().Select(n => $"Rite {n}"), Titles(first));
-        Assert.Contains("""href="/archive?before=3">Load older rites""", first);
-        Assert.Equal(["Rite 2", "Rite 1"], Titles(second));
+        Assert.Equal(Enumerable.Range(4, 20).Reverse().Select(n => $"Rite {n}"), Titles(first));
+        Assert.Contains("""href="/archive?before=4">Load older rites""", first);
+        Assert.Equal(["Rite 3", "Rite 2", "Rite 1"], Titles(second));
         Assert.Contains("The archive ends here.", second);
     }
 
@@ -367,7 +367,7 @@ public sealed class SitePagesTests : IAsyncLifetime
     [Fact]
     public async Task Archive_GroupsItsRitesByMonth_CountsThem_AndIndexesTheMonths()
     {
-        // 17 September to 9 October: Today's is the 23rd, the Archive's newest the 22nd.
+        // 17 September to 9 October: Today's is the 23rd, and the Archive lists it too.
         await AddRites(23);
 
         var (_, html) = await Archive("");
@@ -376,8 +376,8 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.Contains("""<h2 class="month-rubric" id="m-2026-09">""", html);
         Assert.Contains("""<p class="margin-number">23</p>""", html);
         Assert.Contains("17 September 2026", html);
-        Assert.Contains("""<span class="sub-narrow">22 rites, newest first.</span>""", html);
-        Assert.Contains("""<a href="/archive#m-2026-10"><span>October 2026</span><span class="month-count">8<span class="sr-only"> rites</span></span></a>""", html);
+        Assert.Contains("""<span class="sub-narrow">23 rites, newest first.</span>""", html);
+        Assert.Contains("""<a href="/archive#m-2026-10"><span>October 2026</span><span class="month-count">9<span class="sr-only"> rites</span></span></a>""", html);
         Assert.Contains("""<a href="/archive?before=15#m-2026-09"><span>September 2026</span><span class="month-count">14<span class="sr-only"> rites</span></span></a>""", html);
         Assert.Contains("""<p class="site-name">The Daily Machine Spirit</p>""", html);
         Assert.Contains("""<h1 class="sheet-title">The Archive</h1>""", html);

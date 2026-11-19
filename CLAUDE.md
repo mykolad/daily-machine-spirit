@@ -248,7 +248,8 @@ skills/                           — Consult the Machine Spirit, a skill that p
     behind, the traces beyond. The candles and traces are `Styles.Altar`, which the Scriptorium's own stylesheet
     includes.
   - **The Archive** (`ArchivePage`, `ArchiveSheet`, `ArchiveRows`): Today's masthead, then one parchment sheet of rows
-    under a rubric per month, 20 to a page, with Today's margins and altar. The left margin counts the rites kept and
+    under a rubric per month, every rite with Today's first (so its count, months and list agree), 20 to a page, with
+    Today's margins and altar. The left margin counts the rites kept and
     when they began, the right one indexes the months (`RiteRepository.GetDays`, numbers and days only); a month's link
     starts the Archive at that month (`?before=`), so it works without the script and however far back. The script
     loads the next page into the month it belongs to. The sheet wears Today's frame (double rule, corners, code in the
