@@ -515,12 +515,13 @@ public static class Styles
         """;
 
     // A tablet (#218): the sheet or rite card is 740px wide and the margins' notes are under it, so each candle stands
-    // alone in the space beside it, at the foot of the window as the reader scrolls (as the margins follow on a wide
-    // screen), behind everything. The traces show there too: the space beside the card is wider than at 1440px.
+    // alone in the space beside it, its flame (20px down the drawing) at the window's middle as the reader scrolls
+    // (nothing stands above it, as the notes do on a wide screen), behind everything. The traces show there too: the
+    // space beside the card is wider than at 1440px.
     // The public pages only: the Scriptorium's tables are wider than the card.
     private const string TabletAltar = """
         @media (min-width:900px) and (max-width:1279.98px){
-        .altar{display:block;position:fixed;bottom:32px;z-index:-1;line-height:0}
+        .altar{display:block;position:fixed;top:calc(50% - 20px);z-index:-1;line-height:0}
         .altar-left{left:calc((100vw - 740px)/4 - 24px)}
         .altar-right{right:calc((100vw - 740px)/4 - 24px)}
         .traces{display:block}
