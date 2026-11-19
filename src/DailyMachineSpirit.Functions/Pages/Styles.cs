@@ -274,8 +274,9 @@ public static class Styles
         .sheet-button:hover{background:#e0d0a8;color:#8f2a20}
         .archive-hero .marginalia,.month-index,.chapter-index{display:none}
         .side{display:contents}
-        .archive-loading{width:100%;display:flex;flex-direction:column;gap:12px;margin-top:12px}
-        .skeleton-row{height:118px;border-radius:20px;background:#1a1612}
+        .archive-loading{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+        .skeleton-row{height:84px;border-radius:8px;background:rgba(143,42,32,.08);animation:pending 1.4s ease-in-out infinite}
+        @keyframes pending{50%{opacity:.4}}
         .archive-more{display:flex;justify-content:center;padding-top:28px}
         .archive-more:has(.archive-seal){flex-direction:column;align-items:center;padding-top:0}
         .archive-seal{display:flex;flex-direction:column;align-items:center;margin-bottom:24px}
