@@ -1,3 +1,5 @@
+using DailyMachineSpirit.Data.Entities;
+
 namespace DailyMachineSpirit.Data.Repositories;
 
 /// <summary>
@@ -19,5 +21,5 @@ internal sealed record WitnessedDocument
     /// <summary>The rites' numbers, lowest first.</summary>
     public List<int> Rites { get; init; } = [];
 
-    public static string IdFor(string voterKey) => $"witnessed-{voterKey}";
+    public static string IdFor(VoterKey voterKey) => $"witnessed-{voterKey.Value}";
 }

@@ -952,21 +952,31 @@ public static class Script
               return undefined;
             }
           };
-          // Sends what's waiting (on a browser's first sign-in, everything it remembered alone, so nothing is lost) and
-          // takes the account's list, keeping any rite witnessed while the request was on its way.
-          const sendWitnessed = async () => {
-            const sending = stored(accountKey) === null ? [...witnessed()] : unsent();
-            const rites = sending.length === 0
-              ? await witnessedApi({})
-              : await witnessedApi({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rites: sending.slice(-1000) }) });
+          // One sync or forget at a time, in the order asked: a reply can't undo a later one's, and forgetting comes after
+          // any rite still being sent.
+          let witnessedTurn = Promise.resolve();
+          const inTurn = (task) => (witnessedTurn = witnessedTurn.then(task, task));
+          // Sends what's waiting, a thousand at a time (the API's most), and takes the account's list, keeping any rite
+          // witnessed while a request was on its way. On a browser's first sign-in, everything it remembered alone waits
+          // to be sent too, so nothing is lost.
+          const syncWitnessed = async () => {
+            if (stored(accountKey) === null) store(unsentKey, JSON.stringify([...new Set([...unsent(), ...witnessed()])]));
+            let rites;
+            while (unsent().length > 0) {
+              const batch = new Set(unsent().slice(0, 1000));
+              rites = await witnessedApi({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rites: [...batch] }) });
+              if (rites === undefined) return;
+              const waiting = unsent().filter((number) => !batch.has(number));
+              if (waiting.length > 0) store(unsentKey, JSON.stringify(waiting));
+              else unstore(unsentKey);
+            }
+            rites ??= await witnessedApi({});
             if (rites === undefined) return;
-            const waiting = unsent().filter((number) => !sending.includes(number));
-            if (waiting.length > 0) store(unsentKey, JSON.stringify(waiting));
-            else unstore(unsentKey);
-            keepWitnessed(new Set([...rites, ...waiting]));
+            keepWitnessed(new Set([...rites, ...unsent()]));
             store(accountKey, '1');
             markWitnessed();
           };
+          const sendWitnessed = () => inTurn(syncWitnessed);
           function witness(number) {
             if (!Number.isInteger(number) || number < 1) return;
             const known = witnessed();
@@ -1011,14 +1021,18 @@ public static class Script
               closeForget(note, true);
             } else if (event.target.closest('[data-forget-witnessed]')) {
               // A signed-in reader's account forgets first, so every browser they sign in on follows; if it can't, this
-              // one keeps them too, rather than getting them back on the next page.
-              if (signedIn() && await witnessedApi({ method: 'DELETE' }) === undefined) {
+              // one keeps them too, rather than getting them back on the next page. In turn, after any rite being sent.
+              const forgotten = await inTurn(async () => {
+                if (signedIn() && await witnessedApi({ method: 'DELETE' }) === undefined) return false;
+                unstore(unsentKey);
+                keepWitnessed([]);
+                return true;
+              });
+              if (!forgotten) {
                 closeForget(note, true);
                 say('They couldn’t be forgotten. Try again.');
                 return;
               }
-              unstore(unsentKey);
-              keepWitnessed([]);
               closeForget(note, false);
               markWitnessed();
               note.querySelector('[data-unwitnessed-only]').focus();

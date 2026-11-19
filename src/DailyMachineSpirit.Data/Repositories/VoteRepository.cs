@@ -30,7 +30,7 @@ public class VoteRepository : IVoteRepository
     }
 
     public Task<Either<Error, Option<SavedVote>>> Vote(
-        int riteNumber, string voterKey, Option<Reaction> vote, CancellationToken cancellationToken)
+        int riteNumber, VoterKey voterKey, Option<Reaction> vote, CancellationToken cancellationToken)
         => AttemptEither(async () =>
         {
             for (var attempt = 1; ; attempt++)
@@ -46,7 +46,7 @@ public class VoteRepository : IVoteRepository
         });
 
     public Task<Either<Error, Dictionary<int, Reaction>>> GetVotes(
-        string voterKey, IReadOnlyCollection<int> riteNumbers, CancellationToken cancellationToken)
+        VoterKey voterKey, IReadOnlyCollection<int> riteNumbers, CancellationToken cancellationToken)
         => Attempt(async () =>
         {
             if (riteNumbers.Count == 0)
@@ -58,18 +58,18 @@ public class VoteRepository : IVoteRepository
             return found.ToDictionary(document => document.RiteNumber, document => document.Reaction);
         });
 
-    public Task<Either<Error, Dictionary<int, Reaction>>> GetAllVotes(string voterKey, CancellationToken cancellationToken)
+    public Task<Either<Error, Dictionary<int, Reaction>>> GetAllVotes(VoterKey voterKey, CancellationToken cancellationToken)
         => Attempt(async () => (await container.Query<VoteDocument>(
                 new QueryDefinition("SELECT * FROM c WHERE c.type = @type AND c.voterKey = @voterKey")
                     .WithParameter("@type", VoteDocument.VoteType)
-                    .WithParameter("@voterKey", voterKey),
+                    .WithParameter("@voterKey", voterKey.Value),
                 cancellationToken))
             .ToDictionary(document => document.RiteNumber, document => document.Reaction));
 
     // The vote is read before the rite: a vote saved by the reader's other tab before this read is then already in the
     // counts read after it, so an unchanged vote never comes back with counts that leave it out.
     private async Task<Either<Error, Option<SavedVote>>> VoteOnce(
-        int riteNumber, string voterKey, Option<Reaction> vote, CancellationToken cancellationToken)
+        int riteNumber, VoterKey voterKey, Option<Reaction> vote, CancellationToken cancellationToken)
     {
         var id = VoteDocument.IdFor(riteNumber, voterKey);
         var existing = await container.ReadOrNone<VoteDocument>(id, cancellationToken);
@@ -87,7 +87,7 @@ public class VoteRepository : IVoteRepository
     // reader's other tab fails the batch, which is tried again), then the rite, with its counts moved or as they are. So
     // the counts answered always belong with the vote that was asked for.
     private async Task<Either<Error, Option<SavedVote>>> Move(
-        RiteDocument rite, string id, Option<(VoteDocument Document, string ETag)> existing, string voterKey, Option<Reaction> vote,
+        RiteDocument rite, string id, Option<(VoteDocument Document, string ETag)> existing, VoterKey voterKey, Option<Reaction> vote,
         CancellationToken cancellationToken)
     {
         var previous = existing.Map(found => found.Document.Reaction);
@@ -120,8 +120,8 @@ public class VoteRepository : IVoteRepository
             : Error.New($"Saving a vote on rite NO. {rite.Number} failed: {response.StatusCode}. {response.ErrorMessage}");
     }
 
-    private static VoteDocument NewVote(string id, int riteNumber, string voterKey, Reaction reaction)
-        => new() { Id = id, RiteNumber = riteNumber, VoterKey = voterKey, Reaction = reaction };
+    private static VoteDocument NewVote(string id, int riteNumber, VoterKey voterKey, Reaction reaction)
+        => new() { Id = id, RiteNumber = riteNumber, VoterKey = voterKey.Value, Reaction = reaction };
 
     private static TransactionalBatchItemRequestOptions IfMatch(string etag) => new() { IfMatchEtag = etag };
 

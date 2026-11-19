@@ -54,8 +54,7 @@ public sealed class VotesFunction
         CancellationToken cancellationToken)
     {
         NeverCached(request);
-        var voter = session.SignedIn(request);
-        if (voter.IsNone)
+        if (session.SignedIn(request).Case is not VoterKey voterKey)
         {
             return new UnauthorizedResult();
         }
@@ -78,7 +77,6 @@ public sealed class VotesFunction
             return new BadRequestResult();
         }
 
-        var voterKey = voter.IfNone(string.Empty);
         var saved = await votes.Vote(number, voterKey, vote, cancellationToken);
         // Taken after the save: any page whose counts were read later has this vote (see Script).
         var countedAt = time.GetUtcNow().ToUnixTimeMilliseconds();
@@ -106,8 +104,7 @@ public sealed class VotesFunction
         CancellationToken cancellationToken)
     {
         NeverCached(request);
-        var voter = session.SignedIn(request);
-        if (voter.IsNone)
+        if (session.SignedIn(request).Case is not VoterKey voterKey)
         {
             return new UnauthorizedResult();
         }
@@ -117,7 +114,6 @@ public sealed class VotesFunction
             return new BadRequestResult();
         }
 
-        var voterKey = voter.IfNone(string.Empty);
         return (await votes.GetVotes(voterKey, rites.IfNone([]), cancellationToken)).Match<IActionResult>(
             Right: found => new OkObjectResult(found.ToDictionary(
                 vote => vote.Key.ToString(CultureInfo.InvariantCulture), vote => Name(Some(vote.Value)))),

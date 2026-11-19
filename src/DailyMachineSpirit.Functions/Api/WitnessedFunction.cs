@@ -1,4 +1,5 @@
 using System.Text.Json;
+using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Voters;
 using LanguageExt;
@@ -44,12 +45,10 @@ public sealed class WitnessedFunction
         CancellationToken cancellationToken)
     {
         request.HttpContext.Response.Headers.CacheControl = "no-store";
-        var voter = session.SignedIn(request);
-        if (voter.IsNone)
+        if (session.SignedIn(request).Case is not VoterKey voterKey)
         {
             return new UnauthorizedResult();
         }
-        var voterKey = voter.IfNone(string.Empty);
         if (HttpMethods.IsGet(request.Method))
         {
             return Answer(await witnessed.Get(voterKey, cancellationToken), "read");

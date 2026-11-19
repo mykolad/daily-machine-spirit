@@ -269,7 +269,7 @@ public sealed class SitePagesTests : IAsyncLifetime
         Ok(await Repository.SaveScores(Day,
             new RiteSimilarity { ScoresGeneratorVersion = "jev/q1", Scores = [1f, 0f], CreatedAtUtc = DateTime.UtcNow },
             CancellationToken.None));
-        Ok(await new VoteRepository(cosmos.Container).Vote(2, "a", Some(Reaction.Blessed), CancellationToken.None));
+        Ok(await new VoteRepository(cosmos.Container).Vote(2, new VoterKey("a"), Some(Reaction.Blessed), CancellationToken.None));
         var failing = new RitesWithoutScoresOrCounts(Repository);
         var pages = new SitePages(failing, Options.Create(Settings.PublicPages), time, NullLogger<SitePages>.Instance);
 
@@ -460,7 +460,7 @@ public sealed class SitePagesTests : IAsyncLifetime
         var votes = new VoteRepository(cosmos.Container);
         foreach (var (voter, vote) in new[] { ("a", Reaction.Blessed), ("b", Reaction.Blessed), ("c", Reaction.Blessed) })
         {
-            Ok(await votes.Vote(2, voter, Some(vote), CancellationToken.None));
+            Ok(await votes.Vote(2, new VoterKey(voter), Some(vote), CancellationToken.None));
         }
 
         var (_, html) = await Archive("");
@@ -983,7 +983,7 @@ public sealed class SitePagesTests : IAsyncLifetime
             (5, "a", Reaction.Blessed),
         })
         {
-            Ok(await votes.Vote(number, voter, Some(vote), CancellationToken.None));
+            Ok(await votes.Vote(number, new VoterKey(voter), Some(vote), CancellationToken.None));
         }
 
         var page = await Read(context => Pages().Reliquary(context.Request, CancellationToken.None), "/reliquary", "");
@@ -1063,9 +1063,9 @@ public sealed class SitePagesTests : IAsyncLifetime
         await Add(Day.AddDays(-1), "The Unvoted Vigil");
         await Add(Day, "The Rite of Re-Run");
         var votes = new VoteRepository(cosmos.Container);
-        Ok(await votes.Vote(1, "a", Some(Reaction.Blessed), CancellationToken.None));
-        Ok(await votes.Vote(1, "b", Some(Reaction.Blessed), CancellationToken.None));
-        Ok(await votes.Vote(2, "a", Some(Reaction.Blessed), CancellationToken.None));
+        Ok(await votes.Vote(1, new VoterKey("a"), Some(Reaction.Blessed), CancellationToken.None));
+        Ok(await votes.Vote(1, new VoterKey("b"), Some(Reaction.Blessed), CancellationToken.None));
+        Ok(await votes.Vote(2, new VoterKey("a"), Some(Reaction.Blessed), CancellationToken.None));
 
         var (_, html) = await Archive("");
 
@@ -1076,7 +1076,7 @@ public sealed class SitePagesTests : IAsyncLifetime
     public async Task RiteCard_OfARiteTheReliquaryKeeps_WearsItsPlace_OnTodayAndItsOwnPage()
     {
         await Add(Day, "The Once Blessed Rite");
-        Ok(await new VoteRepository(cosmos.Container).Vote(1, "a", Some(Reaction.Blessed), CancellationToken.None));
+        Ok(await new VoteRepository(cosmos.Container).Vote(1, new VoterKey("a"), Some(Reaction.Blessed), CancellationToken.None));
 
         var (_, today) = await Today("");
         var own = await Read(context => Pages().Rite(context.Request, "1", CancellationToken.None), "/r/1", "");

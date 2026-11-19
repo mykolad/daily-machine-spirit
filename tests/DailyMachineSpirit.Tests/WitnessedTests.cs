@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Api;
 using DailyMachineSpirit.Functions.Voters;
@@ -65,22 +66,22 @@ public sealed class WitnessedTests : IAsyncLifetime
         for (var round = 0; round < 5; round++)
         {
             var answers = await Task.WhenAll(
-                Repository.Add("reader-key", [2 * round + 1], CancellationToken.None),
-                Repository.Add("reader-key", [2 * round + 2], CancellationToken.None));
+                Repository.Add(new VoterKey("reader-key"), [2 * round + 1], CancellationToken.None),
+                Repository.Add(new VoterKey("reader-key"), [2 * round + 2], CancellationToken.None));
 
             Assert.All(answers, answer => Ok(answer));
         }
 
-        Assert.Equal(Enumerable.Range(1, 10), Ok(await Repository.Get("reader-key", CancellationToken.None)));
+        Assert.Equal(Enumerable.Range(1, 10), Ok(await Repository.Get(new VoterKey("reader-key"), CancellationToken.None)));
     }
 
     // Only an abuser gets this far: the lowest numbers make room, so the document stays small.
     [Fact]
     public async Task Add_PastTheCap_KeepsTheHighestNumbers()
     {
-        Ok(await Repository.Add("reader-key", Enumerable.Range(1, WitnessedRepository.MaxRites).ToList(), CancellationToken.None));
+        Ok(await Repository.Add(new VoterKey("reader-key"), Enumerable.Range(1, WitnessedRepository.MaxRites).ToList(), CancellationToken.None));
 
-        var kept = Ok(await Repository.Add("reader-key", [WitnessedRepository.MaxRites + 1], CancellationToken.None));
+        var kept = Ok(await Repository.Add(new VoterKey("reader-key"), [WitnessedRepository.MaxRites + 1], CancellationToken.None));
 
         Assert.Equal((WitnessedRepository.MaxRites, 2, WitnessedRepository.MaxRites + 1), (kept.Count, kept[0], kept[^1]));
     }

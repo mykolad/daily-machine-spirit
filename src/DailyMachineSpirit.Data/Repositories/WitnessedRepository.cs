@@ -1,3 +1,4 @@
+using DailyMachineSpirit.Data.Entities;
 using System.Net;
 using LanguageExt;
 using LanguageExt.Common;
@@ -29,11 +30,11 @@ public class WitnessedRepository : IWitnessedRepository
         this.container = container;
     }
 
-    public Task<Either<Error, IReadOnlyList<int>>> Get(string voterKey, CancellationToken cancellationToken)
+    public Task<Either<Error, IReadOnlyList<int>>> Get(VoterKey voterKey, CancellationToken cancellationToken)
         => Attempt(async () => (await container.ReadOrNone<WitnessedDocument>(WitnessedDocument.IdFor(voterKey), cancellationToken))
             .Match<IReadOnlyList<int>>(Some: found => found.Document.Rites, None: () => []));
 
-    public Task<Either<Error, IReadOnlyList<int>>> Add(string voterKey, IReadOnlyCollection<int> rites, CancellationToken cancellationToken)
+    public Task<Either<Error, IReadOnlyList<int>>> Add(VoterKey voterKey, IReadOnlyCollection<int> rites, CancellationToken cancellationToken)
         => AttemptEither(async () =>
         {
             for (var attempt = 1; ; attempt++)
@@ -48,14 +49,14 @@ public class WitnessedRepository : IWitnessedRepository
             }
         });
 
-    public Task<Either<Error, Unit>> Forget(string voterKey, CancellationToken cancellationToken)
+    public Task<Either<Error, Unit>> Forget(VoterKey voterKey, CancellationToken cancellationToken)
         => Attempt(async () =>
         {
-            await container.DeleteOrNone<WitnessedDocument>(WitnessedDocument.IdFor(voterKey), cancellationToken);
+            await container.DeleteIfExists<WitnessedDocument>(WitnessedDocument.IdFor(voterKey), cancellationToken);
             return unit;
         });
 
-    private async Task<Either<Error, IReadOnlyList<int>>> AddOnce(string voterKey, IReadOnlyCollection<int> rites, CancellationToken cancellationToken)
+    private async Task<Either<Error, IReadOnlyList<int>>> AddOnce(VoterKey voterKey, IReadOnlyCollection<int> rites, CancellationToken cancellationToken)
     {
         var id = WitnessedDocument.IdFor(voterKey);
         var existing = await container.ReadOrNone<WitnessedDocument>(id, cancellationToken);
@@ -70,7 +71,7 @@ public class WitnessedRepository : IWitnessedRepository
             await existing.Match(
                 Some: found => container.ReplaceItemAsync(found.Document with { Rites = merged }, id, SharedPartitionKey,
                     new ItemRequestOptions { IfMatchEtag = found.ETag }, cancellationToken),
-                None: () => container.CreateItemAsync(new WitnessedDocument { Id = id, VoterKey = voterKey, Rites = merged },
+                None: () => container.CreateItemAsync(new WitnessedDocument { Id = id, VoterKey = voterKey.Value, Rites = merged },
                     SharedPartitionKey, cancellationToken: cancellationToken));
             return merged;
         }

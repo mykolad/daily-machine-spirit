@@ -113,7 +113,7 @@ public sealed class ExpurgationTests : IAsyncLifetime
     {
         var number = await PublishedAfterAnAmendment();
         var version = Found(await Expurgations().Find(number, CancellationToken.None)).Version;
-        var voted = new VotingMeanwhile(testbed.Expurgation, () => testbed.Votes.Vote(number, "voter-key", Some(Reaction.Blessed), CancellationToken.None));
+        var voted = new VotingMeanwhile(testbed.Expurgation, () => testbed.Votes.Vote(number, new VoterKey("voter-key"), Some(Reaction.Blessed), CancellationToken.None));
 
         Ok(await testbed.Expurgations(voted, pages).Erase(number, version, WarmInTitleAndText, Expurgator, CancellationToken.None));
 

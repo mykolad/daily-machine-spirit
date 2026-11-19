@@ -1,3 +1,4 @@
+using DailyMachineSpirit.Data.Entities;
 using LanguageExt;
 using LanguageExt.Common;
 
@@ -10,14 +11,14 @@ namespace DailyMachineSpirit.Data.Repositories;
 public interface IWitnessedRepository
 {
     /// <summary>The reader's witnessed rites, lowest first; empty when they've kept none here.</summary>
-    Task<Either<Error, IReadOnlyList<int>>> Get(string voterKey, CancellationToken cancellationToken);
+    Task<Either<Error, IReadOnlyList<int>>> Get(VoterKey voterKey, CancellationToken cancellationToken);
 
     /// <summary>
     /// Adds rites to the reader's list and answers the whole list, lowest first. Two tabs adding at once both count. Past
     /// <see cref="WitnessedRepository.MaxRites"/>, the lowest numbers make room.
     /// </summary>
-    Task<Either<Error, IReadOnlyList<int>>> Add(string voterKey, IReadOnlyCollection<int> rites, CancellationToken cancellationToken);
+    Task<Either<Error, IReadOnlyList<int>>> Add(VoterKey voterKey, IReadOnlyCollection<int> rites, CancellationToken cancellationToken);
 
     /// <summary>Forgets the reader's list, so every browser they sign in on forgets it too.</summary>
-    Task<Either<Error, Unit>> Forget(string voterKey, CancellationToken cancellationToken);
+    Task<Either<Error, Unit>> Forget(VoterKey voterKey, CancellationToken cancellationToken);
 }

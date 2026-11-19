@@ -39,7 +39,7 @@ internal static class CosmosCalls
     public static bool IsMissingItem(CosmosException ex) => ex is { StatusCode: HttpStatusCode.NotFound, SubStatusCode: 0 };
 
     /// <summary>Deletes the document, if there is one: already gone is as good as deleted.</summary>
-    public static async Task DeleteOrNone<T>(this Container container, string id, CancellationToken cancellationToken)
+    public static async Task DeleteIfExists<T>(this Container container, string id, CancellationToken cancellationToken)
     {
         try
         {
