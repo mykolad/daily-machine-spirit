@@ -233,7 +233,11 @@ public sealed class RiteCards : IRiteCards
         using var font = Font(CardAssets.MonoBold, 22);
         using var paint = new SKPaint { Color = Faded, IsAntialias = true };
         canvas.DrawText(date, ContentLeft, FootBaseline, font, paint);
-        canvas.DrawText(address, ContentLeft + ContentWidth, FootBaseline, SKTextAlign.Right, font, paint);
+        // Right of the seal (to x 644, and a little room): a longer host than the site's own, as staging's, shrinks to fit.
+        const float room = ContentLeft + ContentWidth - 660;
+        var width = font.MeasureText(address);
+        using var addressFont = Font(CardAssets.MonoBold, width <= room ? 22 : 22 * room / width);
+        canvas.DrawText(address, ContentLeft + ContentWidth, FootBaseline, SKTextAlign.Right, addressFont, paint);
     }
 
     // The title in at most this many lines at this size; two lines are balanced, broken where they're closest in width.
