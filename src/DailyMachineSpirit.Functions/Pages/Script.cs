@@ -979,6 +979,8 @@ public static class Script
           const sendWitnessed = () => inTurn(syncWitnessed);
           function witness(number) {
             if (!Number.isInteger(number) || number < 1) return;
+            // Signed out while the page was open: an account's copy leaves first, so this rite stays as the browser's own.
+            if (!signedIn()) leaveAccount();
             const known = witnessed();
             known.add(number);
             keepWitnessed(known);
@@ -986,15 +988,23 @@ public static class Script
             store(unsentKey, JSON.stringify([...new Set([...unsent(), number])]));
             sendWitnessed();
           }
+          // On arriving: a signed-out browser drops an account's copy; a signed-in one syncs where the list is shown (rows),
+          // or when something waits to be sent; a page without rows needs no list.
+          const arrive = () => {
+            if (!signedIn()) leaveAccount();
+            else if (document.querySelector('.rows') || unsent().length > 0 || stored(accountKey) === null) sendWitnessed();
+          };
           markWitnessed();
-          // Fetched where it's shown (rows), or when something waits to be sent; a page without rows needs no list.
-          if (!signedIn()) leaveAccount();
-          else if (document.querySelector('.rows') || unsent().length > 0 || stored(accountKey) === null) sendWitnessed();
+          arrive();
           // Rows come later too: the Archive's next pages, and its live search (even from a search that found none).
           const rowLists = document.querySelector('main');
           if (rowLists) new MutationObserver(markWitnessed).observe(rowLists, { childList: true, subtree: true });
-          // A page the browser kept on going back may predate the seal just broken.
-          addEventListener('pageshow', (event) => { if (event.persisted) markWitnessed(); });
+          // A page the browser kept on going back may predate the seal just broken, or a Forget or sign-out elsewhere.
+          addEventListener('pageshow', (event) => {
+            if (!event.persisted) return;
+            markWitnessed();
+            arrive();
+          });
           // From the document, as the controls are replaced with the margins.
           document.addEventListener('change', (event) => {
             if (!event.target.matches?.('[data-unwitnessed-only]')) return;
