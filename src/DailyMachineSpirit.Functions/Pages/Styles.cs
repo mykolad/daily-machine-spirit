@@ -477,14 +477,15 @@ public static class Styles
         .countdown{margin-top:28px}
         .countdown-line{display:none}
         }
-        """ + Altar + """
+        """ + Altar + TabletAltar + """
         @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
         """;
 
     /// <summary>
     /// The wide screen's decoration, which the Scriptorium shares (its stylesheet is its own): a candle in each margin of
     /// a three-column grid (Today's rite, or an altar heading), from 1280px, and circuit traces in the space outside it,
-    /// from 1440px, where that space is wide enough to see them. An altar heading has the glow behind it at every width.
+    /// from 1440px, where that space is wide enough to see them (the public pages add a tablet's, TabletAltar). An altar
+    /// heading has the glow behind it at every width.
     /// The candles' glow reaches past the screen's edge, so the page's frame clips it (<c>overflow-x: clip</c>).
     /// </summary>
     public const string Altar = """
@@ -498,19 +499,31 @@ public static class Styles
         .altar{display:block;position:relative;grid-row:1;align-self:end;justify-self:center;line-height:0}
         .altar-left{grid-column:1}
         .altar-right{grid-column:3}
+        }
         .altar::before{content:'';position:absolute;left:50%;top:30%;z-index:-1;width:600px;height:600px;transform:translate(-50%,-50%);background:radial-gradient(circle 300px,rgba(240,180,90,.16),transparent 70%);pointer-events:none}
         .altar-flame{transform-box:fill-box;transform-origin:50% 100%;animation:altar-flicker 3.6s ease-in-out infinite}
         .altar-right .altar-flame{animation-duration:4.3s;animation-delay:1.1s}
-        }
         @keyframes altar-flicker{0%,100%{transform:scaleY(1)}40%{transform:scaleY(.93) skewX(1.5deg)}70%{transform:scaleY(1.025) skewX(-1deg)}}
-        @media (min-width:1440px){
-        .traces{display:block;position:absolute;top:-240px;z-index:-1;width:calc(50vw - 50%);height:950px;overflow:hidden;pointer-events:none}
+        .traces{position:absolute;top:-240px;z-index:-1;width:calc(50vw - 50%);height:950px;overflow:hidden;pointer-events:none}
         .altar-head .traces{top:-120px}
         .traces-left{right:100%}
         .traces-right{left:100%}
         .traces svg{position:absolute;top:0}
         .traces-left svg{left:0}
         .traces-right svg{right:0;transform:scaleX(-1)}
+        @media (min-width:1440px){.traces{display:block}}
+        """;
+
+    // A tablet (#218): the sheet or rite card is 740px wide and the margins' notes are under it, so each candle stands
+    // alone in the space beside it, at the foot of the window as the reader scrolls (as the margins follow on a wide
+    // screen), behind everything. The traces show there too: the space beside the card is wider than at 1440px.
+    // The public pages only: the Scriptorium's tables are wider than the card.
+    private const string TabletAltar = """
+        @media (min-width:900px) and (max-width:1279.98px){
+        .altar{display:block;position:fixed;bottom:32px;z-index:-1;line-height:0}
+        .altar-left{left:calc((100vw - 740px)/4 - 24px)}
+        .altar-right{right:calc((100vw - 740px)/4 - 24px)}
+        .traces{display:block}
         }
         """;
 }
