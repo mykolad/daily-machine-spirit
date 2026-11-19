@@ -108,6 +108,7 @@ builder.Services.AddSingleton<IExpurgationRepository>(services => new SnapshotFo
 builder.Services.AddSingleton<IPreceptRepository, PreceptRepository>();
 builder.Services.AddSingleton<IScribeNameRepository, ScribeNameRepository>();
 builder.Services.AddSingleton<IVoteRepository, VoteRepository>();
+builder.Services.AddSingleton<IWitnessedRepository, WitnessedRepository>();
 
 // The daily rite and the backlog. Created only when the timer or a refill runs, so HTTP functions start without the generation settings.
 Tuned<RiteWritingOptions>(RiteWritingOptions.SectionName);

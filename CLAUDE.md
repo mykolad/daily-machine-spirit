@@ -198,8 +198,13 @@ skills/                           — Consult the Machine Spirit, a skill that p
     `/robots.txt` keeps crawlers out of the Scriptorium, the Breviary, sign-in and the APIs, and names `/sitemap.xml`
     (`SearchEnginesFunction`: every public page, each rite with its day; numbers and days only, kept at Cloudflare
     until a new rite purges it).
-  - **Witnessed rites** (#198): breaking a rite's seal records its number in the browser alone
-    (`localStorage`, `dms-witnessed-v1`; never sent, signed in or not). The script marks those rows wherever rows are
+  - **Witnessed rites** (#198): breaking a rite's seal records its number in the browser (`localStorage`,
+    `dms-witnessed-v1`), and for a signed-in reader with their account too (#215, `Api/WitnessedFunction`,
+    `WitnessedRepository`): one document per voter key, saved under its ETag, `GET`, `POST {"rites": [12]}` (adds,
+    answers the whole list) and `DELETE` on `/api/witnessed`, never cached. The account's list is the truth and the
+    browser keeps a copy: its first sign-in sends everything it remembered alone; a rite witnessed while signed in
+    waits as unsent until the account has it; signing out (or the sign-in running out) takes the copy off the browser;
+    Forget clears the account, so every browser follows. The script marks those rows wherever rows are
     (a broken seal on a row in sepia ink, "witnessed" for a screen reader), fills the Archive's hidden margin note
     ("12 of 214 rites"), and offers "Hide witnessed" (a drawn box over a real checkbox) and "Forget them…", which asks
     first. Below 1280px, without margins, the same is one line on the sheet under the orders, the count in the

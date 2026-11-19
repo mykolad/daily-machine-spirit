@@ -879,9 +879,9 @@ public static class Script
             });
           });
 
-          // The rites the reader has witnessed (#198): those whose seal they broke, kept only in this browser and never
-          // sent, signed in or not. The pages are the same for everyone, so the rows are marked here, after loading, as
-          // the archive loads more of them.
+          // The rites the reader has witnessed (#198): those whose seal they broke, kept in this browser, and for a
+          // signed-in reader with their account too (#215, below). The pages are the same for everyone, so the rows are
+          // marked here, after loading, as the archive loads more of them.
           const witnessedKey = 'dms-witnessed-v1';
           const witnessed = () => {
             try { return new Set(JSON.parse(localStorage.getItem(witnessedKey) ?? '[]')); } catch { return new Set(); }
@@ -923,13 +923,63 @@ public static class Script
               note.querySelector('[data-forget-ask]').hidden = known.size === 0 || !note.querySelector('[data-forget-question]').hidden;
             });
           };
+          // A signed-in reader's list follows them to every browser they sign in on (#215): the account's list is the
+          // truth, and this browser keeps a copy. A rite witnessed here waits as unsent until the account has it, so a
+          // failed send is tried again on the next page. The account mark says the copy here is an account's: when the
+          // reader signs out, or the sign-in runs out, it leaves this browser, so the next reader here doesn't inherit it.
+          const unsentKey = 'dms-witnessed-unsent';
+          const accountKey = 'dms-witnessed-account';
+          const stored = (key) => { try { return localStorage.getItem(key); } catch { return null; } };
+          const store = (key, value) => { try { localStorage.setItem(key, value); } catch { /* not kept, then */ } };
+          const unstore = (key) => { try { localStorage.removeItem(key); } catch { /* nothing kept, then */ } };
+          const unsent = () => { try { return JSON.parse(stored(unsentKey) ?? '[]'); } catch { return []; } };
+          const signedIn = () => document.cookie.split('; ').includes('dms-signed-in=1');
+          const leaveAccount = () => {
+            if (stored(accountKey) === null) return;
+            keepWitnessed([]);
+            unstore(unsentKey);
+            unstore(accountKey);
+            markWitnessed();
+          };
+          // The account's list, or undefined when it couldn't be reached (signed out meanwhile, too).
+          const witnessedApi = async (init) => {
+            try {
+              const response = await fetch('/api/witnessed', init);
+              if (response.status === 401) leaveAccount();
+              if (!response.ok) return undefined;
+              return response.status === 204 ? [] : (await response.json()).rites;
+            } catch {
+              return undefined;
+            }
+          };
+          // Sends what's waiting (on a browser's first sign-in, everything it remembered alone, so nothing is lost) and
+          // takes the account's list, keeping any rite witnessed while the request was on its way.
+          const sendWitnessed = async () => {
+            const sending = stored(accountKey) === null ? [...witnessed()] : unsent();
+            const rites = sending.length === 0
+              ? await witnessedApi({})
+              : await witnessedApi({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rites: sending.slice(-1000) }) });
+            if (rites === undefined) return;
+            const waiting = unsent().filter((number) => !sending.includes(number));
+            if (waiting.length > 0) store(unsentKey, JSON.stringify(waiting));
+            else unstore(unsentKey);
+            keepWitnessed(new Set([...rites, ...waiting]));
+            store(accountKey, '1');
+            markWitnessed();
+          };
           function witness(number) {
             if (!Number.isInteger(number) || number < 1) return;
             const known = witnessed();
             known.add(number);
             keepWitnessed(known);
+            if (!signedIn()) return;
+            store(unsentKey, JSON.stringify([...new Set([...unsent(), number])]));
+            sendWitnessed();
           }
           markWitnessed();
+          // Fetched where it's shown (rows), or when something waits to be sent; a page without rows needs no list.
+          if (!signedIn()) leaveAccount();
+          else if (document.querySelector('.rows') || unsent().length > 0 || stored(accountKey) === null) sendWitnessed();
           // Rows come later too: the Archive's next pages, and its live search (even from a search that found none).
           const rowLists = document.querySelector('main');
           if (rowLists) new MutationObserver(markWitnessed).observe(rowLists, { childList: true, subtree: true });
@@ -950,7 +1000,7 @@ public static class Script
             ask.hidden = witnessed().size === 0;
             if (backToAsk) ask.focus();
           };
-          document.addEventListener('click', (event) => {
+          document.addEventListener('click', async (event) => {
             const note = event.target.closest?.('[data-witnessed-note]');
             if (!note) return;
             if (event.target.closest('[data-forget-ask]')) {
@@ -960,6 +1010,14 @@ public static class Script
             } else if (event.target.closest('[data-forget-keep]')) {
               closeForget(note, true);
             } else if (event.target.closest('[data-forget-witnessed]')) {
+              // A signed-in reader's account forgets first, so every browser they sign in on follows; if it can't, this
+              // one keeps them too, rather than getting them back on the next page.
+              if (signedIn() && await witnessedApi({ method: 'DELETE' }) === undefined) {
+                closeForget(note, true);
+                say('They couldn’t be forgotten. Try again.');
+                return;
+              }
+              unstore(unsentKey);
               keepWitnessed([]);
               closeForget(note, false);
               markWitnessed();

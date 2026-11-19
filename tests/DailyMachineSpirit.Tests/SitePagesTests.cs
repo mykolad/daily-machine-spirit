@@ -840,7 +840,7 @@ public sealed class SitePagesTests : IAsyncLifetime
         // Forgetting asks first, and isn't offered until the script has counted something to forget.
         Assert.Contains("""<button type="button" class="forget-ask" data-forget-ask hidden>Forget them…</button>""", archive);
         Assert.DoesNotContain("data-witnessed-note hidden", empty);
-        Assert.All([archive, today], html => Assert.Contains("The rites you have read are remembered only in your browser.", html));
+        Assert.All([archive, today], html => Assert.Contains("The rites you have read are remembered in your browser, and with your account if you sign in.", html));
     }
 
     // Drawing a rite (#196) is in the nav on every page, and in the Archive's margin once there's a rite to draw.
