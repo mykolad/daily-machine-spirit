@@ -124,12 +124,11 @@ public sealed class SitePages
         => new RedirectResult(Paths.About, permanent: true);
 
     /// <summary>
-    /// Pages by number, newest first: <c>?before=&lt;number&gt;</c> starts below that number. The first page leaves
-    /// out the newest rite, which Today shows: only the day's own rite is ever published, so the highest number is also
-    /// the newest date. One rite more than a page is read, to know whether there are older ones. With <c>?q=</c>, the
-    /// rites holding every word the reader typed instead, Today's included, and with <c>&amp;tag=</c> only those filed
-    /// under that tag (a tag without words is the tag's own page); the words are never logged (a failure logs the path
-    /// alone).
+    /// Pages by number, newest first, Today's too: <c>?before=&lt;number&gt;</c> starts below that number (only the day's
+    /// own rite is ever published, so the highest number is also the newest date). One rite more than a page is read,
+    /// to know whether there are older ones. With <c>?q=</c>, the rites holding every word the reader typed instead, and
+    /// with <c>&amp;tag=</c> only those filed under that tag (a tag without words is the tag's own page); the words are
+    /// never logged (a failure logs the path alone).
     /// </summary>
     [Function("Archive")]
     public async Task<IActionResult> Archive(
@@ -168,9 +167,7 @@ public sealed class SitePages
         }
 
         var archive = await rites.GetDays(cancellationToken)
-            .BindAsync(async days => (await (isFirstPage
-                    ? rites.GetOlderThan(int.MaxValue, options.Value.ArchivePageSize + 2, cancellationToken).MapAsync(found => found.Skip(1).ToList())
-                    : rites.GetOlderThan(before, options.Value.ArchivePageSize + 1, cancellationToken)))
+            .BindAsync(async days => (await rites.GetOlderThan(isFirstPage ? int.MaxValue : before, options.Value.ArchivePageSize + 1, cancellationToken))
                 .Map(page => (Days: days, Page: OnePage(page))));
         var listedPlaces = await places;
         // An older page lists other rites, so its ?before= is part of its address (a tag's pages likewise); a search's

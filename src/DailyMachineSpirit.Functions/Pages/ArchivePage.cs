@@ -6,13 +6,13 @@ using static LanguageExt.Prelude;
 namespace DailyMachineSpirit.Functions.Pages;
 
 /// <summary>
-/// The Archive (<c>/archive</c>): every rite but Today's, newest first, a page at a time, grouped by month. With
-/// <c>?q=</c> it's the search results: the rites holding every word, Today's too, the words marked where they're found.
+/// The Archive (<c>/archive</c>): every rite, Today's first, a page at a time, grouped by month. With <c>?q=</c> it's
+/// the search results: the rites holding every word, the words marked where they're found.
 /// The same page either way, rendered on the server, so a search's address can be shared and works without the script.
 /// </summary>
 public static class ArchivePage
 {
-    private const string Description = "Earlier litanies, newest first.";
+    private const string Description = "Every litany, newest first.";
 
     // Forgetting can't be undone, so it asks first, in place: the question is hidden until "Forget them…" is pressed,
     // and that is hidden while nothing is witnessed (the script shows it).
@@ -27,18 +27,17 @@ public static class ArchivePage
         """;
 
     /// <param name="olderThan">Where the next page starts, or None when these are the oldest.</param>
-    /// <param name="days">Every rite's number and day, newest first: Today's, then the Archive's.</param>
+    /// <param name="days">Every rite's number and day, newest first, Today's too: the same as the list, so the count,
+    /// the months and the list agree.</param>
     /// <param name="places">The places of the rites the Reliquary keeps, each worn as a badge.</param>
     public static string Render(IReadOnlyList<Rite> rites, Option<int> olderThan, IReadOnlyList<RiteDay> days, IReadOnlyDictionary<int, int> places, DateTimeOffset now, SearchListing listing)
     {
-        // Today shows the newest rite, so the Archive's list and its months start with the one before.
-        var listed = days.Skip(1).ToList();
-        var first = listed.HeadOrNone().Map(day => day.Number);
-        var months = ArchiveMonth.Of(listed);
+        var first = days.HeadOrNone().Map(day => day.Number);
+        var months = ArchiveMonth.Of(days);
         // Below 1280px there are no margins, so the count moves into the line under the heading.
-        var sub = listed.Count == 0
+        var sub = days.Count == 0
             ? Description
-            : $"""<span class="sub-wide">{Description}</span><span class="sub-narrow">{Rites(listed.Count)}, newest first.</span>""";
+            : $"""<span class="sub-wide">{Description}</span><span class="sub-narrow">{Rites(days.Count)}, newest first.</span>""";
         var since = days.LastOrNone().Match(
             Some: oldest => ArchiveSheet.Note("Since", $"""<p class="margin-since">{ImperialDate.WithTheDay(oldest.PublishedOnUtc, "since-day", "since-date")}</p>"""),
             None: () => string.Empty);
