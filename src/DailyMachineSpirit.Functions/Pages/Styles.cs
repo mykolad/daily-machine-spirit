@@ -242,7 +242,9 @@ public static class Styles
         .witnessed-tally{font-family:var(--serif);font-style:italic;font-weight:400;font-size:16px;color:#6e5524}
         .sheet-witnessed .forget-ask{color:#6e5524}
         .sheet-witnessed .forget-text{color:#5c4a33}
-        .sheet-witnessed .forget-choices{justify-content:center}
+        .sheet-witnessed .forget-choices{justify-content:center;margin-top:0}
+        .sheet-witnessed .witnessed-forget:has(.forget-question:not([hidden])){flex-basis:100%}
+        .sheet-witnessed .forget-question:not([hidden]){display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px 12px;padding:4px 0 6px}
         .sheet-witnessed .forget-keep{border-color:#8f2a20;color:#8f2a20}
         .row-title:focus-visible{outline:none}
         .row-title::after{content:'';position:absolute;inset:0;border-radius:8px}
