@@ -14,6 +14,18 @@ public static class ArchivePage
 {
     private const string Description = "Every litany, newest first.";
 
+    // Forgetting can't be undone, so it asks first, in place: the question is hidden until "Forget them…" is pressed,
+    // and that is hidden while nothing is witnessed (the script shows it).
+    private const string ForgetWitnessed = """
+        <div class="witnessed-forget">
+        <button type="button" class="forget-ask" data-forget-ask hidden>Forget them…</button>
+        <div class="forget-question" role="group" aria-label="Forget the witnessed rites?" data-forget-question hidden>
+        <p class="forget-text">Forget all <span data-witnessed>0</span>? Every rite will be unwitnessed again.</p>
+        <div class="forget-choices"><button type="button" class="forget-keep" data-forget-keep>Keep</button><button type="button" class="forget-confirm" data-forget-witnessed>Forget</button></div>
+        </div>
+        </div>
+        """;
+
     /// <param name="olderThan">Where the next page starts, or None when these are the oldest.</param>
     /// <param name="days">Every rite's number and day, newest first, Today's too: the same as the list, so the count,
     /// the months and the list agree.</param>
@@ -33,6 +45,7 @@ public static class ArchivePage
             <aside class="marginalia" aria-label="About the Archive">
             {ArchiveSheet.Note("Rites kept", $"""<p class="margin-number">{Html.Count(days.Count)}</p>""")}
             {(days.Count == 0 ? string.Empty : $"""<a class="margin-draw" href="{Paths.Draw}">Draw a rite</a>""")}
+            {Witnessed(days.Count)}
             {since}
             {ArchiveSheet.Countdown(now)}
             </aside>
@@ -46,7 +59,7 @@ public static class ArchivePage
                 kicker: string.Empty,
                 heading: "The Archive",
                 sub: sub,
-                search: ArchiveSheet.Search(string.Empty, None) + ArchiveSheet.Orders(byVeneration: false),
+                search: ArchiveSheet.Search(string.Empty, None) + ArchiveSheet.Orders(byVeneration: false) + WitnessedLine(days.Count),
                 body: ArchiveRows.Months(rites, [], ArchiveRows.NoVotes, places),
                 below: ArchiveRows.More(olderThan.Map(Paths.ArchiveBefore), "Load older rites", "The archive ends here. Earlier knowledge is lost.", ArchiveSheet.Closing(days.Count)),
                 left: left,
@@ -135,4 +148,34 @@ public static class ArchivePage
     }
 
     private static string Rites(int count) => count == 1 ? "1 rite" : $"{Html.Count(count)} rites";
+
+    // How many rites the reader has witnessed (#198), which only their browser knows: the same for everyone here, hidden,
+    // for the script to count and show, with the toggle and the way to forget. Without the script, nothing of it shows.
+    private static string Witnessed(int kept)
+        => kept == 0
+            ? string.Empty
+            : $"""
+                <div class="margin-witnessed" data-witnessed-note hidden>
+                <p class="margin-label">Witnessed</p>
+                <p class="witnessed-count"><span data-witnessed>0</span> of {Rites(kept)}</p>
+                {HideWitnessed("Hide witnessed", string.Empty)}
+                {ForgetWitnessed}
+                </div>
+                """;
+
+    // The same, as one line on the sheet under the orders, for a screen too narrow for the margins: the stylesheet shows
+    // one or the other, never both. The count joins the checkbox's words, since there's no label above it here.
+    private static string WitnessedLine(int kept)
+        => kept == 0
+            ? string.Empty
+            : $"""
+                <div class="sheet-witnessed" data-witnessed-note hidden>
+                {HideWitnessed("Hide witnessed rites", $"""<span class="witnessed-tally">· <span data-witnessed>0</span> of {Html.Count(kept)}</span>""")}
+                {ForgetWitnessed}
+                </div>
+                """;
+
+    // A real checkbox, out of sight, under a drawn box with a quill tick: checked hides the witnessed rows.
+    private static string HideWitnessed(string words, string tally)
+        => $"""<label class="witnessed-only"><input type="checkbox" data-unwitnessed-only><span class="witnessed-box" aria-hidden="true">{Svg.QuillTick}</span>{words}{(tally.Length == 0 ? string.Empty : " " + tally)}</label>""";
 }
