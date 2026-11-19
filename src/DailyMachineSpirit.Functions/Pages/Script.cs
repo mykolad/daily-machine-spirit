@@ -1066,7 +1066,9 @@ public static class Script
             if (!draw || event.button !== 0 || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
             event.preventDefault();
             try {
-              const response = await fetch('/api/search-index');
+              // A signed-in reader's list is brought up to date meanwhile (#215): a page without rows didn't fetch it, and
+              // rites read on another device count too. A failed sync leaves the copy as it was.
+              const [response] = await Promise.all([fetch('/api/search-index'), signedIn() ? sendWitnessed() : undefined]);
               if (!response.ok) throw new Error(String(response.status));
               const shown = Number(document.querySelector('[data-rite]')?.dataset.rite);
               const all = (await response.json()).map((rite) => rite.number).filter((number) => number !== shown);
