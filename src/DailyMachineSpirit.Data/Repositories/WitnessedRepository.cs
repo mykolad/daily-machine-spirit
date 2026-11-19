@@ -1,5 +1,5 @@
-using DailyMachineSpirit.Data.Entities;
 using System.Net;
+using DailyMachineSpirit.Data.Entities;
 using LanguageExt;
 using LanguageExt.Common;
 using Microsoft.Azure.Cosmos;
