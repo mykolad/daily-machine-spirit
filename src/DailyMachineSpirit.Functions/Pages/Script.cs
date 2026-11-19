@@ -299,7 +299,9 @@ public static class Script
             placeholders.className = 'archive-loading';
             placeholders.setAttribute('aria-hidden', 'true');
             placeholders.innerHTML = '<div class="skeleton-row"></div><div class="skeleton-row"></div>';
-            more.before(placeholders);
+            // On the sheet, where the rows will come, rather than beside the link below it (in a wide page's grid, that
+            // would put them under the left margin).
+            document.querySelector('.months').append(placeholders);
             announcer.textContent = 'Loading older rites…';
             try {
               const response = await fetch(link.href);
