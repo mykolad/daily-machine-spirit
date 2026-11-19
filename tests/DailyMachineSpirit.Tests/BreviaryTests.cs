@@ -43,7 +43,7 @@ public sealed class BreviaryTests : IAsyncLifetime
         await AddRites(4);
         await Vote(1, Reaction.Blessed);
         await Vote(3, Reaction.Heresy);
-        Ok(await Votes.Vote(2, "someone-else", Some(Reaction.Blessed), CancellationToken.None));
+        Ok(await Votes.Vote(2, new VoterKey("someone-else"), Some(Reaction.Blessed), CancellationToken.None));
 
         var (status, html, headers) = await Get(Function(), string.Empty, SignedIn());
 
@@ -265,7 +265,7 @@ public sealed class BreviaryTests : IAsyncLifetime
         await Vote(2, Reaction.Heresy);
         foreach (var (voter, reaction) in new[] { ("a", Reaction.Blessed), ("b", Reaction.Blessed), ("c", Reaction.Heresy) })
         {
-            Ok(await Votes.Vote(1, voter, Some(reaction), CancellationToken.None));
+            Ok(await Votes.Vote(1, new VoterKey(voter), Some(reaction), CancellationToken.None));
         }
 
         var (_, html, _) = await Get(Function(), string.Empty, SignedIn());
@@ -295,11 +295,11 @@ public sealed class BreviaryTests : IAsyncLifetime
     private BreviaryFunction Function()
         => new(Votes, new RiteRepository(cosmos.Container, TimeProvider.System, NullLogger<RiteRepository>.Instance), session, NullLogger<BreviaryFunction>.Instance);
 
-    private string VoterKey => session.VoterKeyFor("github", "583231");
+    private VoterKey Voter => session.VoterKeyFor("github", "583231");
 
-    private string SignedIn() => $"{VoterSession.CookieName}={session.Issue(VoterKey)}";
+    private string SignedIn() => $"{VoterSession.CookieName}={session.Issue(Voter)}";
 
-    private async Task Vote(int number, Reaction reaction) => Ok(await Votes.Vote(number, VoterKey, Some(reaction), CancellationToken.None));
+    private async Task Vote(int number, Reaction reaction) => Ok(await Votes.Vote(number, Voter, Some(reaction), CancellationToken.None));
 
     private static async Task<(int Status, string Html, IHeaderDictionary Headers)> Get(BreviaryFunction function, string query, string cookie)
     {

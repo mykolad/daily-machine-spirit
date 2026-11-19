@@ -36,7 +36,19 @@ internal static class CosmosCalls
 
     // A missing document is 404 with sub-status 0. A missing container or database is also 404 (sub-status 1003), but
     // that's an outage, which must reach the caller as an error rather than as "nothing there".
-    private static bool IsMissingItem(CosmosException ex) => ex is { StatusCode: HttpStatusCode.NotFound, SubStatusCode: 0 };
+    public static bool IsMissingItem(CosmosException ex) => ex is { StatusCode: HttpStatusCode.NotFound, SubStatusCode: 0 };
+
+    /// <summary>Deletes the document, if there is one: already gone is as good as deleted.</summary>
+    public static async Task DeleteIfExists<T>(this Container container, string id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await container.DeleteItemAsync<T>(id, SharedPartitionKey, cancellationToken: cancellationToken);
+        }
+        catch (CosmosException ex) when (IsMissingItem(ex))
+        {
+        }
+    }
 
     /// <summary>The document and its ETag, or None when there's no such document.</summary>
     public static async Task<Option<(T Document, string ETag)>> ReadOrNone<T>(

@@ -879,9 +879,9 @@ public static class Script
             });
           });
 
-          // The rites the reader has witnessed (#198): those whose seal they broke, kept only in this browser and never
-          // sent, signed in or not. The pages are the same for everyone, so the rows are marked here, after loading, as
-          // the archive loads more of them.
+          // The rites the reader has witnessed (#198): those whose seal they broke, kept in this browser, and for a
+          // signed-in reader with their account too (#215, below). The pages are the same for everyone, so the rows are
+          // marked here, after loading, as the archive loads more of them.
           const witnessedKey = 'dms-witnessed-v1';
           const witnessed = () => {
             try { return new Set(JSON.parse(localStorage.getItem(witnessedKey) ?? '[]')); } catch { return new Set(); }
@@ -923,18 +923,88 @@ public static class Script
               note.querySelector('[data-forget-ask]').hidden = known.size === 0 || !note.querySelector('[data-forget-question]').hidden;
             });
           };
+          // A signed-in reader's list follows them to every browser they sign in on (#215): the account's list is the
+          // truth, and this browser keeps a copy. A rite witnessed here waits as unsent until the account has it, so a
+          // failed send is tried again on the next page. The account mark says the copy here is an account's: when the
+          // reader signs out, or the sign-in runs out, it leaves this browser, so the next reader here doesn't inherit it.
+          const unsentKey = 'dms-witnessed-unsent';
+          const accountKey = 'dms-witnessed-account';
+          const stored = (key) => { try { return localStorage.getItem(key); } catch { return null; } };
+          const store = (key, value) => { try { localStorage.setItem(key, value); } catch { /* not kept, then */ } };
+          const unstore = (key) => { try { localStorage.removeItem(key); } catch { /* nothing kept, then */ } };
+          const unsent = () => { try { return JSON.parse(stored(unsentKey) ?? '[]'); } catch { return []; } };
+          const signedIn = () => document.cookie.split('; ').includes('dms-signed-in=1');
+          const leaveAccount = () => {
+            if (stored(accountKey) === null) return;
+            keepWitnessed([]);
+            unstore(unsentKey);
+            unstore(accountKey);
+            markWitnessed();
+          };
+          // The account's list, or undefined when it couldn't be reached (signed out meanwhile, too).
+          const witnessedApi = async (init) => {
+            try {
+              const response = await fetch('/api/witnessed', init);
+              if (response.status === 401) leaveAccount();
+              if (!response.ok) return undefined;
+              return response.status === 204 ? [] : (await response.json()).rites;
+            } catch {
+              return undefined;
+            }
+          };
+          // One sync or forget at a time, in the order asked: a reply can't undo a later one's, and forgetting comes after
+          // any rite still being sent.
+          let witnessedTurn = Promise.resolve();
+          const inTurn = (task) => (witnessedTurn = witnessedTurn.then(task, task));
+          // Sends what's waiting, a thousand at a time (the API's most), and takes the account's list, keeping any rite
+          // witnessed while a request was on its way. On a browser's first sign-in, everything it remembered alone waits
+          // to be sent too, so nothing is lost.
+          const syncWitnessed = async () => {
+            if (stored(accountKey) === null) store(unsentKey, JSON.stringify([...new Set([...unsent(), ...witnessed()])]));
+            let rites;
+            while (unsent().length > 0) {
+              const batch = new Set(unsent().slice(0, 1000));
+              rites = await witnessedApi({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rites: [...batch] }) });
+              if (rites === undefined) return;
+              const waiting = unsent().filter((number) => !batch.has(number));
+              if (waiting.length > 0) store(unsentKey, JSON.stringify(waiting));
+              else unstore(unsentKey);
+            }
+            rites ??= await witnessedApi({});
+            if (rites === undefined) return;
+            keepWitnessed(new Set([...rites, ...unsent()]));
+            store(accountKey, '1');
+            markWitnessed();
+          };
+          const sendWitnessed = () => inTurn(syncWitnessed);
           function witness(number) {
             if (!Number.isInteger(number) || number < 1) return;
+            // Signed out while the page was open: an account's copy leaves first, so this rite stays as the browser's own.
+            if (!signedIn()) leaveAccount();
             const known = witnessed();
             known.add(number);
             keepWitnessed(known);
+            if (!signedIn()) return;
+            store(unsentKey, JSON.stringify([...new Set([...unsent(), number])]));
+            sendWitnessed();
           }
+          // On arriving: a signed-out browser drops an account's copy; a signed-in one syncs where the list is shown (rows),
+          // or when something waits to be sent; a page without rows needs no list.
+          const arrive = () => {
+            if (!signedIn()) leaveAccount();
+            else if (document.querySelector('.rows') || unsent().length > 0 || stored(accountKey) === null) sendWitnessed();
+          };
           markWitnessed();
+          arrive();
           // Rows come later too: the Archive's next pages, and its live search (even from a search that found none).
           const rowLists = document.querySelector('main');
           if (rowLists) new MutationObserver(markWitnessed).observe(rowLists, { childList: true, subtree: true });
-          // A page the browser kept on going back may predate the seal just broken.
-          addEventListener('pageshow', (event) => { if (event.persisted) markWitnessed(); });
+          // A page the browser kept on going back may predate the seal just broken, or a Forget or sign-out elsewhere.
+          addEventListener('pageshow', (event) => {
+            if (!event.persisted) return;
+            markWitnessed();
+            arrive();
+          });
           // From the document, as the controls are replaced with the margins.
           document.addEventListener('change', (event) => {
             if (!event.target.matches?.('[data-unwitnessed-only]')) return;
@@ -950,7 +1020,7 @@ public static class Script
             ask.hidden = witnessed().size === 0;
             if (backToAsk) ask.focus();
           };
-          document.addEventListener('click', (event) => {
+          document.addEventListener('click', async (event) => {
             const note = event.target.closest?.('[data-witnessed-note]');
             if (!note) return;
             if (event.target.closest('[data-forget-ask]')) {
@@ -960,7 +1030,19 @@ public static class Script
             } else if (event.target.closest('[data-forget-keep]')) {
               closeForget(note, true);
             } else if (event.target.closest('[data-forget-witnessed]')) {
-              keepWitnessed([]);
+              // A signed-in reader's account forgets first, so every browser they sign in on follows; if it can't, this
+              // one keeps them too, rather than getting them back on the next page. In turn, after any rite being sent.
+              const forgotten = await inTurn(async () => {
+                if (signedIn() && await witnessedApi({ method: 'DELETE' }) === undefined) return false;
+                unstore(unsentKey);
+                keepWitnessed([]);
+                return true;
+              });
+              if (!forgotten) {
+                closeForget(note, true);
+                say('They couldn’t be forgotten. Try again.');
+                return;
+              }
               closeForget(note, false);
               markWitnessed();
               note.querySelector('[data-unwitnessed-only]').focus();
@@ -984,7 +1066,9 @@ public static class Script
             if (!draw || event.button !== 0 || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
             event.preventDefault();
             try {
-              const response = await fetch('/api/search-index');
+              // A signed-in reader's list is brought up to date meanwhile (#215): a page without rows didn't fetch it, and
+              // rites read on another device count too. A failed sync leaves the copy as it was.
+              const [response] = await Promise.all([fetch('/api/search-index'), signedIn() ? sendWitnessed() : undefined]);
               if (!response.ok) throw new Error(String(response.status));
               const shown = Number(document.querySelector('[data-rite]')?.dataset.rite);
               const all = (await response.json()).map((rite) => rite.number).filter((number) => number !== shown);

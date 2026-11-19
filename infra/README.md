@@ -307,11 +307,11 @@ func azure functionapp publish machinespirit-app-staging --dotnet-isolated
     an hour). Cloudflare's own header carries `stale-if-error=604800`, which lets Cloudflare serve a page it still holds for up to a week past its lifetime while the app answers with a 5xx or not at
     all (`cf-cache-status: STALE`), so readers keep the site read-only through an outage. A purged page is gone, not
     stale. Cloudflare ignores `stale-if-error` while **Always Online** (Caching → Configuration) is on, so leave that off.
-  - **A rate limit rule** (Security → WAF → Rate limiting rules) for votes, searches, drawing a rite without the
+  - **A rate limit rule** (Security → WAF → Rate limiting rules) for votes, witnessed rites, searches, drawing a rite without the
     script, and the MCP connector (each search reads every rite; the Archive's field searches as the reader types, a
     request per pause), counted by IP, 20 in 10 seconds, blocked for 10 seconds. The Free plan has one such rule, so
     every limited path shares it:
-    `(http.request.uri.path wildcard r"/api/rites/*/vote") or (http.request.uri.path wildcard r"/archive*") or (http.request.uri.path wildcard r"/mcp*") or (http.request.uri.path eq "/draw")`
+    `(http.request.uri.path wildcard r"/api/rites/*/vote") or (http.request.uri.path wildcard r"/api/witnessed*") or (http.request.uri.path wildcard r"/archive*") or (http.request.uri.path wildcard r"/mcp*") or (http.request.uri.path eq "/draw")`
     (the connector's calls are POSTs, never cached: matched by its path, as the Free plan's rules can't match a host;
     the site has no `/mcp`). Not `/search`: it only redirects old links to the Archive. An assistant's
     servers call the connector for many users from few addresses, so if they're refused (429) in normal use, give the

@@ -2,6 +2,7 @@ using System.Buffers.Text;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using DailyMachineSpirit.Data.Entities;
 using LanguageExt;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
@@ -29,25 +30,25 @@ public sealed class VoterSession
         this.time = time;
     }
 
-    public string VoterKeyFor(string provider, string accountId)
-        => Convert.ToHexStringLower(Hmac(options.Value.KeySecret, $"{provider}:{accountId}"));
+    public VoterKey VoterKeyFor(string provider, string accountId)
+        => new(Convert.ToHexStringLower(Hmac(options.Value.KeySecret, $"{provider}:{accountId}")));
 
     /// <summary>The cookie's value for a reader who just signed in.</summary>
-    public string Issue(string voterKey)
+    public string Issue(VoterKey voterKey)
     {
         var expires = time.GetUtcNow().Add(Lasts).ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
-        var signed = $"{voterKey}.{expires}";
+        var signed = $"{voterKey.Value}.{expires}";
         return $"{signed}.{Signature(signed)}";
     }
 
     /// <summary>The signed-in reader's voter key, if they have a genuine cookie; None while the secrets aren't set.</summary>
-    public Option<string> SignedIn(HttpRequest request)
+    public Option<VoterKey> SignedIn(HttpRequest request)
         => options.Value.IsConfigured && request.Cookies.TryGetValue(CookieName, out var cookie) && cookie is not null
             ? Read(cookie)
             : None;
 
     /// <summary>The voter key in a cookie that's this app's, unchanged and not expired; None for anything else.</summary>
-    public Option<string> Read(string cookie)
+    public Option<VoterKey> Read(string cookie)
     {
         var parts = cookie.Split('.');
         if (parts.Length != 3 || !IsVoterKey(parts[0]) || !long.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out var expires))
@@ -58,7 +59,7 @@ public sealed class VoterSession
         var signed = $"{parts[0]}.{parts[1]}";
         var isGenuine = CryptographicOperations.FixedTimeEquals(
             Encoding.ASCII.GetBytes(Signature(signed)), Encoding.ASCII.GetBytes(parts[2]));
-        return isGenuine && time.GetUtcNow().ToUnixTimeSeconds() < expires ? Some(parts[0]) : None;
+        return isGenuine && time.GetUtcNow().ToUnixTimeSeconds() < expires ? Some(new VoterKey(parts[0])) : None;
     }
 
     private string Signature(string signed) => Base64Url.EncodeToString(Hmac(options.Value.SessionSecret, signed));

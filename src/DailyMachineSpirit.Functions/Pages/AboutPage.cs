@@ -62,7 +62,7 @@ public static class AboutPage
                 <p>A feed reader can follow the shrine too: <a href="{Paths.Feed}">its feed</a> brings each new rite to you, its truth still sealed. It knows nothing of who reads it.</p>
                 """),
             ("What does the shrine remember of me?", """
-                <p>Nothing, unless you vote. A vote keeps a one-way key made from your GitHub account’s id: never your name, email or GitHub token. Signing in keeps a cookie for up to 30 days, so you stay signed in. No ads, and no trackers: the only measuring is Cloudflare’s, of how fast pages load, as the foot of the page says.</p>
+                <p>Nothing, unless you sign in. Your votes, and the rites you’ve read while signed in, are kept with a one-way key made from your GitHub account’s id: never your name, email or GitHub token. “Forget them…” in the Archive forgets the rites you’ve read in every browser you sign in on. Signing in keeps a cookie for up to 30 days, so you stay signed in. No ads, and no trackers: the only measuring is Cloudflare’s, of how fast pages load, as the foot of the page says.</p>
                 """),
             ("Has a rite erred?", $"""
                 <p>If a rite is wrong, offensive or broken, or the site is, <a href="{Repository}/issues">open an issue on GitHub</a>.</p>

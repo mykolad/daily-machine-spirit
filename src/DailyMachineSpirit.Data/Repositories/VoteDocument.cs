@@ -22,5 +22,5 @@ internal sealed record VoteDocument
 
     public Reaction Reaction { get; init; }
 
-    public static string IdFor(int riteNumber, string voterKey) => $"vote-{riteNumber}-{voterKey}";
+    public static string IdFor(int riteNumber, VoterKey voterKey) => $"vote-{riteNumber}-{voterKey.Value}";
 }

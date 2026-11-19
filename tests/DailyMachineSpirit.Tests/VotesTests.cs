@@ -21,7 +21,7 @@ namespace DailyMachineSpirit.Tests;
 
 public sealed class VotesTests : IAsyncLifetime
 {
-    private const string Reader = "reader-key";
+    private static readonly VoterKey Reader = new("reader-key");
 
     private readonly CosmosTestContainer cosmos = new();
     private readonly FakePageCache pages = new();
@@ -86,9 +86,9 @@ public sealed class VotesTests : IAsyncLifetime
     {
         await AddRite();
 
-        await Task.WhenAll(Enumerable.Range(0, 12).Select(reader => Vote($"reader-{reader}", Some(Reaction.Blessed))));
+        await Task.WhenAll(Enumerable.Range(0, 12).Select(reader => Vote(new VoterKey($"reader-{reader}"), Some(Reaction.Blessed))));
 
-        Assert.Equal(new ReactionCounts(12, 0), await Vote("one-more", None));
+        Assert.Equal(new ReactionCounts(12, 0), await Vote(new VoterKey("one-more"), None));
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public sealed class VotesTests : IAsyncLifetime
 
             // Each answer is one consistent state: the reader's vote counted once, on the side it asked for.
             Assert.Equal([new ReactionCounts(1, 0), new ReactionCounts(0, 1)], answers);
-            var counts = await Vote("someone-else", None);
+            var counts = await Vote(new VoterKey("someone-else"), None);
             var stored = Ok(await Repository.GetVotes(Reader, [1], CancellationToken.None))[1];
             Assert.Equal(stored == Reaction.Blessed ? new ReactionCounts(1, 0) : new ReactionCounts(0, 1), counts);
         }
@@ -149,7 +149,7 @@ public sealed class VotesTests : IAsyncLifetime
         await Vote(Reader, Some(Reaction.Blessed));
         Ok(await Repository.Vote(2, Reader, Some(Reaction.Heresy), CancellationToken.None));
         Ok(await Repository.Vote(3, Reader, Some(Reaction.Heresy), CancellationToken.None));
-        Ok(await Repository.Vote(2, "someone-else", Some(Reaction.Blessed), CancellationToken.None));
+        Ok(await Repository.Vote(2, new VoterKey("someone-else"), Some(Reaction.Blessed), CancellationToken.None));
 
         var votes = Ok(await Repository.GetVotes(Reader, [1, 2, 9], CancellationToken.None));
 
@@ -164,7 +164,7 @@ public sealed class VotesTests : IAsyncLifetime
         await AddRite(new DateOnly(2026, 10, 11));
         await Vote(Reader, Some(Reaction.Blessed));
         Ok(await Repository.Vote(3, Reader, Some(Reaction.Heresy), CancellationToken.None));
-        Ok(await Repository.Vote(2, "someone-else", Some(Reaction.Blessed), CancellationToken.None));
+        Ok(await Repository.Vote(2, new VoterKey("someone-else"), Some(Reaction.Blessed), CancellationToken.None));
 
         var votes = Ok(await Repository.GetAllVotes(Reader, CancellationToken.None));
 
@@ -225,7 +225,7 @@ public sealed class VotesTests : IAsyncLifetime
         var (status, _) = await Post(Function(), 1, """{"vote":"blessed"}""", contentType, cookie);
 
         Assert.Equal(StatusCodes.Status401Unauthorized, status);
-        Assert.Equal(new ReactionCounts(0, 0), await Vote("someone-else", None));
+        Assert.Equal(new ReactionCounts(0, 0), await Vote(new VoterKey("someone-else"), None));
     }
 
     [Theory]
@@ -244,7 +244,7 @@ public sealed class VotesTests : IAsyncLifetime
         var (status, _) = await Post(Function(), 1, json, "application/json", SignedIn());
 
         Assert.Equal(StatusCodes.Status400BadRequest, status);
-        Assert.Equal(new ReactionCounts(0, 0), await Vote("someone-else", None));
+        Assert.Equal(new ReactionCounts(0, 0), await Vote(new VoterKey("someone-else"), None));
     }
 
     [Fact]
@@ -355,9 +355,9 @@ public sealed class VotesTests : IAsyncLifetime
 
     private string SignedIn() => $"{VoterSession.CookieName}={session.Issue(session.VoterKeyFor("github", "583231"))}";
 
-    private async Task<ReactionCounts> Vote(string voterKey, Option<Reaction> vote) => (await Saved(voterKey, vote)).Counts;
+    private async Task<ReactionCounts> Vote(VoterKey voterKey, Option<Reaction> vote) => (await Saved(voterKey, vote)).Counts;
 
-    private async Task<SavedVote> Saved(string voterKey, Option<Reaction> vote)
+    private async Task<SavedVote> Saved(VoterKey voterKey, Option<Reaction> vote)
         => Ok(await Repository.Vote(1, voterKey, vote, CancellationToken.None))
             .IfNone(() => throw new Xunit.Sdk.XunitException("Expected rite NO. 1."));
 

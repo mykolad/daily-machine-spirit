@@ -19,7 +19,7 @@ public class VoterSessionTests
 
         Assert.Equal(session.VoterKeyFor("github", "583231"), session.VoterKeyFor("github", "583231"));
         Assert.NotEqual(session.VoterKeyFor("github", "583231"), session.VoterKeyFor("github", "583232"));
-        Assert.Matches("^[0-9a-f]{64}$", session.VoterKeyFor("github", "583231"));
+        Assert.Matches("^[0-9a-f]{64}$", session.VoterKeyFor("github", "583231").Value);
     }
 
     [Fact]
