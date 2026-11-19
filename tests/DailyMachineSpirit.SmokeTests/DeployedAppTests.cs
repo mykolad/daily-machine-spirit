@@ -117,6 +117,19 @@ public sealed partial class DeployedAppTests
     public async Task DrawingARite_LeadsToOne()
         => AssertAnswers(await app.Get("/draw"), HttpStatusCode.OK, $"{SiteName}</title>");
 
+    // The pictures link previews show (#191): the site's card, and the newest rite's, drawn by Skia's native library on
+    // the deployed platform, which no test elsewhere loads (a new environment has no rite yet, so only the site's).
+    [Fact]
+    public async Task ShareCards_AreDrawn()
+    {
+        AssertPng(await app.Get("/card.png"));
+        var rites = JsonSerializer.Deserialize<JsonElement>((await app.Get("/api/v1/rites")).Text).GetProperty("rites");
+        foreach (var rite in rites.EnumerateArray().Take(1))
+        {
+            AssertPng(await app.Get($"/r/{rite.GetProperty("number").GetInt32()}/card.png"));
+        }
+    }
+
     // The feed readers follow, a contract like the API (docs/api.md): Atom, from the deployed database.
     [Fact]
     public async Task TheFeed_Answers()
@@ -233,6 +246,13 @@ public sealed partial class DeployedAppTests
         });
         Assert.True(page.Status == HttpStatusCode.OK, $"{page.Path} answered {(int)page.Status}: {page.Text}");
         return JsonSerializer.Deserialize<JsonElement>(page.Text);
+    }
+
+    // A PNG by its signature, the first bytes of every one.
+    private static void AssertPng(Page page)
+    {
+        Assert.True(page.Status == HttpStatusCode.OK, $"{page.Path} answered {(int)page.Status}, not 200.");
+        Assert.True(page.Content.AsSpan().StartsWith((byte[])[0x89, (byte)'P', (byte)'N', (byte)'G']), $"{page.Path} isn't a PNG.");
     }
 
     private static void AssertAnswers(Page page, HttpStatusCode status, string containing)

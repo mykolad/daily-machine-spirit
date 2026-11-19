@@ -964,6 +964,29 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.DoesNotContain("timing", json);
     }
 
+    // A rite's link, pasted into a chat, shows the rite's own card (#191), its alt text the joke; any other page shows
+    // the site's card; a page in no index names no picture.
+    [Fact]
+    public async Task LinkPreviews_ShowTheRitesOwnCard_OrTheSites()
+    {
+        await Add(Day, "The Rite of Re-Run");
+
+        var (_, rite) = await Rite("1");
+        var (_, today) = await Today("");
+        var (_, missing) = await Rite("9");
+
+        Assert.Contains($"""<meta property="og:image" content="https://{Site}/r/1/card.png">""", rite);
+        Assert.Contains("""<meta property="og:image:alt" content="The Rite of Re-Run. Press Re-run thrice, intoning it passed locally, for the Machine Spirit rewards the persistent.">""", rite);
+        Assert.Contains($"""<meta property="og:image" content="https://{Site}/card.png">""", today);
+        Assert.All([rite, today], html =>
+        {
+            Assert.Contains("""<meta property="og:image:width" content="1200">""", html);
+            Assert.Contains("""<meta property="og:image:height" content="630">""", html);
+            Assert.Contains("""<meta name="twitter:card" content="summary_large_image">""", html);
+        });
+        Assert.DoesNotContain("og:image", missing);
+    }
+
     // Blessings less heresies rank the rites; a tie goes to the more blessed. A rite as often called heresy as blessed,
     // or never voted on, isn't venerated. Kept at the edge until a vote purges it.
     [Fact]

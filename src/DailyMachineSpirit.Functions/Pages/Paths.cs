@@ -21,10 +21,16 @@ public static class Paths
     /// <summary>The public rites API, version 1: every published rite, for clients outside the site (<c>docs/api.md</c>).</summary>
     public const string RitesApi = "/api/v1/rites";
 
+    /// <summary>The site's share card (#191), the picture link previews show for every page that isn't a rite's.</summary>
+    public const string SiteCard = "/card.png";
+
     /// <summary>One rite's Heretical Truth in the rites API, sealed in the list until a client asks for it.</summary>
     public static string HereticalTruthApi(int number) => $"{RitesApi}/{number}/heretical-truth";
 
     public static string Rite(int number) => $"/r/{number}";
+
+    /// <summary>A rite's share card (#191), drawn from the rite: its page names it for link previews.</summary>
+    public static string RiteCard(int number) => $"{Rite(number)}/card.png";
 
     /// <summary>A rite drawn at random (#196): <c>?drawn</c> has the page announce the lots, then drop it from the address.</summary>
     public static string Drawn(int number) => $"{Rite(number)}?drawn";

@@ -90,7 +90,7 @@ public sealed class ExpurgationTests : IAsyncLifetime
         Assert.Equal(Some("1 word of its title, 1 word of its text"), entry.Detail);
         // The rite says when, so the feed's readers replace the words they kept.
         Assert.Equal(Some(entry.AtUtc), Found(await Expurgations().Find(number, CancellationToken.None)).Rite.WordsErasedAtUtc);
-        Assert.Equal([Paths.Today, Paths.Rite(number), Paths.Reliquary, Paths.SearchIndex, Paths.RitesApi, Paths.HereticalTruthApi(number), Paths.Feed], Assert.Single(pages.Purges));
+        Assert.Equal([Paths.Today, Paths.Rite(number), Paths.RiteCard(number), Paths.Reliquary, Paths.SearchIndex, Paths.RitesApi, Paths.HereticalTruthApi(number), Paths.Feed], Assert.Single(pages.Purges));
     }
 
     // Chosen on a page shown before another erasure, the places would land on other words: nothing changes.

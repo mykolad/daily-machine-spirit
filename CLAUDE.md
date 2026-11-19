@@ -198,6 +198,13 @@ skills/                           — Consult the Machine Spirit, a skill that p
     `/robots.txt` keeps crawlers out of the Scriptorium, the Breviary, sign-in and the APIs, and names `/sitemap.xml`
     (`SearchEnginesFunction`: every public page, each rite with its day; numbers and days only, kept at Cloudflare
     until a new rite purges it).
+  - **Share cards** (#191, `ShareCards/`, spec `docs/design/share-card.md`): a link preview's picture, 1200 × 630
+    PNG. A rite's card (`/r/<n>/card.png`) is drawn on request with SkiaSharp (`RiteCards`, its fonts as static TTFs
+    beside the pages' WOFF2): kicker, title, divider and text on the parchment, the seal across the edge, the truth
+    never shown, clear around the sheet. Long texts step down to 44 and 40, then the title alone; backtick pairs are
+    code chips, and nothing else is parsed. Kept at Cloudflare until an erasure purges it with its page. Every other
+    listed page names the site's card (`/card.png`, the design's render), through `SearchListing.Image`; the alt text
+    of a rite's card is its title and text.
   - **Witnessed rites** (#198): breaking a rite's seal records its number in the browser (`localStorage`,
     `dms-witnessed-v1`), and for a signed-in reader with their account too (#215, `Api/WitnessedFunction`,
     `WitnessedRepository`): one document per voter key, saved under its ETag, `GET`, `POST {"rites": [12]}` (adds,

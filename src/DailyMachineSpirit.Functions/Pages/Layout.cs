@@ -93,6 +93,18 @@ public static class Layout
                 {listing.Previous.Map(path => $"""<link rel="prev" href="{path}">""").IfNone(string.Empty)}
                 {listing.Next.Map(path => $"""<link rel="next" href="{path}">""").IfNone(string.Empty)}
                 {listing.StructuredData.Map(json => $"""<script type="application/ld+json">{json}</script>""").IfNone(string.Empty)}
+                {listing.Origin.Map(origin => SharedAs(origin, listing.Image)).IfNone(string.Empty)}
                 """,
             None: () => """<meta name="robots" content="noindex">""");
+
+    // The picture a link preview shows (#191), at full size: a large card, never a thumbnail.
+    private static string SharedAs(string origin, ShareImage image)
+        => $"""
+            <meta property="og:image" content="{Html.Encode(origin + image.Path)}">
+            <meta property="og:image:type" content="image/png">
+            <meta property="og:image:width" content="{ShareImage.Width}">
+            <meta property="og:image:height" content="{ShareImage.Height}">
+            <meta property="og:image:alt" content="{Html.Encode(image.Alt)}">
+            <meta name="twitter:card" content="summary_large_image">
+            """;
 }
