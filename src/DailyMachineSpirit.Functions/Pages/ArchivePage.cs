@@ -14,6 +14,18 @@ public static class ArchivePage
 {
     private const string Description = "Earlier litanies, newest first.";
 
+    // Forgetting can't be undone, so it asks first, in place: the question is hidden until "Forget them…" is pressed,
+    // and that is hidden while nothing is witnessed (the script shows it).
+    private const string ForgetWitnessed = """
+        <div class="witnessed-forget">
+        <button type="button" class="forget-ask" data-forget-ask hidden>Forget them…</button>
+        <div class="forget-question" role="group" aria-label="Forget the witnessed rites?" data-forget-question hidden>
+        <p class="forget-text">Forget all <span data-witnessed>0</span>? Every rite will be unwitnessed again.</p>
+        <div class="forget-choices"><button type="button" class="forget-keep" data-forget-keep>Keep</button><button type="button" class="forget-confirm" data-forget-witnessed>Forget</button></div>
+        </div>
+        </div>
+        """;
+
     /// <param name="olderThan">Where the next page starts, or None when these are the oldest.</param>
     /// <param name="days">Every rite's number and day, newest first: Today's, then the Archive's.</param>
     /// <param name="places">The places of the rites the Reliquary keeps, each worn as a badge.</param>
@@ -146,22 +158,25 @@ public static class ArchivePage
             : $"""
                 <div class="margin-witnessed" data-witnessed-note hidden>
                 <p class="margin-label">Witnessed</p>
-                <p class="witnessed-count">You have witnessed <span data-witnessed>0</span> of {Html.Count(kept)}</p>
-                <label class="witnessed-only"><input type="checkbox" data-unwitnessed-only> Unwitnessed only</label>
-                <button type="button" class="text-button" data-forget-witnessed>Forget</button>
+                <p class="witnessed-count"><span data-witnessed>0</span> of {Rites(kept)}</p>
+                {HideWitnessed("Hide witnessed", string.Empty)}
+                {ForgetWitnessed}
                 </div>
                 """;
 
     // The same, as one line on the sheet under the orders, for a screen too narrow for the margins: the stylesheet shows
-    // one or the other, never both.
+    // one or the other, never both. The count joins the checkbox's words, since there's no label above it here.
     private static string WitnessedLine(int kept)
         => kept == 0
             ? string.Empty
             : $"""
                 <div class="sheet-witnessed" data-witnessed-note hidden>
-                <span>Witnessed <span data-witnessed>0</span> of {Html.Count(kept)}</span>
-                <label class="witnessed-only"><input type="checkbox" data-unwitnessed-only> Unwitnessed only</label>
-                <button type="button" class="text-button" data-forget-witnessed>Forget</button>
+                {HideWitnessed("Hide witnessed rites", $"""<span class="witnessed-tally">· <span data-witnessed>0</span> of {Html.Count(kept)}</span>""")}
+                {ForgetWitnessed}
                 </div>
                 """;
+
+    // A real checkbox, out of sight, under a drawn box with a quill tick: checked hides the witnessed rows.
+    private static string HideWitnessed(string words, string tally)
+        => $"""<label class="witnessed-only"><input type="checkbox" data-unwitnessed-only><span class="witnessed-box" aria-hidden="true">{Svg.QuillTick}</span>{words}{(tally.Length == 0 ? string.Empty : " " + tally)}</label>""";
 }

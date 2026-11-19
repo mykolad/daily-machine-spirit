@@ -200,10 +200,10 @@ skills/                           — Consult the Machine Spirit, a skill that p
     until a new rite purges it).
   - **Witnessed rites** (#198): breaking a rite's seal records its number in the browser alone
     (`localStorage`, `dms-witnessed-v1`; never sent, signed in or not). The script marks those rows wherever rows are
-    (a red check on a row in grey, "witnessed" for a screen reader), fills the Archive's hidden margin note ("You have
-    witnessed 12 of 214"), and offers "Unwitnessed only" and "Forget". Below 1280px, without margins, the same is one
-    line on the sheet under the orders. Without the script nothing of it shows; the footer says where that memory is
-    kept.
+    (a broken seal on a row in sepia ink, "witnessed" for a screen reader), fills the Archive's hidden margin note
+    ("12 of 214 rites"), and offers "Hide witnessed" (a drawn box over a real checkbox) and "Forget them…", which asks
+    first. Below 1280px, without margins, the same is one line on the sheet under the orders, the count in the
+    checkbox's words. Without the script nothing of it shows; the footer says where that memory is kept.
   - **Drawing a rite** (#196): the nav's dice and the Archive's margin lead to `/draw`. The script draws in the
     browser, from the search index (so pages stay the same for everyone, and no request says what was drawn): never
     the rite shown, nor one drawn this session (`sessionStorage`) until every one has been, and one not yet witnessed

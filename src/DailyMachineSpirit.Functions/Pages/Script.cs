@@ -315,7 +315,7 @@ public static class Script
               focusWhenLoaded ||= more.contains(document.activeElement);
               more.replaceChildren(...(next ? [...next.childNodes].map((node) => document.importNode(node, true)) : []));
               announcer.textContent = `${added.length} older ${added.length === 1 ? 'rite' : 'rites'} loaded.`;
-              // Marked before focus moves, not after by the observer: with "Unwitnessed only" a witnessed row is hidden,
+              // Marked before focus moves, not after by the observer: with "Hide witnessed" a witnessed row is hidden,
               // and focus on it would be lost. If every new row is hidden, the link to the next page takes it.
               markWitnessed();
               const unwitnessedOnly = document.body.classList.contains('unwitnessed-only');
@@ -887,6 +887,8 @@ public static class Script
           const keepWitnessed = (numbers) => {
             try { localStorage.setItem(witnessedKey, JSON.stringify([...numbers].sort((a, b) => a - b))); } catch { /* not kept, then */ }
           };
+          // A witnessed row wears a broken seal at the end of its meta; the title's link says "witnessed" to a screen reader.
+          const brokenSeal = '<svg class="witnessed-seal" aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="20" height="20"><g transform="translate(-1.3 .5) rotate(-12 12 12)"><path d="M12 2A10 10 0 0 0 12 22L13 18L11 14L13 10L11 6Z" fill="#8f2a20"/><path d="M12 5.5A6.5 6.5 0 0 0 12 18.5" fill="none" stroke="#6b1c14" stroke-width="1.4"/></g><g transform="translate(1.4 1) rotate(9 12 12)"><path d="M12 2A10 10 0 0 1 12 22L13 18L11 14L13 10L11 6Z" fill="#8f2a20"/><path d="M12 5.5A6.5 6.5 0 0 1 12 18.5" fill="none" stroke="#6b1c14" stroke-width="1.4"/></g></svg>';
           const markWitnessed = () => {
             const known = witnessed();
             document.querySelectorAll('.rows > .row').forEach((row) => {
@@ -894,9 +896,13 @@ public static class Script
               const was = row.classList.contains('witnessed');
               if (known.has(number) === was) return;
               row.classList.toggle('witnessed', !was);
-              const title = row.querySelector('.row-title');
-              if (was) title.querySelector('.witnessed-mark')?.remove();
-              else title.insertAdjacentHTML('beforeend', '<span class="witnessed-mark"><span aria-hidden="true"> ✓</span><span class="sr-only">, witnessed</span></span>');
+              if (was) {
+                row.querySelector('.witnessed-seal')?.remove();
+                row.querySelector('.witnessed-said')?.remove();
+              } else {
+                row.querySelector('.row-meta').insertAdjacentHTML('beforeend', brokenSeal);
+                row.querySelector('.row-title').insertAdjacentHTML('beforeend', '<span class="sr-only witnessed-said">, witnessed</span>');
+              }
             });
             // Found again each time: the Archive's live search replaces its margins. Its text is changed only when it
             // differs, since every change is a mutation the observer below would answer again.
@@ -907,9 +913,12 @@ public static class Script
             if (notes.length === 0) document.body.classList.remove('unwitnessed-only');
             notes.forEach((note) => {
               note.hidden = false;
-              const count = note.querySelector('[data-witnessed]');
-              if (count.textContent !== String(known.size)) count.textContent = String(known.size);
+              note.querySelectorAll('[data-witnessed]').forEach((count) => {
+                if (count.textContent !== String(known.size)) count.textContent = String(known.size);
+              });
               note.querySelector('[data-unwitnessed-only]').checked = document.body.classList.contains('unwitnessed-only');
+              // Nothing to forget, nothing offered; nor while the note is asking.
+              note.querySelector('[data-forget-ask]').hidden = known.size === 0 || !note.querySelector('[data-forget-question]').hidden;
             });
           };
           function witness(number) {
@@ -931,11 +940,35 @@ public static class Script
             // The other note's checkbox follows, for a window resized across the margins' width.
             markWitnessed();
           });
+          // Forgetting asks first, in the note that was pressed. Keep (or Esc) goes back to "Forget them…"; Forget goes to
+          // the checkbox, since "Forget them…" is hidden once there's nothing to forget.
+          const closeForget = (note, backToAsk) => {
+            note.querySelector('[data-forget-question]').hidden = true;
+            const ask = note.querySelector('[data-forget-ask]');
+            ask.hidden = witnessed().size === 0;
+            if (backToAsk) ask.focus();
+          };
           document.addEventListener('click', (event) => {
-            if (!event.target.closest?.('[data-forget-witnessed]')) return;
-            keepWitnessed([]);
-            markWitnessed();
-            say('Forgotten. Every rite is unwitnessed again.');
+            const note = event.target.closest?.('[data-witnessed-note]');
+            if (!note) return;
+            if (event.target.closest('[data-forget-ask]')) {
+              note.querySelector('[data-forget-ask]').hidden = true;
+              note.querySelector('[data-forget-question]').hidden = false;
+              note.querySelector('[data-forget-keep]').focus();
+            } else if (event.target.closest('[data-forget-keep]')) {
+              closeForget(note, true);
+            } else if (event.target.closest('[data-forget-witnessed]')) {
+              keepWitnessed([]);
+              closeForget(note, false);
+              markWitnessed();
+              note.querySelector('[data-unwitnessed-only]').focus();
+              say('Forgotten. Every rite is unwitnessed again.');
+            }
+          });
+          document.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape') return;
+            const note = event.target.closest?.('[data-forget-question]')?.closest('[data-witnessed-note]');
+            if (note) closeForget(note, true);
           });
           // Drawing a rite (#196): chosen here, from the search index Cloudflare keeps, so every page stays the same for
           // everyone and no request says what was drawn. Never the rite shown, nor one drawn this session until every one

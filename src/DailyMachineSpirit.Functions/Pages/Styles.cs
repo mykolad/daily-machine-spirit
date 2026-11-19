@@ -213,23 +213,37 @@ public static class Styles
         .row-main{min-width:0;display:flex;flex-direction:column;gap:2px}
         .row-title{font-family:Cinzel,serif;font-weight:700;font-size:17px;line-height:1.2;color:#8f2a20;text-decoration:none}
         .row-title:hover{color:#8f2a20}
-        .row.witnessed :is(.row-title,.row-title:hover,.row-line,.row-date,.row-number,.kind,.row-counts){color:#58514a}
-        .row.witnessed .row-tags .tag{border-color:rgba(88,81,74,.45);color:#58514a}
-        .witnessed-mark{color:#8f2a20}
+        .row.witnessed :is(.row-title,.row-title:hover,.kind,.row-date,.row-number,.row-counts){color:#6e5524}
+        .row.witnessed .row-line{color:#5c4a33}
+        .row.witnessed .row-tags .tag{border-color:rgba(110,85,36,.4);color:#6e5524}
+        .row.witnessed .row-tags .tag:hover{color:#5c4a33}
+        .witnessed-seal{flex:none;align-self:center;margin-left:auto}
         .unwitnessed-only .row.witnessed{display:none}
-        .witnessed-only{position:relative;display:inline-flex;align-items:center;min-height:44px;padding:8px 18px;border:1px solid rgba(201,162,90,.45);border-radius:999px;font-weight:600;font-size:15px;color:#d9b874;cursor:pointer}
-        .witnessed-only input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
-        .witnessed-only:hover{border-color:#c9a25a;color:#f0d59a}
-        .witnessed-only:has(input:checked){border-color:#c9a25a;background:#c9a25a;color:#1f160a}
-        .witnessed-only:has(input:focus-visible){outline:2px solid #f0d59a;outline-offset:2px}
-        .sheet-witnessed .witnessed-only{border-color:#8f2a20;color:#8f2a20}
-        .sheet-witnessed .witnessed-only:hover{background:#e0d0a8}
-        .sheet-witnessed .witnessed-only:has(input:checked){background:#8f2a20;color:#f6eedb}
-        .sheet-witnessed .witnessed-only:has(input:focus-visible){outline-color:#8f2a20}
-        .sheet-witnessed{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;column-gap:16px;margin:0 0 8px;font-size:15px;color:#5c4a33}
+        .witnessed-only{position:relative;display:inline-flex;align-items:center;gap:10px;min-height:44px;font-weight:600;cursor:pointer}
+        .witnessed-only input{position:absolute;width:1px;height:1px;margin:0;opacity:0}
+        .witnessed-box{flex:none;display:grid;place-items:center;box-sizing:border-box;border:1.5px solid;border-radius:3px}
+        .witnessed-box svg{visibility:hidden}
+        .witnessed-only:has(input:checked) .witnessed-box svg{visibility:visible}
+        .witnessed-only:has(input:focus-visible) .witnessed-box{outline:2px solid;outline-offset:2px}
+        .forget-ask{min-height:44px;padding:0;border:0;background:none;font:inherit;font-size:14px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+        .forget-ask[hidden],.forget-question[hidden]{display:none}
+        .forget-text{margin:0;font-family:var(--serif);font-style:italic;font-size:17px}
+        .forget-choices{display:flex;gap:8px;margin-top:8px}
+        .forget-keep,.forget-confirm{display:inline-flex;align-items:center;min-height:36px;padding:4px 16px;border:1px solid;border-radius:999px;font:inherit;font-weight:600;font-size:14px;cursor:pointer}
+        .forget-keep{background:none}
+        .forget-confirm{border-color:#8f2a20;background:#8f2a20;color:#f6eedb}
+        .sheet-witnessed{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:0 20px;margin:4px 0 0;text-align:center}
         .sheet-witnessed[hidden]{display:none}
-        .sheet-witnessed .text-button{min-height:44px;color:#8f2a20}
-        .sheet-witnessed .text-button:hover{color:#5a1a14}
+        .sheet-witnessed .witnessed-only{font-size:15px;color:#5c4a33}
+        .sheet-witnessed .witnessed-box{width:20px;height:20px;border-color:#8f2a20;background:#f3e9d0;color:#f6eedb}
+        .sheet-witnessed .witnessed-box svg{width:13px;height:13px}
+        .sheet-witnessed .witnessed-only:has(input:checked) .witnessed-box{background:#8f2a20}
+        .sheet-witnessed .witnessed-only:has(input:focus-visible) .witnessed-box{outline-color:#8f2a20}
+        .witnessed-tally{font-family:var(--serif);font-style:italic;font-weight:400;font-size:16px;color:#6e5524}
+        .sheet-witnessed .forget-ask{color:#6e5524}
+        .sheet-witnessed .forget-text{color:#5c4a33}
+        .sheet-witnessed .forget-choices{justify-content:center}
+        .sheet-witnessed .forget-keep{border-color:#8f2a20;color:#8f2a20}
         .row-title:focus-visible{outline:none}
         .row-title::after{content:'';position:absolute;inset:0;border-radius:8px}
         .row-line{font-family:var(--serif);font-size:16px;line-height:1.45;color:#2b2117;text-wrap:pretty}
@@ -384,6 +398,7 @@ public static class Styles
         .month-rubric,.chapter-rubric{font-size:12px}
         .row{display:grid;grid-template-columns:112px minmax(0,1fr);gap:20px;padding:14px 8px}
         .row-meta{flex-direction:column;gap:4px;padding-top:3px}
+        .witnessed-seal{align-self:flex-start;margin-left:0}
         .row-date{font-size:14px}
         .row-title{font-size:19px}
         .row-line{font-size:17px}
@@ -427,8 +442,19 @@ public static class Styles
         .margin-since{margin:0;font-family:var(--serif);font-style:italic;font-size:20px;color:#cdbd9e}
         .margin-sought{margin:0;font-family:var(--serif);font-style:italic;font-size:22px;color:#ede3cf;overflow-wrap:anywhere}
         .margin-clear,.margin-draw{font-weight:600;text-decoration:none}
+        .margin-witnessed{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
         .margin-witnessed[hidden]{display:none}
-        .witnessed-count{margin:0 0 8px}
+        .margin-witnessed .margin-label{margin:0}
+        .witnessed-count{margin:0;font-family:var(--serif);font-style:italic;font-size:20px;color:#cdbd9e}
+        .margin-witnessed .witnessed-only{font-size:16px;color:#d9b874}
+        .margin-witnessed .witnessed-only:hover{color:#f0d59a}
+        .margin-witnessed .witnessed-box{width:18px;height:18px;border-color:#c9a25a;color:#1f160a}
+        .margin-witnessed .witnessed-only:has(input:checked) .witnessed-box{background:#c9a25a}
+        .margin-witnessed .witnessed-only:has(input:focus-visible) .witnessed-box{outline-color:#f0d59a}
+        .margin-witnessed .forget-ask{color:#b6a98f}
+        .margin-witnessed .forget-text{color:#cdbd9e}
+        .margin-witnessed .forget-choices{justify-content:flex-end}
+        .margin-witnessed .forget-keep{border-color:rgba(201,162,90,.45);color:#d9b874}
         .sheet-witnessed{display:none}
         .month-index,.chapter-index,.other-subjects{grid-column:3;grid-row:1;align-self:start;display:flex;flex-direction:column;align-items:stretch;gap:12px;width:auto;margin-top:80px;padding-left:28px;border-left:1px solid #2f2820;text-align:left}
         .month-index .margin-label,.chapter-index .margin-label{margin:0}

@@ -834,9 +834,11 @@ public sealed class SitePagesTests : IAsyncLifetime
         var (_, today) = await Today("");
 
         Assert.Contains("""<div class="margin-witnessed" data-witnessed-note hidden>""", archive);
-        Assert.Contains("""<p class="witnessed-count">You have witnessed <span data-witnessed>0</span> of 3</p>""", archive);
+        Assert.Contains("""<p class="witnessed-count"><span data-witnessed>0</span> of 3 rites</p>""", archive);
         Assert.Contains("""<div class="sheet-witnessed" data-witnessed-note hidden>""", archive);
-        Assert.Contains("""<span>Witnessed <span data-witnessed>0</span> of 3</span>""", archive);
+        Assert.Contains("""Hide witnessed rites <span class="witnessed-tally">· <span data-witnessed>0</span> of 3</span></label>""", archive);
+        // Forgetting asks first, and isn't offered until the script has counted something to forget.
+        Assert.Contains("""<button type="button" class="forget-ask" data-forget-ask hidden>Forget them…</button>""", archive);
         Assert.DoesNotContain("data-witnessed-note hidden", empty);
         Assert.All([archive, today], html => Assert.Contains("The rites you have read are remembered only in your browser.", html));
     }
