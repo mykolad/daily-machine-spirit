@@ -983,7 +983,7 @@ public sealed class SitePagesTests : IAsyncLifetime
             var truthAt = int.Parse(Regex.Match(html, """<div class="guess" data-guess data-truth="(\d)">""").Groups[1].Value, CultureInfo.InvariantCulture);
             var readings = Regex.Matches(html, """<span class="reading-text">(.*?)</span></button>""").Select(match => match.Groups[1].Value).ToList();
             Assert.Equal(3, readings.Count);
-            Assert.Contains("""<div class="readings" role="group" aria-labelledby="guess-prompt" data-readings hidden>""", html);
+            Assert.Contains("""<div class="readings" id="guess-readings" role="group" aria-labelledby="guess-prompt" data-readings hidden>""", html);
             Assert.Equal("Your test depends on <code>timing</code>.", readings[truthAt - 1]);
             Assert.Equal(["A false <code>one</code>.", "Another false one."], readings.Where((_, at) => at != truthAt - 1));
             places.Add(truthAt);

@@ -133,7 +133,9 @@ public static class Styles
         .guess-skip{justify-self:center;min-height:44px;padding:0 8px;border:0;background:none;cursor:pointer;font-family:var(--ui);font-weight:600;font-size:15px;color:#d9b874;text-decoration:underline;text-underline-offset:3px}
         .guess-skip:hover{color:#f0d59a}
         .guess-skip:focus-visible{outline:2px solid #f0d59a;outline-offset:2px;border-radius:4px}
-        .guess-verdict{display:grid;justify-items:center;gap:4px;margin-top:18px;text-align:center;animation:unfold 260ms ease-out 120ms both}
+        .guess-verdict{display:grid;justify-items:center;gap:4px;margin-top:18px;text-align:center}
+        .guess-verdict:empty{margin:0}
+        .guess-verdict:not(:empty){animation:unfold 260ms ease-out 120ms both}
         .guess-verdict-line{display:flex;align-items:center;justify-content:center;gap:10px;font-family:Cinzel,serif;font-weight:700;font-size:16px;letter-spacing:.14em;color:#ede3cf}
         .guess-verdict-sub{font-family:var(--serif);font-style:italic;font-size:18px;color:#cdbd9e;text-wrap:balance}
         .guessed{width:100%;margin-top:14px;display:grid;grid-template-columns:30px minmax(0,1fr);align-items:center;column-gap:6px;animation:unfold 260ms ease-out 120ms both}

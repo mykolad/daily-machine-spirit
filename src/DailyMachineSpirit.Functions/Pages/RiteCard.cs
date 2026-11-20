@@ -129,12 +129,12 @@ public static class RiteCard
                     .Select(place => Reading(place, place == truthAt ? rite.Writing.HereticalTruth : others.Dequeue()));
                 return $"""
                     <div class="guess" data-guess data-truth="{truthAt}">
-                    <div class="readings" role="group" aria-labelledby="guess-prompt" data-readings hidden>
+                    <div class="readings" id="guess-readings" role="group" aria-labelledby="guess-prompt" data-readings hidden>
                     <p class="guess-prompt" id="guess-prompt">What is the Heretical Truth?</p>
                     {string.Concat(readings)}
                     <button type="button" class="guess-skip" data-guess-skip>Just show me</button>
                     </div>
-                    <div class="guess-verdict" role="status" data-verdict hidden></div>
+                    <div class="guess-verdict" role="status" data-verdict></div>
                     <div class="guessed" data-guessed hidden></div>
                     </div>
                     """;

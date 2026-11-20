@@ -45,6 +45,8 @@
       seal.classList.add('cracked');
       seal.setAttribute('aria-expanded', 'true');
       seal.setAttribute('aria-label', 'Break the seal without guessing');
+      // Expanded, the seal shows the readings; once broken, the truth again.
+      seal.setAttribute('aria-controls', readings.id);
       line.textContent = 'Choose the truth to break it';
       readings.hidden = false;
       readings.querySelector('.reading').focus();
@@ -53,6 +55,7 @@
       seal.classList.remove('cracked');
       seal.setAttribute('aria-expanded', 'false');
       seal.removeAttribute('aria-label');
+      seal.setAttribute('aria-controls', panel.id);
       line.textContent = 'Guess the Heretical Truth';
       readings.hidden = true;
       seal.focus();
@@ -63,6 +66,7 @@
       picked = pick;
       seal.classList.remove('cracked');
       seal.removeAttribute('aria-label');
+      seal.setAttribute('aria-controls', panel.id);
       readings.hidden = true;
       const wrong = pick !== null && pick !== truth;
       const all = Object.values(guessed());
@@ -82,8 +86,14 @@
       }
     };
     const breakWith = (pick) => {
-      if (pick !== null) keepGuess(rite, pick, pick === truth);
-      settle(pick);
+      // A guess made meanwhile in another tab stands, and is the one shown: one guess a rite.
+      const before = guessed()[rite];
+      if (before) {
+        settle(before.pick ?? before.choice);
+      } else {
+        if (pick !== null) keepGuess(rite, pick, pick === truth);
+        settle(pick);
+      }
       setOpen(true);
       panel.focus();
     };

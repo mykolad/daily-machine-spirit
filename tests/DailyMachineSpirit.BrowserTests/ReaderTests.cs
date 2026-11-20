@@ -201,6 +201,8 @@ public sealed partial class ReaderTests : IClassFixture<Chromium>, IAsyncLifetim
         await Page.Locator(".seal").ClickAsync();
         await Expect(Page.Locator(".seal-sub")).ToHaveTextAsync("Choose the truth to break it");
         await Expect(Page.Locator("[data-reading]").First).ToBeFocusedAsync();
+        // Expanded, the seal names what it shows: the readings now, the truth once broken.
+        await Expect(Page.Locator(".seal")).ToHaveAttributeAsync("aria-controls", "guess-readings");
         await Expect(Page.Locator("#truth-panel")).ToBeHiddenAsync();
         await Page.Locator("[data-reading]", new PageLocatorOptions { HasText = "The truth of rite 1." }).ClickAsync();
 
@@ -209,6 +211,7 @@ public sealed partial class ReaderTests : IClassFixture<Chromium>, IAsyncLifetim
         await Expect(Page.Locator("[data-readings]")).ToBeHiddenAsync();
         await Expect(Page.Locator("[data-guessed]")).ToBeHiddenAsync();
         await Expect(Page.Locator("#truth-panel")).ToBeFocusedAsync();
+        await Expect(Page.Locator(".seal")).ToHaveAttributeAsync("aria-controls", "truth-panel");
         // With no reading left to see, no numeral names one.
         await Expect(Page.Locator("#truth-heading")).ToHaveTextAsync("Heretical Truth");
         Assert.Empty(scriptErrors);
@@ -265,6 +268,23 @@ public sealed partial class ReaderTests : IClassFixture<Chromium>, IAsyncLifetim
         await Expect(Page.Locator("[data-readings]")).ToBeHiddenAsync();
         await Expect(Page.Locator(".seal")).ToHaveAttributeAsync("aria-expanded", "false");
         await Expect(Page.Locator(".seal")).ToBeFocusedAsync();
+        Assert.Empty(scriptErrors);
+    }
+
+    // A guess made in another tab meanwhile stands: choosing here shows it, rather than a second try.
+    [Fact]
+    public async Task AGuessFromAnotherTab_Stands()
+    {
+        await AddRites(1, Some(new FalseTruths("A false one.", "Another false one.")));
+
+        await Page.GotoAsync("/");
+        await Page.Locator(".seal").ClickAsync();
+        var truth = Number(await Page.Locator("[data-guess]").GetAttributeAsync("data-truth"));
+        await Page.EvaluateAsync($$"""localStorage.setItem('dms-guessed-v1', JSON.stringify({ "1": { right: false, pick: {{truth % 3 + 1}} } }))""");
+        await Page.Locator("[data-reading]", new PageLocatorOptions { HasText = "The truth of rite 1." }).ClickAsync();
+
+        await Expect(Page.Locator("[data-verdict]")).ToContainTextAsync("THOU ART ONE OF US");
+        await Expect(Page.Locator("[data-guessed]")).ToContainTextAsync("· THY GUESS");
         Assert.Empty(scriptErrors);
     }
 
