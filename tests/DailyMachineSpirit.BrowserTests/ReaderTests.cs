@@ -142,10 +142,19 @@ public sealed partial class ReaderTests : IClassFixture<Chromium>, IAsyncLifetim
         var pageSize = Settings.PublicPages.ArchivePageSize;
         await AddRites(pageSize + 3);
 
+        // The next page is held until Enter is pressed: focusing the link scrolls it into view, which starts the same load
+        // on its own, and the keyboard's Enter must still move focus when that load ends.
+        var entered = new TaskCompletionSource();
+        await Page.RouteAsync("**/archive?before=*", async route =>
+        {
+            await entered.Task;
+            await route.ContinueAsync();
+        });
         await Page.GotoAsync("/archive");
         await Expect(Page.Locator(".rows > .row")).ToHaveCountAsync(pageSize);
         await Page.Locator(".archive-more a").FocusAsync();
         await Page.Keyboard.PressAsync("Enter");
+        entered.SetResult();
 
         await Expect(Page.Locator(".rows > .row")).ToHaveCountAsync(pageSize + 3);
         await Expect(Page.Locator(".archive-loading")).ToHaveCountAsync(0);
@@ -159,6 +168,9 @@ public sealed partial class ReaderTests : IClassFixture<Chromium>, IAsyncLifetim
     public async Task DrawingARite_LeadsToAnother_AndSaysSo()
     {
         await AddRites(3);
+        // The script draws in the browser; the server's /draw, its fallback when that fails, is closed here, so only a
+        // draw the script made can pass.
+        await Page.RouteAsync("**/draw", route => route.AbortAsync());
 
         await Page.GotoAsync("/");
         await Page.Locator(".nav-draw").ClickAsync();

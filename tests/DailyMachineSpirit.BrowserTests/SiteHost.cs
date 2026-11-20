@@ -7,7 +7,6 @@ using DailyMachineSpirit.Functions.Pages;
 using DailyMachineSpirit.Functions.Telemetry;
 using DailyMachineSpirit.Functions.Voters;
 using DailyMachineSpirit.Tests;
-using LanguageExt;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
