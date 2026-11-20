@@ -59,10 +59,10 @@
       const seen = `Seen through ${all.filter((kept) => kept.right).length} of ${all.length}.`;
       const verdict = guess.querySelector('[data-verdict]');
       verdict.innerHTML = chosen === null
-        ? '<span class="verdict-sub">Unguessed. The Truth lies below.</span>'
+        ? '<span class="guess-verdict-sub">Unguessed. The Truth lies below.</span>'
         : wrong
-          ? `<span class="verdict-line">${cross}THOU ART ONE OF US</span><span class="verdict-sub">The rite would have worked on thee. ${seen}</span>`
-          : `<span class="verdict-line">${tick}THOU HAST SEEN THROUGH THE RITE</span><span class="verdict-sub">Thou didst choose ${numerals[chosen - 1]} No rite shall bind thee. ${seen}</span>`;
+          ? `<span class="guess-verdict-line">${cross}THOU ART ONE OF US</span><span class="guess-verdict-sub">The rite would have worked on thee. ${seen}</span>`
+          : `<span class="guess-verdict-line">${tick}THOU HAST SEEN THROUGH THE RITE</span><span class="guess-verdict-sub">Thou didst choose ${numerals[chosen - 1]} No rite shall bind thee. ${seen}</span>`;
       verdict.hidden = false;
       // The panel names the true reading, the readings being folded away.
       document.getElementById('truth-heading').textContent = `Heretical Truth · ${numerals[truth - 1]}`;

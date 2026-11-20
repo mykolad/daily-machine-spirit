@@ -125,7 +125,7 @@ public static class RiteCard
                     .Select(place => Reading(place, place == truthAt ? rite.Writing.HereticalTruth : others.Dequeue()));
                 return $"""
                     <div class="guess" data-guess data-truth="{truthAt}" hidden>
-                    <div class="verdict" role="status" data-verdict hidden></div>
+                    <div class="guess-verdict" role="status" data-verdict hidden></div>
                     <fieldset>
                     <legend class="guess-heading">What is the Heretical Truth?</legend>
                     <p class="guess-hint">Choose one, then break the seal.</p>

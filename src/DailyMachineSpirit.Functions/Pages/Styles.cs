@@ -104,7 +104,7 @@ public static class Styles
         .seal.waiting{cursor:default}
         .seal.waiting:hover{background:transparent}
         .seal.waiting .seal-label{color:#b6a98f}
-        .guess{align-self:stretch;margin-top:18px}
+        .guess{align-self:stretch;margin-top:18px;text-align:left}
         .guess[hidden]{display:none}
         .guess fieldset{margin:0;padding:0;border:0;min-width:0}
         .guess-heading{display:flex;align-items:center;gap:12px;width:100%;margin:0 0 4px;padding:0;font-family:Cinzel,serif;font-weight:700;font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:#8f2a20}
@@ -123,18 +123,18 @@ public static class Styles
         .reading-mark svg{display:block;width:100%;height:100%}
         .reading-ring{position:absolute;left:-12px;top:-10px;width:calc(100% + 22px);height:calc(100% + 21px);transform:rotate(-5deg);overflow:visible;display:none}
         .reading:has(input:checked) .reading-ring{display:block}
-        .guess.revealed .reading-ring{display:none}
+        .guess.revealed .reading .reading-ring{display:none}
         .guess-skip{display:block;margin:12px auto 0;min-height:44px;padding:0 8px;border:0;background:none;cursor:pointer;font-family:var(--ui);font-weight:600;font-size:15px;color:#6e5524;text-decoration:underline;text-underline-offset:3px}
         .guess-skip[hidden]{display:none}
         .guess-skip:hover{color:#8f2a20}
         .guess-skip:focus-visible{outline:2px solid #2b2117;outline-offset:2px;border-radius:4px}
-        .verdict{display:grid;justify-items:center;gap:4px;margin:0 0 14px;text-align:center}
-        .verdict[hidden]{display:none}
-        .verdict-line{display:flex;align-items:center;gap:10px;font-family:Cinzel,serif;font-weight:700;font-size:16px;letter-spacing:.14em;color:#8f2a20}
-        .verdict-sub{font-family:var(--serif);font-style:italic;font-size:17px;color:#5c4a33}
+        .guess-verdict{display:grid;justify-items:center;gap:4px;margin:0 0 14px;text-align:center}
+        .guess-verdict[hidden]{display:none}
+        .guess-verdict-line{display:flex;align-items:center;gap:10px;font-family:Cinzel,serif;font-weight:700;font-size:16px;letter-spacing:.14em;color:#8f2a20}
+        .guess-verdict-sub{font-family:var(--serif);font-style:italic;font-size:17px;color:#5c4a33}
         .reading-tag{display:inline-block;white-space:nowrap;font-family:Cinzel,serif;font-weight:700;font-size:11px;letter-spacing:.16em;color:#8f2a20}
         .guess.revealed .reading{cursor:default}
-        .guess.revealed .reading:hover{background:none}
+        .guess.revealed .reading:hover,.guess.revealed .reading:has(input:checked){background:none}
         .reading.missed .reading-text{color:#5c4a33;text-decoration:line-through;text-decoration-color:#8f2a20;text-decoration-thickness:2px}
         @media (max-width:699px){
         .guess-heading{font-size:12px;letter-spacing:.14em;gap:8px}
@@ -142,7 +142,7 @@ public static class Styles
         .reading-num{margin-right:9px}
         .reading-mark{top:7px;width:17px;height:17px}
         .reading-text{font-size:19px}
-        .verdict-line{font-size:14px;letter-spacing:.1em}
+        .guess-verdict-line{font-size:14px;letter-spacing:.1em}
         }
         .truth{width:100%;max-width:640px;margin-top:20px;text-align:left;border-radius:16px;background:#141c1f;border:1px solid #2e4248;overflow:hidden;animation:reveal 460ms ease-out 180ms both}
         .truth[hidden]{display:none}
