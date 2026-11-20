@@ -11,6 +11,7 @@ using DailyMachineSpirit.Functions.Scriptorium;
 using DailyMachineSpirit.Functions.Scriptorium.Expurgation;
 using DailyMachineSpirit.Functions.Scriptorium.Naming;
 using DailyMachineSpirit.Functions.Scriptorium.SignIn;
+using DailyMachineSpirit.Functions.ShareCards;
 using DailyMachineSpirit.Functions.Snapshot;
 using DailyMachineSpirit.Functions.Telemetry;
 using DailyMachineSpirit.Functions.Voters;
@@ -109,6 +110,7 @@ builder.Services.AddSingleton<IPreceptRepository, PreceptRepository>();
 builder.Services.AddSingleton<IScribeNameRepository, ScribeNameRepository>();
 builder.Services.AddSingleton<IVoteRepository, VoteRepository>();
 builder.Services.AddSingleton<IWitnessedRepository, WitnessedRepository>();
+builder.Services.AddSingleton<IRiteCards, RiteCards>();
 
 // The daily rite and the backlog. Created only when the timer or a refill runs, so HTTP functions start without the generation settings.
 Tuned<RiteWritingOptions>(RiteWritingOptions.SectionName);

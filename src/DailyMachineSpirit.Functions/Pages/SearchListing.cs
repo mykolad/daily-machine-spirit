@@ -13,12 +13,16 @@ public sealed record SearchListing
     /// For a page that's no page of its own in an index: a search's results (whatever anyone typed must never become a
     /// page in an index), a reader's own page, an error.
     /// </summary>
-    public static readonly SearchListing Unlisted = new(None);
+    public static readonly SearchListing Unlisted = new(None, None);
 
-    private SearchListing(Option<string> canonical)
+    private SearchListing(Option<string> origin, Option<string> canonical)
     {
+        Origin = origin;
         Canonical = canonical;
     }
+
+    /// <summary>The site's origin, which every address in the head starts with; None when unlisted.</summary>
+    public Option<string> Origin { get; }
 
     /// <summary>The page's address in full, from the site's origin (<see cref="SiteOrigin"/>); None when unlisted.</summary>
     public Option<string> Canonical { get; }
@@ -35,5 +39,8 @@ public sealed record SearchListing
     /// <summary>The page after it (the rite after), as <c>rel="next"</c>.</summary>
     public Option<string> Next { get; init; }
 
-    public static SearchListing At(string origin, string path) => new(Some(origin + path));
+    /// <summary>The picture link previews show (#191): the site's card, unless the page has its own.</summary>
+    public ShareImage Image { get; init; } = ShareImage.Site;
+
+    public static SearchListing At(string origin, string path) => new(Some(origin), Some(origin + path));
 }
