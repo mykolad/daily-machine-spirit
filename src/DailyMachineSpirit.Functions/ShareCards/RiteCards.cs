@@ -240,10 +240,20 @@ public sealed class RiteCards : IRiteCards
         using var font = new CardFont(CardAssets.MonoBold, FootSize);
         using var paint = new SKPaint { Color = Faded, IsAntialias = true };
         font.Draw(canvas, date, ContentLeft, FootBaseline, paint);
-        // A longer host than the site's own, as staging's, shrinks to stay clear of the seal.
-        var width = font.Measure(address);
-        using var addressFont = new CardFont(CardAssets.MonoBold, width <= AddressRoom ? FootSize : FootSize * AddressRoom / width);
-        addressFont.Draw(canvas, address, ContentLeft + ContentWidth - addressFont.Measure(address), FootBaseline, paint);
+        // A longer host than the site's own, as staging's, shrinks to stay clear of the seal: measured at each size, as
+        // small text doesn't scale exactly with its size.
+        var size = FootSize;
+        var addressFont = new CardFont(CardAssets.MonoBold, size);
+        while (addressFont.Measure(address) > AddressRoom && size > 8)
+        {
+            addressFont.Dispose();
+            size -= 0.5f;
+            addressFont = new CardFont(CardAssets.MonoBold, size);
+        }
+        using (addressFont)
+        {
+            addressFont.Draw(canvas, address, ContentLeft + ContentWidth - addressFont.Measure(address), FootBaseline, paint);
+        }
     }
 
     // The title at the first of these sizes where it fits in so many lines; at the last, as it breaks, whatever it takes.
