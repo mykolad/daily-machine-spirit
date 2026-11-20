@@ -104,8 +104,16 @@ public sealed partial class ReaderTests : IClassFixture<Chromium>, IAsyncLifetim
         await Page.Locator(".margin-witnessed .witnessed-only").ClickAsync();
         await Expect(witnessed).ToBeVisibleAsync();
 
+        // Asking forgets nothing; Keep goes back to "Forget them…", and the rite is still witnessed on the next visit.
         await Page.Locator(".margin-witnessed [data-forget-ask]").ClickAsync();
         await Expect(Page.Locator(".margin-witnessed [data-forget-keep]")).ToBeFocusedAsync();
+        await Expect(witnessed).ToHaveClassAsync(WitnessedClass());
+        await Page.Locator(".margin-witnessed [data-forget-keep]").ClickAsync();
+        await Expect(Page.Locator(".margin-witnessed [data-forget-ask]")).ToBeFocusedAsync();
+        await Page.ReloadAsync();
+        await Expect(Row(2)).ToHaveClassAsync(WitnessedClass());
+
+        await Page.Locator(".margin-witnessed [data-forget-ask]").ClickAsync();
         await Page.Locator(".margin-witnessed [data-forget-witnessed]").ClickAsync();
         await Expect(witnessed).Not.ToHaveClassAsync(WitnessedClass());
         await Expect(Page.Locator(".margin-witnessed .witnessed-count")).ToHaveTextAsync("0 of 3 rites");
