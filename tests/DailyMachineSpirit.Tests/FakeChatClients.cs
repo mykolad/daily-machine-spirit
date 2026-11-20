@@ -18,8 +18,16 @@ public sealed class FakeChatClients : IChatClients
     public static string Answer(string title, string text, string hereticalTruth)
         => Answer(title, text, hereticalTruth, "A build that fails, then passes when it runs again.");
 
+    public static string Answer(string title, string text, string hereticalTruth, string firstFalseTruth, string secondFalseTruth)
+        => System.Text.Json.JsonSerializer.Serialize(new { title, text, hereticalTruth, firstFalseTruth, secondFalseTruth, ailment = "A build that fails, then passes when it runs again." });
+
     public static string Answer(string title, string text, string hereticalTruth, string ailment)
-        => System.Text.Json.JsonSerializer.Serialize(new { title, text, hereticalTruth, ailment });
+        => System.Text.Json.JsonSerializer.Serialize(new { title, text, hereticalTruth, firstFalseTruth = FirstFalseTruth, secondFalseTruth = SecondFalseTruth, ailment });
+
+    // What every fake answer offers beside its truth (#199), unless a test asks for other false truths.
+    public const string FirstFalseTruth = "The network drops the download now and then: a longer timeout fixes it.";
+
+    public const string SecondFalseTruth = "The runner is short of memory: a bigger machine fixes it.";
 
     public FakeChatClients Answers(string model, params string[] texts)
         => Then(model, texts.Select<string, Func<Task<string>>>(text => () => Task.FromResult(text)));

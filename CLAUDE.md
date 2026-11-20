@@ -481,6 +481,11 @@ skills/                           — Consult the Machine Spirit, a skill that p
     Scribe amends it with the words. The rites API serves it, so a client matches a user's trouble on it without seeing
     the sealed truth; the Scriptorium's cards show it, the public pages don't. Written from the words, it may repeat a
     word the Expurgator erases, so an erasure replaces that word in the ailment too.
+  - **False truths** (#199, `RiteWriting.FalseTruths`, two of them): plausible, wrong Heretical Truths, each a cause and
+    fix a developer might believe, for a reader to tell the real one from before the seal breaks. The writer writes them
+    with the rite, under the same checks (and none may repeat the truth or the other); a Scribe amends them with the
+    words, both or neither. None for a rite written before them, which keeps the plain seal until the backfill gives it
+    some. Never in the rites API v1 or the search index.
   - **Judging:** an `IRiteJudge` judges each draft (`RiteJudge`, swappable like the models), asking two judges at once, each behind its own interface, so either can be swapped alone:
     - **Jev** (`JevJudge`, an `ISimilarityJudge`): its similarity scores for "More rites", and the tags. Off, a draft has neither.
     - **The rubric judge** (`RubricJudge`, an `IQualityJudge`, #10): the Augury's quality. The model that didn't write the draft

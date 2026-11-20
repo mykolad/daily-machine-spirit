@@ -365,6 +365,11 @@ public static partial class ScriptoriumPage
             {Label("truth", "Heretical Truth")}
             <textarea id="amend-truth" name="truth" rows="3" maxlength="{RiteWriting.MaxHereticalTruthLength}" aria-describedby="amend-code-hint"{Marked("truth")} required>{Encode(words.HereticalTruth)}</textarea>
             <p class="hint" id="amend-code-hint">Commands, flags and file names go in `backticks`, as the Machine Spirit writes them.</p>
+            <p class="hint" id="amend-false-hint">Offered beside the truth for readers to guess (#199): plausible fixes a developer might believe, but wrong. Both, or neither for the backfill to write.</p>
+            {Label("false-truth-1", "First False Truth")}
+            <textarea id="amend-false-truth-1" name="false-truth-1" rows="3" maxlength="{RiteWriting.MaxHereticalTruthLength}" aria-describedby="amend-false-hint amend-code-hint"{Marked("false-truth-1")}>{Encode(words.FirstFalseTruth)}</textarea>
+            {Label("false-truth-2", "Second False Truth")}
+            <textarea id="amend-false-truth-2" name="false-truth-2" rows="3" maxlength="{RiteWriting.MaxHereticalTruthLength}" aria-describedby="amend-false-hint amend-code-hint"{Marked("false-truth-2")}>{Encode(words.SecondFalseTruth)}</textarea>
             {Label("ailment", "Ailment")}
             <p class="hint" id="amend-ailment-hint">The trouble it's for, as a developer would describe it, without its cause or fix: what the rites API is matched on.</p>
             <textarea id="amend-ailment" name="ailment" rows="2" maxlength="{RiteWriting.MaxAilmentLength}" aria-describedby="amend-ailment-hint"{Marked("ailment")} required>{Encode(words.Ailment)}</textarea>
@@ -398,6 +403,14 @@ public static partial class ScriptoriumPage
         if (after.HereticalTruth != before.HereticalTruth)
         {
             fields.Add("truth");
+        }
+        if (after.FirstFalseTruth != before.FirstFalseTruth)
+        {
+            fields.Add("false-truth-1");
+        }
+        if (after.SecondFalseTruth != before.SecondFalseTruth)
+        {
+            fields.Add("false-truth-2");
         }
         if (after.Ailment != before.Ailment)
         {

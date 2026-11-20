@@ -30,6 +30,9 @@ internal sealed record RiteDocument
 
     public string HereticalTruth { get; init; } = string.Empty;
 
+    // Null for a rite written before them (#199).
+    public FalseTruths? FalseTruths { get; init; }
+
     public string? Ailment { get; init; }
 
     public string? Form { get; init; }
@@ -68,6 +71,7 @@ internal sealed record RiteDocument
         Title = rite.Writing.Title,
         Text = rite.Writing.Text,
         HereticalTruth = rite.Writing.HereticalTruth,
+        FalseTruths = rite.Writing.FalseTruths.OrNull(),
         Ailment = rite.Writing.Ailment.OrNull(),
         Form = rite.Writing.Form.OrNull(),
         GeneratedByModel = rite.Writing.GeneratedByModel,
@@ -90,6 +94,7 @@ internal sealed record RiteDocument
             Title = Title,
             Text = Text,
             HereticalTruth = HereticalTruth,
+            FalseTruths = Optional(FalseTruths),
             Ailment = Optional(Ailment),
             Form = Optional(Form),
             GeneratedByModel = GeneratedByModel,

@@ -39,6 +39,11 @@ public static class RitePrompt
         sb.AppendLine("what would actually fix it, in general terms (two steps racing each other, a stale cache, a missing check),");
         sb.AppendLine("not a specific command. No mysticism there: that contrast is the point.");
         sb.AppendLine();
+        sb.AppendLine("Then write two FALSE TRUTHS, which a reader is offered beside the real one to guess which is true. Each is a");
+        sb.AppendLine("cause and fix a developer might really believe, for the same trouble, but wrong: in the real truth's length,");
+        sb.AppendLine("tone and plain English, so only understanding tells them apart. Not jokes, not obviously absurd, and not the");
+        sb.AppendLine("real truth reworded; the two unlike each other.");
+        sb.AppendLine();
         sb.AppendLine("Last, write the AILMENT: the trouble the rite is for, in a line, as a developer would put it when asking for help.");
         sb.AppendLine("Never its cause or its fix: the Heretical Truth stays sealed until the reader asks for it, and the ailment is what");
         sb.AppendLine("a reader's own trouble is matched against.");
@@ -87,7 +92,7 @@ public static class RitePrompt
     /// </summary>
     public static string Rewrite(RiteKind kind, RiteContent words, string note)
     {
-        var rite = JsonSerializer.Serialize(new { words.Title, words.Text, words.HereticalTruth, words.Ailment });
+        var rite = JsonSerializer.Serialize(new { words.Title, words.Text, words.HereticalTruth, words.FirstFalseTruth, words.SecondFalseTruth, words.Ailment });
         var said = JsonSerializer.Serialize(note);
         return $"""
             A Scribe of the Scriptorium has read this {(kind == RiteKind.Prayer ? "prayer" : "ritual")} and wants it rewritten.
