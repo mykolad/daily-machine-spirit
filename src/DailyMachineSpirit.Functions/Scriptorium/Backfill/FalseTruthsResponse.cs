@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
 
-namespace DailyMachineSpirit.Functions.Scriptorium.FalseTruths;
+namespace DailyMachineSpirit.Functions.Scriptorium.Backfill;
 
 /// <summary>A false truths answer: the page to go to, and a message for each rite or draft whose false truths to write.</summary>
 public sealed class FalseTruthsResponse

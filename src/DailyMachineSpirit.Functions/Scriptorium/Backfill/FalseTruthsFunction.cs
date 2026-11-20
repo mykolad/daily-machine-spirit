@@ -1,3 +1,4 @@
+using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Functions.Scriptorium.SignIn;
 using LanguageExt;
 using LanguageExt.Common;
@@ -8,7 +9,7 @@ using Microsoft.Extensions.Logging;
 using static DailyMachineSpirit.Functions.Scriptorium.ScriptoriumHttp;
 using static LanguageExt.Prelude;
 
-namespace DailyMachineSpirit.Functions.Scriptorium.FalseTruths;
+namespace DailyMachineSpirit.Functions.Scriptorium.Backfill;
 
 /// <summary>
 /// <c>/scriptorium/false-truths</c>: the backfill of false truths (#199), for the Scribes. Starting it leaves a message per
@@ -38,7 +39,7 @@ public sealed class FalseTruthsFunction
         {
             return refused;
         }
-        return await Shown(request, Optional(request.Query["done"].ToString()).Bind(Said), StatusCodes.Status200OK, cancellationToken);
+        return await Shown(request, Optional(request.Query["done"].ToString()).Bind(Said), None, StatusCodes.Status200OK, cancellationToken);
     }
 
     [Function("ScriptoriumFalseTruthsWrite")]
@@ -55,23 +56,9 @@ public sealed class FalseTruthsFunction
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "scriptorium/false-truths/{number:int}/accept")] HttpRequest request,
         int number,
         CancellationToken cancellationToken)
-    {
-        if ((await gate.ActingScribe(request, cancellationToken)).Case is IActionResult refused)
-        {
-            return refused;
-        }
-        if ((await ReadForm(request, cancellationToken)).Case is not IFormCollection fields)
-        {
-            return new BadRequestResult();
-        }
-        // A browser posts a textarea's line breaks as CRLF, which its maxlength counted as one character.
-        var (first, second) = (fields["false-truth-1"].ToString().Replace("\r\n", "\n"), fields["false-truth-2"].ToString().Replace("\r\n", "\n"));
-        return await (await backfill.Accept(number, first, second, cancellationToken)).Match(
-            Right: taken => Task.FromResult(Redirect($"{Page}?done={(taken ? "accepted" : "gone")}")),
-            Left: error => error is AmendmentRefused
-                ? Shown(request, Some($"Not accepted: {error.Message}"), StatusCodes.Status422UnprocessableEntity, cancellationToken)
-                : Task.FromResult(Failed(request, error)));
-    }
+        => await (await gate.ActingScribe(request, cancellationToken)).Match(
+            Left: refused => Task.FromResult(refused),
+            Right: scribe => AcceptedBy(scribe, request, number, cancellationToken));
 
     [Function("ScriptoriumFalseTruthsAgain")]
     public async Task<FalseTruthsResponse> Again(
@@ -97,15 +84,35 @@ public sealed class FalseTruthsFunction
         }
     }
 
-    private async Task<IActionResult> Shown(HttpRequest request, Option<string> message, int status, CancellationToken cancellationToken)
+    private async Task<IActionResult> AcceptedBy(ScribeId scribe, HttpRequest request, int number, CancellationToken cancellationToken)
+    {
+        if ((await ReadForm(request, cancellationToken)).Case is not IFormCollection fields)
+        {
+            return new BadRequestResult();
+        }
+        // A browser posts a textarea's line breaks as CRLF, which its maxlength counted as one character.
+        var (first, second) = (fields["false-truth-1"].ToString().Replace("\r\n", "\n"), fields["false-truth-2"].ToString().Replace("\r\n", "\n"));
+        return await (await backfill.Accept(number, first, second, scribe, cancellationToken)).Match(
+            Right: taken => Task.FromResult(Redirect($"{Page}?done={(taken ? "accepted" : "gone")}")),
+            Left: error => error is AmendmentRefused
+                ? Shown(request, Some($"Not accepted: {error.Message}"), Some((number, new FalseTruths(first, second))), StatusCodes.Status422UnprocessableEntity, cancellationToken)
+                : Task.FromResult(Failed(request, error)));
+    }
+
+    // A refused acceptance shows the Scribe's words where they typed them (typed), to correct rather than type again.
+    private async Task<IActionResult> Shown(
+        HttpRequest request, Option<string> message, Option<(int Number, FalseTruths Words)> typed, int status, CancellationToken cancellationToken)
     {
         var (pending, proposals) = (backfill.Pending(cancellationToken), backfill.Proposals(cancellationToken));
         var (without, proposed) = (await pending, await proposals);
         var read = from waiting in without
                    from shown in proposed
-                   select ScriptoriumPage.RenderFalseTruths(waiting.Count, shown, message);
+                   select ScriptoriumPage.RenderFalseTruths(waiting.Count, shown.Select(proposal => AsTyped(proposal, typed)).ToList(), message);
         return read.Match(Right: html => Html(request, html, status), Left: error => Failed(request, error));
     }
+
+    private static ProposedFalseTruths AsTyped(ProposedFalseTruths proposal, Option<(int Number, FalseTruths Words)> typed)
+        => typed.Filter(words => words.Number == proposal.Number).Match(Some: words => proposal with { Proposed = words.Words }, None: () => proposal);
 
     private static Option<string> Said(string outcome) => outcome switch
     {

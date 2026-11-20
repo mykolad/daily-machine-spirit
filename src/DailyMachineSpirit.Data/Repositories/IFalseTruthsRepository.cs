@@ -7,11 +7,15 @@ namespace DailyMachineSpirit.Data.Repositories;
 /// <summary>
 /// The backfill of false truths (#199) for what was written before them: published rites get them proposed, for a Scribe
 /// to accept; waiting drafts get them as a new draft would, since the Scribes read every draft before it's published.
+/// Reads here are live, never the rites' snapshot: each decides whether a model is asked, or what is saved.
 /// </summary>
 public interface IFalseTruthsRepository
 {
     /// <summary>The published rites with neither false truths nor a proposal, by number.</summary>
     Task<Either<Error, IReadOnlyList<int>>> RitesWithout(CancellationToken cancellationToken);
+
+    /// <summary>The rite numbered, if it has neither false truths nor a proposal by now.</summary>
+    Task<Either<Error, Option<Rite>>> RiteWithout(int number, CancellationToken cancellationToken);
 
     /// <summary>The waiting drafts without false truths.</summary>
     Task<Either<Error, IReadOnlyList<Guid>>> DraftsWithout(CancellationToken cancellationToken);
@@ -28,11 +32,15 @@ public interface IFalseTruthsRepository
     /// <summary>The proposals waiting for a Scribe, oldest rite first.</summary>
     Task<Either<Error, IReadOnlyList<ProposedFalseTruths>>> Proposals(CancellationToken cancellationToken);
 
+    /// <summary>The rite's proposal, if one waits.</summary>
+    Task<Either<Error, Option<ProposedFalseTruths>>> Proposal(int number, CancellationToken cancellationToken);
+
     /// <summary>
-    /// The rite takes these false truths (the proposal, or the Scribe's words for it) and the proposal goes; false when
-    /// it has no proposal by now (accepted in another tab).
+    /// The rite takes these false truths (the proposal, or the Scribe's words for it) and the proposal goes, with the
+    /// Scribe's entry in the Record, in one batch; the entry names the draft the rite was published from. False when it
+    /// has no proposal by now (accepted in another tab).
     /// </summary>
-    Task<Either<Error, bool>> Accept(int number, FalseTruths accepted, CancellationToken cancellationToken);
+    Task<Either<Error, bool>> Accept(int number, FalseTruths accepted, AuditEntry audit, CancellationToken cancellationToken);
 
     /// <summary>Drops the rite's proposal, so it's written again; false when it had none.</summary>
     Task<Either<Error, bool>> Withdraw(int number, CancellationToken cancellationToken);

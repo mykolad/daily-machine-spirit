@@ -6,8 +6,8 @@ using DailyMachineSpirit.Functions.Generation.Judging;
 using DailyMachineSpirit.Functions.Generation.Precepts;
 using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Scriptorium;
+using DailyMachineSpirit.Functions.Scriptorium.Backfill;
 using DailyMachineSpirit.Functions.Scriptorium.Expurgation;
-using DailyMachineSpirit.Functions.Scriptorium.FalseTruths;
 using DailyMachineSpirit.Functions.Scriptorium.Naming;
 using DailyMachineSpirit.Functions.Snapshot;
 using LanguageExt;
@@ -152,7 +152,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public Expurgations Expurgations(IExpurgationRepository copies, IPageCache pages) => new(Rites, new SnapshotFollowingErasures(copies, Snapshots()), pages, Time);
 
-    public FalseTruthsBackfill FalseTruthsBackfill(IPageCache pages) => new(FalseTruths, Rites, Drafts, Writer(), pages);
+    public FalseTruthsBackfill FalseTruthsBackfill(IPageCache pages) => new(FalseTruths, Drafts, Writer(), pages, Time);
 
     /// <summary>Every stored document as JSON, to check what's kept anywhere.</summary>
     public async Task<List<string>> AllDocuments()

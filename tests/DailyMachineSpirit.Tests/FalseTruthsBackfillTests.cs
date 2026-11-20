@@ -2,8 +2,9 @@ using System.Text;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Functions.Pages;
 using DailyMachineSpirit.Functions.Scriptorium;
-using DailyMachineSpirit.Functions.Scriptorium.FalseTruths;
+using DailyMachineSpirit.Functions.Scriptorium.Backfill;
 using DailyMachineSpirit.Functions.Scriptorium.SignIn;
+using LanguageExt;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -20,6 +21,8 @@ namespace DailyMachineSpirit.Tests;
 public sealed class FalseTruthsBackfillTests : IAsyncLifetime
 {
     private static readonly FalseTruths Written = new(FakeChatClients.FirstFalseTruth, FakeChatClients.SecondFalseTruth);
+
+    private static readonly ScribeId Scribe = new("scribe-0123456789");
 
     private readonly BacklogTestbed testbed = new();
     private readonly FakePageCache pages = new();
@@ -68,7 +71,7 @@ public sealed class FalseTruthsBackfillTests : IAsyncLifetime
         Assert.Equal(Some(Written), Ok(await testbed.Drafts.Get(draft.Id, CancellationToken.None)).Bind(found => found.Writing.FalseTruths));
     }
 
-    // A message delivered twice writes over nothing: the first proposal stands.
+    // A message delivered twice writes over nothing, and doesn't ask the model again: the first proposal stands.
     [Fact]
     public async Task AMessageAgain_KeepsTheFirstProposal()
     {
@@ -79,19 +82,50 @@ public sealed class FalseTruthsBackfillTests : IAsyncLifetime
         Ok(await Backfill().Write($"rite:{number}", CancellationToken.None));
 
         Assert.Equal(new FalseTruths("First one.", "Second one."), Assert.Single(Ok(await Backfill().Proposals(CancellationToken.None))).Proposed);
+        Assert.Single(testbed.Models.Requests);
     }
 
-    // Accepted as the Scribe left them, the rite asks its readers to guess, and its pages are fresh.
+    // Accepted as the Scribe left them, the rite asks its readers to guess, its pages are fresh, and the Record says
+    // who gave them, to which rite and draft, and that they weren't the proposal's own words.
     [Fact]
-    public async Task Accepting_GivesTheRiteThem_AndPurgesItsPages()
+    public async Task Accepting_GivesTheRiteThem_RecordsIt_AndPurgesItsPages()
     {
-        var number = await Proposed("Litany of the Cold Cache");
+        var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.9f);
+        var number = Ok(await testbed.Publisher().PublishToday(CancellationToken.None)).Rite.Number;
+        await Propose(number, "Litany of the Cold Cache");
 
-        Assert.True(Ok(await Backfill().Accept(number, "A warmer disk would help.", "The cache is too small.", CancellationToken.None)));
+        Assert.True(Ok(await Backfill().Accept(number, "A warmer disk would help.", "The cache is too small.", Scribe, CancellationToken.None)));
 
         Assert.Equal(Some(new FalseTruths("A warmer disk would help.", "The cache is too small.")), (await RiteNumbered(number)).Writing.FalseTruths);
         Assert.Empty(Ok(await Backfill().Proposals(CancellationToken.None)));
         Assert.Equal([Paths.Rite(number), Paths.Today], Assert.Single(pages.Purges));
+        var entry = Assert.Single(Ok(await testbed.Audit.GetNewest(20, CancellationToken.None)), entry => entry.Action == AuditAction.AcceptFalseTruths);
+        Assert.Equal((Scribe.Value, Some(number), Some(draft.Id), Some("amended")), (entry.Actor.Id, entry.RiteNumber, entry.DraftId, entry.Detail));
+    }
+
+    // A rite from before ailments (#115) has none to check them with, and isn't refused for it.
+    [Fact]
+    public async Task Accepting_ForARiteWithoutAnAilment_TakesThem()
+    {
+        var number = Ok(await testbed.Rites.Add(new Rite
+        {
+            PublishedOnUtc = new DateOnly(2026, 6, 1),
+            Writing = new RiteWriting
+            {
+                Kind = RiteKind.Prayer,
+                Title = "Litany of the Cold Cache",
+                Text = "O Machine Spirit, let the cache be warm.",
+                HereticalTruth = "A cold cache is just a cache that hasn't been read yet.",
+                GeneratedByModel = Sol,
+                GeneratedAtUtc = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+            },
+        }, CancellationToken.None)).Number;
+        await Propose(number, "Litany of the Cold Cache");
+
+        Assert.True(Ok(await Backfill().Accept(number, FakeChatClients.FirstFalseTruth, FakeChatClients.SecondFalseTruth, Scribe, CancellationToken.None)));
+
+        var rite = await RiteNumbered(number);
+        Assert.Equal((Some(Written), Option<string>.None), (rite.Writing.FalseTruths, rite.Writing.Ailment));
     }
 
     // A Scribe's words keep the rules a rite's do; refused, nothing changes.
@@ -102,10 +136,24 @@ public sealed class FalseTruthsBackfillTests : IAsyncLifetime
     {
         var number = await Proposed("Litany of the Cold Cache");
 
-        var refused = await Backfill().Accept(number, first, second, CancellationToken.None);
+        var refused = await Backfill().Accept(number, first, second, Scribe, CancellationToken.None);
 
         Assert.IsType<AmendmentRefused>(Assert.Single(refused.LeftToSeq()));
         Assert.True((await RiteNumbered(number)).Writing.FalseTruths.IsNone);
+        Assert.Single(Ok(await Backfill().Proposals(CancellationToken.None)));
+    }
+
+    // Refused, the page shows the Scribe's words where they typed them, to correct rather than type again.
+    [Fact]
+    public async Task ARefusedAcceptance_KeepsTheScribesWords()
+    {
+        var number = await Proposed("Litany of the Cold Cache");
+
+        var refused = Assert.IsType<ContentResult>(await Function().Accept(Post("false-truth-1=A+warmer+disk+would+help.&false-truth-2="), number, CancellationToken.None));
+
+        Assert.Equal(StatusCodes.Status422UnprocessableEntity, refused.StatusCode);
+        Assert.Contains("A warmer disk would help.", refused.Content);
+        Assert.DoesNotContain(FakeChatClients.FirstFalseTruth, refused.Content);
         Assert.Single(Ok(await Backfill().Proposals(CancellationToken.None)));
     }
 
@@ -150,9 +198,14 @@ public sealed class FalseTruthsBackfillTests : IAsyncLifetime
     private async Task<int> Proposed(string title)
     {
         var number = await Published(title);
+        await Propose(number, title);
+        return number;
+    }
+
+    private async Task Propose(int number, string title)
+    {
         testbed.Models.Answers(Sol, FakeChatClients.Answer(title, "Words.", "Truth."));
         Ok(await Backfill().Write($"rite:{number}", CancellationToken.None));
-        return number;
     }
 
     private async Task<Rite> RiteNumbered(int number)
