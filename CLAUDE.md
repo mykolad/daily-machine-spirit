@@ -386,9 +386,13 @@ skills/                           — Consult the Machine Spirit, a skill that p
 - **Votes** (Blessed / Heresy, `Api/VotesFunction`): one per account per rite, which the reader can switch or
   take back, signed in as below. `POST /api/rites/{number}/vote` with `{"vote": "blessed" | "heresy" | null}`, and
   `GET /api/votes?rites=12` for the page to show the reader's own vote pressed.
+  - **Confessions** (#200, "I have done this"): apart from the verdict, on the same vote (`ReaderVote`), so one may
+    bless a rite and confess to it. The POST takes `"confessed": true | false` too; whichever of the two a body leaves
+    out stays as it was, and `{}` is refused. `GET /api/votes` keeps the verdicts by rite, as a page cached with an
+    older script reads them, with the confessions beside them: `{"12": "blessed", "confessed": [12]}`.
   - **A vote document per account and rite** (`VoteRepository`), its id the rite's number and the voter key, so Cosmos
-    itself allows one. The vote and the rite's counts (`blessedVotes`, `heresyVotes`) change in one transactional batch,
-    so the counts are always the votes there are.
+    itself allows one, kept while it holds a verdict or a confession. The vote and the rite's counts (`blessedVotes`,
+    `heresyVotes`, `confessions`) change in one transactional batch, so the counts are always the votes there are.
   - **The anonymous reactions before sign-in** counted in `blessedCount` and `heresyCount`: older rites still have
     them, and nothing reads them, so the counts started again from zero.
   - **The page is the same for everyone:** both "Sign in with GitHub" and "Sign out" are in it, hidden, and the script

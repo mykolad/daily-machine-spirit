@@ -49,7 +49,7 @@ public sealed class VotesTests : IAsyncLifetime
     {
         await AddRite();
 
-        Assert.Equal(new ReactionCounts(1, 0), await Vote(Reader, Some(Reaction.Blessed)));
+        Assert.Equal(new ReactionCounts(1, 0, 0), await Vote(Reader, Some(Reaction.Blessed)));
     }
 
     [Fact]
@@ -58,7 +58,7 @@ public sealed class VotesTests : IAsyncLifetime
         await AddRite();
         await Vote(Reader, Some(Reaction.Blessed));
 
-        Assert.Equal(new ReactionCounts(0, 1), await Vote(Reader, Some(Reaction.Heresy)));
+        Assert.Equal(new ReactionCounts(0, 1, 0), await Vote(Reader, Some(Reaction.Heresy)));
     }
 
     [Fact]
@@ -67,7 +67,7 @@ public sealed class VotesTests : IAsyncLifetime
         await AddRite();
         await Vote(Reader, Some(Reaction.Heresy));
 
-        Assert.Equal(new ReactionCounts(0, 0), await Vote(Reader, None));
+        Assert.Equal(new ReactionCounts(0, 0, 0), await Vote(Reader, None));
         Assert.Empty(Ok(await Repository.GetVotes(Reader, [1], CancellationToken.None)));
     }
 
@@ -78,7 +78,7 @@ public sealed class VotesTests : IAsyncLifetime
         await Vote(Reader, Some(Reaction.Blessed));
         await Vote(Reader, Some(Reaction.Blessed));
 
-        Assert.Equal(new ReactionCounts(1, 0), await Vote(Reader, Some(Reaction.Blessed)));
+        Assert.Equal(new ReactionCounts(1, 0, 0), await Vote(Reader, Some(Reaction.Blessed)));
     }
 
     [Fact]
@@ -88,7 +88,7 @@ public sealed class VotesTests : IAsyncLifetime
 
         await Task.WhenAll(Enumerable.Range(0, 12).Select(reader => Vote(new VoterKey($"reader-{reader}"), Some(Reaction.Blessed))));
 
-        Assert.Equal(new ReactionCounts(12, 0), await Vote(new VoterKey("one-more"), None));
+        Assert.Equal(new ReactionCounts(12, 0, 0), await Vote(new VoterKey("one-more"), None));
     }
 
     [Fact]
@@ -101,11 +101,31 @@ public sealed class VotesTests : IAsyncLifetime
             var answers = await Task.WhenAll(Vote(Reader, Some(Reaction.Blessed)), Vote(Reader, Some(Reaction.Heresy)));
 
             // Each answer is one consistent state: the reader's vote counted once, on the side it asked for.
-            Assert.Equal([new ReactionCounts(1, 0), new ReactionCounts(0, 1)], answers);
+            Assert.Equal([new ReactionCounts(1, 0, 0), new ReactionCounts(0, 1, 0)], answers);
             var counts = await Vote(new VoterKey("someone-else"), None);
             var stored = Ok(await Repository.GetVotes(Reader, [1], CancellationToken.None))[1];
-            Assert.Equal(stored == Reaction.Blessed ? new ReactionCounts(1, 0) : new ReactionCounts(0, 1), counts);
+            Assert.Equal(stored.Reaction == Some(Reaction.Blessed) ? new ReactionCounts(1, 0, 0) : new ReactionCounts(0, 1, 0), counts);
         }
+    }
+
+    // A confession (#200) is counted apart from the verdict: taking the verdict back keeps it, and the vote goes only
+    // when neither is left.
+    [Fact]
+    public async Task Confessing_IsCountedApartFromTheVerdict_AndTheVoteGoesWhenNeitherIsLeft()
+    {
+        await AddRite();
+        await Vote(Reader, Some(Reaction.Blessed));
+
+        var confessed = Ok(await Repository.Vote(1, Reader, vote => vote with { Confessed = true }, CancellationToken.None)).IfNone(() => throw new InvalidOperationException());
+        var unjudged = await Vote(Reader, None);
+        var kept = Ok(await Repository.GetVotes(Reader, [1], CancellationToken.None));
+        var withdrawn = Ok(await Repository.Vote(1, Reader, vote => vote with { Confessed = false }, CancellationToken.None)).IfNone(() => throw new InvalidOperationException());
+
+        Assert.Equal((new ReactionCounts(1, 0, 1), Judged(Reaction.Blessed), new ReaderVote(Some(Reaction.Blessed), true)), (confessed.Counts, confessed.Before, confessed.After));
+        Assert.Equal(new ReactionCounts(0, 0, 1), unjudged);
+        Assert.Equal(new Dictionary<int, ReaderVote> { [1] = new(None, true) }, kept);
+        Assert.Equal((new ReactionCounts(0, 0, 0), ReaderVote.Nothing), (withdrawn.Counts, withdrawn.After));
+        Assert.Empty(Ok(await Repository.GetAllVotes(Reader, CancellationToken.None)));
     }
 
     [Fact]
@@ -137,7 +157,7 @@ public sealed class VotesTests : IAsyncLifetime
         var rite = Assert.Single(Ok(await new RiteRepository(cosmos.Container, TimeProvider.System, NullLogger<RiteRepository>.Instance)
             .GetByNumbers([1], CancellationToken.None)));
         Assert.Equal((0, 0), (rite.BlessedCount, rite.HeresyCount));
-        Assert.Equal(new ReactionCounts(1, 0), await Vote(Reader, Some(Reaction.Blessed)));
+        Assert.Equal(new ReactionCounts(1, 0, 0), await Vote(Reader, Some(Reaction.Blessed)));
     }
 
     [Fact]
@@ -153,7 +173,7 @@ public sealed class VotesTests : IAsyncLifetime
 
         var votes = Ok(await Repository.GetVotes(Reader, [1, 2, 9], CancellationToken.None));
 
-        Assert.Equal(new Dictionary<int, Reaction> { [1] = Reaction.Blessed, [2] = Reaction.Heresy }, votes);
+        Assert.Equal(new Dictionary<int, ReaderVote> { [1] = Judged(Reaction.Blessed), [2] = Judged(Reaction.Heresy) }, votes);
     }
 
     [Fact]
@@ -168,7 +188,7 @@ public sealed class VotesTests : IAsyncLifetime
 
         var votes = Ok(await Repository.GetAllVotes(Reader, CancellationToken.None));
 
-        Assert.Equal(new Dictionary<int, Reaction> { [1] = Reaction.Blessed, [3] = Reaction.Heresy }, votes);
+        Assert.Equal(new Dictionary<int, ReaderVote> { [1] = Judged(Reaction.Blessed), [3] = Judged(Reaction.Heresy) }, votes);
     }
 
     [Fact]
@@ -189,7 +209,7 @@ public sealed class VotesTests : IAsyncLifetime
         var (status, body) = await Post(Function(), 1, """{"vote":"blessed"}""", "application/json", SignedIn());
 
         Assert.Equal(StatusCodes.Status200OK, status);
-        Assert.Equal("""{"blessed":1,"heresy":0,"vote":"blessed","countedAt":1791600000000}""", body);
+        Assert.Equal("""{"blessed":1,"heresy":0,"confessions":0,"vote":"blessed","confessed":false,"countedAt":1791600000000}""", body);
     }
 
     // The cached pages that show the rite's counts: its own, Today, and the Reliquary, which the vote may reorder.
@@ -203,6 +223,24 @@ public sealed class VotesTests : IAsyncLifetime
         Assert.Equal(["/", "/r/1", "/reliquary"], Assert.Single(await Purged()).Order());
     }
 
+    // Each part of a vote left out is kept: a confession alone (#200) leaves the verdict, and the answer and the reader's
+    // votes say both. A page with an older script still finds the verdict where it was.
+    [Fact]
+    public async Task Post_AConfessionAlone_KeepsTheVerdict_AndGetSaysBoth()
+    {
+        await AddRite();
+        // The verdict saved as the reader's outside the function, so any purge queued is the confession's.
+        await Saved(session.VoterKeyFor("github", "583231"), Some(Reaction.Blessed));
+
+        var (status, body) = await Post(Function(), 1, """{"confessed":true}""", "application/json", SignedIn());
+        var (_, votes) = await Get(Function(), "?rites=1", SignedIn());
+
+        Assert.Equal(StatusCodes.Status200OK, status);
+        Assert.Equal("""{"blessed":1,"heresy":0,"confessions":1,"vote":"blessed","confessed":true,"countedAt":1791600000000}""", body);
+        Assert.Equal("""{"1":"blessed","confessed":[1]}""", votes);
+        Assert.Equal(["/", "/r/1", "/reliquary"], Assert.Single(await Purged()).Order());
+    }
+
     [Fact]
     public async Task Post_WithNull_TakesTheVoteBack()
     {
@@ -211,7 +249,7 @@ public sealed class VotesTests : IAsyncLifetime
 
         var (_, body) = await Post(Function(), 1, """{"vote":null}""", "application/json", SignedIn());
 
-        Assert.Equal("""{"blessed":0,"heresy":0,"vote":null,"countedAt":1791600000000}""", body);
+        Assert.Equal("""{"blessed":0,"heresy":0,"confessions":0,"vote":null,"confessed":false,"countedAt":1791600000000}""", body);
     }
 
     [Theory]
@@ -225,7 +263,7 @@ public sealed class VotesTests : IAsyncLifetime
         var (status, _) = await Post(Function(), 1, """{"vote":"blessed"}""", contentType, cookie);
 
         Assert.Equal(StatusCodes.Status401Unauthorized, status);
-        Assert.Equal(new ReactionCounts(0, 0), await Vote(new VoterKey("someone-else"), None));
+        Assert.Equal(new ReactionCounts(0, 0, 0), await Vote(new VoterKey("someone-else"), None));
     }
 
     [Theory]
@@ -234,6 +272,7 @@ public sealed class VotesTests : IAsyncLifetime
     [InlineData("""{"vote":"blessed","unexpected":true}""")]
     [InlineData("""{"vot":"blessed"}""")]
     [InlineData("""{"vote":1}""")]
+    [InlineData("""{"confessed":"yes"}""")]
     [InlineData("{}")]
     [InlineData("not json")]
     [InlineData("null")]
@@ -244,7 +283,7 @@ public sealed class VotesTests : IAsyncLifetime
         var (status, _) = await Post(Function(), 1, json, "application/json", SignedIn());
 
         Assert.Equal(StatusCodes.Status400BadRequest, status);
-        Assert.Equal(new ReactionCounts(0, 0), await Vote(new VoterKey("someone-else"), None));
+        Assert.Equal(new ReactionCounts(0, 0, 0), await Vote(new VoterKey("someone-else"), None));
     }
 
     [Fact]
@@ -318,7 +357,7 @@ public sealed class VotesTests : IAsyncLifetime
 
         var (status, body) = await Get(Function(), "?rites=1,2", SignedIn());
 
-        Assert.Equal((StatusCodes.Status200OK, """{"1":"heresy"}"""), (status, body));
+        Assert.Equal((StatusCodes.Status200OK, """{"1":"heresy","confessed":[]}"""), (status, body));
     }
 
     [Fact]
@@ -338,6 +377,8 @@ public sealed class VotesTests : IAsyncLifetime
     [Fact]
     public async Task Get_WhenTheVotesCantBeRead_Is503()
         => Assert.Equal(StatusCodes.Status503ServiceUnavailable, (await Get(MissingData(), "?rites=1", SignedIn())).Status);
+
+    private static ReaderVote Judged(Reaction verdict) => new(Some(verdict), false);
 
     private VoteRepository Repository => new(cosmos.Container);
 

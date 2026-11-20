@@ -9,7 +9,7 @@ using static LanguageExt.Prelude;
 namespace DailyMachineSpirit.Data.Repositories;
 
 /// <summary>
-/// A vote and the rite's counts change together, in one transactional batch: the counts are always the votes there are,
+/// A vote and the rite's counts (its verdicts and confessions) change together, in one transactional batch: the counts are always the votes there are,
 /// however many readers vote at once.
 /// </summary>
 public class VoteRepository : IVoteRepository
@@ -19,6 +19,8 @@ public class VoteRepository : IVoteRepository
     // collide again in step.
     private const int MaxAttempts = 5;
     private static readonly TimeSpan MaxPauseBetweenAttempts = TimeSpan.FromMilliseconds(50);
+
+    private const string ConfessionsField = "confessions";
 
     private static readonly Error LostRace = Error.New("The vote changed meanwhile.");
 
@@ -30,12 +32,12 @@ public class VoteRepository : IVoteRepository
     }
 
     public Task<Either<Error, Option<SavedVote>>> Vote(
-        int riteNumber, VoterKey voterKey, Option<Reaction> vote, CancellationToken cancellationToken)
+        int riteNumber, VoterKey voterKey, Func<ReaderVote, ReaderVote> change, CancellationToken cancellationToken)
         => AttemptEither(async () =>
         {
             for (var attempt = 1; ; attempt++)
             {
-                var result = await VoteOnce(riteNumber, voterKey, vote, cancellationToken);
+                var result = await VoteOnce(riteNumber, voterKey, change, cancellationToken);
                 var lostRace = result.Match(Left: error => error == LostRace, Right: _ => false);
                 if (!lostRace || attempt == MaxAttempts)
                 {
@@ -45,31 +47,31 @@ public class VoteRepository : IVoteRepository
             }
         });
 
-    public Task<Either<Error, Dictionary<int, Reaction>>> GetVotes(
+    public Task<Either<Error, Dictionary<int, ReaderVote>>> GetVotes(
         VoterKey voterKey, IReadOnlyCollection<int> riteNumbers, CancellationToken cancellationToken)
         => Attempt(async () =>
         {
             if (riteNumbers.Count == 0)
             {
-                return new Dictionary<int, Reaction>();
+                return new Dictionary<int, ReaderVote>();
             }
             var ids = riteNumbers.Distinct().Select(number => (VoteDocument.IdFor(number, voterKey), SharedPartitionKey)).ToList();
             var found = await container.ReadManyItemsAsync<VoteDocument>(ids, cancellationToken: cancellationToken);
-            return found.ToDictionary(document => document.RiteNumber, document => document.Reaction);
+            return found.ToDictionary(document => document.RiteNumber, document => document.ToReaderVote());
         });
 
-    public Task<Either<Error, Dictionary<int, Reaction>>> GetAllVotes(VoterKey voterKey, CancellationToken cancellationToken)
+    public Task<Either<Error, Dictionary<int, ReaderVote>>> GetAllVotes(VoterKey voterKey, CancellationToken cancellationToken)
         => Attempt(async () => (await container.Query<VoteDocument>(
                 new QueryDefinition("SELECT * FROM c WHERE c.type = @type AND c.voterKey = @voterKey")
                     .WithParameter("@type", VoteDocument.VoteType)
                     .WithParameter("@voterKey", voterKey.Value),
                 cancellationToken))
-            .ToDictionary(document => document.RiteNumber, document => document.Reaction));
+            .ToDictionary(document => document.RiteNumber, document => document.ToReaderVote()));
 
     // The vote is read before the rite: a vote saved by the reader's other tab before this read is then already in the
     // counts read after it, so an unchanged vote never comes back with counts that leave it out.
     private async Task<Either<Error, Option<SavedVote>>> VoteOnce(
-        int riteNumber, VoterKey voterKey, Option<Reaction> vote, CancellationToken cancellationToken)
+        int riteNumber, VoterKey voterKey, Func<ReaderVote, ReaderVote> change, CancellationToken cancellationToken)
     {
         var id = VoteDocument.IdFor(riteNumber, voterKey);
         var existing = await container.ReadOrNone<VoteDocument>(id, cancellationToken);
@@ -79,53 +81,66 @@ public class VoteRepository : IVoteRepository
                 .WithParameter("@number", riteNumber),
             cancellationToken)).HeadOrNone();
         return await rite.MatchAsync(
-            Some: found => Move(found, id, existing, voterKey, vote, cancellationToken),
+            Some: found => Move(found, id, existing, voterKey, change, cancellationToken),
             None: () => Right<Error, Option<SavedVote>>(None));
     }
 
     // Every answer comes from one transactional batch: the vote, changed only if it's still as read (a change by the
     // reader's other tab fails the batch, which is tried again), then the rite, with its counts moved or as they are. So
-    // the counts answered always belong with the vote that was asked for.
+    // the counts answered always belong with the vote that was asked for. A vote with neither a verdict nor a confession
+    // left is deleted.
     private async Task<Either<Error, Option<SavedVote>>> Move(
-        RiteDocument rite, string id, Option<(VoteDocument Document, string ETag)> existing, VoterKey voterKey, Option<Reaction> vote,
+        RiteDocument rite, string id, Option<(VoteDocument Document, string ETag)> existing, VoterKey voterKey, Func<ReaderVote, ReaderVote> change,
         CancellationToken cancellationToken)
     {
-        var previous = existing.Map(found => found.Document.Reaction);
+        var before = existing.Map(found => found.Document.ToReaderVote()).IfNone(ReaderVote.Nothing);
+        var after = change(before);
         var batch = container.CreateTransactionalBatch(SharedPartitionKey);
         batch = existing.Match(
-            Some: found => vote.Match(
+            Some: found => after.IsNothing
+                ? batch.DeleteItem(id, IfMatch(found.ETag))
                 // Unchanged too: saving the same vote again still checks its ETag.
-                Some: reaction => batch.ReplaceItem(id, found.Document with { Reaction = reaction }, IfMatch(found.ETag)),
-                None: () => batch.DeleteItem(id, IfMatch(found.ETag))),
-            None: () => vote.Match(
-                Some: reaction => batch.CreateItem(NewVote(id, rite.Number, voterKey, reaction)),
-                // No vote, and none asked for: creating one and deleting it again changes nothing, but fails if the
-                // reader's other tab saved a vote meanwhile.
-                None: () => batch.CreateItem(NewVote(id, rite.Number, voterKey, Reaction.Blessed)).DeleteItem(id)));
-        var riteIndex = existing.IsNone && vote.IsNone ? 2 : 1;
-        List<PatchOperation> counts =
-        [
-            .. previous.Map(reaction => PatchOperation.Increment($"/{CountField(reaction)}", -1)),
-            .. vote.Map(reaction => PatchOperation.Increment($"/{CountField(reaction)}", 1)),
-        ];
-        batch = previous == vote ? batch.ReadItem(rite.Id) : batch.PatchItem(rite.Id, counts);
+                : batch.ReplaceItem(id, found.Document.With(after), IfMatch(found.ETag)),
+            None: () => after.IsNothing
+                // Nothing, and nothing asked for: creating a vote and deleting it again changes nothing, but fails if the
+                // reader's other tab saved one meanwhile.
+                ? batch.CreateItem(NewVote(id, rite.Number, voterKey).With(new ReaderVote(Some(Reaction.Blessed), false))).DeleteItem(id)
+                : batch.CreateItem(NewVote(id, rite.Number, voterKey).With(after)));
+        var riteIndex = existing.IsNone && after.IsNothing ? 2 : 1;
+        batch = before == after ? batch.ReadItem(rite.Id) : batch.PatchItem(rite.Id, CountsMoved(before, after));
 
         using var response = await batch.ExecuteAsync(cancellationToken);
         if (response.IsSuccessStatusCode)
         {
-            return Some(new SavedVote(Counts(response.GetOperationResultAtIndex<RiteDocument>(riteIndex).Resource), previous != vote));
+            return Some(new SavedVote(Counts(response.GetOperationResultAtIndex<RiteDocument>(riteIndex).Resource), before, after));
         }
         return response[0].StatusCode is HttpStatusCode.PreconditionFailed or HttpStatusCode.Conflict or HttpStatusCode.NotFound
             ? LostRace
             : Error.New($"Saving a vote on rite NO. {rite.Number} failed: {response.StatusCode}. {response.ErrorMessage}");
     }
 
-    private static VoteDocument NewVote(string id, int riteNumber, VoterKey voterKey, Reaction reaction)
-        => new() { Id = id, RiteNumber = riteNumber, VoterKey = voterKey.Value, Reaction = reaction };
+    // The verdict's count leaves the one it was for and joins the new one; a confession made or withdrawn moves its own.
+    private static List<PatchOperation> CountsMoved(ReaderVote before, ReaderVote after)
+    {
+        var moved = new List<PatchOperation>();
+        if (before.Reaction != after.Reaction)
+        {
+            moved.AddRange(before.Reaction.Map(reaction => PatchOperation.Increment($"/{CountField(reaction)}", -1)));
+            moved.AddRange(after.Reaction.Map(reaction => PatchOperation.Increment($"/{CountField(reaction)}", 1)));
+        }
+        if (before.Confessed != after.Confessed)
+        {
+            moved.Add(PatchOperation.Increment($"/{ConfessionsField}", after.Confessed ? 1 : -1));
+        }
+        return moved;
+    }
+
+    private static VoteDocument NewVote(string id, int riteNumber, VoterKey voterKey)
+        => new() { Id = id, RiteNumber = riteNumber, VoterKey = voterKey.Value };
 
     private static TransactionalBatchItemRequestOptions IfMatch(string etag) => new() { IfMatchEtag = etag };
 
-    private static ReactionCounts Counts(RiteDocument rite) => new(rite.BlessedVotes, rite.HeresyVotes);
+    private static ReactionCounts Counts(RiteDocument rite) => new(rite.BlessedVotes, rite.HeresyVotes, rite.Confessions);
 
     private static string CountField(Reaction reaction) => reaction == Reaction.Blessed ? "blessedVotes" : "heresyVotes";
 }

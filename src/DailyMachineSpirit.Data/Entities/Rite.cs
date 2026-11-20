@@ -15,6 +15,9 @@ public sealed record Rite
 
     public int HeresyCount { get; init; }
 
+    /// <summary>The signed-in readers who confessed to having done the rite (#200).</summary>
+    public int ConfessionCount { get; init; }
+
     /// <summary>Added after the rite is saved.</summary>
     public Option<RiteSimilarity> Similarity { get; init; }
 
