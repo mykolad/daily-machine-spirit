@@ -182,6 +182,22 @@ public static class Styles
         .reaction-heresy[aria-pressed=true]{background:#3b1814;border-color:#d0604d;color:#f6cfc6}
         .reactions[aria-busy=true] .reaction{cursor:progress}
         .vote-status{flex-basis:100%;margin-top:2px;font-size:15px;color:#bfb39a;text-align:center}
+        .confession{flex-basis:100%;display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:18px;text-align:center}
+        .confession[hidden]{display:none}
+        .confession-rule{display:flex;align-items:center;gap:10px;width:160px;margin-bottom:6px}
+        .confession-rule::before,.confession-rule::after{content:'';flex:1;height:1px;background:rgba(201,162,90,.35)}
+        .confess{display:inline-flex;align-items:center;gap:12px;min-height:48px;padding:10px 18px 10px 14px;border-radius:12px;border:1px solid rgba(237,227,207,.22);background:transparent;color:#ede3cf;cursor:pointer;font-family:Cinzel,serif;font-weight:700;font-size:14px;line-height:1.25;letter-spacing:.08em;text-align:left;text-transform:uppercase;text-wrap:balance;white-space:nowrap;transition:border-color 120ms,background-color 120ms}
+        .confess .candle{flex:none}
+        .confess .flame{opacity:0;transition:opacity 160ms}
+        .confess:hover{border-color:#c9a25a;background:rgba(201,162,90,.06)}
+        .confess:focus-visible{outline:2px solid #f0d59a;outline-offset:2px}
+        .confess[aria-pressed=true]{border:2px solid #f0b45a;padding:9px 17px 9px 13px;background:rgba(240,180,90,.12);color:#f7e7c4}
+        .confess[aria-pressed=true] .flame{opacity:1}
+        .confession[aria-busy=true] .confess{cursor:progress}
+        .confessed-count{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#b6a98f}
+        .confess-status{margin:2px 0 0;max-width:300px;font-family:var(--serif);font-style:italic;font-size:17px;line-height:1.35;color:#cdbd9e;text-wrap:balance}
+        .confess-status:empty{margin:0}
+        .confess-status a{font-family:var(--ui);font-style:normal;font-weight:600;font-size:15px;color:#d9b874;text-decoration:underline;text-underline-offset:3px}
         .vote-status[hidden]{display:none}
         .vote-status form{display:inline}
         .vote-privacy{display:block;margin-top:4px;font-size:13px;color:#a89d86}
@@ -469,6 +485,7 @@ public static class Styles
         .actions{display:contents}
         .faithful,.marginalia{grid-row:1;display:flex;flex-direction:column;gap:28px;margin-top:80px}
         .faithful{grid-column:3;gap:10px;align-items:flex-start;padding-left:28px;border-left:1px solid #2f2820;text-align:left}
+        .hero .faithful{margin-bottom:176px}
         .marginalia{grid-column:1;align-items:flex-end;padding-right:28px;border-right:1px solid #2f2820;text-align:right}
         .faithful>.margin-label,.margin-countdown{display:block}
         .margin-label{margin:0 0 10px;font-family:Cinzel,serif;font-weight:700;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:#c9a25a}
@@ -476,6 +493,9 @@ public static class Styles
         .margin-value{margin:0;font-family:var(--serif);font-size:24px;color:#ede3cf;font-variant-numeric:tabular-nums}
         .faithful .reactions{justify-content:flex-start}
         .faithful .vote-status{margin-top:18px;text-align:left}
+        .faithful .confession{align-items:flex-start;text-align:left;margin-top:18px;padding-top:22px;border-top:1px solid rgba(237,227,207,.12)}
+        .faithful .confess{max-width:180px;white-space:normal}
+        .faithful .confess-status{max-width:220px}
         .sharing{grid-column:2;grid-row:3;display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:28px}
         .marginalia .tags{justify-content:flex-end;margin:0}
         .tags .margin-label{flex-basis:100%;margin-bottom:0}
