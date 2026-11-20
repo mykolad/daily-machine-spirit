@@ -19,7 +19,13 @@ public static class RitePage
             """);
 
     private static SearchListing AboutTheRite(Rite rite, SearchListing listing)
-        => listing with { OpenGraphType = "article", StructuredData = listing.Canonical.Map(url => RiteStructuredData.Json(rite, url)) };
+        => listing with
+        {
+            OpenGraphType = "article",
+            StructuredData = listing.Canonical.Map(url => RiteStructuredData.Json(rite, url)),
+            // Its own card, its alt text the joke: the title and the text, the code without its backticks.
+            Image = new ShareImage(Paths.RiteCard(rite.Number), $"{rite.Writing.Title}. {ShareCards.CardText.Plain(rite.Writing.Text)}"),
+        };
 
     // The same small parchments as Today's recent rites.
     private static string MoreRites(IReadOnlyList<Rite> more)
