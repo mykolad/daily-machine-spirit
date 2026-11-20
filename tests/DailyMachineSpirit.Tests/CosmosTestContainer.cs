@@ -76,9 +76,18 @@ public sealed class CosmosTestContainer : IAsyncLifetime
         await created.CreateContainerAsync(RiteRepository.ContainerName, RiteRepository.PartitionKeyPath);
     }
 
+    // Dropping the database is tidying, not the test: the emulator is thrown away with the run. On GitHub's runners the
+    // emulator has started failing to drop databases (500, a Postgres "undefined file", since 20 November 2026) while
+    // everything else works, so a failed drop leaves the database behind rather than failing the test that used it.
     public async ValueTask DisposeAsync()
     {
-        await database.IfSomeAsync(created => created.DeleteAsync());
+        try
+        {
+            await database.IfSomeAsync(created => created.DeleteAsync());
+        }
+        catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.InternalServerError)
+        {
+        }
         client.Dispose();
     }
 
