@@ -53,6 +53,8 @@
   <ItemGroup>
     <!-- The site serves its own fonts (Pages/FontsFunction.cs). -->
     <EmbeddedResource Include="Pages\Fonts\*.woff2" />
+    <!-- The pages' scripts (EmbeddedScripts.cs). -->
+    <EmbeddedResource Include="Pages\*.js;Scriptorium\*.js" />
   </ItemGroup>
 
   <ItemGroup>
