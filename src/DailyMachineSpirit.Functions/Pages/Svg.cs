@@ -29,6 +29,11 @@ public static class Svg
     public const string Corners =
         $"""<svg class="corner corner-tl" viewBox="0 0 60 60" width="60" height="60" fill="none" aria-hidden="true">{Corner}</svg><svg class="corner corner-tr" viewBox="0 0 60 60" width="60" height="60" fill="none" aria-hidden="true">{Corner}</svg><svg class="corner corner-bl" viewBox="0 0 60 60" width="60" height="60" fill="none" aria-hidden="true">{Corner}</svg><svg class="corner corner-br" viewBox="0 0 60 60" width="60" height="60" fill="none" aria-hidden="true">{Corner}</svg>""";
 
+    // The ring a reader inks around the reading they chose (#199), as one circles a line on a page: shown by the
+    // stylesheet on the checked reading alone. Its stroke keeps its width however far the ring stretches.
+    public const string ReadingRing =
+        """<svg class="reading-ring" aria-hidden="true" focusable="false" viewBox="0 0 46 34" preserveAspectRatio="none" fill="none"><path vector-effect="non-scaling-stroke" d="M24 3.5C12.5 2.6 3.4 8.6 3.2 16.9 3 25.6 12.6 31 24.2 30.6 35.4 30.2 43.4 24.3 42.8 16.2 42.2 8.1 33 3.4 20.5 4.6" stroke="#8f2a20" stroke-width="1.8" stroke-linecap="round"></path></svg>""";
+
     public const string RubricDivider =
         """<svg class="divider" viewBox="0 0 120 12" width="120" height="12" fill="none" aria-hidden="true"><path d="M0 6h46M74 6h46" stroke="#8f2a20" stroke-width="1.2"></path><path d="M60 0l6 6-6 6-6-6z" fill="#8f2a20"></path></svg>""";
 

@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using static DailyMachineSpirit.Tests.Expect;
+using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Tests;
 
@@ -1095,6 +1096,25 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Contains("Amended “The Litany of the Warm Cache”, but it couldn't be judged again, so it waits unjudged for Wed 7 Oct.", html);
     }
 
+    // The form's two false truths (#199) are saved each in its place; one without the other is refused, the Scribe's
+    // words kept on the page.
+    [Fact]
+    public async Task Amend_SavesTheFalseTruths_AndRefusesOneAlone()
+    {
+        var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
+
+        var alone = await Function().Decide(
+            AmendingWithFalseTruths(await ETag(draft), "The disk is too cold to read quickly.", ""), draft.Id, "amend", CancellationToken.None);
+        var both = await Function().Decide(
+            AmendingWithFalseTruths(await ETag(draft), "The disk is too cold to read quickly.", "The cache sleeps until midnight."), draft.Id, "amend", CancellationToken.None);
+
+        Assert.Contains("The disk is too cold to read quickly.</textarea>", Html(alone.Result, 422));
+        Assert.StartsWith("/scriptorium?done=amend", Assert.IsType<RedirectResult>(both.Result).Url);
+        Assert.Equal(
+            Some(new FalseTruths("The disk is too cold to read quickly.", "The cache sleeps until midnight.")),
+            Assert.Single(await testbed.Waiting()).Writing.FalseTruths);
+    }
+
     // Refused, the page comes back with what the Scribe typed and why: nothing they wrote is lost.
     [Fact]
     public async Task Amend_WordsBreakingARule_ComeBackWithWhy_KeepingTheScribesWords()
@@ -1266,6 +1286,19 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
             ("truth", "A warm cache is one that was read before."),
             ("ailment", "The build is slow after the cache is cleared."),
             ("note", note),
+        }.Select(field => $"{field.Item1}={Uri.EscapeDataString(field.Item2)}")));
+
+    private static HttpRequest AmendingWithFalseTruths(string etag, string first, string second)
+        => Post("application/x-www-form-urlencoded", string.Join("&", new[]
+        {
+            ("etag", etag),
+            ("title", "Litany of the Cold Cache"),
+            ("text", "O Machine Spirit, warm thy cache."),
+            ("truth", "A warm cache is one that was read before."),
+            ("false-truth-1", first),
+            ("false-truth-2", second),
+            ("ailment", "The build is slow after the cache is cleared."),
+            ("note", ""),
         }.Select(field => $"{field.Item1}={Uri.EscapeDataString(field.Item2)}")));
 
     private async Task<string> ETag(Draft draft)

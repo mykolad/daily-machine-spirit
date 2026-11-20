@@ -65,7 +65,8 @@ public static partial class ScriptoriumPage
             <form method="get" action="/scriptorium/expurgate/{rite.Number}/confirm">
             <input type="hidden" name="version" value="{Encode(expurgatable.Version)}">
             """);
-        foreach (var part in RiteParts.All)
+        // A rite written before false truths (#199) has none to erase from.
+        foreach (var part in RiteParts.All.Where(part => part.Of(rite.Writing).Length > 0))
         {
             html.Append($"""<fieldset class="part"><legend>{part.Label()}</legend><p class="words">""");
             var word = 0;
@@ -115,6 +116,7 @@ public static partial class ScriptoriumPage
             <h3 id="title-preview">{WithCode(redacted.Title)}</h3>
             <p class="text">{WithCode(redacted.Text)}</p>
             <p class="truth"><span class="truth-label">Heretical Truth</span> {WithCode(redacted.HereticalTruth)}</p>
+            {FalseTruthsOf(redacted)}
             </article>
             <form method="post" action="/scriptorium/expurgate/{rite.Number}">
             <input type="hidden" name="version" value="{Encode(expurgatable.Version)}">
