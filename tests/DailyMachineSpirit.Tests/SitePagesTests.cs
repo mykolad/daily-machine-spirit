@@ -964,9 +964,9 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.DoesNotContain("timing", json);
     }
 
-    // Guessing the truth (#199): a rite with false truths offers three readings, hidden until the script shows them
-    // (only it can check the answer), its truth where data-truth says, and not always first; a rite without them keeps
-    // the plain seal.
+    // Guessing the truth (#199): a rite with false truths offers three readings under the seal, hidden until the script
+    // shows them (only it can check the answer), its truth where data-truth says, and not always first; a rite without
+    // them keeps the plain seal.
     [Fact]
     public async Task ARitesFalseTruths_AreOfferedWithItsTruth_InAnOrderOfItsOwn()
     {
@@ -980,9 +980,10 @@ public sealed class SitePagesTests : IAsyncLifetime
         for (var number = 1; number <= 8; number++)
         {
             var (_, html) = await Rite(number.ToString(CultureInfo.InvariantCulture));
-            var truthAt = int.Parse(Regex.Match(html, """<div class="guess" data-guess data-truth="(\d)" hidden>""").Groups[1].Value, CultureInfo.InvariantCulture);
-            var readings = Regex.Matches(html, """<span class="reading-text">(.*?)</span>""").Select(match => match.Groups[1].Value).ToList();
+            var truthAt = int.Parse(Regex.Match(html, """<div class="guess" data-guess data-truth="(\d)">""").Groups[1].Value, CultureInfo.InvariantCulture);
+            var readings = Regex.Matches(html, """<span class="reading-text">(.*?)</span></button>""").Select(match => match.Groups[1].Value).ToList();
             Assert.Equal(3, readings.Count);
+            Assert.Contains("""<div class="readings" role="group" aria-labelledby="guess-prompt" data-readings hidden>""", html);
             Assert.Equal("Your test depends on <code>timing</code>.", readings[truthAt - 1]);
             Assert.Equal(["A false <code>one</code>.", "Another false one."], readings.Where((_, at) => at != truthAt - 1));
             places.Add(truthAt);

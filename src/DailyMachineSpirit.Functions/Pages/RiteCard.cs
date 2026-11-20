@@ -66,7 +66,6 @@ public static class RiteCard
             {ImperialDate.WithTheDay(rite.PublishedOnUtc, "rite-day", "rite-date")}
             {Svg.RubricDivider}
             <p class="prayer">{Prayer(rite.Writing.Text)}</p>
-            {Guess(rite)}
             <div class="colophon">
             <span class="inscribed">Inscribed by {Html.Encode(rite.Writing.GeneratedByModel)}</span>
             <span class="purity" aria-hidden="true"><span class="purity-strip">{PurityStrips[rite.Number % PurityStrips.Length]}</span>{Svg.PuritySeal}</span>
@@ -80,6 +79,8 @@ public static class RiteCard
             <span class="seal-sub">Reveal the Heretical Truth</span>
             </button>
             </div>
+            <div class="revelation">
+            {Guess(rite)}
             <section class="truth" id="truth-panel" aria-labelledby="truth-heading" tabindex="-1" hidden>
             <div class="truth-prompt" aria-hidden="true">$ explain --plainly</div>
             <div class="truth-body">
@@ -87,6 +88,7 @@ public static class RiteCard
             <p>{Html.WithInlineCode(rite.Writing.HereticalTruth)}</p>
             </div>
             </section>
+            </div>
             <div class="actions">
             <div class="faithful">
             <p class="margin-label" aria-hidden="true">The faithful say</p>
@@ -110,9 +112,11 @@ public static class RiteCard
     }
 
     /// <summary>
-    /// Guessing the Heretical Truth before the seal breaks (#199): the truth and the two false ones as three readings, in
-    /// an order fixed per rite. The script checks the answer in the browser (the truth is in the page already), so the
-    /// step is hidden until it shows it, and a rite without false truths has none.
+    /// Guessing the Heretical Truth (#199): the first press of the seal cracks it, and the truth and the two false ones
+    /// unfold under it as three readings, in an order fixed per rite; choosing one breaks the seal. The script checks the
+    /// answer in the browser (the truth is in the page already), so it all stays hidden until it shows it, and the
+    /// parchment never changes. A rite without false truths has none of it. After the break the verdict, and a wrong
+    /// guess struck through, sit above the truth.
     /// </summary>
     private static string Guess(Rite rite)
         => rite.Writing.FalseTruths.Match(
@@ -124,14 +128,14 @@ public static class RiteCard
                 var readings = Enumerable.Range(1, 3)
                     .Select(place => Reading(place, place == truthAt ? rite.Writing.HereticalTruth : others.Dequeue()));
                 return $"""
-                    <div class="guess" data-guess data-truth="{truthAt}" hidden>
-                    <div class="guess-verdict" role="status" data-verdict hidden></div>
-                    <fieldset>
-                    <legend class="guess-heading">What is the Heretical Truth?</legend>
-                    <p class="guess-hint">Choose one, then break the seal.</p>
-                    <div class="readings">{string.Concat(readings)}</div>
-                    </fieldset>
+                    <div class="guess" data-guess data-truth="{truthAt}">
+                    <div class="readings" role="group" aria-labelledby="guess-prompt" data-readings hidden>
+                    <p class="guess-prompt" id="guess-prompt">What is the Heretical Truth?</p>
+                    {string.Concat(readings)}
                     <button type="button" class="guess-skip" data-guess-skip>Just show me</button>
+                    </div>
+                    <div class="guess-verdict" role="status" data-verdict hidden></div>
+                    <div class="guessed" data-guessed hidden></div>
                     </div>
                     """;
             });
@@ -139,14 +143,10 @@ public static class RiteCard
     /// <summary>Where the truth stands among the three readings: the same for a rite every time, but not always first.</summary>
     private static int TruthPlace(int number) => (int)(((uint)number * 2654435761u) >> 16) % 3 + 1;
 
+    // A button, since a choice confirms at once; its name begins with its numeral ("II. An empty catch…").
     private static string Reading(int place, string words)
         => $"""
-            <label class="reading">
-            <input class="sr-only" type="radio" name="guess" value="{place}">
-            <span class="reading-mark" aria-hidden="true"></span>
-            <span class="reading-num" aria-hidden="true">{Numerals[place - 1]}{Svg.ReadingRing}</span>
-            <span class="reading-text">{Html.WithInlineCode(words)}</span>
-            </label>
+            <button type="button" class="reading" data-reading="{place}"><span class="reading-num">{Numerals[place - 1]}{Svg.ReadingRing}</span><span class="reading-text">{Html.WithInlineCode(words)}</span></button>
             """;
 
     // The first letter becomes the drop cap, hidden from screen readers, which read a hidden copy so the first word

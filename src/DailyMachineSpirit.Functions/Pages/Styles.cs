@@ -101,48 +101,58 @@ public static class Styles
         .seal[aria-expanded=true] .seal-right{transform:translate(9px,8px) rotate(15deg)}
         .seal-label{font-family:Cinzel,serif;font-weight:700;font-size:19px;letter-spacing:.08em}
         .seal-sub{font-size:15px;color:#b6a98f}
-        .seal.waiting{cursor:default}
-        .seal.waiting:hover{background:transparent}
-        .seal.waiting .seal-label{color:#b6a98f}
-        .guess{align-self:stretch;margin-top:18px;text-align:left}
-        .guess[hidden]{display:none}
-        .guess fieldset{margin:0;padding:0;border:0;min-width:0}
-        .guess-heading{display:flex;align-items:center;gap:12px;width:100%;margin:0 0 4px;padding:0;font-family:Cinzel,serif;font-weight:700;font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:#8f2a20}
-        .guess-heading::before,.guess-heading::after{content:'';flex:1;height:1px;background:rgba(143,42,32,.35)}
-        .guess-hint{margin:0 0 14px;text-align:center;font-family:var(--serif);font-style:italic;font-size:17px;color:#5c4a33}
-        .readings{display:grid}
-        .reading{position:relative;display:grid;grid-template-columns:22px 48px minmax(0,1fr);column-gap:6px;align-items:baseline;min-height:52px;padding:11px 8px 11px 0;border-top:1px solid rgba(143,42,32,.28);cursor:pointer}
-        .reading[hidden]{display:none}
-        .reading:last-child{border-bottom:1px solid rgba(143,42,32,.28)}
-        .reading:hover{background:rgba(143,42,32,.05)}
-        .reading:has(input:checked){background:rgba(143,42,32,.07)}
-        .reading:has(input:focus-visible){outline:2px dotted #2b2117;outline-offset:2px}
-        .reading-mark{grid-column:1;grid-row:1;align-self:start;position:relative;top:5px;width:22px;height:22px}
-        .reading-num{grid-column:2;grid-row:1;justify-self:end;position:relative;margin-right:10px;font-family:Cinzel,serif;font-weight:700;font-size:17px;line-height:1;color:#8f2a20}
-        .reading-text{grid-column:3;grid-row:1;padding-left:4px;font-family:var(--serif);font-size:20px;line-height:1.45;color:#2b2117;text-wrap:pretty}
-        .reading-mark svg{display:block;width:100%;height:100%}
+        .seal.cracked .seal-half{transition-duration:260ms}
+        .seal.cracked[aria-expanded=true] .seal-left{transform:translate(-3px,1px) rotate(-5deg)}
+        .seal.cracked[aria-expanded=true] .seal-right{transform:translate(3px,2px) rotate(4deg)}
+        .seal.cracked .seal-sub{color:#d9b874}
+        .revelation{display:flex;flex-direction:column;align-items:center;width:100%;max-width:640px}
+        .guess{display:contents}
+        .readings{display:grid;gap:10px;width:100%;margin-top:16px;animation:unfold 220ms ease-out both}
+        .readings[hidden],.guess-verdict[hidden],.guessed[hidden]{display:none}
+        @keyframes unfold{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+        .guess-prompt{display:flex;align-items:center;gap:12px;margin:0 0 6px;font-family:Cinzel,serif;font-weight:700;font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:#c9a25a}
+        .guess-prompt::before,.guess-prompt::after{content:'';flex:1;height:1px;background:rgba(201,162,90,.35)}
+        .reading{--r:0deg;--y:0px;position:relative;isolation:isolate;display:grid;grid-template-columns:48px minmax(0,1fr);column-gap:10px;align-items:baseline;width:100%;min-height:56px;padding:15px 24px 15px 6px;border:0;background:none;color:#2b2117;text-align:left;cursor:pointer;font:inherit;filter:drop-shadow(0 5px 7px rgba(0,0,0,.45));transform:rotate(var(--r)) translateY(var(--y));transition:transform 120ms ease-out}
+        .reading::before,.reading::after{content:'';position:absolute;clip-path:polygon(0 6%,2% 0,30% 3%,61% 0,88% 2%,99% 0,100% 22%,98.8% 41%,100% 63%,99% 84%,100% 100%,71% 97%,40% 100%,12% 97%,1% 100%,0 79%,1.2% 52%,0 30%)}
+        .reading::before{inset:0;z-index:-1;background:linear-gradient(100deg,#efe3c6,#e7d8b6 60%,#ede0c2)}
+        .reading::after{inset:-4px -5px;z-index:-2;background:#f0d59a;display:none}
+        .readings .reading:nth-of-type(1){--r:-.7deg}
+        .readings .reading:nth-of-type(2){--r:.5deg;margin-left:6px;width:calc(100% - 6px)}
+        .readings .reading:nth-of-type(3){--r:-.3deg}
+        .reading-num{position:relative;justify-self:end;display:inline-block;margin-right:6px;font-family:Cinzel,serif;font-weight:700;font-size:17px;line-height:1;color:#8f2a20}
+        .reading-text{font-family:var(--serif);font-size:19px;line-height:1.45;text-wrap:pretty}
+        .reading:hover{--y:-2px}
+        .reading:hover::before{background:linear-gradient(100deg,#f8f0dc,#f1e6cb 60%,#f6edd7)}
+        .reading:focus-visible{outline:none}
+        .reading:focus-visible::after{display:block}
+        .reading:active,.reading.chosen{--y:1px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))}
+        .reading:active::before,.reading.chosen::before{background:linear-gradient(100deg,#dfcfa8,#d8c69c 60%,#ddcca4)}
         .reading-ring{position:absolute;left:-12px;top:-10px;width:calc(100% + 22px);height:calc(100% + 21px);transform:rotate(-5deg);overflow:visible;display:none}
-        .reading:has(input:checked) .reading-ring{display:block}
-        .guess.revealed .reading .reading-ring{display:none}
-        .guess-skip{display:block;margin:12px auto 0;min-height:44px;padding:0 8px;border:0;background:none;cursor:pointer;font-family:var(--ui);font-weight:600;font-size:15px;color:#6e5524;text-decoration:underline;text-underline-offset:3px}
-        .guess-skip[hidden]{display:none}
-        .guess-skip:hover{color:#8f2a20}
-        .guess-skip:focus-visible{outline:2px solid #2b2117;outline-offset:2px;border-radius:4px}
-        .guess-verdict{display:grid;justify-items:center;gap:4px;margin:0 0 14px;text-align:center}
-        .guess-verdict[hidden]{display:none}
-        .guess-verdict-line{display:flex;align-items:center;gap:10px;font-family:Cinzel,serif;font-weight:700;font-size:16px;letter-spacing:.14em;color:#8f2a20}
-        .guess-verdict-sub{font-family:var(--serif);font-style:italic;font-size:17px;color:#5c4a33}
-        .reading-tag{display:inline-block;white-space:nowrap;font-family:Cinzel,serif;font-weight:700;font-size:11px;letter-spacing:.16em;color:#8f2a20}
-        .guess.revealed .reading{cursor:default}
-        .guess.revealed .reading:hover,.guess.revealed .reading:has(input:checked){background:none}
-        .reading.missed .reading-text{color:#5c4a33;text-decoration:line-through;text-decoration-color:#8f2a20;text-decoration-thickness:2px}
+        .reading:active .reading-ring,.reading.chosen .reading-ring{display:block}
+        @media (forced-colors:active){.reading:focus-visible{outline:2px solid CanvasText;outline-offset:3px}}
+        .guess-skip{justify-self:center;min-height:44px;padding:0 8px;border:0;background:none;cursor:pointer;font-family:var(--ui);font-weight:600;font-size:15px;color:#d9b874;text-decoration:underline;text-underline-offset:3px}
+        .guess-skip:hover{color:#f0d59a}
+        .guess-skip:focus-visible{outline:2px solid #f0d59a;outline-offset:2px;border-radius:4px}
+        .guess-verdict{display:grid;justify-items:center;gap:4px;margin-top:18px;text-align:center;animation:unfold 260ms ease-out 120ms both}
+        .guess-verdict-line{display:flex;align-items:center;justify-content:center;gap:10px;font-family:Cinzel,serif;font-weight:700;font-size:16px;letter-spacing:.14em;color:#ede3cf}
+        .guess-verdict-sub{font-family:var(--serif);font-style:italic;font-size:18px;color:#cdbd9e;text-wrap:balance}
+        .guessed{width:100%;margin-top:14px;display:grid;grid-template-columns:30px minmax(0,1fr);align-items:center;column-gap:6px;animation:unfold 260ms ease-out 120ms both}
+        .guessed .reading{--r:-.4deg;cursor:default}
+        .guessed .reading:hover{--y:0px}
+        .guessed .reading:hover::before{background:linear-gradient(100deg,#efe3c6,#e7d8b6 60%,#ede0c2)}
+        .guessed-mark svg{display:block;width:24px;height:24px}
+        .struck{color:#5c4a33;text-decoration:line-through;text-decoration-color:#8f2a20;text-decoration-thickness:2px}
+        .guessed-tag{display:inline-block;white-space:nowrap;font-family:Cinzel,serif;font-weight:700;font-size:11px;letter-spacing:.16em;color:#8f2a20}
+        .revelation>.truth{margin-top:18px}
         @media (max-width:699px){
-        .guess-heading{font-size:12px;letter-spacing:.14em;gap:8px}
-        .reading{grid-template-columns:16px 44px minmax(0,1fr);column-gap:4px}
-        .reading-num{margin-right:9px}
-        .reading-mark{top:7px;width:17px;height:17px}
-        .reading-text{font-size:19px}
-        .guess-verdict-line{font-size:14px;letter-spacing:.1em}
+        .guess-prompt{margin-bottom:12px;letter-spacing:.14em;gap:8px}
+        .reading{grid-template-columns:40px minmax(0,1fr);column-gap:8px;padding:14px 16px 14px 4px}
+        .reading-text{font-size:18px}
+        .guess-verdict-line{display:block;font-size:14px;letter-spacing:.1em;text-wrap:balance}
+        .guess-verdict-line svg{display:inline-block;vertical-align:-5px;margin-right:8px}
+        .guess-verdict-sub{font-size:17px}
+        .guessed{grid-template-columns:22px minmax(0,1fr);column-gap:4px}
+        .guessed-mark svg{width:19px;height:19px}
         }
         .truth{width:100%;max-width:640px;margin-top:20px;text-align:left;border-radius:16px;background:#141c1f;border:1px solid #2e4248;overflow:hidden;animation:reveal 460ms ease-out 180ms both}
         .truth[hidden]{display:none}
@@ -453,7 +463,7 @@ public static class Styles
         .hero{--gap:clamp(32px,3vw,60px);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,740px) minmax(0,1fr);column-gap:var(--gap);align-items:start;width:min(100vw - 48px,1220px + 2*var(--gap))}
         .hero>.rite{grid-column:2;grid-row:1}
         .hero .parchment{padding:56px 92px 44px}
-        .hero>.truth{grid-column:2;grid-row:2;justify-self:center}
+        .hero>.revelation{grid-column:2;grid-row:2;justify-self:center}
         .actions{display:contents}
         .faithful,.marginalia{grid-row:1;display:flex;flex-direction:column;gap:28px;margin-top:80px}
         .faithful{grid-column:3;gap:10px;align-items:flex-start;padding-left:28px;border-left:1px solid #2f2820;text-align:left}
