@@ -39,6 +39,11 @@ public static class RitePrompt
         sb.AppendLine("what would actually fix it, in general terms (two steps racing each other, a stale cache, a missing check),");
         sb.AppendLine("not a specific command. No mysticism there: that contrast is the point.");
         sb.AppendLine();
+        sb.AppendLine("Then write two FALSE TRUTHS, which a reader is offered beside the real one to guess which is true. Each is a");
+        sb.AppendLine("cause and fix a developer might really believe, for the same trouble, but wrong: in the real truth's length,");
+        sb.AppendLine("tone and plain English, so only understanding tells them apart. Not jokes, not obviously absurd, and not the");
+        sb.AppendLine("real truth reworded; the two unlike each other.");
+        sb.AppendLine();
         sb.AppendLine("Last, write the AILMENT: the trouble the rite is for, in a line, as a developer would put it when asking for help.");
         sb.AppendLine("Never its cause or its fix: the Heretical Truth stays sealed until the reader asks for it, and the ailment is what");
         sb.AppendLine("a reader's own trouble is matched against.");
@@ -82,12 +87,27 @@ public static class RitePrompt
         => kind == RiteKind.Prayer ? "Write a prayer." : "Write a ritual.";
 
     /// <summary>
+    /// Asks for the false truths of a rite written before them (#199), the rite as JSON: answered as the whole rite, as
+    /// every answer is, of which only the false truths are kept.
+    /// </summary>
+    public static string FalseTruthsFor(RiteKind kind, RiteContent words)
+    {
+        var rite = JsonSerializer.Serialize(new { words.Title, words.Text, words.HereticalTruth, words.Ailment });
+        var name = kind == RiteKind.Prayer ? "prayer" : "ritual";
+        return $"""
+            This {name} was written before its readers could guess its Heretical Truth: {rite}
+            Write its two FALSE TRUTHS, as described above, for its own trouble and against its own Heretical Truth. Answer
+            with the {name} exactly as it stands, its false truths added.
+            """;
+    }
+
+    /// <summary>
     /// Asks for the rite rewritten as a Scribe's note says: their note, the rite as it stands (both as JSON, so what a
     /// Scribe typed stays words to rewrite by, not instructions mixed into the request's own).
     /// </summary>
     public static string Rewrite(RiteKind kind, RiteContent words, string note)
     {
-        var rite = JsonSerializer.Serialize(new { words.Title, words.Text, words.HereticalTruth, words.Ailment });
+        var rite = JsonSerializer.Serialize(new { words.Title, words.Text, words.HereticalTruth, words.FirstFalseTruth, words.SecondFalseTruth, words.Ailment });
         var said = JsonSerializer.Serialize(note);
         return $"""
             A Scribe of the Scriptorium has read this {(kind == RiteKind.Prayer ? "prayer" : "ritual")} and wants it rewritten.

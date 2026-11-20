@@ -75,10 +75,10 @@ public sealed partial class Expurgations
         return erased;
     }
 
-    /// <summary>The words' version: a hash of the three parts, which changes when any word does.</summary>
+    /// <summary>The words' version: a hash of the parts, false truths included, which changes when any word does.</summary>
     public static string Version(RiteWriting writing)
         => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
-            string.Join('\u0001', writing.Title, writing.Text, writing.HereticalTruth))))[..16].ToLowerInvariant();
+            string.Join('\u0001', RiteParts.All.Select(part => part.Of(writing))))))[..16].ToLowerInvariant();
 
     /// <summary>The rite's words with the chosen ones replaced, or <see cref="NoSuchWord"/> for a place it hasn't.</summary>
     public static Either<Error, RiteWriting> Redacted(RiteWriting writing, IReadOnlyList<RedactedWord> chosen)
@@ -130,7 +130,7 @@ public sealed partial class Expurgations
             .Map(_ => Some(rite with { Writing = redacted }));
 
     private static bool TheRiteReads(WordsKept rite, RiteWriting writing)
-        => RiteParts.All.All(part => rite.Fields.TryGetValue(part.Field(), out var words) && words == part.Of(writing));
+        => RiteParts.All.All(part => (rite.Fields.TryGetValue(part.Field(), out var words) ? words : string.Empty) == part.Of(writing));
 
     // Each copy of a part as it is now gets the redacted part, field by field (two parts may read the same, and another
     // draft's resemblance names the title); a copy from before an amendment, whose words differ, and a Scribe's note have

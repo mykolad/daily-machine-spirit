@@ -153,7 +153,7 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.Contains("""<h2 class="rite-title" id="rite-title">The Rite of Re-Run</h2>""", html);
         Assert.Contains("A RITUAL · NO. 2", html);
         Assert.Contains("""<span class="imperial rite-date"><button type="button" class="imperial-date" aria-describedby="rite-day"><time datetime="2026-10-09">0 769 026.M3</time></button><span class="imperial-day" id="rite-day" role="tooltip">Friday 9 October 2026</span></span>""", html);
-        Assert.Contains("""<section class="truth" id="truth-panel" aria-labelledby="truth-heading" hidden>""", html);
+        Assert.Contains("""<section class="truth" id="truth-panel" aria-labelledby="truth-heading" tabindex="-1" hidden>""", html);
         Assert.Contains("Your test depends on <code>timing</code>.", html);
         Assert.Contains("Next litany in", html);
         Assert.Contains("""<span>Blessed</span><span class="count">0</span>""", html);
@@ -964,6 +964,37 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.DoesNotContain("timing", json);
     }
 
+    // Guessing the truth (#199): a rite with false truths offers three readings under the seal, hidden until the script
+    // shows them (only it can check the answer), its truth where data-truth says, and not always first; a rite without
+    // them keeps the plain seal.
+    [Fact]
+    public async Task ARitesFalseTruths_AreOfferedWithItsTruth_InAnOrderOfItsOwn()
+    {
+        await AddRites(9);
+        for (var number = 1; number <= 8; number++)
+        {
+            await Mislead(Day.AddDays(number - 9), "A false `one`.", "Another false one.");
+        }
+
+        var places = new List<int>();
+        for (var number = 1; number <= 8; number++)
+        {
+            var (_, html) = await Rite(number.ToString(CultureInfo.InvariantCulture));
+            var truthAt = int.Parse(Regex.Match(html, """<div class="guess" data-guess data-truth="(\d)">""").Groups[1].Value, CultureInfo.InvariantCulture);
+            var readings = Regex.Matches(html, """<span class="reading-text">(.*?)</span></button>""").Select(match => match.Groups[1].Value).ToList();
+            Assert.Equal(3, readings.Count);
+            Assert.Contains("""<div class="readings" id="guess-readings" role="group" aria-labelledby="guess-prompt" data-readings hidden>""", html);
+            Assert.Equal("Your test depends on <code>timing</code>.", readings[truthAt - 1]);
+            Assert.Equal(["A false <code>one</code>.", "Another false one."], readings.Where((_, at) => at != truthAt - 1));
+            places.Add(truthAt);
+        }
+        var (_, plain) = await Rite("9");
+
+        Assert.True(places.Distinct().Count() > 1, $"The truth stood at {string.Join(", ", places)}.");
+        Assert.DoesNotContain(""""<div class="guess"""", plain);
+        Assert.Contains("""<section class="truth" id="truth-panel" aria-labelledby="truth-heading" tabindex="-1" hidden>""", plain);
+    }
+
     // A rite's link, pasted into a chat, shows the rite's own card (#191), its alt text the joke; any other page shows
     // the site's card; a page in no index names no picture.
     [Fact]
@@ -1271,6 +1302,11 @@ public sealed class SitePagesTests : IAsyncLifetime
             await Add(Day.AddDays(i - count), $"Rite {i}");
         }
     }
+
+    // As a rite written with false truths (#199), or given them since.
+    private async Task Mislead(DateOnly day, string first, string second)
+        => await cosmos.Container.PatchItemAsync<RiteDocument>(RiteDocument.IdFor(day), CosmosCalls.SharedPartitionKey,
+            [Microsoft.Azure.Cosmos.PatchOperation.Set("/falseTruths", new FalseTruths(first, second))]);
 
     // As a rite whose writer wrote it the trouble it's for (#115).
     private async Task Ail(DateOnly day, string ailment)

@@ -7,4 +7,7 @@ public enum ScriptoriumTab
     Ashes,
     Precepts,
     Record,
+
+    // Shown only while false truths wait for a Scribe (#199): the backfill is done once.
+    FalseTruths,
 }

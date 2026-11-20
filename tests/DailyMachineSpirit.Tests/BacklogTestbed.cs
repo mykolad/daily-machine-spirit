@@ -6,6 +6,7 @@ using DailyMachineSpirit.Functions.Generation.Judging;
 using DailyMachineSpirit.Functions.Generation.Precepts;
 using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Scriptorium;
+using DailyMachineSpirit.Functions.Scriptorium.Backfill;
 using DailyMachineSpirit.Functions.Scriptorium.Expurgation;
 using DailyMachineSpirit.Functions.Scriptorium.Naming;
 using DailyMachineSpirit.Functions.Snapshot;
@@ -80,6 +81,8 @@ public sealed class BacklogTestbed : IAsyncLifetime
 
     public ScriptoriumRepository Scriptorium => new(cosmos.Container);
 
+    public FalseTruthsRepository FalseTruths => new(cosmos.Container);
+
     public AuditRepository Audit => new(cosmos.Container);
 
     public PreceptRepository Precepts => new(cosmos.Container);
@@ -121,7 +124,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
     public Scribes Scribes() => new(Drafts, Rites, Scriptorium, Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages),
         Options.Create(Settings.Backlog with { DraftsWaiting = BacklogSize }), Time);
 
-    public TabCounting Tabs() => new(Drafts, Scriptorium, Precepts, Audit, NullLogger<TabCounting>.Instance);
+    public TabCounting Tabs() => new(Drafts, Scriptorium, Precepts, Audit, new FalseTruthsRepository(cosmos.Container), NullLogger<TabCounting>.Instance);
 
     public DraftJudging DraftJudging() => new(Drafts, Judge(), Time, NullLogger<DraftJudging>.Instance);
 
@@ -148,6 +151,8 @@ public sealed class BacklogTestbed : IAsyncLifetime
     public NamesShown NamesShown() => new(ScribeNaming(), NullLogger<NamesShown>.Instance);
 
     public Expurgations Expurgations(IExpurgationRepository copies, IPageCache pages) => new(Rites, new SnapshotFollowingErasures(copies, Snapshots()), pages, Time);
+
+    public FalseTruthsBackfill FalseTruthsBackfill(IPageCache pages) => new(FalseTruths, Drafts, Writer(), pages, Time);
 
     /// <summary>Every stored document as JSON, to check what's kept anywhere.</summary>
     public async Task<List<string>> AllDocuments()
@@ -177,7 +182,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
     {
         var missing = cosmos.Container.Database.GetContainer("missing");
         return new TabCounting(new DraftRepository(missing, TimeProvider.System), new ScriptoriumRepository(missing), new PreceptRepository(missing), new AuditRepository(missing),
-            NullLogger<TabCounting>.Instance);
+            new FalseTruthsRepository(missing), NullLogger<TabCounting>.Instance);
     }
 
     public Scribes ScribesWithoutCosmos()

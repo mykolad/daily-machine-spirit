@@ -119,7 +119,7 @@ public sealed class RiteWriterTests : IDisposable
 
         await Writer(retryDelaySeconds: 0).Write(RiteKind.Prayer, Variety(RiteKind.Prayer), [], CancellationToken.None);
         await Writer(retryDelaySeconds: 0).Rewrite(
-            RiteKind.Prayer, new RiteContent("The Rite of Re-Run", "Press Re-run.", "It's flaky.", "A build that fails, then passes when re-run."), "Shorter.", CancellationToken.None);
+            RiteKind.Prayer, new RiteContent("The Rite of Re-Run", "Press Re-run.", "It's flaky.", FakeChatClients.FirstFalseTruth, FakeChatClients.SecondFalseTruth, "A build that fails, then passes when re-run."), "Shorter.", CancellationToken.None);
 
         Assert.All(models.Requests, request =>
         {
@@ -234,6 +234,37 @@ public sealed class RiteWriterTests : IDisposable
         Assert.Equal("The Rite of Re-Run", draft.Writing.Title);
     }
 
+    // What a reader tells the real truth from (#199), kept with the draft.
+    [Fact]
+    public async Task Write_KeepsTheFalseTruths()
+    {
+        models.Answers(Sol, FakeChatClients.Answer("The Rite of Re-Run", "Press Re-run thrice.", "Two steps race.", " A slow disk. ", " Too little memory. "));
+
+        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, Variety(RiteKind.Ritual), [], CancellationToken.None));
+
+        Assert.Equal(Some(new FalseTruths("A slow disk.", "Too little memory.")), draft.Writing.FalseTruths);
+    }
+
+    // Without them, with one alone, or with one that's the truth or the other again, there's nothing to guess; and they
+    // keep the rite's rules as its truth does.
+    [Theory]
+    [InlineData("", "")]
+    [InlineData("A slow disk.", "")]
+    [InlineData("Two steps race.", "A slow disk.")]
+    [InlineData("A slow disk.", "a slow disk.")]
+    [InlineData("The chatbot misread the logs.", "A slow disk.")]
+    [InlineData("A slow disk.", "Run npm install --force again.")]
+    [InlineData("The Omnissiah is displeased.", "A slow disk.")]
+    public async Task Write_AsksAgain_WhenTheFalseTruthsLeaveNothingToGuess(string first, string second)
+    {
+        models.Answers(Sol, FakeChatClients.Answer("Title", "Text.", "Two steps race.", first, second), GoodAnswer);
+
+        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Prayer, Variety(RiteKind.Prayer), [], CancellationToken.None));
+
+        Assert.Equal("The Rite of Re-Run", draft.Writing.Title);
+        Assert.Equal(2, models.Requests.Count);
+    }
+
     // Whole words, and only what the far future forgot: the machine's own words stay.
     [Theory]
     [InlineData("He said the cache would maintain itself.")]
@@ -327,7 +358,7 @@ public sealed class RiteWriterTests : IDisposable
         models.Fails(Sol, 1).Answers(Luna, GoodAnswer);
 
         var rewritten = Ok(await Writer(retryDelaySeconds: 30).Rewrite(
-            RiteKind.Ritual, new RiteContent("The Rite of Re-Run", "Press Re-run.", "It's flaky.", "A build that fails, then passes when re-run."), "Name the race.", CancellationToken.None));
+            RiteKind.Ritual, new RiteContent("The Rite of Re-Run", "Press Re-run.", "It's flaky.", FakeChatClients.FirstFalseTruth, FakeChatClients.SecondFalseTruth, "A build that fails, then passes when re-run."), "Name the race.", CancellationToken.None));
 
         Assert.Equal("The Rite of Re-Run", rewritten.Title);
         Assert.Equal([Sol, Luna], models.Requests.Select(request => request.Model));
@@ -347,7 +378,7 @@ public sealed class RiteWriterTests : IDisposable
         using var answerTimes = probe.Collect<double>("dms.generation.answer_duration");
 
         var rewritten = await Writer(retryDelaySeconds: 0).Rewrite(
-            RiteKind.Ritual, new RiteContent("The Rite of Re-Run", "Press Re-run.", "It's flaky.", "A build that fails, then passes when re-run."), "Name the race.", CancellationToken.None);
+            RiteKind.Ritual, new RiteContent("The Rite of Re-Run", "Press Re-run.", "It's flaky.", FakeChatClients.FirstFalseTruth, FakeChatClients.SecondFalseTruth, "A build that fails, then passes when re-run."), "Name the race.", CancellationToken.None);
 
         Assert.Equal("The Rite of Re-Run", Ok(rewritten).Title);
         Assert.Equal(["model=gpt-6-sol asked=rewrite outcome=timed-out", "model=gpt-6-luna asked=rewrite outcome=answered"],

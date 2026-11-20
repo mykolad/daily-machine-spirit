@@ -188,6 +188,123 @@ public sealed partial class ReaderTests : IClassFixture<Chromium>, IAsyncLifetim
         Assert.Empty(scriptErrors);
     }
 
+    // Guessing the truth (#199): the first press cracks the seal and unfolds the readings under it, focus on the first;
+    // a right guess breaks it, the readings give way to the verdict, and the truth is in the panel alone, focused.
+    [Fact]
+    public async Task ARightGuess_IsSeenThrough_AndTheTruthShowsOnce()
+    {
+        await AddRites(1, Some(new FalseTruths("A false one.", "Another false one.")));
+
+        await Page.GotoAsync("/");
+        await Expect(Page.Locator("[data-readings]")).ToBeHiddenAsync();
+        await Expect(Page.Locator(".seal-sub")).ToHaveTextAsync("Guess the Heretical Truth");
+        await Page.Locator(".seal").ClickAsync();
+        await Expect(Page.Locator(".seal-sub")).ToHaveTextAsync("Choose the truth to break it");
+        await Expect(Page.Locator("[data-reading]").First).ToBeFocusedAsync();
+        // Expanded, the seal names what it shows: the readings now, the truth once broken.
+        await Expect(Page.Locator(".seal")).ToHaveAttributeAsync("aria-controls", "guess-readings");
+        await Expect(Page.Locator("#truth-panel")).ToBeHiddenAsync();
+        await Page.Locator("[data-reading]", new PageLocatorOptions { HasText = "The truth of rite 1." }).ClickAsync();
+
+        await Expect(Page.Locator("[data-verdict]")).ToContainTextAsync("THOU HAST SEEN THROUGH THE RITE");
+        await Expect(Page.Locator("[data-verdict]")).ToContainTextAsync("No rite shall bind thee. Seen through 1 of 1.");
+        await Expect(Page.Locator("[data-readings]")).ToBeHiddenAsync();
+        await Expect(Page.Locator("[data-guessed]")).ToBeHiddenAsync();
+        await Expect(Page.Locator("#truth-panel")).ToBeFocusedAsync();
+        await Expect(Page.Locator(".seal")).ToHaveAttributeAsync("aria-controls", "truth-panel");
+        // With no reading left to see, no numeral names one.
+        await Expect(Page.Locator("#truth-heading")).ToHaveTextAsync("Heretical Truth");
+        Assert.Empty(scriptErrors);
+    }
+
+    // A wrong guess stays above the truth, struck; one guess a rite, so it opens the same on the next visit, and
+    // resealing hides it with the truth without offering the readings again.
+    [Fact]
+    public async Task AWrongGuess_StaysStruck_AndStaysOnTheNextVisit()
+    {
+        await AddRites(1, Some(new FalseTruths("A false one.", "Another false one.")));
+
+        await Page.GotoAsync("/");
+        await Page.Locator(".seal").ClickAsync();
+        await Page.Locator("[data-reading]", new PageLocatorOptions { HasText = "Another false one." }).ClickAsync();
+        await Expect(Page.Locator("[data-verdict]")).ToContainTextAsync("THOU ART ONE OF US");
+        await Page.ReloadAsync();
+
+        await Expect(Page.Locator("[data-verdict]")).ToContainTextAsync("The rite would have worked on thee. Seen through 0 of 1.");
+        await Expect(Page.Locator("[data-guessed]")).ToContainTextAsync("Another false one. · THY GUESS");
+        await Expect(Page.Locator("[data-readings]")).ToBeHiddenAsync();
+        // Beside the struck guess, the panel names which reading was true.
+        var truth = Number(await Page.Locator("[data-guess]").GetAttributeAsync("data-truth"));
+        await Expect(Page.Locator("#truth-heading")).ToHaveTextAsync($"Heretical Truth · {Numeral(truth)}.");
+        await Expect(Page.Locator("#truth-panel")).ToBeVisibleAsync();
+
+        await Page.Locator(".seal").ClickAsync();
+        await Expect(Page.Locator("#truth-panel")).ToBeHiddenAsync();
+        await Expect(Page.Locator("[data-guessed]")).ToBeHiddenAsync();
+        await Expect(Page.Locator(".seal-sub")).ToHaveTextAsync("Thy guess is cast");
+        await Page.Locator(".seal").ClickAsync();
+        await Expect(Page.Locator("[data-guessed]")).ToBeVisibleAsync();
+        await Expect(Page.Locator("[data-readings]")).ToBeHiddenAsync();
+        Assert.Empty(scriptErrors);
+    }
+
+    // "Just show me" opens the truth without a guess, and keeps nothing: the readings are offered on the next visit,
+    // and Esc folds them back without a guess either.
+    [Fact]
+    public async Task JustShowMe_RevealsWithoutAGuess_AndKeepsNothing()
+    {
+        await AddRites(1, Some(new FalseTruths("A false one.", "Another false one.")));
+
+        await Page.GotoAsync("/");
+        await Page.Locator(".seal").ClickAsync();
+        await Page.Locator("[data-guess-skip]").ClickAsync();
+
+        await Expect(Page.Locator("[data-verdict]")).ToHaveTextAsync("Unguessed. The Truth lies below.");
+        await Expect(Page.Locator("#truth-panel")).ToBeVisibleAsync();
+        await Page.ReloadAsync();
+        await Page.Locator(".seal").ClickAsync();
+        await Expect(Page.Locator("[data-readings]")).ToBeVisibleAsync();
+        await Page.Keyboard.PressAsync("Escape");
+        await Expect(Page.Locator("[data-readings]")).ToBeHiddenAsync();
+        await Expect(Page.Locator(".seal")).ToHaveAttributeAsync("aria-expanded", "false");
+        await Expect(Page.Locator(".seal")).ToBeFocusedAsync();
+        Assert.Empty(scriptErrors);
+    }
+
+    // A guess made in another tab meanwhile stands: choosing here shows it, rather than a second try.
+    [Fact]
+    public async Task AGuessFromAnotherTab_Stands()
+    {
+        await AddRites(1, Some(new FalseTruths("A false one.", "Another false one.")));
+
+        await Page.GotoAsync("/");
+        await Page.Locator(".seal").ClickAsync();
+        var truth = Number(await Page.Locator("[data-guess]").GetAttributeAsync("data-truth"));
+        await Page.EvaluateAsync($$"""localStorage.setItem('dms-guessed-v1', JSON.stringify({ "1": { right: false, pick: {{truth % 3 + 1}} } }))""");
+        await Page.Locator("[data-reading]", new PageLocatorOptions { HasText = "The truth of rite 1." }).ClickAsync();
+
+        await Expect(Page.Locator("[data-verdict]")).ToContainTextAsync("THOU ART ONE OF US");
+        await Expect(Page.Locator("[data-guessed]")).ToContainTextAsync("· THY GUESS");
+        Assert.Empty(scriptErrors);
+    }
+
+    // Pressing the cracked seal again breaks it unguessed, as "Just show me" does.
+    [Fact]
+    public async Task TheCrackedSeal_PressedAgain_RevealsWithoutAGuess()
+    {
+        await AddRites(1, Some(new FalseTruths("A false one.", "Another false one.")));
+
+        await Page.GotoAsync("/");
+        await Page.Locator(".seal").ClickAsync();
+        await Expect(Page.Locator(".seal")).ToHaveAttributeAsync("aria-label", "Break the seal without guessing");
+        await Page.Locator(".seal").ClickAsync();
+
+        await Expect(Page.Locator("[data-verdict]")).ToHaveTextAsync("Unguessed. The Truth lies below.");
+        await Expect(Page.Locator("#truth-panel")).ToBeFocusedAsync();
+        await Expect(Page.Locator("[data-readings]")).ToBeHiddenAsync();
+        Assert.Empty(scriptErrors);
+    }
+
     private ILocator Row(int number)
         => Page.Locator(".rows > .row", new PageLocatorOptions { Has = Page.Locator($"a.row-title[href='/r/{number}']") });
 
@@ -199,7 +316,10 @@ public sealed partial class ReaderTests : IClassFixture<Chromium>, IAsyncLifetim
         ]);
 
     // Rites 1 to count, a day apart, the last of them today's.
-    private async Task AddRites(int count)
+    private Task AddRites(int count) => AddRites(count, None);
+
+    // Rites 1 to count, each with these false truths (#199), or none.
+    private async Task AddRites(int count, Option<FalseTruths> falseTruths)
     {
         var rites = new RiteRepository(cosmos.Container, TimeProvider.System, NullLogger<RiteRepository>.Instance);
         for (var number = 1; number <= count; number++)
@@ -213,12 +333,18 @@ public sealed partial class ReaderTests : IClassFixture<Chromium>, IAsyncLifetim
                     Title = $"Rite {number}",
                     Text = $"The words of rite {number}.",
                     HereticalTruth = $"The truth of rite {number}.",
+                    FalseTruths = falseTruths,
                     GeneratedByModel = "gpt-6-sol",
                     GeneratedAtUtc = new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc),
                 },
             }, CancellationToken.None);
         }
     }
+
+    // A reading's numeral as the page writes it, without its full stop.
+    private static string Numeral(int place) => new[] { "I", "II", "III" }[place - 1];
+
+    private static int Number(string? value) => int.Parse(value ?? "0", System.Globalization.CultureInfo.InvariantCulture);
 
     [GeneratedRegex(@"\bwitnessed\b")]
     private static partial Regex WitnessedClass();

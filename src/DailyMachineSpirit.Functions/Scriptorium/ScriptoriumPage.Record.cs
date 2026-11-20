@@ -167,7 +167,7 @@ public static partial class ScriptoriumPage
         var tone = entry.Action == AuditAction.Burn ? "danger" : entry.Actor.IsMachineSpirit ? "spirit" : "scribe";
         var icon = entry.Action switch
         {
-            AuditAction.Write or AuditAction.Amend or AuditAction.EditPrecept => ScriptoriumIcons.Pencil,
+            AuditAction.Write or AuditAction.Amend or AuditAction.AcceptFalseTruths or AuditAction.EditPrecept => ScriptoriumIcons.Pencil,
             AuditAction.Publish => ScriptoriumIcons.BookOpen,
             AuditAction.JudgeAgain or AuditAction.LetTheAuguryDecide => ScriptoriumIcons.Augury,
             AuditAction.Anoint => ScriptoriumIcons.Anoint,
@@ -216,6 +216,7 @@ public static partial class ScriptoriumPage
             AuditAction.JudgeAgain => $"judged {rite} again",
             AuditAction.ChooseName => $"chose the name {rite}",
             AuditAction.Expurgate => $"erased words from {rite}",
+            AuditAction.AcceptFalseTruths => $"gave {rite} its false truths",
             _ => $"published {rite}",
         };
     }
@@ -226,10 +227,10 @@ public static partial class ScriptoriumPage
             None: () => $"“{WithCode(entry.Title)}”");
 
     // The entry's detail in the Record's own short words: a move as "#2 → #1", the Augury's quality as a percentage,
-    // a published or erased rite's number. Anything else as it was recorded.
+    // the number of a rite published, erased or given false truths. Anything else as it was recorded.
     private static Option<string> Chip(AuditEntry entry)
     {
-        if (entry.Action is AuditAction.Publish or AuditAction.Expurgate && entry.RiteNumber.IsSome)
+        if (entry.Action is AuditAction.Publish or AuditAction.Expurgate or AuditAction.AcceptFalseTruths && entry.RiteNumber.IsSome)
         {
             var number = entry.RiteNumber.Map(found => $"No. {found}");
             return entry.Detail.Match(Some: detail => number.Map(found => $"{found} · {detail}"), None: () => number);
@@ -254,7 +255,7 @@ public static partial class ScriptoriumPage
     private static RecordKind KindOf(AuditAction action) => action switch
     {
         AuditAction.Publish => RecordKind.Published,
-        AuditAction.Write or AuditAction.Amend => RecordKind.Written,
+        AuditAction.Write or AuditAction.Amend or AuditAction.AcceptFalseTruths => RecordKind.Written,
         AuditAction.JudgeAgain => RecordKind.Judged,
         AuditAction.Anoint or AuditAction.Exalt or AuditAction.Humble or AuditAction.Release => RecordKind.Moved,
         AuditAction.Burn or AuditAction.Restore => RecordKind.Burned,

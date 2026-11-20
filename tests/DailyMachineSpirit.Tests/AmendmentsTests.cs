@@ -19,6 +19,8 @@ public sealed class AmendmentsTests : IAsyncLifetime
         "The Litany of the Warm Cache",
         "O Machine Spirit, warm thy cache, that `npm ci` may find it full.",
         "`npm ci` deletes `node_modules` first: only a cache outside it survives.",
+        "",
+        "",
         "A clean install throws away the cache every time.");
 
     private readonly BacklogTestbed testbed = new();
@@ -81,6 +83,22 @@ public sealed class AmendmentsTests : IAsyncLifetime
         Ok(await testbed.Amendments().SaveAndJudgeAgain(draft.Id, amendable.ETag, Words(draft) with { Title = title }, "Retitled.", BacklogTestbed.Tester, CancellationToken.None));
 
         Assert.Equal(Some(form), Assert.Single(await testbed.Waiting()).Writing.Form);
+    }
+
+    // A Scribe amends the false truths (#199) with the other words: both, or neither, which leaves the draft with the
+    // plain seal until the backfill gives it some; never one alone.
+    [Fact]
+    public async Task Save_KeepsTheFalseTruthsGiven_BothOrNeither()
+    {
+        var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.2f);
+        var amendable = Ok(await testbed.Amendments().FindWaiting(draft.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Not amendable."));
+        var withThem = Sharper with { FirstFalseTruth = "The disk is too slow for a cache.", SecondFalseTruth = "The cache is too small to keep it." };
+
+        var alone = await testbed.Amendments().SaveAndJudgeAgain(draft.Id, amendable.ETag, withThem with { SecondFalseTruth = "" }, "", Tester, CancellationToken.None);
+        Ok(await testbed.Amendments().SaveAndJudgeAgain(draft.Id, amendable.ETag, withThem, "", Tester, CancellationToken.None));
+
+        Assert.IsType<AmendmentRefused>(Assert.Single(alone.LeftToSeq()));
+        Assert.Equal(Some(new FalseTruths(withThem.FirstFalseTruth, withThem.SecondFalseTruth)), Assert.Single(await testbed.Waiting()).Writing.FalseTruths);
     }
 
     // The mark said the old words repeated a rite; the Scribe who amended them has read them.
@@ -200,7 +218,7 @@ public sealed class AmendmentsTests : IAsyncLifetime
 
         var rewritten = Ok(await testbed.Amendments().ProposeRewrite(draft.Id, Words(draft), "Name the real fix: `npm ci`.", CancellationToken.None));
 
-        Assert.Equal(Sharper, rewritten);
+        Assert.Equal(Sharper with { FirstFalseTruth = FakeChatClients.FirstFalseTruth, SecondFalseTruth = FakeChatClients.SecondFalseTruth }, rewritten);
         var request = Assert.Single(testbed.Models.Requests).Messages.Last().Text;
         // The note goes in as a JSON string, so what a Scribe typed stays words to rewrite by.
         Assert.Contains(JsonSerializer.Serialize("Name the real fix: `npm ci`."), request);
@@ -220,5 +238,7 @@ public sealed class AmendmentsTests : IAsyncLifetime
     }
 
     private static RiteContent Words(Draft draft)
-        => new(draft.Writing.Title, draft.Writing.Text, draft.Writing.HereticalTruth, draft.Writing.Ailment.IfNone(string.Empty));
+        => new(draft.Writing.Title, draft.Writing.Text, draft.Writing.HereticalTruth,
+            draft.Writing.FalseTruths.Map(truths => truths.First).IfNone(string.Empty), draft.Writing.FalseTruths.Map(truths => truths.Second).IfNone(string.Empty),
+            draft.Writing.Ailment.IfNone(string.Empty));
 }
