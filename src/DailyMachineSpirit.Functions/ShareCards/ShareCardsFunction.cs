@@ -38,6 +38,12 @@ public sealed class ShareCardsFunction
         {
             return NotServed(request, StatusCodes.Status404NotFound);
         }
+        // Cloudflare keeps each query string apart, so /r/1/card.png?anything would read the rite and draw it again. The
+        // card has none of its own: a redirect reads and draws nothing.
+        if (request.QueryString.HasValue)
+        {
+            return new RedirectResult(Paths.RiteCard(number), permanent: true);
+        }
         var found = await rites.GetByNumbers([number], cancellationToken);
         return found.Match<IActionResult>(
             Right: matches => matches.HeadOrNone().Match<IActionResult>(

@@ -86,6 +86,32 @@ public sealed class ShareCardsTests : IAsyncLifetime
         Assert.Equal(StatusCodes.Status404NotFound, (await Get(Function(), id, path)).Status);
     }
 
+    // Past every size the design names, a title with a word longer than any title should hold still fits the card.
+    [Fact]
+    public void ATitleWiderThanEverySize_StillFitsTheCard()
+    {
+        string[] words = ["The", "Rite", "of", new string('W', 108)];
+
+        var (size, lines) = RiteCards.FittedTitle(words, [.. RiteCards.SmallerTitles], 3);
+
+        using var font = new CardFont(CardAssets.Cinzel, size);
+        Assert.All(lines, line => Assert.InRange(font.Measure(line), 0, RiteCards.ContentWidth));
+    }
+
+    // A card has no query string of its own: one would be read and drawn again for every new value, so it leads to the
+    // card's own address, reading and drawing nothing.
+    [Fact]
+    public async Task AQueryString_LeadsToTheCardsOwnAddress()
+    {
+        var request = new DefaultHttpContext().Request;
+        request.Path = "/r/1/card.png";
+        request.QueryString = new QueryString("?nonce=1");
+
+        var redirect = Assert.IsType<RedirectResult>(await Function().RiteCard(request, "1", CancellationToken.None));
+
+        Assert.Equal(("/r/1/card.png", true), (redirect.Url, redirect.Permanent));
+    }
+
     // An erasure's emoji, which the card's fonts lack, is drawn as Noto Emoji draws it rather than as a missing glyph.
     [Fact]
     public void AnErasuresEmoji_IsDrawnWithTheEmojiFont()

@@ -19,7 +19,7 @@ public sealed class RiteCards : IRiteCards
     public const int Height = 630;
 
     private const float ContentLeft = 96;
-    private const float ContentWidth = 1008;
+    internal const float ContentWidth = 1008;
     private const float ContentTop = 60;
     private const float ContentHeight = 464;
     // The title alone sits a little above the middle, leaving the foot its room.
@@ -40,7 +40,7 @@ public sealed class RiteCards : IRiteCards
 
     private static readonly float[] TextSizes = [48, 44, 40];
     // A title the design's sizes can't fit (a word wider than the card) goes on down until it fits.
-    private static readonly float[] SmallerTitles = [40, 34, 28, 24, 20, 16];
+    internal static readonly float[] SmallerTitles = [40, 34, 28, 24, 20, 16];
 
     private static readonly SKColor Rubric = SKColor.Parse("#8f2a20");
     private static readonly SKColor Ink = SKColor.Parse("#2b2117");
@@ -257,7 +257,7 @@ public sealed class RiteCards : IRiteCards
     }
 
     // The title at the first of these sizes where it fits in so many lines; at the last, as it breaks, whatever it takes.
-    private static (float Size, IReadOnlyList<string> Lines) FittedTitle(string[] words, float[] sizes, int maxLines)
+    internal static (float Size, IReadOnlyList<string> Lines) FittedTitle(string[] words, float[] sizes, int maxLines)
     {
         foreach (var size in sizes)
         {
@@ -266,8 +266,17 @@ public sealed class RiteCards : IRiteCards
                 return (size, lines);
             }
         }
-        using var smallest = new CardFont(CardAssets.Cinzel, sizes[^1]);
-        return (sizes[^1], Greedy(words, smallest));
+        // Past the last size, however many lines it takes, smaller until no line is wider than the content (a word
+        // longer than any title should hold): never cut off at the card's edge.
+        for (var size = sizes[^1]; ; size -= 0.5f)
+        {
+            using var font = new CardFont(CardAssets.Cinzel, size);
+            var lines = Greedy(words, font);
+            if (size <= 1 || lines.TrueForAll(line => font.Measure(line) <= ContentWidth))
+            {
+                return (size, lines);
+            }
+        }
     }
 
     // The title in at most this many lines at this size, every line within the content's width; two lines are balanced,
