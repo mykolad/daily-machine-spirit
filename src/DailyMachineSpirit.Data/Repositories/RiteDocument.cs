@@ -33,6 +33,9 @@ internal sealed record RiteDocument
     // Null for a rite written before them (#199).
     public FalseTruths? FalseTruths { get; init; }
 
+    // Written for a rite from before them (#199), for a Scribe to accept or have written again; null once accepted.
+    public FalseTruths? ProposedFalseTruths { get; init; }
+
     public string? Ailment { get; init; }
 
     public string? Form { get; init; }

@@ -506,6 +506,7 @@ public static partial class ScriptoriumPage
             {Tab(ScriptoriumTab.Ashes, "/scriptorium/ashes", "The Ashes", counted => Number(counted.Ashes))}
             {Tab(ScriptoriumTab.Precepts, "/scriptorium/precepts", "The Precepts", counted => Number(counted.Precepts))}
             {Tab(ScriptoriumTab.Record, "/scriptorium/record", "The Record", counted => Number(counted.RecordEntries))}
+            {(counts.Exists(counted => counted.ProposedFalseTruths > 0) ? Tab(ScriptoriumTab.FalseTruths, "/scriptorium/false-truths", "False Truths", counted => Number(counted.ProposedFalseTruths)) : string.Empty)}
             </ul></nav>
             """;
     }
@@ -588,6 +589,13 @@ public static partial class ScriptoriumPage
 
     // The rites put commands and file names in `backticks`.
     private static string WithCode(string text) => InlineCode().Replace(Encode(text), "<code>$1</code>");
+
+    // What readers will guess the truth among (#199), so a Scribe reads them before anointing; none for a draft written
+    // before them, until the backfill writes them.
+    private static string FalseTruthsOf(RiteWriting writing)
+        => writing.FalseTruths.Match(
+            Some: truths => $"""<p class="truth"><span class="truth-label">False Truths</span> {WithCode(truths.First)}</p><p class="truth">{WithCode(truths.Second)}</p>""",
+            None: () => string.Empty);
 
     // The trouble the rite is for, which the rites API serves.
     private static string Ailment(RiteWriting writing)

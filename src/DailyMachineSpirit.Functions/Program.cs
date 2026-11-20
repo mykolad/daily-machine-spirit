@@ -9,6 +9,7 @@ using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Pages;
 using DailyMachineSpirit.Functions.Scriptorium;
 using DailyMachineSpirit.Functions.Scriptorium.Expurgation;
+using DailyMachineSpirit.Functions.Scriptorium.FalseTruths;
 using DailyMachineSpirit.Functions.Scriptorium.Naming;
 using DailyMachineSpirit.Functions.Scriptorium.SignIn;
 using DailyMachineSpirit.Functions.ShareCards;
@@ -110,6 +111,7 @@ builder.Services.AddSingleton<IPreceptRepository, PreceptRepository>();
 builder.Services.AddSingleton<IScribeNameRepository, ScribeNameRepository>();
 builder.Services.AddSingleton<IVoteRepository, VoteRepository>();
 builder.Services.AddSingleton<IWitnessedRepository, WitnessedRepository>();
+builder.Services.AddSingleton<IFalseTruthsRepository, FalseTruthsRepository>();
 builder.Services.AddSingleton<IRiteCards, RiteCards>();
 
 // The daily rite and the backlog. Created only when the timer or a refill runs, so HTTP functions start without the generation settings.
@@ -142,6 +144,8 @@ builder.Services.AddTransient<Scribes>();
 builder.Services.AddTransient<TabCounting>();
 builder.Services.AddTransient<Expurgations>();
 builder.Services.AddTransient<Amendments>();
+// The backfill of false truths for what was written before them (#199).
+builder.Services.AddTransient<FalseTruthsBackfill>();
 builder.Services.AddTransient<PreceptKeeping>();
 builder.Services.AddTransient<ScribeNaming>();
 builder.Services.AddTransient<NamesShown>();

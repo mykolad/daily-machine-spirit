@@ -87,6 +87,21 @@ public static class RitePrompt
         => kind == RiteKind.Prayer ? "Write a prayer." : "Write a ritual.";
 
     /// <summary>
+    /// Asks for the false truths of a rite written before them (#199), the rite as JSON: answered as the whole rite, as
+    /// every answer is, of which only the false truths are kept.
+    /// </summary>
+    public static string FalseTruthsFor(RiteKind kind, RiteContent words)
+    {
+        var rite = JsonSerializer.Serialize(new { words.Title, words.Text, words.HereticalTruth, words.Ailment });
+        var name = kind == RiteKind.Prayer ? "prayer" : "ritual";
+        return $"""
+            This {name} was written before its readers could guess its Heretical Truth: {rite}
+            Write its two FALSE TRUTHS, as described above, for its own trouble and against its own Heretical Truth. Answer
+            with the {name} exactly as it stands, its false truths added.
+            """;
+    }
+
+    /// <summary>
     /// Asks for the rite rewritten as a Scribe's note says: their note, the rite as it stands (both as JSON, so what a
     /// Scribe typed stays words to rewrite by, not instructions mixed into the request's own).
     /// </summary>

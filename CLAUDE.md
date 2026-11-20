@@ -497,6 +497,14 @@ skills/                           — Consult the Machine Spirit, a skill that p
     words, both or neither. None for a rite written before them, which keeps the plain seal until the backfill gives it
     some. An Expurgator erases their words as the others' (`RitePart.FirstFalseTruth`, `SecondFalseTruth`). Never in the
     rites API v1 or the search index.
+    - **The backfill** (`Scriptorium/FalseTruths/`, `/scriptorium/false-truths`): a Scribe starts it, which leaves a
+      message per rite and waiting draft without them on the `false-truths` queue; each is written alone, by the writer
+      given the rite as it stands (`RiteWriter.WriteFalseTruths`: only the answer's false truths are kept, checked with
+      the rite's own words). A waiting draft takes them as a new one would; a published rite gets them proposed
+      (`proposedFalseTruths`), and its page keeps the plain seal until a Scribe accepts them as they are or amended, or
+      has them written again. Each change is a conditional patch (`FalseTruthsRepository`), so a message delivered twice
+      or another tab's acceptance writes over nothing. The tab shows only while proposals wait. The rites' snapshot
+      catches up with accepted ones at the next rite's publishing.
   - **Judging:** an `IRiteJudge` judges each draft (`RiteJudge`, swappable like the models), asking two judges at once, each behind its own interface, so either can be swapped alone:
     - **Jev** (`JevJudge`, an `ISimilarityJudge`): its similarity scores for "More rites", and the tags. Off, a draft has neither.
     - **The rubric judge** (`RubricJudge`, an `IQualityJudge`, #10): the Augury's quality. The model that didn't write the draft
