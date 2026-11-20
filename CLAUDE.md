@@ -179,7 +179,9 @@ skills/                           — Consult the Machine Spirit, a skill that p
   or search) is a log line each (`LogCounters`), which the activity dashboard counts: never who, nor what was searched.
 - **The pages** (`Pages/`) follow the design handoff (`design_handoff_daily_machine_spirit`, outside the repo; its
   README is the spec). They're rendered on the server as plain HTML with the CSS and a small script inlined, so a page
-  is one request (plus the fonts, cached for a year) and works without the script (the truth then simply shows).
+  is one request (plus the fonts, cached for a year) and works without the script (the truth then simply shows). Each
+  script is a `.js` file beside the class that names it (`Pages/Script.js`, the Scriptorium's three), embedded and
+  read once (`EmbeddedScripts`); the build checks their syntax with the runner's Node (`node --check`).
   - The fonts are the site's own copies (`Pages/Fonts/`, Latin subsets, OFL), served at `/fonts/<name>.woff2`: a page
     never makes the visitor's browser contact another site (Google Fonts would learn every visitor's address).
     The one exception is Cloudflare's own: its Web Analytics (RUM, set in Cloudflare's dashboard, EU included) adds

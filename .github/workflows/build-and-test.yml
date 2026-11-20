@@ -79,6 +79,11 @@ jobs:
       - name: Code style
         run: dotnet format style DailyMachineSpirit.slnx --verify-no-changes --severity warn --no-restore
 
+      # The pages' scripts are JavaScript files of their own (EmbeddedScripts): the runner's Node checks their syntax, so a
+      # broken script fails the build instead of shipping a page that runs none of it.
+      - name: Scripts parse
+        run: for script in src/DailyMachineSpirit.Functions/Pages/*.js src/DailyMachineSpirit.Functions/Scriptorium/*.js; do node --check "$script"; done
+
       # The Azure CLI on the runner compiles and lints the infrastructure; deploying it is a separate step (infra/README.md).
       - name: Bicep builds without warnings
         run: |

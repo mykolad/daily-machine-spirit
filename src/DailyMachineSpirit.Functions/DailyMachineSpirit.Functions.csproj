@@ -59,6 +59,8 @@
     <!-- The share cards' fonts and the design's parchment, seal and site card (ShareCards/CardAssets.cs). -->
     <EmbeddedResource Include="ShareCards\Fonts\*.ttf" />
     <EmbeddedResource Include="ShareCards\Assets\*.png" />
+    <!-- The pages' scripts (EmbeddedScripts.cs). -->
+    <EmbeddedResource Include="Pages\*.js;Scriptorium\*.js" />
   </ItemGroup>
 
   <ItemGroup>
