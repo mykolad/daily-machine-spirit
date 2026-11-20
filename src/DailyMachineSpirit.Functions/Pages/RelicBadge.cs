@@ -13,17 +13,5 @@ public static class RelicBadge
             ? $"""<a class="relic" href="{Paths.Reliquary}">{Svg.SmallFlameIcon}{Words(place)}<span class="sr-only">, in the Reliquary</span></a>"""
             : string.Empty;
 
-    private static string Words(int place) => place == 1 ? "Most venerated" : $"{Ordinal(place)} most venerated";
-
-    private static string Ordinal(int place) => (place % 100) switch
-    {
-        11 or 12 or 13 => $"{place}th",
-        _ => (place % 10) switch
-        {
-            1 => $"{place}st",
-            2 => $"{place}nd",
-            3 => $"{place}rd",
-            _ => $"{place}th",
-        },
-    };
+    private static string Words(int place) => place == 1 ? "Most venerated" : $"{Ordinals.Of(place)} most venerated";
 }
