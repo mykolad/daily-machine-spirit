@@ -96,6 +96,26 @@ public sealed class ExpurgationTests : IAsyncLifetime
     }
 
     // Chosen on a page shown before another erasure, the places would land on other words: nothing changes.
+    // A false truth's words (#199) are erased like the others: in the rite and in the draft it was published from.
+    [Fact]
+    public async Task Erase_AWordOfAFalseTruth_ErasesItThere()
+    {
+        var number = await PublishedAfterAnAmendment(Amended with
+        {
+            FirstFalseTruth = "A cold disk reads the cache slowly.",
+            SecondFalseTruth = "The cache is too small to keep it.",
+        });
+        var rite = Found(await Expurgations().Find(number, CancellationToken.None));
+
+        Ok(await Expurgations().Erase(number, rite.Version, [new RedactedWord(RitePart.FirstFalseTruth, 2, "🌑")], Expurgator, CancellationToken.None));
+
+        var reads = Found(await Expurgations().Find(number, CancellationToken.None)).Rite.Writing;
+        Assert.Equal(Some(new FalseTruths("A cold 🌑 reads the cache slowly.", "The cache is too small to keep it.")), reads.FalseTruths);
+        Assert.All(await testbed.AllDocuments(), document => Assert.DoesNotContain("disk", document));
+        var entry = Assert.Single(Ok(await testbed.Audit.GetNewest(20, CancellationToken.None)), entry => entry.Action == AuditAction.Expurgate);
+        Assert.Equal(Some("1 word of its first false truth"), entry.Detail);
+    }
+
     [Fact]
     public async Task Erase_FromWordsThatChangedSince_ChangesNothing()
     {
@@ -257,11 +277,13 @@ public sealed class ExpurgationTests : IAsyncLifetime
 
     // Written, amended (the decision keeps the old words, the Record's detail the old title), anointed with a note that
     // quotes it, and published: every kind of copy there is.
-    private async Task<int> PublishedAfterAnAmendment()
+    private Task<int> PublishedAfterAnAmendment() => PublishedAfterAnAmendment(Amended);
+
+    private async Task<int> PublishedAfterAnAmendment(RiteContent words)
     {
         var draft = await testbed.AddDraft("Litany of the Cold Cache", 0.9f);
         var amendable = Ok(await testbed.Amendments().FindWaiting(draft.Id, CancellationToken.None)).IfNone(() => throw new Xunit.Sdk.XunitException("Not amendable."));
-        Ok(await testbed.Amendments().SaveAndJudgeAgain(draft.Id, amendable.ETag, Amended, "Kinder.", BacklogTestbed.Tester, CancellationToken.None));
+        Ok(await testbed.Amendments().SaveAndJudgeAgain(draft.Id, amendable.ETag, words, "Kinder.", BacklogTestbed.Tester, CancellationToken.None));
         Ok(await testbed.Scribes().Anoint(draft.Id, "Keep it Warm.", BacklogTestbed.Tester, CancellationToken.None));
         return Ok(await testbed.Publisher().PublishToday(CancellationToken.None)).Rite.Number;
     }

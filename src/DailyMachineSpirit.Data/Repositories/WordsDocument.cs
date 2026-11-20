@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using DailyMachineSpirit.Data.Entities;
 
 namespace DailyMachineSpirit.Data.Repositories;
 
@@ -18,6 +19,8 @@ internal sealed record WordsDocument
     public string? Text { get; init; }
 
     public string? HereticalTruth { get; init; }
+
+    public FalseTruths? FalseTruths { get; init; }
 
     /// <summary>Written from the title and text, so it may repeat a word erased there: the erasure replaces it here too.</summary>
     public string? Ailment { get; init; }
@@ -42,6 +45,8 @@ internal sealed record WordsDocument
         Keep("/title", Title);
         Keep("/text", Text);
         Keep("/hereticalTruth", HereticalTruth);
+        Keep("/falseTruths/first", FalseTruths?.First);
+        Keep("/falseTruths/second", FalseTruths?.Second);
         Keep("/ailment", Ailment);
         Keep("/detail", Detail);
         Keep("/resembles", Resembles);
