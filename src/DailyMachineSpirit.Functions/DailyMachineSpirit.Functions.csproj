@@ -65,6 +65,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="DailyMachineSpirit.Tests" />
+    <InternalsVisibleTo Include="DailyMachineSpirit.BrowserTests" />
   </ItemGroup>
 
 </Project>
