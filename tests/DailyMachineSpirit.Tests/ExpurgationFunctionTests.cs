@@ -94,6 +94,46 @@ public sealed partial class ExpurgationFunctionTests : IAsyncLifetime
         Assert.Contains("Erased. The rite reads as below everywhere now", html);
     }
 
+    // A rite's false truths (#199) are offered word by word as its other parts are, previewed as they'll read, and
+    // erased; a rite without them offers none.
+    [Fact]
+    public async Task ARitesFalseTruths_AreOffered_Previewed_AndErased()
+    {
+        var number = Ok(await testbed.Rites.Add(new Data.Entities.Rite
+        {
+            PublishedOnUtc = new DateOnly(2026, 10, 1),
+            Writing = new Data.Entities.RiteWriting
+            {
+                Kind = Data.Entities.RiteKind.Prayer,
+                Title = "The Rite of the Cold Cache",
+                Text = "O Machine Spirit, warm the cache.",
+                HereticalTruth = "A cold cache is only empty.",
+                FalseTruths = new Data.Entities.FalseTruths("The disk is too cold.", "The cache sleeps at night."),
+                GeneratedByModel = "gpt-6-sol",
+                GeneratedAtUtc = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc),
+            },
+        }, CancellationToken.None)).Number;
+        var plain = await Published("The Rite of the Warm Cache");
+        var version = await Version(number);
+
+        var choose = Html(await Function().Choose(Get($"?version={version}"), number, CancellationToken.None), 200);
+        var confirm = Html(await Function().Confirm(Get($"?version={version}&w=false-truth-1:4&w=false-truth-2:2"), number, CancellationToken.None), 200);
+        var response = await Function().Erase(Post(FormOf(confirm)), number, CancellationToken.None);
+
+        Assert.Contains("""<label class="word"><input type="checkbox" name="w" value="false-truth-1:4">cold</label>""", choose);
+        Assert.Contains("""<label class="word"><input type="checkbox" name="w" value="false-truth-2:2">sleeps</label>""", choose);
+        Assert.Equal($"/scriptorium/expurgate/{number}?done=erased", Assert.IsType<RedirectResult>(response).Url);
+        var erased = (await Rite(number)).Writing.FalseTruths.IfNone(() => throw new Xunit.Sdk.XunitException("No false truths."));
+        Assert.Matches("^The disk is too .+\\.$", erased.First);
+        Assert.Matches("^The cache .+ at night\\.$", erased.Second);
+        Assert.DoesNotContain("cold", erased.First);
+        Assert.DoesNotContain("sleeps", erased.Second);
+        // The preview read as the rite now does.
+        Assert.Contains(erased.First, WebUtility.HtmlDecode(confirm));
+        Assert.Contains(erased.Second, WebUtility.HtmlDecode(confirm));
+        Assert.DoesNotContain("false-truth-", Html(await Function().Choose(Get($"?version={await Version(plain)}"), plain, CancellationToken.None), 200));
+    }
+
     // Two Expurgators at once: the second chose places in words that have changed, so it chooses again.
     [Fact]
     public async Task Erasing_WordsThatChangedSince_GoesBackToChooseAgain()

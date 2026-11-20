@@ -26,7 +26,7 @@ public sealed class ExpurgationRepository : IExpurgationRepository
         => Attempt(async () =>
         {
             var rites = await Words(
-                new QueryDefinition("SELECT c.id, c._etag, c.title, c.text, c.hereticalTruth, c.ailment FROM c WHERE c.type = @type AND c.number = @number")
+                new QueryDefinition("SELECT c.id, c._etag, c.title, c.text, c.hereticalTruth, c.falseTruths, c.ailment FROM c WHERE c.type = @type AND c.number = @number")
                     .WithParameter("@type", RiteDocument.RiteType)
                     .WithParameter("@number", number),
                 cancellationToken);
@@ -58,13 +58,16 @@ public sealed class ExpurgationRepository : IExpurgationRepository
         });
     }
 
-    // The rite's own copy also says when its words were erased (Rite.WordsErasedAtUtc), for the feed's readers.
+    // The rite's own copy also says when its words were erased (Rite.WordsErasedAtUtc), for the feed's readers. False
+    // truths proposed for it (#199) were written from the words before, so they may hold an erased one: they go, and the
+    // backfill writes them again from the words as they are now.
     private static List<PatchOperation> Operations(WordsKept copy, DateTime erasedAtUtc)
     {
         var operations = copy.Fields.Select(field => PatchOperation.Set(field.Key, field.Value)).ToList();
         if (RiteDocument.IsRiteId(copy.DocumentId))
         {
             operations.Add(PatchOperation.Set(RiteDocument.WordsErasedAtUtcField, Utc.From(erasedAtUtc)));
+            operations.Add(PatchOperation.Set<FalseTruths?>(RiteDocument.ProposedFalseTruthsField, null));
         }
         return operations;
     }
@@ -74,7 +77,7 @@ public sealed class ExpurgationRepository : IExpurgationRepository
     private async Task<KeptWords> CopiesOf(WordsDocument rite, int number, CancellationToken cancellationToken)
     {
         var drafts = await Words(
-            new QueryDefinition("SELECT c.id, c._etag, c.title, c.text, c.hereticalTruth, c.ailment FROM c WHERE c.type = @type AND c.publishedOnUtc = @day")
+            new QueryDefinition("SELECT c.id, c._etag, c.title, c.text, c.hereticalTruth, c.falseTruths, c.ailment FROM c WHERE c.type = @type AND c.publishedOnUtc = @day")
                 .WithParameter("@type", DraftDocument.DraftType)
                 .WithParameter("@day", rite.Id),
             cancellationToken);

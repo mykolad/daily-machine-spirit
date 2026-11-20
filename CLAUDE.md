@@ -218,6 +218,16 @@ skills/                           — Consult the Machine Spirit, a skill that p
     ("12 of 214 rites"), and offers "Hide witnessed" (a drawn box over a real checkbox) and "Forget them…", which asks
     first. Below 1280px, without margins, the same is one line on the sheet under the orders, the count in the
     checkbox's words. Without the script nothing of it shows; the footer says where that memory is kept.
+  - **Guessing the truth** (#199, `RiteCard.Guess`, spec: the v2 design handoff's README): the parchment never
+    changes. For a rite with false truths, the seal's first press cracks it and unfolds three readings under it
+    (buttons: a choice confirms at once), its truth at a place fixed per rite (`data-truth`, a hash of its number).
+    The script checks the choice (the truth is in the page already) and breaks the seal: the readings give way to a
+    verdict and, for a wrong guess, that reading struck through, above the panel, which takes the focus and names the
+    true reading's numeral only beside a wrong guess (with no reading left, a numeral would name nothing to see).
+    "Just show me", or the cracked seal pressed again, breaks it unguessed and keeps nothing; Esc folds the readings
+    back. One guess a rite, kept in the browser (`dms-guessed-v1`, `{ right, pick }`), so a guessed rite opens
+    revealed and resealing never offers the readings again; "Seen through 7 of 12" counts them. Without the script,
+    the seal works as before.
   - **Drawing a rite** (#196): the nav's dice and the Archive's margin lead to `/draw`. The script draws in the
     browser, from the search index (so pages stay the same for everyone, and no request says what was drawn): never
     the rite shown, nor one drawn this session (`sessionStorage`) until every one has been, and one not yet witnessed
@@ -481,6 +491,22 @@ skills/                           — Consult the Machine Spirit, a skill that p
     Scribe amends it with the words. The rites API serves it, so a client matches a user's trouble on it without seeing
     the sealed truth; the Scriptorium's cards show it, the public pages don't. Written from the words, it may repeat a
     word the Expurgator erases, so an erasure replaces that word in the ailment too.
+  - **False truths** (#199, `RiteWriting.FalseTruths`, two of them): plausible, wrong Heretical Truths, each a cause and
+    fix a developer might believe, for a reader to tell the real one from before the seal breaks. The writer writes them
+    with the rite, under the same checks (and none may repeat the truth or the other); a Scribe amends them with the
+    words, both or neither. None for a rite written before them, which keeps the plain seal until the backfill gives it
+    some. An Expurgator erases their words as the others' (`RitePart.FirstFalseTruth`, `SecondFalseTruth`). Never in the
+    rites API v1 or the search index.
+    - **The backfill** (`Scriptorium/Backfill/`, `/scriptorium/false-truths`): a Scribe starts it, which leaves a
+      message per rite and waiting draft without them on the `false-truths` queue; each is written alone, by the writer
+      given the rite as it stands (`RiteWriter.WriteFalseTruths`: only the answer's false truths are kept, checked with
+      the rite's own words). Its reads are live, never the snapshot, and one that has them or a proposal by now isn't
+      sent to the model. A waiting draft takes them as a new one would; a published rite gets them proposed
+      (`proposedFalseTruths`), and its page keeps the plain seal until a Scribe accepts them as they are or amended
+      (saved with the Scribe's entry in the Record, `AcceptFalseTruths`), or has them written again. An erasure drops a
+      waiting proposal, written from the words before it. Each change is conditional (`FalseTruthsRepository`), so a
+      message delivered twice or another tab's acceptance writes over nothing. The tab shows only while proposals
+      wait. The rites' snapshot catches up with accepted ones at the next rite's publishing.
   - **Judging:** an `IRiteJudge` judges each draft (`RiteJudge`, swappable like the models), asking two judges at once, each behind its own interface, so either can be swapped alone:
     - **Jev** (`JevJudge`, an `ISimilarityJudge`): its similarity scores for "More rites", and the tags. Off, a draft has neither.
     - **The rubric judge** (`RubricJudge`, an `IQualityJudge`, #10): the Augury's quality. The model that didn't write the draft

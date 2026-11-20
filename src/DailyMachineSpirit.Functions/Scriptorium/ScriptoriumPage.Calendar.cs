@@ -208,6 +208,7 @@ public static partial class ScriptoriumPage
             <div class="body" id="body-{id}">
             <p class="text">{WithCode(draft.Writing.Text)}</p>
             <p class="truth"><span class="truth-label">Heretical Truth</span> {WithCode(draft.Writing.HereticalTruth)}</p>
+            {FalseTruthsOf(draft.Writing)}
             {Ailment(draft.Writing)}
             <p class="meta">{Meta(entry, place, names)}</p>
             """);

@@ -36,4 +36,6 @@ public enum AuditAction
     // An Expurgator erased words from a published rite, everywhere they were kept. The entry names the parts, never the
     // words.
     Expurgate,
+    // A Scribe gave a published rite the false truths proposed for it (#199), as written or amended.
+    AcceptFalseTruths,
 }

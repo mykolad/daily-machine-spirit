@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using DailyMachineSpirit.Data.Entities;
 using LanguageExt;
 using LanguageExt.Common;
+using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Functions.Generation.Writing;
 
@@ -12,6 +13,12 @@ namespace DailyMachineSpirit.Functions.Generation.Writing;
 /// </summary>
 public static class RiteChecks
 {
+    /// <summary>
+    /// Stands in for the ailment of a rite from before ailments (#115) while its false truths (#199) are checked: the
+    /// checks ask every rite for one, and the rite keeps none.
+    /// </summary>
+    public const string NoAilment = "None, written before ailments.";
+
     private const string Omnissiah = "Omnissiah";
 
     // The satire borrows its mood from a setting whose names it must not use (CLAUDE.md, Ground rules). The prompt
@@ -41,23 +48,39 @@ public static class RiteChecks
             Title = answer.Title.Replace("`", "").Trim(),
             Text = answer.Text.Trim(),
             HereticalTruth = answer.HereticalTruth.Trim(),
+            FirstFalseTruth = answer.FirstFalseTruth.Trim(),
+            SecondFalseTruth = answer.SecondFalseTruth.Trim(),
             Ailment = answer.Ailment.Trim(),
         };
         if (content.Title.Length == 0 || content.Text.Length == 0 || content.HereticalTruth.Length == 0 || content.Ailment.Length == 0)
         {
             return Error.New("The answer has an empty field.");
         }
+        // Both or neither: a Scribe amending a draft written before them (#199) may leave them for the backfill.
+        if ((content.FirstFalseTruth.Length == 0) != (content.SecondFalseTruth.Length == 0))
+        {
+            return Error.New("The answer has one false truth without the other.");
+        }
 
         if (content.Title.Length > RiteWriting.MaxTitleLength
             || content.Text.Length > RiteWriting.MaxTextLength
             || content.HereticalTruth.Length > RiteWriting.MaxHereticalTruthLength
+            || content.FirstFalseTruth.Length > RiteWriting.MaxHereticalTruthLength
+            || content.SecondFalseTruth.Length > RiteWriting.MaxHereticalTruthLength
             || content.Ailment.Length > RiteWriting.MaxAilmentLength)
         {
             return Error.New(
-                $"The answer is too long: title {content.Title.Length}, text {content.Text.Length}, heretical truth {content.HereticalTruth.Length}, ailment {content.Ailment.Length} characters.");
+                $"The answer is too long: title {content.Title.Length}, text {content.Text.Length}, heretical truth {content.HereticalTruth.Length}, false truths {content.FirstFalseTruth.Length} and {content.SecondFalseTruth.Length}, ailment {content.Ailment.Length} characters.");
         }
 
-        var everything = $"{content.Title}\n{content.Text}\n{content.HereticalTruth}\n{content.Ailment}";
+        // A false truth that is the real one, or the other one, again leaves nothing to guess.
+        if (content.FirstFalseTruth.Length > 0
+            && new[] { content.HereticalTruth, content.FirstFalseTruth, content.SecondFalseTruth }.Distinct(StringComparer.OrdinalIgnoreCase).Count() < 3)
+        {
+            return Error.New("The false truths repeat the Heretical Truth or each other.");
+        }
+
+        var everything = $"{content.Title}\n{content.Text}\n{content.HereticalTruth}\n{content.FirstFalseTruth}\n{content.SecondFalseTruth}\n{content.Ailment}";
         var forbidden = ForbiddenNames.Where(name => everything.Contains(name, StringComparison.OrdinalIgnoreCase)).ToList();
         if (forbidden.Count > 0)
         {
@@ -70,18 +93,30 @@ public static class RiteChecks
         }
         // A prayer may call on the Omnissiah once; a heading, a Heretical Truth, an ailment or a ritual never names it.
         var allowedInText = kind == RiteKind.Prayer ? 1 : 0;
-        if (Occurrences(content.Title, Omnissiah) + Occurrences(content.HereticalTruth, Omnissiah) + Occurrences(content.Ailment, Omnissiah) > 0
+        if (Occurrences(content.Title, Omnissiah) + Occurrences(content.HereticalTruth, Omnissiah) + Occurrences(content.FirstFalseTruth, Omnissiah) + Occurrences(content.SecondFalseTruth, Omnissiah) + Occurrences(content.Ailment, Omnissiah) > 0
             || Occurrences(content.Text, Omnissiah) > allowedInText)
         {
             return Error.New($"The answer names the {Omnissiah} where it isn't allowed: only once, in a prayer's text.");
         }
 
         // The pages show `backticked` words as code: a command written as plain words would read as prose.
-        return new[] { content.Text, content.HereticalTruth, content.Ailment }.Select(UnquotedCode.Find).Somes().HeadOrNone()
+        return new[] { content.Text, content.HereticalTruth, content.FirstFalseTruth, content.SecondFalseTruth, content.Ailment }.Select(UnquotedCode.Find).Somes().HeadOrNone()
             .Match<Either<Error, RiteContent>>(
                 Some: code => Error.New($"The answer has code outside backticks: {code}."),
                 None: () => content);
     }
+
+    /// <summary>A model's answer must have its false truths, which only a Scribe's amendment may leave for later.</summary>
+    public static Either<Error, RiteContent> WithFalseTruths(RiteContent content)
+        => content.FirstFalseTruth.Length > 0
+            ? content
+            : Error.New("The answer has no false truths.");
+
+    /// <summary>The checked words' false truths, or None when they have none.</summary>
+    public static Option<FalseTruths> FalseTruthsOf(RiteContent content)
+        => content.FirstFalseTruth.Length > 0
+            ? Some(new FalseTruths(content.FirstFalseTruth, content.SecondFalseTruth))
+            : None;
 
     private static int Occurrences(string text, string word)
     {

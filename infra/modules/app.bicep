@@ -79,6 +79,12 @@ resource backlogRefills 'Microsoft.Storage/storageAccounts/queueServices/queues@
   name: 'backlog-refills'
 }
 
+// Asks for one rite's or draft's false truths to be written (#199, FalseTruthsBackfill.QueueName), when a Scribe starts the backfill.
+resource falseTruthsBackfill 'Microsoft.Storage/storageAccounts/queueServices/queues@2024-01-01' = {
+  parent: queues
+  name: 'false-truths'
+}
+
 resource plan 'Microsoft.Web/serverfarms@2024-04-01' = {
   name: planName
   location: location
