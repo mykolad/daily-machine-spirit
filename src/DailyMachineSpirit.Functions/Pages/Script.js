@@ -62,10 +62,11 @@
         ? '<span class="guess-verdict-sub">Unguessed. The Truth lies below.</span>'
         : wrong
           ? `<span class="guess-verdict-line">${cross}THOU ART ONE OF US</span><span class="guess-verdict-sub">The rite would have worked on thee. ${seen}</span>`
-          : `<span class="guess-verdict-line">${tick}THOU HAST SEEN THROUGH THE RITE</span><span class="guess-verdict-sub">Thou didst choose ${numerals[chosen - 1]} No rite shall bind thee. ${seen}</span>`;
+          : `<span class="guess-verdict-line">${tick}THOU HAST SEEN THROUGH THE RITE</span><span class="guess-verdict-sub">No rite shall bind thee. ${seen}</span>`;
       verdict.hidden = false;
-      // The panel names the true reading, the readings being folded away.
-      document.getElementById('truth-heading').textContent = `Heretical Truth · ${numerals[truth - 1]}`;
+      // Beside a wrong guess, still on the parchment, the panel names the true reading's numeral; with every reading
+      // folded away, a numeral would name nothing the reader can see.
+      if (wrong) document.getElementById('truth-heading').textContent = `Heretical Truth · ${numerals[truth - 1]}`;
     };
     if (guess) {
       const before = guessed()[rite];

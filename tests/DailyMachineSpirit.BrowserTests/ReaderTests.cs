@@ -206,10 +206,12 @@ public sealed partial class ReaderTests : IClassFixture<Chromium>, IAsyncLifetim
         await Page.Locator(".seal").ClickAsync();
 
         await Expect(Page.Locator("[data-verdict]")).ToContainTextAsync("THOU HAST SEEN THROUGH THE RITE");
-        await Expect(Page.Locator("[data-verdict]")).ToContainTextAsync($"Thou didst choose {Numeral(truth)}. No rite shall bind thee. Seen through 1 of 1.");
+        await Expect(Page.Locator("[data-verdict]")).ToContainTextAsync("No rite shall bind thee. Seen through 1 of 1.");
+        await Expect(Page.Locator("[data-verdict]")).Not.ToContainTextAsync("Thou didst choose");
         await Expect(Page.Locator(".guess fieldset")).ToBeHiddenAsync();
         await Expect(Page.Locator("#truth-panel")).ToBeFocusedAsync();
-        await Expect(Page.Locator("#truth-heading")).ToHaveTextAsync($"Heretical Truth · {Numeral(truth)}.");
+        // Every reading folded away, no numeral names one.
+        await Expect(Page.Locator("#truth-heading")).ToHaveTextAsync("Heretical Truth");
         Assert.Empty(scriptErrors);
     }
 
@@ -230,6 +232,9 @@ public sealed partial class ReaderTests : IClassFixture<Chromium>, IAsyncLifetim
         await Expect(shown).ToHaveCountAsync(1);
         await Expect(shown).ToHaveClassAsync(MissedClass());
         await Expect(shown).ToContainTextAsync("Another false one. · THY GUESS");
+        // Beside the struck guess, the panel names which reading was true.
+        var truth = Number(await Page.Locator("[data-guess]").GetAttributeAsync("data-truth"));
+        await Expect(Page.Locator("#truth-heading")).ToHaveTextAsync($"Heretical Truth · {Numeral(truth)}.");
         await Expect(Page.Locator("#truth-panel")).ToBeVisibleAsync();
         await Expect(Page.Locator(".seal")).ToHaveAttributeAsync("aria-expanded", "true");
         Assert.Empty(scriptErrors);

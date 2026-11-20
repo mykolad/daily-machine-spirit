@@ -222,7 +222,8 @@ skills/                           — Consult the Machine Spirit, a skill that p
     offers three readings before the seal breaks, its truth at a place fixed per rite (`data-truth`, a hash of its
     number). The seal waits (`aria-disabled`) until one is chosen; breaking it confirms the guess, which the script
     checks (the truth is in the page already): the readings fold away but a wrong guess, struck, a verdict says whether
-    the reader saw through the rite, and focus moves to the panel, which names the true reading. "Just show me" breaks
+    the reader saw through the rite, and focus moves to the panel, which names the true reading's numeral beside a wrong
+    guess (with every reading folded away, a numeral would name nothing to see). "Just show me" breaks
     it unguessed and keeps nothing. One guess a rite, kept in the browser (`dms-guessed-v1`), so a guessed rite opens
     revealed; "Seen through 7 of 12" counts them. Hidden without the script, where the seal works as before.
   - **Drawing a rite** (#196): the nav's dice and the Archive's margin lead to `/draw`. The script draws in the
