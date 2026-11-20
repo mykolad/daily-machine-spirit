@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <!-- Run through VSTest, as the other tests are (dotnet test). -->
+    <IsTestingPlatformApplication>false</IsTestingPlatformApplication>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The site is served in process, on ASP.NET Core, for the browser to visit (SiteHost). -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Microsoft.Playwright" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The unit tests' emulator database, settings and fakes, shared rather than copied. -->
+    <Compile Include="..\DailyMachineSpirit.Tests\CosmosTestContainer.cs" Link="Shared\CosmosTestContainer.cs" />
+    <Compile Include="..\DailyMachineSpirit.Tests\Settings.cs" Link="Shared\Settings.cs" />
+    <Compile Include="..\DailyMachineSpirit.Tests\FakePageCache.cs" Link="Shared\FakePageCache.cs" />
+    <Compile Include="..\DailyMachineSpirit.Tests\FakeSignInProvider.cs" Link="Shared\FakeSignInProvider.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\DailyMachineSpirit.Data\DailyMachineSpirit.Data.csproj" />
+    <ProjectReference Include="..\..\src\DailyMachineSpirit.Functions\DailyMachineSpirit.Functions.csproj" />
+  </ItemGroup>
+
+</Project>

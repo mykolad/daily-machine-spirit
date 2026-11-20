@@ -733,6 +733,20 @@ docker run -d -p 8081:8081 -p 8080:8080 mcr.microsoft.com/cosmosdb/linux/azure-c
 The minimum line coverage is **95%** (`$MinLineCoverage` in `tools/coverage.ps1`). If some code really can't be covered,
 ask the owner before lowering it; never lower it just to get a PR through.
 
+The browser tests (`tests/DailyMachineSpirit.BrowserTests`) hold the page script to what a reader does, in headless
+Chromium: breaking a seal, witnessed marks and Forget, voting, loading older rites, drawing a rite, and no script error
+on the way. `SiteHost` serves the app's own page and API functions in process, found by their `[Function]` routes, over
+the emulator and a fake sign-in, never the app's settings. They need Playwright's Chromium once (a few hundred MB):
+
+```
+dotnet build tests/DailyMachineSpirit.BrowserTests
+pwsh tests/DailyMachineSpirit.BrowserTests/bin/Debug/net10.0/playwright.ps1 install chromium
+dotnet test tests/DailyMachineSpirit.BrowserTests
+```
+
+A test waits for what a reader would see before going on (a vote's "Kept in your Breviary", not just the pressed
+button, which shows before it's saved).
+
 ## Running locally
 
 Needs Azure Functions Core Tools v4 (`winget install Microsoft.Azure.FunctionsCoreTools`).
