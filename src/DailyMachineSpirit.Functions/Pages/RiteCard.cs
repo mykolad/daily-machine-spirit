@@ -122,18 +122,10 @@ public static class RiteCard
             <div class="confession" hidden>
             <span class="confession-rule" aria-hidden="true"><svg width="8" height="8" viewBox="0 0 8 8" focusable="false"><path d="M4 0l4 4-4 4-4-4z" fill="#c9a25a"/></svg></span>
             <button type="button" class="confess" aria-pressed="false" aria-describedby="confessed-count" data-confess>{Svg.CandleIcon}I have done this</button>
-            <p class="confessed-count" id="confessed-count" data-confessions="{rite.ConfessionCount}">{ConfessedWords(rite.ConfessionCount)}</p>
+            <p class="confessed-count" id="confessed-count" data-confessions="{rite.ConfessionCount}">{ConfessedWords.Of(rite.ConfessionCount)}</p>
             <p class="confess-status" role="status"></p>
             </div>
             """;
-
-    // As the script words it too, which also knows when the one is the reader ("Thou alone hast confessed").
-    private static string ConfessedWords(int count) => count switch
-    {
-        0 => "None have confessed",
-        1 => "1 hath confessed",
-        _ => $"{Html.Count(count)} have confessed",
-    };
 
     /// <summary>
     /// Guessing the Heretical Truth (#199): the first press of the seal cracks it, and the truth and the two false ones

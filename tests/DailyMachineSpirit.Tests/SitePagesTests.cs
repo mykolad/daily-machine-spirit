@@ -1126,6 +1126,65 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.Equal(["2nd most venerated", "Most venerated"], Relics(html));
     }
 
+    // The Reliquary's other order (#200): the rites most confessed to, the most first, a tie going to the newer; a rite
+    // nobody confessed to isn't kept. Its rows lead with the confessions, and the order's link says it's this one.
+    [Fact]
+    public async Task ReliquaryConfessed_KeepsTheMostConfessedRites_TheirConfessionsFirst()
+    {
+        await Add(Day.AddDays(-3), "The Unconfessed Vigil");
+        await Add(Day.AddDays(-2), "The Twice Confessed Rite");
+        await Add(Day.AddDays(-1), "The Once Confessed Prayer");
+        await Add(Day, "The Other Once Confessed Rite");
+        var votes = new VoteRepository(cosmos.Container);
+        Ok(await votes.Vote(1, new VoterKey("a"), Some(Reaction.Blessed), CancellationToken.None));
+        foreach (var (number, voter) in new[] { (2, "a"), (2, "b"), (3, "a"), (4, "b") })
+        {
+            Ok(await votes.Vote(number, new VoterKey(voter), vote => vote with { Confessed = true }, CancellationToken.None));
+        }
+        Ok(await votes.Vote(2, new VoterKey("c"), Some(Reaction.Heresy), CancellationToken.None));
+
+        var page = await Read(context => Pages().ReliquaryConfessed(context.Request, CancellationToken.None), "/reliquary/confessed", "");
+
+        Assert.Equal(StatusCodes.Status200OK, page.Status);
+        Assert.Equal(["The Twice Confessed Rite", "The Other Once Confessed Rite", "The Once Confessed Prayer"], Titles(page.Html));
+        Assert.Contains("The rites the faithful most confess to.", page.Html);
+        Assert.Contains("""<a class="order" href="/reliquary/confessed" aria-current="page">Most confessed</a>""", page.Html);
+        Assert.Matches("<svg[^>]*>.*?</svg>2 have confessed</span><span><svg[^>]*>.*?</svg>Heresy 1</span>", page.Html);
+        Assert.Equal("public, max-age=3600, stale-if-error=604800", page.AtCloudflare);
+        Assert.DoesNotContain("""class="relic""", page.Html);
+    }
+
+    [Fact]
+    public async Task ReliquaryConfessed_WithoutAConfessedRite_SaysSo()
+    {
+        await Add(Day, "The Unconfessed Vigil");
+
+        var page = await Read(context => Pages().ReliquaryConfessed(context.Request, CancellationToken.None), "/reliquary/confessed", "");
+
+        Assert.Empty(Titles(page.Html));
+        Assert.Contains("No rite is confessed to yet.", page.Html);
+    }
+
+    // Archive rows wear their place among the most confessed beside the venerated one, linking to that order.
+    [Fact]
+    public async Task Archive_MarksTheMostConfessedRites_BesideTheMostVenerated()
+    {
+        await Add(Day.AddDays(-1), "The Twice Confessed Rite");
+        await Add(Day, "The Rite of Re-Run");
+        var votes = new VoteRepository(cosmos.Container);
+        Ok(await votes.Vote(1, new VoterKey("a"), vote => new ReaderVote(Some(Reaction.Blessed), true), CancellationToken.None));
+        Ok(await votes.Vote(1, new VoterKey("b"), vote => vote with { Confessed = true }, CancellationToken.None));
+        Ok(await votes.Vote(2, new VoterKey("a"), vote => vote with { Confessed = true }, CancellationToken.None));
+
+        var (_, html) = await Archive("");
+
+        Assert.Equal(["Most venerated"], Relics(html));
+        Assert.Equal(
+            ["2nd most confessed", "Most confessed"],
+            Regex.Matches(html, """<a class="relic" href="/reliquary/confessed"><svg.*?</svg>(.*?)<span class="sr-only">, among the most confessed</span></a>""")
+                .Select(match => match.Groups[1].Value));
+    }
+
     [Fact]
     public async Task RiteCard_OfARiteTheReliquaryKeeps_WearsItsPlace_OnTodayAndItsOwnPage()
     {

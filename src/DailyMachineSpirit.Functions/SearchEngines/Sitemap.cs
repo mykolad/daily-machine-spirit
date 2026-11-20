@@ -23,7 +23,7 @@ public static class Sitemap
         // Today and the Archive's first page change with each new rite. The other pages change with votes or a
         // deployment, on days nobody records, so they give none.
         var newest = newestFirst.HeadOrNone().Map(day => day.PublishedOnUtc);
-        var undated = new[] { Paths.Reliquary, Paths.About }.Concat(RiteTags.All.Select(tag => Paths.Tag(tag.Key)));
+        var undated = new[] { Paths.Reliquary, Paths.ReliquaryConfessed, Paths.About }.Concat(RiteTags.All.Select(tag => Paths.Tag(tag.Key)));
         var urls = new[] { Url(origin, Paths.Today, newest), Url(origin, Paths.Archive, newest) }
             .Concat(undated.Select(path => Url(origin, path, None)))
             .Concat(newestFirst.Select(day => Url(origin, Paths.Rite(day.Number), Some(day.PublishedOnUtc))));
