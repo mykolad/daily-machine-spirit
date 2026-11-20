@@ -335,6 +335,7 @@
         if (!reader.signedIn) { say('Sign in with GitHub again to vote.'); return; }
         if (!reader.voteLoaded) { say('Your vote couldn’t be loaded. Try again.'); return; }
         show(reader.vote, counts());
+        showConfession(reader.confessed, confessions());
         say(reader.vote ? 'Your vote is shown. Click again to change it.' : 'You haven’t voted yet. Click again to vote.');
         return;
       }
@@ -406,6 +407,8 @@
         showReader();
         if (!reader.signedIn) { offerSignIn(); return; }
         if (!reader.voteLoaded) { tellConfession('Thy confession couldn’t be loaded. Try again.'); return; }
+        // Both, as both loaded: a verdict left as the page first drew it would be taken back by the next click.
+        show(reader.vote, counts());
         showConfession(reader.confessed, confessions());
         tellConfession(reader.confessed ? 'Thou hast confessed already. Press again to withdraw it.' : 'Press again to confess.');
         return;
