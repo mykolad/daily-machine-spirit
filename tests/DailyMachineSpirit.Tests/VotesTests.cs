@@ -220,7 +220,7 @@ public sealed class VotesTests : IAsyncLifetime
 
         await Post(Function(), 1, """{"vote":"blessed"}""", "application/json", SignedIn());
 
-        Assert.Equal(["/", "/r/1", "/reliquary"], Assert.Single(await Purged()).Order());
+        Assert.Equal(["/", "/r/1", "/reliquary", "/reliquary/confessed"], Assert.Single(await Purged()).Order());
     }
 
     // Each part of a vote left out is kept: a confession alone (#200) leaves the verdict, and the answer and the reader's
@@ -238,7 +238,7 @@ public sealed class VotesTests : IAsyncLifetime
         Assert.Equal(StatusCodes.Status200OK, status);
         Assert.Equal("""{"blessed":1,"heresy":0,"confessions":1,"vote":"blessed","confessed":true,"countedAt":1791600000000}""", body);
         Assert.Equal("""{"1":"blessed","confessed":[1]}""", votes);
-        Assert.Equal(["/", "/r/1", "/reliquary"], Assert.Single(await Purged()).Order());
+        Assert.Equal(["/", "/r/1", "/reliquary", "/reliquary/confessed"], Assert.Single(await Purged()).Order());
     }
 
     [Fact]

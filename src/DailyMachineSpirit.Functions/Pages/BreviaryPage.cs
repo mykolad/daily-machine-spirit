@@ -52,7 +52,7 @@ public static class BreviaryPage
     /// <param name="places">The places of the rites the Reliquary keeps, each worn as a badge.</param>
     public static string Render(
         IReadOnlyList<Rite> rites, IReadOnlyDictionary<int, Reaction> yours, Option<Reaction> only, Option<Tag> chapter, string typed, IReadOnlyList<string> words,
-        IReadOnlyDictionary<int, int> places)
+        RelicStandings places)
     {
         var blessed = yours.Values.Count(reaction => reaction == Reaction.Blessed);
         var heresies = yours.Count - blessed;
@@ -145,7 +145,7 @@ public static class BreviaryPage
     // Every chapter's newest few, so the page stays short however many rites the reader keeps, and a link to the rest.
     private static string Chapters(
         IReadOnlyList<BreviaryChapter> chapters, Option<string> verdict, string typed, IReadOnlyList<string> words, IReadOnlyDictionary<int, Reaction> yours,
-        IReadOnlyDictionary<int, int> places)
+        RelicStandings places)
     {
         var html = new StringBuilder("""<div class="chapters">""");
         foreach (var chapter in chapters)
@@ -164,7 +164,7 @@ public static class BreviaryPage
         return html.Append("</div>").ToString();
     }
 
-    private static string Rows(IReadOnlyList<Rite> rites, IReadOnlyList<string> words, IReadOnlyDictionary<int, Reaction> yours, IReadOnlyDictionary<int, int> places)
+    private static string Rows(IReadOnlyList<Rite> rites, IReadOnlyList<string> words, IReadOnlyDictionary<int, Reaction> yours, RelicStandings places)
         => $"""<ol class="rows">{string.Concat(rites.Select(rite => ArchiveRows.Row(rite, words, yours, places)))}</ol>""";
 
     private static string ChapterLink(Tag subject, Option<string> verdict, string typed) => Paths.BreviaryShowing(verdict, Some(subject.Key), typed);

@@ -55,7 +55,8 @@ public sealed class SitePages
         var now = time.GetUtcNow();
         var places = Places(cancellationToken);
         var newest = await rites.GetNewest(1 + options.Value.RecentRitesOnToday, cancellationToken);
-        var placed = await places;
+        // The card wears the venerated badge; the confessed one is for rows.
+        var placed = (await places).Venerated;
         return newest.Match(
             Right: found => found.HeadOrNone().Match(
                 Some: rite => Page(request, StatusCodes.Status200OK, TodayPage.Render(rite, found.Skip(1).ToList(), placed, now, SearchListing.At(SiteOrigin.Of(request), Paths.Today)), EdgeLifetime.UntilPurged),
@@ -81,7 +82,7 @@ public sealed class SitePages
             var places = Places(cancellationToken);
             var neighbours = Neighbours(number, cancellationToken);
             var found = (await rites.GetByNumbers([number], cancellationToken)).Map(matches => matches.HeadOrNone());
-            var placed = await places;
+            var placed = (await places).Venerated;
             var around = await neighbours;
             return await found.Match<Task<IActionResult>>(
                 Right: rite => rite.Match<Task<IActionResult>>(
@@ -106,17 +107,16 @@ public sealed class SitePages
     public async Task<IActionResult> Reliquary(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "reliquary")] HttpRequest request,
         CancellationToken cancellationToken)
-        => await AtItsAddress(request, Paths.Reliquary, (request.Path.Value ?? string.Empty).TrimStart('/'), async () =>
-        {
-            var now = time.GetUtcNow();
-            var kept = await rites.GetVotes(cancellationToken)
-                .MapAsync(Veneration.MostVenerated)
-                .BindAsync(numbers => rites.GetByNumbers(numbers, cancellationToken)
-                    .MapAsync(found => numbers.SelectMany(number => found.Where(rite => rite.Number == number)).ToList()));
-            return kept.Match(
-                Right: shown => Page(request, StatusCodes.Status200OK, ReliquaryPage.Render(shown, now, SearchListing.At(SiteOrigin.Of(request), Paths.Reliquary)), EdgeLifetime.UntilPurged),
-                Left: error => Failed(request, error));
-        });
+        => await AtItsAddress(request, Paths.Reliquary, (request.Path.Value ?? string.Empty).TrimStart('/'),
+            () => Reliquary(request, ArchiveOrder.MostVenerated, Veneration.MostVenerated, Paths.Reliquary, cancellationToken));
+
+    /// <summary>The Reliquary's other order (#200): the rites most confessed to, read and kept as the venerated are.</summary>
+    [Function("ReliquaryConfessed")]
+    public async Task<IActionResult> ReliquaryConfessed(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "reliquary/confessed")] HttpRequest request,
+        CancellationToken cancellationToken)
+        => await AtItsAddress(request, Paths.ReliquaryConfessed, (request.Path.Value ?? string.Empty).TrimStart('/'),
+            () => Reliquary(request, ArchiveOrder.MostConfessed, Confession.MostConfessed, Paths.ReliquaryConfessed, cancellationToken));
 
     /// <summary><c>/rtfm</c>, what veterans tell newcomers, for whoever types it: it leads to the Catechism.</summary>
     [Function("ReadTheManual")]
@@ -264,7 +264,22 @@ public sealed class SitePages
             });
 
     // Read beside the page's own rites, so it adds no wait.
-    private Task<IReadOnlyDictionary<int, int>> Places(CancellationToken cancellationToken) => RelicPlaces.Read(rites, logger, cancellationToken);
+    private Task<RelicStandings> Places(CancellationToken cancellationToken) => RelicPlaces.Read(rites, logger, cancellationToken);
+
+    // Every rite's counts (a few hundred numbers), ranked in the order asked for, then the few kept read whole. Kept at
+    // the edge until a vote purges it.
+    private async Task<IActionResult> Reliquary(
+        HttpRequest request, ArchiveOrder order, Func<IReadOnlyList<RiteVotes>, List<int>> ranked, string address, CancellationToken cancellationToken)
+    {
+        var now = time.GetUtcNow();
+        var kept = await rites.GetVotes(cancellationToken)
+            .MapAsync(votes => ranked(votes))
+            .BindAsync(numbers => rites.GetByNumbers(numbers, cancellationToken)
+                .MapAsync(found => numbers.SelectMany(number => found.Where(rite => rite.Number == number)).ToList()));
+        return kept.Match(
+            Right: shown => Page(request, StatusCodes.Status200OK, ReliquaryPage.Render(shown, order, now, SearchListing.At(SiteOrigin.Of(request), address)), EdgeLifetime.UntilPurged),
+            Left: error => Failed(request, error));
+    }
 
     // Newest first, read one beyond a page: the extra one says there are older ones, and the next page starts below the
     // last one shown.
