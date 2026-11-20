@@ -143,6 +143,52 @@ public sealed partial class ReaderTests : IClassFixture<Chromium>, IAsyncLifetim
         Assert.Empty(scriptErrors);
     }
 
+    // A confession (#200) lights the candle and is counted at once, apart from the verdict, and is still the reader's on
+    // the next visit; pressed again, it's withdrawn.
+    [Fact]
+    public async Task ASignedInReadersConfession_IsCounted_ApartFromTheVerdict_AndKept()
+    {
+        await AddRites(1);
+        await SignIn("583231");
+
+        await Page.GotoAsync("/");
+        await Expect(Page.Locator(".vote-status[data-signed-in=true]")).ToBeVisibleAsync();
+        await Page.Locator(".reaction-blessed").ClickAsync();
+        await Expect(Page.Locator(".toast-kept")).ToBeVisibleAsync();
+        var confess = Page.Locator("[data-confess]");
+        await confess.ClickAsync();
+
+        await Expect(confess).ToHaveAttributeAsync("aria-pressed", "true");
+        await Expect(Page.Locator(".confessed-count")).ToHaveTextAsync("Thou alone hast confessed");
+        await Expect(Page.Locator(".confess-status")).ToHaveTextAsync("Thy sin is recorded. Thou art the first to confess it.");
+        await Page.ReloadAsync();
+        await Expect(confess).ToHaveAttributeAsync("aria-pressed", "true");
+        await Expect(Page.Locator(".reaction-blessed")).ToHaveAttributeAsync("aria-pressed", "true");
+        await confess.ClickAsync();
+        await Expect(Page.Locator(".confess-status")).ToHaveTextAsync("Thy confession is withdrawn.");
+        await Expect(Page.Locator(".confessed-count")).ToHaveTextAsync("None have confessed");
+        await Page.ReloadAsync();
+        await Expect(Page.Locator(".vote-status[data-signed-in=true]")).ToBeVisibleAsync();
+        await Expect(confess).ToHaveAttributeAsync("aria-pressed", "false");
+        await Expect(Page.Locator(".reaction-blessed")).ToHaveAttributeAsync("aria-pressed", "true");
+        Assert.Empty(scriptErrors);
+    }
+
+    // Signed out, a press confesses nothing and offers the sign-in beside the button.
+    [Fact]
+    public async Task ASignedOutReadersConfession_OffersTheSignIn()
+    {
+        await AddRites(1);
+
+        await Page.GotoAsync("/");
+        await Page.Locator("[data-confess]").ClickAsync();
+
+        await Expect(Page.Locator(".confess-status")).ToHaveTextAsync("Sign in with GitHub to confess. Thy name stays thine: only a one-way key is kept.");
+        await Expect(Page.Locator(".confess-status a")).ToHaveAttributeAsync("href", "/auth/github?return=%2F");
+        await Expect(Page.Locator("[data-confess]")).ToHaveAttributeAsync("aria-pressed", "false");
+        Assert.Empty(scriptErrors);
+    }
+
     // The next page of the Archive comes in place, into the sheet, and a keyboard's focus moves to the first new rite.
     [Fact]
     public async Task LoadingOlderRites_AddsThemInPlace()
