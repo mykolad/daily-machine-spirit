@@ -162,11 +162,13 @@ public sealed class VotesFunction
     }
 
     // What the body asks to change: the verdict, the confession, or both, each as it was when absent. None for a vote
-    // that names no verdict, or a body that asks for nothing.
+    // that names no verdict, a confession that isn't true or false, or a body that asks for nothing.
     private static Option<Func<ReaderVote, ReaderVote>> Change(VoteRequest body)
-        => body.Vote.ValueKind == JsonValueKind.Undefined && body.Confessed is null
+        => body.Vote.ValueKind == JsonValueKind.Undefined && body.Confessed.ValueKind == JsonValueKind.Undefined
             ? None
-            : Verdict(body.Vote).Map<Func<ReaderVote, ReaderVote>>(verdict => vote => Confession(verdict(vote), body.Confessed));
+            : from verdict in Verdict(body.Vote)
+              from confession in Confession(body.Confessed)
+              select (Func<ReaderVote, ReaderVote>)(vote => confession(verdict(vote)));
 
     // Kept when absent, taken back by null, or exactly the names the page sends, lowercase; anything else isn't a vote.
     private static Option<Func<ReaderVote, ReaderVote>> Verdict(JsonElement vote) => vote.ValueKind switch
@@ -184,8 +186,14 @@ public sealed class VotesFunction
         _ => None,
     };
 
-    private static ReaderVote Confession(ReaderVote vote, bool? confessed)
-        => confessed is bool asked ? vote with { Confessed = asked } : vote;
+    // Kept when absent, or exactly true or false; null isn't a confession, nor a way to leave it as it is.
+    private static Option<Func<ReaderVote, ReaderVote>> Confession(JsonElement confessed) => confessed.ValueKind switch
+    {
+        JsonValueKind.Undefined => Some<Func<ReaderVote, ReaderVote>>(kept => kept),
+        JsonValueKind.True => Some<Func<ReaderVote, ReaderVote>>(kept => kept with { Confessed = true }),
+        JsonValueKind.False => Some<Func<ReaderVote, ReaderVote>>(kept => kept with { Confessed = false }),
+        _ => None,
+    };
 
     // The verdicts as they always were, by rite, which a page cached with an older script still reads; the confessions
     // (#200) beside them, under a key no rite number can be.

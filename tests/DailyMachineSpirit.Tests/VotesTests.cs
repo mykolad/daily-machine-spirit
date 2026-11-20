@@ -273,6 +273,7 @@ public sealed class VotesTests : IAsyncLifetime
     [InlineData("""{"vot":"blessed"}""")]
     [InlineData("""{"vote":1}""")]
     [InlineData("""{"confessed":"yes"}""")]
+    [InlineData("""{"vote":"blessed","confessed":null}""")]
     [InlineData("{}")]
     [InlineData("not json")]
     [InlineData("null")]
