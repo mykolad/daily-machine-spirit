@@ -28,6 +28,10 @@ public static class LogCounters
     public static void CountVote(this ILogger logger, string vote)
         => logger.LogInformation("Counted: a reader's vote, {Vote}.", vote);
 
+    /// <param name="confession">confessed, or withdrawn (#200).</param>
+    public static void CountConfession(this ILogger logger, string confession)
+        => logger.LogInformation("Counted: a reader's confession, {Confession}.", confession);
+
     /// <param name="search">words, or words-in-a-subject.</param>
     public static void CountArchiveSearch(this ILogger logger, string search)
         => logger.LogInformation("Counted: a search of the Archive, {Search}.", search);
