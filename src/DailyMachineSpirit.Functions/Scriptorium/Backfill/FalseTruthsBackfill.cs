@@ -22,10 +22,6 @@ public sealed class FalseTruthsBackfill
     private const string RitePrefix = "rite:";
     private const string DraftPrefix = "draft:";
 
-    // A rite from before ailments (#115) has none, and accepting false truths doesn't give it one; the checks, which ask
-    // every rite for one, are shown this in its place.
-    private const string NoAilment = "None, written before ailments.";
-
     private readonly IFalseTruthsRepository falseTruths;
     private readonly IDraftRepository drafts;
     private readonly RiteWriter writer;
@@ -113,7 +109,7 @@ public sealed class FalseTruthsBackfill
     // A Scribe's words for them are checked as the rite's own: a refusal is theirs to fix on the page.
     private async Task<Either<Error, bool>> AcceptFor(ProposedFalseTruths proposal, string first, string second, ScribeId scribe, CancellationToken cancellationToken)
     {
-        var words = new RiteContent(proposal.Title, proposal.Text, proposal.HereticalTruth, first, second, proposal.Ailment.IfNone(NoAilment));
+        var words = new RiteContent(proposal.Title, proposal.Text, proposal.HereticalTruth, first, second, proposal.Ailment.IfNone(RiteChecks.NoAilment));
         var checkedWords = RiteChecks.Check(words, proposal.Kind)
             .Bind(content => RiteChecks.FalseTruthsOf(content).ToEither(Error.New("Write both false truths.")))
             .MapLeft(error => (Error)new AmendmentRefused(error.Message));

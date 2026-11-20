@@ -13,6 +13,12 @@ namespace DailyMachineSpirit.Functions.Generation.Writing;
 /// </summary>
 public static class RiteChecks
 {
+    /// <summary>
+    /// Stands in for the ailment of a rite from before ailments (#115) while its false truths (#199) are checked: the
+    /// checks ask every rite for one, and the rite keeps none.
+    /// </summary>
+    public const string NoAilment = "None, written before ailments.";
+
     private const string Omnissiah = "Omnissiah";
 
     // The satire borrows its mood from a setting whose names it must not use (CLAUDE.md, Ground rules). The prompt

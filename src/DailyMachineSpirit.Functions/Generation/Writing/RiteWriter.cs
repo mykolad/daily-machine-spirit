@@ -106,12 +106,12 @@ public sealed class RiteWriter
                 options.Value.Patience,
                 "false-truths",
                 "No model wrote usable false truths.",
-                // A rite from before ailments (#115) has none: the answer's stands in, for the checks alone.
+                // A rite from before ailments (#115) has none, and an answer that keeps the rite as it stands has none either.
                 content => words with
                 {
                     FirstFalseTruth = content.FirstFalseTruth,
                     SecondFalseTruth = content.SecondFalseTruth,
-                    Ailment = words.Ailment.Length > 0 ? words.Ailment : content.Ailment,
+                    Ailment = words.Ailment.Length > 0 ? words.Ailment : RiteChecks.NoAilment,
                 },
                 cancellationToken))
             .Map(written => new FalseTruths(written.Content.FirstFalseTruth, written.Content.SecondFalseTruth));

@@ -103,9 +103,10 @@ public sealed class FalseTruthsBackfillTests : IAsyncLifetime
         Assert.Equal((Scribe.Value, Some(number), Some(draft.Id), Some("amended")), (entry.Actor.Id, entry.RiteNumber, entry.DraftId, entry.Detail));
     }
 
-    // A rite from before ailments (#115) has none to check them with, and isn't refused for it.
+    // A rite from before ailments (#115) has none to check them with, and isn't refused for it: neither when they're
+    // written, by a model that keeps the rite without one, nor when they're accepted.
     [Fact]
-    public async Task Accepting_ForARiteWithoutAnAilment_TakesThem()
+    public async Task ARiteWithoutAnAilment_GetsThemProposed_AndAccepted()
     {
         var number = Ok(await testbed.Rites.Add(new Rite
         {
@@ -120,7 +121,9 @@ public sealed class FalseTruthsBackfillTests : IAsyncLifetime
                 GeneratedAtUtc = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
             },
         }, CancellationToken.None)).Number;
-        await Propose(number, "Litany of the Cold Cache");
+        // The model keeps the rite as it stands, without an ailment.
+        testbed.Models.Answers(Sol, FakeChatClients.Answer("Litany of the Cold Cache", "O Machine Spirit, let the cache be warm.", "A cold cache is just a cache that hasn't been read yet.", ""));
+        Ok(await Backfill().Write($"rite:{number}", CancellationToken.None));
 
         Assert.True(Ok(await Backfill().Accept(number, FakeChatClients.FirstFalseTruth, FakeChatClients.SecondFalseTruth, Scribe, CancellationToken.None)));
 
