@@ -5,6 +5,7 @@
     <Project Path="src/DailyMachineSpirit.Mcp/DailyMachineSpirit.Mcp.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/DailyMachineSpirit.BrowserTests/DailyMachineSpirit.BrowserTests.csproj" />
     <Project Path="tests/DailyMachineSpirit.SmokeTests/DailyMachineSpirit.SmokeTests.csproj" />
     <Project Path="tests/DailyMachineSpirit.Tests/DailyMachineSpirit.Tests.csproj" />
   </Folder>

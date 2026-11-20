@@ -108,6 +108,20 @@ jobs:
         shell: pwsh
         run: ./tools/coverage.ps1 -NoBuild
 
+      # The page script in a real browser (tests/DailyMachineSpirit.BrowserTests): Playwright's Chromium, downloaded once
+      # per Playwright version, and the system libraries it needs, installed each run.
+      - name: Cache Playwright's browser
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('Directory.Packages.props') }}
+
+      - name: Install Playwright's browser
+        run: pwsh tests/DailyMachineSpirit.BrowserTests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+
+      - name: Browser tests
+        run: dotnet test tests/DailyMachineSpirit.BrowserTests -c Release --no-build --logger trx --results-directory TestResults
+
       - name: Publish coverage summary
         if: ${{ !cancelled() && hashFiles('coverage/SummaryGithub.md') != '' }}
         run: cat coverage/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
