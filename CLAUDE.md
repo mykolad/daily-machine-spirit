@@ -218,6 +218,13 @@ skills/                           — Consult the Machine Spirit, a skill that p
     ("12 of 214 rites"), and offers "Hide witnessed" (a drawn box over a real checkbox) and "Forget them…", which asks
     first. Below 1280px, without margins, the same is one line on the sheet under the orders, the count in the
     checkbox's words. Without the script nothing of it shows; the footer says where that memory is kept.
+  - **Guessing the truth** (#199, `RiteCard.Guess`, spec: the design handoff's README): a rite with false truths
+    offers three readings before the seal breaks, its truth at a place fixed per rite (`data-truth`, a hash of its
+    number). The seal waits (`aria-disabled`) until one is chosen; breaking it confirms the guess, which the script
+    checks (the truth is in the page already): the readings fold away but a wrong guess, struck, a verdict says whether
+    the reader saw through the rite, and focus moves to the panel, which names the true reading. "Just show me" breaks
+    it unguessed and keeps nothing. One guess a rite, kept in the browser (`dms-guessed-v1`), so a guessed rite opens
+    revealed; "Seen through 7 of 12" counts them. Hidden without the script, where the seal works as before.
   - **Drawing a rite** (#196): the nav's dice and the Archive's margin lead to `/draw`. The script draws in the
     browser, from the search index (so pages stay the same for everyone, and no request says what was drawn): never
     the rite shown, nor one drawn this session (`sessionStorage`) until every one has been, and one not yet witnessed

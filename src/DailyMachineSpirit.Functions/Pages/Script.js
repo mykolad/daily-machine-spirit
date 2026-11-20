@@ -2,14 +2,109 @@
   const seal = document.querySelector('.seal');
   if (seal) {
     const panel = document.getElementById(seal.getAttribute('aria-controls'));
-    seal.addEventListener('click', () => {
-      const open = seal.getAttribute('aria-expanded') !== 'true';
+    const label = seal.querySelector('.seal-label');
+    const line = seal.querySelector('.seal-sub');
+    const shown = (open) => {
       seal.setAttribute('aria-expanded', String(open));
       panel.hidden = !open;
+      label.textContent = open ? 'Reseal the truth' : 'Break the seal';
+      line.textContent = open ? 'Hide the Heretical Truth' : 'Reveal the Heretical Truth';
+    };
+    const setOpen = (open) => {
+      shown(open);
       // The reader has the whole joke now: the rite is witnessed (#198).
       if (open) witness(Number(document.querySelector('[data-rite]')?.dataset.rite));
-      seal.querySelector('.seal-label').textContent = open ? 'Reseal the truth' : 'Break the seal';
-      seal.querySelector('.seal-sub').textContent = open ? 'Hide the Heretical Truth' : 'Reveal the Heretical Truth';
+    };
+
+    // Guessing the Heretical Truth before the seal breaks (#199): the truth is in the page already, so the guess is
+    // checked here and never sent. One guess a rite, kept in this browser alone ({ "12": { choice, right } }): a rite
+    // guessed before opens revealed, so a reader can't try again for a better score. "Just show me" keeps nothing.
+    const guess = document.querySelector('[data-guess]');
+    const guessedKey = 'dms-guessed-v1';
+    const guessed = () => { try { return JSON.parse(localStorage.getItem(guessedKey) ?? '{}'); } catch { return {}; } };
+    const keepGuess = (rite, choice, right) => {
+      const all = guessed();
+      all[rite] = { choice, right };
+      try { localStorage.setItem(guessedKey, JSON.stringify(all)); } catch { /* not kept, then */ }
+    };
+    // Pen strokes, as the site's other marks: the tick one tapered stroke, the cross as a broad nib writes an X.
+    const tick = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path d="M2.6 12.4C5.4 12.3 7.6 14 9.3 16.9C12.3 11.2 15.9 6.8 21.8 3.2C17.6 7.9 13.8 13.1 10.9 19.8C10.4 20.9 8.9 21 8.4 19.9C7.1 17 5.2 14.4 2.6 12.4Z" fill="#8f2a20"/></svg>';
+    const cross = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path d="M3.2 4.2C5 4.4 7 5.8 9.2 7.9C12.6 11.1 16.4 15.4 20.9 20.6C17 19 13.8 17 10.8 14.4C8.2 12 5.9 9.1 4.2 6.8C4 5.8 3.5 5 3.2 4.2Z" fill="#8f2a20"/><path d="M20.4 3.4C16.6 7 12.4 11.5 8.3 16.2C6.9 17.8 5.5 19.2 4 20.4C4.8 18.2 6 16.2 7.3 14.6C11.4 9.9 15.6 5.9 20.4 3.4Z" fill="#8f2a20"/></svg>';
+    const numerals = ['I.', 'II.', 'III.'];
+    const rite = document.querySelector('[data-rite]')?.dataset.rite;
+    const truth = Number(guess?.dataset.truth);
+    let choice = null;
+    // The step folds away once the seal breaks, so the truth shows once, in the panel: a wrong guess stays, struck.
+    const fold = (chosen) => {
+      guess.hidden = false;
+      guess.classList.add('revealed');
+      guess.querySelector('.guess-hint').hidden = true;
+      guess.querySelector('[data-guess-skip]').hidden = true;
+      guess.querySelector('legend').classList.add('sr-only');
+      const wrong = chosen !== null && chosen !== truth;
+      guess.querySelectorAll('.reading').forEach((reading) => {
+        const input = reading.querySelector('input');
+        input.disabled = true;
+        input.checked = Number(input.value) === chosen;
+        if (wrong && Number(input.value) === chosen) {
+          reading.classList.add('missed');
+          reading.querySelector('.reading-mark').innerHTML = cross;
+          reading.querySelector('.reading-text').insertAdjacentHTML('beforeend', ' <span class="reading-tag">· THY GUESS</span>');
+        } else {
+          reading.hidden = true;
+        }
+      });
+      guess.querySelector('fieldset').hidden = !wrong;
+      const all = Object.values(guessed());
+      const seen = `Seen through ${all.filter((kept) => kept.right).length} of ${all.length}.`;
+      const verdict = guess.querySelector('[data-verdict]');
+      verdict.innerHTML = chosen === null
+        ? '<span class="verdict-sub">Unguessed. The Truth lies below.</span>'
+        : wrong
+          ? `<span class="verdict-line">${cross}THOU ART ONE OF US</span><span class="verdict-sub">The rite would have worked on thee. ${seen}</span>`
+          : `<span class="verdict-line">${tick}THOU HAST SEEN THROUGH THE RITE</span><span class="verdict-sub">Thou didst choose ${numerals[chosen - 1]} No rite shall bind thee. ${seen}</span>`;
+      verdict.hidden = false;
+      // The panel names the true reading, the readings being folded away.
+      document.getElementById('truth-heading').textContent = `Heretical Truth · ${numerals[truth - 1]}`;
+    };
+    if (guess) {
+      const before = guessed()[rite];
+      if (before) {
+        // Witnessed when it was guessed: shown open, as it was left.
+        fold(before.choice);
+        shown(true);
+      } else {
+        guess.hidden = false;
+        seal.classList.add('waiting');
+        seal.setAttribute('aria-disabled', 'true');
+        line.textContent = 'Choose a truth first';
+      }
+      guess.addEventListener('change', (event) => {
+        choice = Number(event.target.value);
+        seal.classList.remove('waiting');
+        seal.removeAttribute('aria-disabled');
+        line.textContent = `Stake thy guess on ${numerals[choice - 1].slice(0, -1)}`;
+      });
+      guess.querySelector('[data-guess-skip]').addEventListener('click', () => {
+        seal.classList.remove('waiting');
+        seal.removeAttribute('aria-disabled');
+        fold(null);
+        setOpen(true);
+        panel.focus();
+      });
+    }
+    seal.addEventListener('click', () => {
+      // Waiting for a choice: the seal says so, and stays in the tab order.
+      if (seal.classList.contains('waiting')) return;
+      const open = seal.getAttribute('aria-expanded') !== 'true';
+      if (open && guess && !guess.classList.contains('revealed') && choice !== null) {
+        keepGuess(rite, choice, choice === truth);
+        fold(choice);
+        setOpen(true);
+        panel.focus();
+        return;
+      }
+      setOpen(open);
     });
   }
 

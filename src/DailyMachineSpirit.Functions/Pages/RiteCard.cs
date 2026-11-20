@@ -15,6 +15,9 @@ namespace DailyMachineSpirit.Functions.Pages;
 public static class RiteCard
 {
     // The purity seal's paper strip, chosen by the rite's number so a rite always wears the same one.
+    // The readings' numerals, as the design sets them.
+    private static readonly string[] Numerals = ["I.", "II.", "III."];
+
     private static readonly string[] PurityStrips = ["Tests passed (once)", "LGTM", "Approved by the Machine Spirit", "--no-verify"];
 
     /// <param name="ownPage">On its own page the title is the page's h1 and the text can be copied; on Today the
@@ -63,6 +66,7 @@ public static class RiteCard
             {ImperialDate.WithTheDay(rite.PublishedOnUtc, "rite-day", "rite-date")}
             {Svg.RubricDivider}
             <p class="prayer">{Prayer(rite.Writing.Text)}</p>
+            {Guess(rite)}
             <div class="colophon">
             <span class="inscribed">Inscribed by {Html.Encode(rite.Writing.GeneratedByModel)}</span>
             <span class="purity" aria-hidden="true"><span class="purity-strip">{PurityStrips[rite.Number % PurityStrips.Length]}</span>{Svg.PuritySeal}</span>
@@ -76,7 +80,7 @@ public static class RiteCard
             <span class="seal-sub">Reveal the Heretical Truth</span>
             </button>
             </div>
-            <section class="truth" id="truth-panel" aria-labelledby="truth-heading" hidden>
+            <section class="truth" id="truth-panel" aria-labelledby="truth-heading" tabindex="-1" hidden>
             <div class="truth-prompt" aria-hidden="true">$ explain --plainly</div>
             <div class="truth-body">
             <h2 id="truth-heading">Heretical Truth</h2>
@@ -104,6 +108,46 @@ public static class RiteCard
             </div>
             """;
     }
+
+    /// <summary>
+    /// Guessing the Heretical Truth before the seal breaks (#199): the truth and the two false ones as three readings, in
+    /// an order fixed per rite. The script checks the answer in the browser (the truth is in the page already), so the
+    /// step is hidden until it shows it, and a rite without false truths has none.
+    /// </summary>
+    private static string Guess(Rite rite)
+        => rite.Writing.FalseTruths.Match(
+            None: () => string.Empty,
+            Some: falseTruths =>
+            {
+                var truthAt = TruthPlace(rite.Number);
+                var others = new Queue<string>([falseTruths.First, falseTruths.Second]);
+                var readings = Enumerable.Range(1, 3)
+                    .Select(place => Reading(place, place == truthAt ? rite.Writing.HereticalTruth : others.Dequeue()));
+                return $"""
+                    <div class="guess" data-guess data-truth="{truthAt}" hidden>
+                    <div class="verdict" role="status" data-verdict hidden></div>
+                    <fieldset>
+                    <legend class="guess-heading">What is the Heretical Truth?</legend>
+                    <p class="guess-hint">Choose one, then break the seal.</p>
+                    <div class="readings">{string.Concat(readings)}</div>
+                    </fieldset>
+                    <button type="button" class="guess-skip" data-guess-skip>Just show me</button>
+                    </div>
+                    """;
+            });
+
+    /// <summary>Where the truth stands among the three readings: the same for a rite every time, but not always first.</summary>
+    private static int TruthPlace(int number) => (int)(((uint)number * 2654435761u) >> 16) % 3 + 1;
+
+    private static string Reading(int place, string words)
+        => $"""
+            <label class="reading">
+            <input class="sr-only" type="radio" name="guess" value="{place}">
+            <span class="reading-mark" aria-hidden="true"></span>
+            <span class="reading-num" aria-hidden="true">{Numerals[place - 1]}{Svg.ReadingRing}</span>
+            <span class="reading-text">{Html.WithInlineCode(words)}</span>
+            </label>
+            """;
 
     // The first letter becomes the drop cap, hidden from screen readers, which read a hidden copy so the first word
     // stays whole. A text that starts with code or punctuation gets no drop cap.
