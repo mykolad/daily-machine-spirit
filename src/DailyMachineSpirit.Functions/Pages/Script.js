@@ -2,14 +2,144 @@
   const seal = document.querySelector('.seal');
   if (seal) {
     const panel = document.getElementById(seal.getAttribute('aria-controls'));
-    seal.addEventListener('click', () => {
-      const open = seal.getAttribute('aria-expanded') !== 'true';
+    const label = seal.querySelector('.seal-label');
+    const line = seal.querySelector('.seal-sub');
+    const shown = (open) => {
       seal.setAttribute('aria-expanded', String(open));
       panel.hidden = !open;
+      label.textContent = open ? 'Reseal the truth' : 'Break the seal';
+      line.textContent = open ? 'Hide the Heretical Truth' : 'Reveal the Heretical Truth';
+    };
+    const setOpen = (open) => {
+      shown(open);
       // The reader has the whole joke now: the rite is witnessed (#198).
       if (open) witness(Number(document.querySelector('[data-rite]')?.dataset.rite));
-      seal.querySelector('.seal-label').textContent = open ? 'Reseal the truth' : 'Break the seal';
-      seal.querySelector('.seal-sub').textContent = open ? 'Hide the Heretical Truth' : 'Reveal the Heretical Truth';
+    };
+
+    // Guessing the Heretical Truth (#199): the first press cracks the seal and unfolds three readings under it; choosing
+    // one breaks it. The truth is in the page already, so the guess is checked here and never sent. One guess a rite,
+    // kept in this browser alone ({ "12": { right, pick } }): a rite guessed before opens revealed, so a reader can't try
+    // again for a better score. "Just show me", or the cracked seal pressed again, breaks it unguessed, keeping nothing.
+    const guess = document.querySelector('[data-guess]');
+    const readings = guess?.querySelector('[data-readings]');
+    const verdict = guess?.querySelector('[data-verdict]');
+    const struck = guess?.querySelector('[data-guessed]');
+    const guessedKey = 'dms-guessed-v1';
+    const guessed = () => { try { return JSON.parse(localStorage.getItem(guessedKey) ?? '{}'); } catch { return {}; } };
+    const keepGuess = (rite, pick, right) => {
+      const all = guessed();
+      all[rite] = { right, pick };
+      try { localStorage.setItem(guessedKey, JSON.stringify(all)); } catch { /* not kept, then */ }
+    };
+    // Pen strokes, as the site's other marks, in colours that read on the dark ground: the tick one tapered stroke, the
+    // cross as a broad nib writes an X.
+    const tick = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path d="M2.6 12.4C5.4 12.3 7.6 14 9.3 16.9C12.3 11.2 15.9 6.8 21.8 3.2C17.6 7.9 13.8 13.1 10.9 19.8C10.4 20.9 8.9 21 8.4 19.9C7.1 17 5.2 14.4 2.6 12.4Z" fill="#d9b874"/></svg>';
+    const cross = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path d="M3.2 4.2C5 4.4 7 5.8 9.2 7.9C12.6 11.1 16.4 15.4 20.9 20.6C17 19 13.8 17 10.8 14.4C8.2 12 5.9 9.1 4.2 6.8C4 5.8 3.5 5 3.2 4.2Z" fill="#e88a78"/><path d="M20.4 3.4C16.6 7 12.4 11.5 8.3 16.2C6.9 17.8 5.5 19.2 4 20.4C4.8 18.2 6 16.2 7.3 14.6C11.4 9.9 15.6 5.9 20.4 3.4Z" fill="#e88a78"/></svg>';
+    const numerals = ['I.', 'II.', 'III.'];
+    const rite = document.querySelector('[data-rite]')?.dataset.rite;
+    const truth = Number(guess?.dataset.truth);
+    // Once the step is played or skipped, the seal only hides and shows what it revealed: the readings never come back.
+    let revealed = false;
+    let picked = null;
+    const crack = () => {
+      seal.classList.add('cracked');
+      seal.setAttribute('aria-expanded', 'true');
+      seal.setAttribute('aria-label', 'Break the seal without guessing');
+      // Expanded, the seal shows the readings; once broken, the truth again.
+      seal.setAttribute('aria-controls', readings.id);
+      line.textContent = 'Choose the truth to break it';
+      readings.hidden = false;
+      readings.querySelector('.reading').focus();
+    };
+    const uncrack = () => {
+      seal.classList.remove('cracked');
+      seal.setAttribute('aria-expanded', 'false');
+      seal.removeAttribute('aria-label');
+      seal.setAttribute('aria-controls', panel.id);
+      line.textContent = 'Guess the Heretical Truth';
+      readings.hidden = true;
+      seal.focus();
+    };
+    // The readings give way to the verdict and, for a wrong guess, the guess struck through, above the truth.
+    const settle = (pick) => {
+      revealed = true;
+      picked = pick;
+      seal.classList.remove('cracked');
+      seal.removeAttribute('aria-label');
+      seal.setAttribute('aria-controls', panel.id);
+      readings.hidden = true;
+      const wrong = pick !== null && pick !== truth;
+      const all = Object.values(guessed());
+      const seen = `Seen through ${all.filter((kept) => kept.right).length} of ${all.length}.`;
+      verdict.innerHTML = pick === null
+        ? '<span class="guess-verdict-sub">Unguessed. The Truth lies below.</span>'
+        : wrong
+          ? `<span class="guess-verdict-line">${cross}THOU ART ONE OF US</span><span class="guess-verdict-sub">The rite would have worked on thee. ${seen}</span>`
+          : `<span class="guess-verdict-line">${tick}THOU HAST SEEN THROUGH THE RITE</span><span class="guess-verdict-sub">No rite shall bind thee. ${seen}</span>`;
+      verdict.hidden = false;
+      if (wrong) {
+        const words = readings.querySelector(`[data-reading="${pick}"] .reading-text`).innerHTML;
+        struck.innerHTML = `<span class="guessed-mark">${cross}</span><div class="reading"><span class="reading-num">${numerals[pick - 1]}</span><span class="reading-text"><span class="struck">${words}</span> <span class="guessed-tag">· THY GUESS</span></span></div>`;
+        struck.hidden = false;
+        // Beside the struck guess the panel names the true reading's numeral; with no reading left, it would name nothing.
+        document.getElementById('truth-heading').textContent = `Heretical Truth · ${numerals[truth - 1]}`;
+      }
+    };
+    const breakWith = (pick) => {
+      // A guess made meanwhile in another tab stands, and is the one shown: one guess a rite.
+      const before = guessed()[rite];
+      if (before) {
+        settle(before.pick ?? before.choice);
+      } else {
+        if (pick !== null) keepGuess(rite, pick, pick === truth);
+        settle(pick);
+      }
+      setOpen(true);
+      panel.focus();
+    };
+    // Resealed, the verdict and the struck guess go with the truth, and come back with it.
+    const showRevealed = (open) => {
+      shown(open);
+      verdict.hidden = !open;
+      struck.hidden = !open || !struck.hasChildNodes();
+      if (!open && picked !== null) line.textContent = 'Thy guess is cast';
+    };
+    if (guess) {
+      const before = guessed()[rite];
+      if (before) {
+        // Witnessed when it was guessed: shown open, as it was left. Guesses kept before the readings moved under the
+        // seal hold their reading as "choice".
+        settle(before.pick ?? before.choice);
+        shown(true);
+      } else {
+        line.textContent = 'Guess the Heretical Truth';
+      }
+      readings.addEventListener('click', (event) => {
+        const chosen = event.target.closest('[data-reading]');
+        if (chosen) {
+          // The numeral is ringed for a moment, as the reader's pen would, before the seal breaks.
+          chosen.classList.add('chosen');
+          readings.querySelectorAll('button').forEach((button) => { button.disabled = true; });
+          setTimeout(() => breakWith(Number(chosen.dataset.reading)), 150);
+        } else if (event.target.closest('[data-guess-skip]')) {
+          breakWith(null);
+        }
+      });
+      // Esc closes the readings, the seal whole again, nothing kept.
+      readings.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') uncrack();
+      });
+    }
+    seal.addEventListener('click', () => {
+      if (!guess) {
+        setOpen(seal.getAttribute('aria-expanded') !== 'true');
+      } else if (revealed) {
+        showRevealed(panel.hidden);
+      } else if (seal.classList.contains('cracked')) {
+        breakWith(null);
+      } else {
+        crack();
+      }
     });
   }
 
