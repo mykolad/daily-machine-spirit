@@ -12,6 +12,9 @@ internal sealed record RiteDocument
     /// <summary>Where an erasure's patch writes its time (<see cref="Rite.WordsErasedAtUtc"/>).</summary>
     public const string WordsErasedAtUtcField = "/wordsErasedAtUtc";
 
+    /// <summary>Where a proposal waits (#199): set by the backfill, cleared by acceptance, a new writing or an erasure.</summary>
+    public const string ProposedFalseTruthsField = "/proposedFalseTruths";
+
     public string Id { get; init; } = string.Empty;
 
     public string Partition { get; init; } = CosmosCalls.SharedPartition;
@@ -32,6 +35,9 @@ internal sealed record RiteDocument
 
     // Null for a rite written before them (#199).
     public FalseTruths? FalseTruths { get; init; }
+
+    // Written for a rite from before them (#199), for a Scribe to accept or have written again; null once accepted.
+    public FalseTruths? ProposedFalseTruths { get; init; }
 
     public string? Ailment { get; init; }
 

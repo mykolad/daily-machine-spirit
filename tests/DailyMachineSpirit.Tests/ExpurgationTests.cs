@@ -2,6 +2,7 @@ using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Pages;
+using DailyMachineSpirit.Functions.Scriptorium.Backfill;
 using DailyMachineSpirit.Functions.Scriptorium.Expurgation;
 using LanguageExt;
 using LanguageExt.Common;
@@ -277,6 +278,24 @@ public sealed class ExpurgationTests : IAsyncLifetime
 
     // Written, amended (the decision keeps the old words, the Record's detail the old title), anointed with a note that
     // quotes it, and published: every kind of copy there is.
+    // False truths proposed for the rite (#199) were written from its words before: they go with them, and the backfill
+    // writes them again from the words as they are now.
+    [Fact]
+    public async Task Erase_DropsTheFalseTruthsProposedForTheRite()
+    {
+        var number = await PublishedAfterAnAmendment();
+        var backfill = testbed.FalseTruthsBackfill(pages);
+        testbed.Models.Answers(BacklogTestbed.Sol, FakeChatClients.Answer(Amended.Title, "Words.", "Truth."));
+        Ok(await backfill.Write(FalseTruthsBackfill.RiteMessage(number), CancellationToken.None));
+        Assert.Single(Ok(await backfill.Proposals(CancellationToken.None)));
+        var rite = Found(await Expurgations().Find(number, CancellationToken.None));
+
+        Ok(await Expurgations().Erase(number, rite.Version, WarmInTitleAndText, Expurgator, CancellationToken.None));
+
+        Assert.Empty(Ok(await backfill.Proposals(CancellationToken.None)));
+        Assert.Contains(FalseTruthsBackfill.RiteMessage(number), Ok(await backfill.Pending(CancellationToken.None)));
+    }
+
     private Task<int> PublishedAfterAnAmendment() => PublishedAfterAnAmendment(Amended);
 
     private async Task<int> PublishedAfterAnAmendment(RiteContent words)

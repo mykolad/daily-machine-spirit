@@ -60,6 +60,7 @@ public sealed class RiteWriter
                 options.Value.Patience,
                 "write",
                 $"No model wrote a usable {kind.ToString().ToLowerInvariant()}.",
+                content => content,
                 cancellationToken))
             .Map(written => new Draft
             {
@@ -90,8 +91,30 @@ public sealed class RiteWriter
                 options.Value.PatienceWhileTheScribeWaits,
                 "rewrite",
                 "No model rewrote it usably.",
+                content => content,
                 cancellationToken))
             .Map(written => written.Content);
+
+    /// <summary>
+    /// False truths for a rite written before them (#199), its words as they stand: only the false truths of the answer
+    /// are kept, checked with the rite's own words, so a model that changes the rite changes nothing. Not saved.
+    /// </summary>
+    public async Task<Either<Error, FalseTruths>> WriteFalseTruths(RiteKind kind, RiteContent words, CancellationToken cancellationToken)
+        => (await Answer(
+                [new(ChatRole.System, RitePrompt.Instructions(kind, None, [], await Precepts(cancellationToken))), new(ChatRole.User, RitePrompt.FalseTruthsFor(kind, words))],
+                kind,
+                options.Value.Patience,
+                "false-truths",
+                "No model wrote usable false truths.",
+                // A rite from before ailments (#115) has none, and an answer that keeps the rite as it stands has none either.
+                content => words with
+                {
+                    FirstFalseTruth = content.FirstFalseTruth,
+                    SecondFalseTruth = content.SecondFalseTruth,
+                    Ailment = words.Ailment.Length > 0 ? words.Ailment : RiteChecks.NoAilment,
+                },
+                cancellationToken))
+            .Map(written => new FalseTruths(written.Content.FirstFalseTruth, written.Content.SecondFalseTruth));
 
     // The Precepts' words (#12). Writing matters more than following them: without them, the rite is still written.
     private async Task<IReadOnlyList<string>> Precepts(CancellationToken cancellationToken)
@@ -110,6 +133,7 @@ public sealed class RiteWriter
         Patience patience,
         string asked,
         string noneUsable,
+        Func<RiteContent, RiteContent> kept,
         CancellationToken cancellationToken)
     {
         var failures = new List<string>();
@@ -124,7 +148,7 @@ public sealed class RiteWriter
                 }
 
                 var answer = await Ask(model, messages, patience.TryLimit, asked, cancellationToken);
-                var written = answer.Bind(content => RiteChecks.Check(content, kind)).Bind(RiteChecks.WithFalseTruths);
+                var written = answer.Map(kept).Bind(content => RiteChecks.Check(content, kind)).Bind(RiteChecks.WithFalseTruths);
                 metrics.Answer(model, answer.IsLeft ? "failed" : written.IsLeft ? "refused" : "accepted");
                 if (written.IsRight)
                 {

@@ -12,15 +12,18 @@ public sealed class TabCounting
     private readonly IScriptoriumRepository scriptorium;
     private readonly IPreceptRepository precepts;
     private readonly IAuditRepository audit;
+    private readonly IFalseTruthsRepository falseTruths;
     private readonly ILogger<TabCounting> logger;
 
     public TabCounting(
-        IDraftRepository drafts, IScriptoriumRepository scriptorium, IPreceptRepository precepts, IAuditRepository audit, ILogger<TabCounting> logger)
+        IDraftRepository drafts, IScriptoriumRepository scriptorium, IPreceptRepository precepts, IAuditRepository audit,
+        IFalseTruthsRepository falseTruths, ILogger<TabCounting> logger)
     {
         this.drafts = drafts;
         this.scriptorium = scriptorium;
         this.precepts = precepts;
         this.audit = audit;
+        this.falseTruths = falseTruths;
         this.logger = logger;
     }
 
@@ -36,9 +39,10 @@ public sealed class TabCounting
             Waiting: drafts.GetWaiting(cancellationToken),
             Burned: scriptorium.CountBurned(cancellationToken),
             Precepts: precepts.Get(cancellationToken),
-            Entries: audit.Count(cancellationToken));
-        var (placements, waiting, burned, book, entries) =
-            (await reads.Placements, await reads.Waiting, await reads.Burned, await reads.Precepts, await reads.Entries);
+            Entries: audit.Count(cancellationToken),
+            Proposals: falseTruths.Proposals(cancellationToken));
+        var (placements, waiting, burned, book, entries, proposals) =
+            (await reads.Placements, await reads.Waiting, await reads.Burned, await reads.Precepts, await reads.Entries, await reads.Proposals);
 
         var counts =
             from order in placements
@@ -46,8 +50,9 @@ public sealed class TabCounting
             from ashes in burned
             from stored in book
             from recorded in entries
+            from proposed in proposals
             let placed = rites.Count(draft => order.Order.Contains(draft.Id))
-            select new TabCounts(placed, rites.Count - placed, ashes, stored.Book.Precepts.Count, recorded);
+            select new TabCounts(placed, rites.Count - placed, ashes, stored.Book.Precepts.Count, recorded, proposed.Count);
         return counts.Match(
             Right: Some,
             Left: error =>

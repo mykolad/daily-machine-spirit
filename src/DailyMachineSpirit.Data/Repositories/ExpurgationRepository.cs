@@ -58,13 +58,16 @@ public sealed class ExpurgationRepository : IExpurgationRepository
         });
     }
 
-    // The rite's own copy also says when its words were erased (Rite.WordsErasedAtUtc), for the feed's readers.
+    // The rite's own copy also says when its words were erased (Rite.WordsErasedAtUtc), for the feed's readers. False
+    // truths proposed for it (#199) were written from the words before, so they may hold an erased one: they go, and the
+    // backfill writes them again from the words as they are now.
     private static List<PatchOperation> Operations(WordsKept copy, DateTime erasedAtUtc)
     {
         var operations = copy.Fields.Select(field => PatchOperation.Set(field.Key, field.Value)).ToList();
         if (RiteDocument.IsRiteId(copy.DocumentId))
         {
             operations.Add(PatchOperation.Set(RiteDocument.WordsErasedAtUtcField, Utc.From(erasedAtUtc)));
+            operations.Add(PatchOperation.Set<FalseTruths?>(RiteDocument.ProposedFalseTruthsField, null));
         }
         return operations;
     }

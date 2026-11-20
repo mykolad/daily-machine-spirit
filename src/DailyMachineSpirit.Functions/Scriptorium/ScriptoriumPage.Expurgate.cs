@@ -116,10 +116,7 @@ public static partial class ScriptoriumPage
             <h3 id="title-preview">{WithCode(redacted.Title)}</h3>
             <p class="text">{WithCode(redacted.Text)}</p>
             <p class="truth"><span class="truth-label">Heretical Truth</span> {WithCode(redacted.HereticalTruth)}</p>
-            {redacted.FalseTruths.Map(truths => $"""
-                <p class="truth"><span class="truth-label">False truths</span> {WithCode(truths.First)}</p>
-                <p class="truth"><span class="truth-label">False truths</span> {WithCode(truths.Second)}</p>
-                """).IfNone(string.Empty)}
+            {FalseTruthsOf(redacted)}
             </article>
             <form method="post" action="/scriptorium/expurgate/{rite.Number}">
             <input type="hidden" name="version" value="{Encode(expurgatable.Version)}">
