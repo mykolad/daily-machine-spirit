@@ -21,6 +21,12 @@ public sealed record RiteWriting
     public string HereticalTruth { get; init; } = string.Empty;
 
     /// <summary>
+    /// What the reader tells the real truth from (#199); None for a rite written before them, which keeps the plain seal
+    /// until it's given some.
+    /// </summary>
+    public Option<FalseTruths> FalseTruths { get; init; }
+
+    /// <summary>
     /// The trouble the rite is for, in a line, without its fix ("a test that fails at random and passes when re-run"): what
     /// a client of the rites API matches a user's trouble on.
     /// </summary>

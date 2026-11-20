@@ -89,6 +89,7 @@ public sealed class Amendments
             Title = words.Title,
             Text = words.Text,
             HereticalTruth = words.HereticalTruth,
+            FalseTruths = RiteChecks.FalseTruthsOf(words),
             Ailment = Some(words.Ailment),
             Form = RiteForms.Taken(draft.Writing.Kind, RiteForms.Of(draft.Writing.Form, draft.Writing.Title), words.Title).Map(form => form.Key),
             Edited = true,

@@ -71,6 +71,7 @@ public sealed class RiteWriter
                     Title = written.Content.Title,
                     Text = written.Content.Text,
                     HereticalTruth = written.Content.HereticalTruth,
+                    FalseTruths = RiteChecks.FalseTruthsOf(written.Content),
                     Ailment = Some(written.Content.Ailment),
                     Form = RiteForms.Taken(kind, Some(variety.Form), written.Content.Title).Map(form => form.Key),
                     GeneratedByModel = written.Model,
@@ -123,7 +124,7 @@ public sealed class RiteWriter
                 }
 
                 var answer = await Ask(model, messages, patience.TryLimit, asked, cancellationToken);
-                var written = answer.Bind(content => RiteChecks.Check(content, kind));
+                var written = answer.Bind(content => RiteChecks.Check(content, kind)).Bind(RiteChecks.WithFalseTruths);
                 metrics.Answer(model, answer.IsLeft ? "failed" : written.IsLeft ? "refused" : "accepted");
                 if (written.IsRight)
                 {

@@ -1,8 +1,10 @@
+using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Functions;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging.Abstractions;
 using static DailyMachineSpirit.Tests.BacklogTestbed;
 using static DailyMachineSpirit.Tests.Expect;
+using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Tests;
 
@@ -67,6 +69,8 @@ public sealed class DailyRitePublisherTests : IAsyncLifetime
         Assert.True(published.IsNew);
         var rite = await testbed.PublishedOn(Today);
         Assert.Equal("Written on the spot", rite.Writing.Title);
+        // Its false truths (#199) too, written with it and kept with the rite.
+        Assert.Equal(Some(new FalseTruths(FakeChatClients.FirstFalseTruth, FakeChatClients.SecondFalseTruth)), rite.Writing.FalseTruths);
         Assert.True(rite.Similarity.IsSome);
         Assert.Empty(await testbed.Waiting());
     }

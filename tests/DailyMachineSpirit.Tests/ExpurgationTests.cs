@@ -21,6 +21,8 @@ public sealed class ExpurgationTests : IAsyncLifetime
         "The Litany of the Warm Cache",
         "O Machine Spirit, warm thy cache, that `npm ci` may find it full.",
         "A warm cache is one somebody already paid to fill.",
+        "",
+        "",
         "The build is slow until the cache is Warm again.");
 
     private static readonly RedactedWord[] WarmInTitleAndText = [new(RitePart.Title, 4, "💀"), new(RitePart.Text, 3, "🦴")];

@@ -24,6 +24,9 @@ internal sealed record DraftDocument
 
     public string HereticalTruth { get; init; } = string.Empty;
 
+    // Null for a rite written before them (#199).
+    public FalseTruths? FalseTruths { get; init; }
+
     public string? Ailment { get; init; }
 
     public string? Form { get; init; }
@@ -63,6 +66,7 @@ internal sealed record DraftDocument
         Title = draft.Writing.Title,
         Text = draft.Writing.Text,
         HereticalTruth = draft.Writing.HereticalTruth,
+        FalseTruths = draft.Writing.FalseTruths.OrNull(),
         Ailment = draft.Writing.Ailment.OrNull(),
         Form = draft.Writing.Form.OrNull(),
         GeneratedByModel = draft.Writing.GeneratedByModel,
@@ -89,6 +93,7 @@ internal sealed record DraftDocument
             Title = Title,
             Text = Text,
             HereticalTruth = HereticalTruth,
+            FalseTruths = Optional(FalseTruths),
             Ailment = Optional(Ailment),
             Form = Optional(Form),
             GeneratedByModel = GeneratedByModel,

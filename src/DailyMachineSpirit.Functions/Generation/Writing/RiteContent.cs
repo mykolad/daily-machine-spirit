@@ -7,4 +7,6 @@ public sealed record RiteContent(
     [property: Description("The rite's name, like \"The Rite of Re-Run\".")] string Title,
     [property: Description("The prayer or ritual itself, in solemn liturgical language.")] string Text,
     [property: Description("What really happens and what would fix it, in plain modern English.")] string HereticalTruth,
+    [property: Description("A plausible but wrong Heretical Truth: a cause and fix a developer might believe, in the same length and tone.")] string FirstFalseTruth,
+    [property: Description("Another plausible but wrong Heretical Truth, unlike the first.")] string SecondFalseTruth,
     [property: Description("The trouble the rite is for, as a developer would describe it, without its cause or fix.")] string Ailment);
