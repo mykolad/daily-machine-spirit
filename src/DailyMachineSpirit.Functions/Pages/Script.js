@@ -233,6 +233,25 @@
       b.setAttribute('aria-pressed', String(b.dataset.reaction === vote));
       b.querySelector('.count').textContent = shown[b.dataset.reaction].toLocaleString('en');
     });
+    // Confess (#200), apart from the verdicts but on the same vote: the same sign-in, the same request, the same kept
+    // counts. Shown by the script alone, as voting needs it.
+    const confession = document.querySelector('.confession');
+    const confess = confession?.querySelector('[data-confess]');
+    const confessed = confession?.querySelector('.confessed-count');
+    const confessStatus = confession?.querySelector('.confess-status');
+    if (confession) confession.hidden = false;
+    const confessions = () => Number(confessed?.dataset.confessions ?? 0);
+    const confessedWords = (count, mine) => mine && count === 1 ? 'Thou alone hast confessed'
+      : count === 0 ? 'None have confessed'
+        : count === 1 ? '1 hath confessed'
+          : `${count.toLocaleString('en')} have confessed`;
+    const showConfession = (mine, count) => {
+      if (!confession) return;
+      confess.setAttribute('aria-pressed', String(mine));
+      confessed.dataset.confessions = String(count);
+      confessed.textContent = confessedWords(count, mine);
+    };
+    const tellConfession = (words) => { if (confessStatus) confessStatus.textContent = words; };
     // Cloudflare keeps the page until votes purge it, up to a minute after them (batched), and the reader's browser
     // keeps its copy a minute too, so a refresh may show the page from before their own vote. So the browser keeps
     // the counts each vote answered, with when the server counted them, and shows them over a page whose counts were
@@ -260,13 +279,17 @@
         const all = recalled();
         // Another tab's vote may have been counted later and answered sooner: the later count stays.
         if (all[rite] && all[rite].countedAt > answer.countedAt) return;
-        all[rite] = { blessed: answer.blessed, heresy: answer.heresy, countedAt: answer.countedAt, rememberedAt: Date.now() };
+        all[rite] = { blessed: answer.blessed, heresy: answer.heresy, confessions: answer.confessions, countedAt: answer.countedAt, rememberedAt: Date.now() };
         localStorage.setItem(votesKey, JSON.stringify(all));
       } catch { }
     };
     const kept = recalled()[rite];
-    if (kept && typeof kept.blessed === 'number' && typeof kept.heresy === 'number' && kept.countedAt >= Number(reactions.dataset.countedAt)) show(null, kept);
-    let reader = { available: false, signedIn: false, vote: null, voteLoaded: false };
+    if (kept && typeof kept.blessed === 'number' && typeof kept.heresy === 'number' && kept.countedAt >= Number(reactions.dataset.countedAt)) {
+      show(null, kept);
+      // Kept before confessions were counted, an answer has none to show.
+      if (typeof kept.confessions === 'number') showConfession(false, kept.confessions);
+    }
+    let reader = { available: false, signedIn: false, vote: null, confessed: false, voteLoaded: false };
     const showReader = () => statuses.forEach((s) => { s.hidden = !reader.available || s.dataset.signedIn !== String(reader.signedIn); });
     // The signed-in reader's own vote. Until it has loaded, the page doesn't know whether a click sets a vote or
     // takes one back, so voting waits for it.
@@ -278,19 +301,24 @@
           reader.signedIn = false;
           showBreviary(false);
         }
-        else if (votes.ok) reader = { ...reader, vote: (await votes.json())[rite] ?? null, voteLoaded: true };
+        else if (votes.ok) {
+          const yours = await votes.json();
+          const confessedTo = Array.isArray(yours.confessed) ? yours.confessed : [];
+          reader = { ...reader, vote: yours[rite] ?? null, confessed: confessedTo.includes(Number(rite)), voteLoaded: true };
+        }
       } catch { }
     };
     // Until this answers, a click waits for it rather than guessing who's reading.
     const known = (async () => {
       try {
         const me = await (await fetch('/api/me')).json();
-        reader = { available: me.signInAvailable === true, signedIn: me.signedIn === true, vote: null, voteLoaded: false };
+        reader = { available: me.signInAvailable === true, signedIn: me.signedIn === true, vote: null, confessed: false, voteLoaded: false };
         showBreviary(reader.signedIn);
         if (reader.signedIn) await loadVote();
       } catch { }
       showReader();
       show(reader.vote, counts());
+      showConfession(reader.confessed, confessions());
     })();
     buttons.forEach((button) => button.addEventListener('click', async () => {
       await known;
@@ -329,9 +357,11 @@
           // longer this reader's to show.
           reader.signedIn = false;
           reader.vote = null;
+          reader.confessed = false;
           showReader();
           showBreviary(false);
           show(null, before);
+          showConfession(false, confessions());
           say('Sign in with GitHub again to vote.');
           return;
         }
@@ -355,6 +385,69 @@
         reactions.removeAttribute('aria-busy');
       }
     }));
+
+    // Signed out, a press stays unpressed and says how to confess, beside the button rather than in a toast.
+    const offerSignIn = () => {
+      const link = document.createElement('a');
+      link.href = signInLink.getAttribute('href');
+      link.textContent = 'Sign in with GitHub';
+      confessStatus.replaceChildren(link, ' to confess. Thy name stays thine: only a one-way key is kept.');
+    };
+    confess?.addEventListener('click', async () => {
+      await known;
+      if (!reader.available) { tellConfession('Confessing isn’t open yet.'); return; }
+      if (!reader.signedIn) { offerSignIn(); return; }
+      if (confession.getAttribute('aria-busy') === 'true') return;
+      if (!reader.voteLoaded) {
+        // As a vote does: the reader's confession didn't load with the page, so it's shown rather than acted on.
+        confession.setAttribute('aria-busy', 'true');
+        await loadVote();
+        confession.removeAttribute('aria-busy');
+        showReader();
+        if (!reader.signedIn) { offerSignIn(); return; }
+        if (!reader.voteLoaded) { tellConfession('Thy confession couldn’t be loaded. Try again.'); return; }
+        showConfession(reader.confessed, confessions());
+        tellConfession(reader.confessed ? 'Thou hast confessed already. Press again to withdraw it.' : 'Press again to confess.');
+        return;
+      }
+      const previous = reader.confessed;
+      const mine = !previous;
+      const before = confessions();
+      const hoped = Math.max(0, before + (mine ? 1 : -1));
+      showConfession(mine, hoped);
+      confession.setAttribute('aria-busy', 'true');
+      try {
+        const response = await fetch(`/api/rites/${rite}/vote`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ confessed: mine }),
+        });
+        if (response.status === 401) {
+          reader = { ...reader, signedIn: false, vote: null, confessed: false };
+          showReader();
+          showBreviary(false);
+          show(null, counts());
+          showConfession(false, before);
+          offerSignIn();
+          return;
+        }
+        if (!response.ok) throw new Error(String(response.status));
+        // Saved: from here on the confession counts, even if the answer can't be read.
+        reader.confessed = mine;
+        const answer = await response.json().catch(() => null);
+        if (answer) remember(answer);
+        const count = typeof answer?.confessions === 'number' ? answer.confessions : hoped;
+        showConfession(mine, count);
+        tellConfession(!mine ? 'Thy confession is withdrawn.'
+          : count === 1 ? 'Thy sin is recorded. Thou art the first to confess it.'
+            : 'Thy sin is recorded. Thou art not alone.');
+      } catch {
+        showConfession(previous, before);
+        tellConfession('Thy confession wasn’t recorded. Try again.');
+      } finally {
+        confession.removeAttribute('aria-busy');
+      }
+    });
   }
 
   // The margins beside a sheet follow the reader down it, their candles level beside the text (the stylesheet).
