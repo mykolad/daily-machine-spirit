@@ -43,6 +43,8 @@ internal sealed record RiteDocument
 
     public string? Form { get; init; }
 
+    public DateOnly? FeastDay { get; init; }
+
     public string GeneratedByModel { get; init; } = string.Empty;
 
     public DateTime GeneratedAtUtc { get; init; }
@@ -80,6 +82,7 @@ internal sealed record RiteDocument
         FalseTruths = rite.Writing.FalseTruths.OrNull(),
         Ailment = rite.Writing.Ailment.OrNull(),
         Form = rite.Writing.Form.OrNull(),
+        FeastDay = rite.Writing.FeastDay.OrNullable(),
         GeneratedByModel = rite.Writing.GeneratedByModel,
         GeneratedAtUtc = Utc.From(rite.Writing.GeneratedAtUtc),
         Edited = rite.Writing.Edited,
@@ -103,6 +106,7 @@ internal sealed record RiteDocument
             FalseTruths = Optional(FalseTruths),
             Ailment = Optional(Ailment),
             Form = Optional(Form),
+            FeastDay = Optional(FeastDay),
             GeneratedByModel = GeneratedByModel,
             GeneratedAtUtc = GeneratedAtUtc,
             Edited = Edited,

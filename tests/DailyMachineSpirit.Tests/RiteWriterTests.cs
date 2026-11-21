@@ -74,7 +74,7 @@ public sealed class RiteWriterTests : IDisposable
         models.Answers(Sol, FakeChatClients.Answer("The Vigil of the Green Check", "Watch, and count the runs.", "Waiting for a rerun hides a race."));
         var vigil = RiteForms.Find("vigil").IfNone(() => throw new InvalidOperationException("No vigil."));
 
-        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, new RiteVariety(vigil, ["gate", "seal"]), [], CancellationToken.None));
+        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, new RiteVariety(vigil, ["gate", "seal"], None), [], CancellationToken.None));
 
         var instructions = models.Requests.Single().Messages.Single(message => message.Role == ChatRole.System).Text;
         Assert.Contains("Its form is the vigil: waiting and counting, watching for a sign that the machine has answered. Its title names the form (\"Vigil of the …\"", instructions);
@@ -94,7 +94,7 @@ public sealed class RiteWriterTests : IDisposable
         models.Answers(Sol, FakeChatClients.Answer(title, "Watch, and count the runs.", "Waiting for a rerun hides a race."));
         var vigil = RiteForms.Find("vigil").IfNone(() => throw new InvalidOperationException("No vigil."));
 
-        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, new RiteVariety(vigil, []), [], CancellationToken.None));
+        var draft = Ok(await Writer(retryDelaySeconds: 0).Write(RiteKind.Ritual, new RiteVariety(vigil, [], None), [], CancellationToken.None));
 
         Assert.Equal(Some(form), draft.Writing.Form);
     }
@@ -387,7 +387,7 @@ public sealed class RiteWriterTests : IDisposable
     }
 
     // The first form of the kind, resting nothing: what a refill asks for when nothing came before.
-    private static RiteVariety Variety(RiteKind kind) => new(RiteForms.ToWrite(kind, []), []);
+    private static RiteVariety Variety(RiteKind kind) => new(RiteForms.ToWrite(kind, []), [], None);
 
     private RiteWriter Writer(int retryDelaySeconds)
         => new(models, precepts, Options.Create(Settings.RiteWriting with { Patience = Settings.RiteWriting.Patience with { PauseBetweenTries = TimeSpan.FromSeconds(retryDelaySeconds) } }), time, probe.Metrics, NullLogger<RiteWriter>.Instance);
