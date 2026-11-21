@@ -372,6 +372,8 @@
         const answer = await response.json().catch(() => null);
         if (answer) remember(answer);
         show(vote, answer ?? hoped);
+        // The answer counts the confessions too, which a cached page may show older.
+        if (typeof answer?.confessions === 'number') showConfession(reader.confessed, answer.confessions);
         if (vote) {
           sayKept(vote);
         } else if (toast.querySelector('.toast-kept')) {
@@ -441,6 +443,8 @@
         if (answer) remember(answer);
         const count = typeof answer?.confessions === 'number' ? answer.confessions : hoped;
         showConfession(mine, count);
+        // And the verdicts' counts, which a cached page may show older; the reader's own verdict stays as it is.
+        if (typeof answer?.blessed === 'number' && typeof answer?.heresy === 'number') show(reader.vote, answer);
         tellConfession(!mine ? 'Thy confession is withdrawn.'
           : count === 1 ? 'Thy sin is recorded. Thou art the first to confess it.'
             : 'Thy sin is recorded. Thou art not alone.');
