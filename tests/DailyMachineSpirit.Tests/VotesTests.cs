@@ -160,6 +160,34 @@ public sealed class VotesTests : IAsyncLifetime
         Assert.Equal(new ReactionCounts(1, 0, 0), await Vote(Reader, Some(Reaction.Blessed)));
     }
 
+    // A confession alone (#200), on a rite from before confessions (no "confessions" stored): a vote with no verdict,
+    // counted from nothing; confessing again changes nothing.
+    [Fact]
+    public async Task Confessing_Alone_OnARiteFromBeforeConfessions_StartsItsCount()
+    {
+        await cosmos.Container.CreateItemAsync(new JsonObject
+        {
+            ["id"] = "2026-10-01",
+            ["partition"] = "rites",
+            ["type"] = "rite",
+            ["number"] = 1,
+            ["publishedOnUtc"] = "2026-10-01",
+            ["kind"] = "prayer",
+            ["title"] = "Old rite",
+            ["text"] = "Text.",
+            ["hereticalTruth"] = "Truth.",
+            ["generatedByModel"] = "gpt-6-sol",
+            ["generatedAtUtc"] = "2026-09-30T00:00:00Z",
+        }, new PartitionKey("rites"), cancellationToken: TestContext.Current.CancellationToken);
+
+        var confessed = Ok(await Repository.Vote(1, Reader, vote => vote with { Confessed = true }, CancellationToken.None)).IfNone(() => throw new InvalidOperationException());
+        var again = Ok(await Repository.Vote(1, Reader, vote => vote with { Confessed = true }, CancellationToken.None)).IfNone(() => throw new InvalidOperationException());
+
+        Assert.Equal((new ReactionCounts(0, 0, 1), true), (confessed.Counts, confessed.Changed));
+        Assert.Equal((new ReactionCounts(0, 0, 1), false), (again.Counts, again.Changed));
+        Assert.Equal(new Dictionary<int, ReaderVote> { [1] = new(None, true) }, Ok(await Repository.GetVotes(Reader, [1], CancellationToken.None)));
+    }
+
     [Fact]
     public async Task GetVotes_GivesOnlyThisReadersVotes_OnTheRitesAsked()
     {
