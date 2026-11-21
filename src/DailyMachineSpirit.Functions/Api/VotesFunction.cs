@@ -156,9 +156,7 @@ public sealed class VotesFunction
             return None;
         }
         return (await votes.CountRites(voterKey, cancellationToken)).Match(
-            Right: judged => Ranks.Of(judged) == Ranks.Of(judged - 1)
-                ? None
-                : Some(new RaisedRank($"Thou art now {Ranks.Of(judged).Article} {Ranks.Of(judged).Name}.", $"{Ranks.ToNext(judged)}.", Ranks.Of(judged).Insignia)),
+            Right: judged => Ranks.RaisedBy(judged).Map(rank => new RaisedRank($"Thou art now {rank.Article} {rank.Name}.", $"{Ranks.ToNext(judged)}.", rank.Insignia)),
             Left: error =>
             {
                 logger.LogWarning(error.ToException(), "A reader's rites couldn't be counted for their rank: {Reason}", error.Message);

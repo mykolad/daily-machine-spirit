@@ -601,8 +601,9 @@
     const form = field.form;
     let typing;
     let request;
-    // Everything on the sheet but the field (which keeps focus and what's typed), and everything beside and
-    // below the sheet but the traces (the margins come anew, their candles with them).
+    // Everything on the sheet but the field (which keeps focus and what's typed), and everything around the sheet but
+    // the traces (the margins come anew, their candles with them), each on its side of the sheet as the page has it:
+    // the Breviary's rank band stands above (#201).
     const swap = (page) => {
       const fresh = [...page.querySelector('.sheet-inner').children].map((part) => document.importNode(part, true));
       const at = fresh.findIndex((part) => part.matches('.sheet-search'));
@@ -615,8 +616,12 @@
       const hero = document.querySelector('.archive-hero');
       const stays = (part) => part.matches('.sheet, .traces');
       [...hero.children].filter((part) => !stays(part)).forEach((part) => part.remove());
-      hero.querySelector('.sheet').after(...[...page.querySelector('.archive-hero').children]
-        .filter((part) => !stays(part)).map((part) => document.importNode(part, true)));
+      const around = [...page.querySelector('.archive-hero').children];
+      const sheetAt = around.findIndex((part) => part.matches('.sheet'));
+      const copies = (parts) => parts.filter((part) => !stays(part)).map((part) => document.importNode(part, true));
+      const sheet = hero.querySelector('.sheet');
+      sheet.before(...copies(around.slice(0, sheetAt)));
+      sheet.after(...copies(around.slice(sheetAt + 1)));
       document.title = page.title;
       placeMargins();
     };

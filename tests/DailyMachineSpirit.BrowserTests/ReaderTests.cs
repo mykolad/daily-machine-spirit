@@ -191,6 +191,30 @@ public sealed partial class ReaderTests : IClassFixture<Chromium>, IAsyncLifetim
         Assert.Empty(scriptErrors);
     }
 
+    // On a narrow screen the rank stands above the sheet (#201), and a search, its results loading in place, keeps it there.
+    [Fact]
+    public async Task TheRankBand_StaysAboveTheSheet_WhenTheBreviaryIsSearched()
+    {
+        await AddRites(1);
+        await SignIn("583231");
+        await Page.SetViewportSizeAsync(375, 900);
+        await Page.GotoAsync("/");
+        await Expect(Page.Locator(".vote-status[data-signed-in=true]")).ToBeVisibleAsync();
+        await Page.Locator(".reaction-blessed").ClickAsync();
+        await Expect(Page.Locator(".toast-rank")).ToBeVisibleAsync();
+
+        await Page.GotoAsync("/breviary");
+        // With the script, the nav's search searches the Breviary in place.
+        await Page.Locator(".nav-find-open").ClickAsync();
+        await Page.Locator("#nav-find-field").FillAsync("words");
+        await Expect(Page).ToHaveTitleAsync(new Regex("“words” in your Breviary"));
+
+        Assert.True(await Page.EvaluateAsync<bool>(
+            "document.querySelector('.rank-band').compareDocumentPosition(document.querySelector('.sheet')) & Node.DOCUMENT_POSITION_FOLLOWING"));
+        await Expect(Page.Locator(".rank-band")).ToBeVisibleAsync();
+        Assert.Empty(scriptErrors);
+    }
+
     // The next page of the Archive comes in place, into the sheet, and a keyboard's focus moves to the first new rite.
     [Fact]
     public async Task LoadingOlderRites_AddsThemInPlace()

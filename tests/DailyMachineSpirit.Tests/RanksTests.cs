@@ -26,4 +26,15 @@ public class RanksTests
     [InlineData(300, "The shrine has no higher office", 100)]
     public void TheWayToTheNext_IsSaidAndMeasured(int judged, string said, int progress)
         => Assert.Equal((said, progress), (Ranks.ToNext(judged), Ranks.Progress(judged)));
+
+    // Only a rite that crosses a threshold raises the reader; none at all (another tab took the vote back before it was
+    // counted) raises nothing, rather than failing a vote already saved.
+    [Theory]
+    [InlineData(0, "")]
+    [InlineData(1, "Initiate")]
+    [InlineData(2, "")]
+    [InlineData(10, "Acolyte")]
+    [InlineData(11, "")]
+    public void ARite_RaisesTheReader_OnlyAcrossAThreshold(int judged, string raisedTo)
+        => Assert.Equal(raisedTo, Ranks.RaisedBy(judged).Match(Some: rank => rank.Name, None: () => string.Empty));
 }

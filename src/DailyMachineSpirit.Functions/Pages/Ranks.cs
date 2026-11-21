@@ -1,4 +1,5 @@
 using LanguageExt;
+using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Functions.Pages;
 
@@ -22,6 +23,12 @@ public static class Ranks
 
     /// <summary>The highest office the count of rites judged has reached.</summary>
     public static Rank Of(int judged) => All.Last(rank => judged >= rank.Threshold);
+
+    /// <summary>
+    /// The office the last of <paramref name="judged"/> rites raised the reader to, if it did. None for a count that
+    /// crossed no threshold, or for none at all (another tab took the vote back before it was counted).
+    /// </summary>
+    public static Option<Rank> RaisedBy(int judged) => judged > 0 && Of(judged) != Of(judged - 1) ? Some(Of(judged)) : None;
 
     /// <summary>The office after it, or None at the highest.</summary>
     public static Option<Rank> After(Rank rank) => All.SkipWhile(office => office != rank).Skip(1).HeadOrNone();
