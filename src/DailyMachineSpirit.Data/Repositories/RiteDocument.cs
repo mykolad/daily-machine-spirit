@@ -55,6 +55,9 @@ internal sealed record RiteDocument
 
     public int HeresyVotes { get; init; }
 
+    // Missing on a rite nobody has confessed to: the first confession's patch adds it.
+    public int Confessions { get; init; }
+
     // Null when missing: the JSON serializer doesn't know Option, so this is the one place a rite's null lives.
     public RiteSimilarity? Similarity { get; init; }
 
@@ -85,6 +88,7 @@ internal sealed record RiteDocument
         Edited = rite.Writing.Edited,
         BlessedVotes = rite.BlessedCount,
         HeresyVotes = rite.HeresyCount,
+        Confessions = rite.ConfessionCount,
         Similarity = rite.Similarity.Map(Utc.From).OrNull(),
         Tags = rite.Tags.OrNull(),
         WordsErasedAtUtc = rite.WordsErasedAtUtc.Map(Utc.From).OrNullable(),
@@ -109,6 +113,7 @@ internal sealed record RiteDocument
         },
         BlessedCount = BlessedVotes,
         HeresyCount = HeresyVotes,
+        ConfessionCount = Confessions,
         Similarity = Optional(Similarity),
         Tags = Optional(Tags),
         WordsErasedAtUtc = Optional(WordsErasedAtUtc).Map(Utc.From),
