@@ -272,9 +272,11 @@ skills/                           — Consult the Machine Spirit, a skill that p
   - **Recent rites** (Today): the four before today's, read with it in one query, so a new rite's purge of Today
     refreshes them too. The motto sits between the countdown and them. They and More rites are the same small
     parchments (`ParchmentCards`: kind, day and title); fewer than four share the row evenly.
-  - **Wide screens** (1280px and up) give the rite margins: the countdown and tags on the left, the votes on the right,
-    nothing the parchment already says. The markup stays in reading order and the stylesheet places it
-    (`docs/design/accessibility.md`). The Scriptorium puts its heading on the same altar: candles beside it, the glow
+  - **Wide screens** (1280px and up) give the rite margins: the countdown and tags on the left, the votes and the
+    confession on the right, nothing the parchment already says. The markup stays in reading order and the stylesheet
+    places it (`docs/design/accessibility.md`). Each margin's candle stands at the foot of the rite's row, so the votes'
+    margin keeps 176px under its notes (the candle's 120, and the Archive's 56 between): a tall margin moves the candle
+    down rather than through the words. The Scriptorium puts its heading on the same altar: candles beside it, the glow
     behind, the traces beyond. The candles and traces are `Styles.Altar`, which the Scriptorium's own stylesheet
     includes.
   - **The Archive** (`ArchivePage`, `ArchiveSheet`, `ArchiveRows`): Today's masthead, then one parchment sheet of rows
