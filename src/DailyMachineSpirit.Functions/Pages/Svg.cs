@@ -140,4 +140,34 @@ public static class Svg
     // The witnessed checkbox's tick (#198), drawn as a quill would: in currentColor, so the box sets it.
     public const string QuillTick =
         """<svg viewBox="0 0 24 24" width="12" height="12" focusable="false"><path d="M3 12.6C5.4 13 7.4 14.8 9.2 18.2C12 12.4 15.6 7.8 21.4 3.6C16.4 7.4 12.8 11.6 9.6 15.4C8.2 13.8 5.9 12.7 3 12.6Z" fill="currentColor"></path></svg>""";
+
+    // The readers' ranks (#201, Ranks): one family, a shrine's niche on its base, each office adding one shape, so they
+    // stay apart at 24px. Our own; the cog is the logo's.
+    // Supplicant: the empty niche on its base
+    public const string SupplicantInsignia =
+        """<svg class="insignia" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 20.5V12.5C7 9.3 9 6.9 12 5.2C15 6.9 17 9.3 17 12.5V20.5"/><path d="M5 20.5H19"/></svg>""";
+
+    // Initiate: the cursor, “_”
+    public const string InitiateInsignia =
+        """<svg class="insignia" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 20.5V12.5C7 9.3 9 6.9 12 5.2C15 6.9 17 9.3 17 12.5V20.5"/><path d="M5 20.5H19"/><path d="M10.6 17.4H13.4" stroke-width="1.8"/></svg>""";
+
+    // Acolyte: the prompt, “>_”
+    public const string AcolyteInsignia =
+        """<svg class="insignia" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 20.5V12.5C7 9.3 9 6.9 12 5.2C15 6.9 17 9.3 17 12.5V20.5"/><path d="M5 20.5H19"/><path d="M9.4 12.7 11.7 15 9.4 17.3" stroke-width="1.7"/><path d="M12.7 17.6H15" stroke-width="1.7"/></svg>""";
+
+    // Lector: the cog on the apex
+    public const string LectorInsignia =
+        """<svg class="insignia" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 20.5V12.5C7 9.3 9 6.9 12 5.2C15 6.9 17 9.3 17 12.5V20.5"/><path d="M5 20.5H19"/><path d="M9.4 12.7 11.7 15 9.4 17.3" stroke-width="1.7"/><path d="M12.7 17.6H15" stroke-width="1.7"/><path fill="currentColor" fill-rule="evenodd" stroke="none" d="M11.65 0.78L11.51 0.10L12.49 0.10L12.35 0.78L13.00 1.05L13.00 1.05L13.39 0.47L14.08 1.16L13.50 1.55L13.77 2.20L13.77 2.20L14.45 2.06L14.45 3.04L13.77 2.90L13.50 3.55L13.50 3.55L14.08 3.94L13.39 4.63L13.00 4.05L12.35 4.32L12.35 4.32L12.49 5.00L11.51 5.00L11.65 4.32L11.00 4.05L11.00 4.05L10.61 4.63L9.92 3.94L10.50 3.55L10.23 2.90L10.23 2.90L9.55 3.04L9.55 2.06L10.23 2.20L10.50 1.55L10.50 1.55L9.92 1.16L10.61 0.47L11.00 1.05L11.65 0.78ZM12.80 2.55A0.8 0.8 0 1 0 11.20 2.55A0.8 0.8 0 1 0 12.80 2.55Z"/></svg>""";
+
+    // Keeper of Rites: a plinth under the base
+    public const string KeeperOfRitesInsignia =
+        """<svg class="insignia" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 20.5V12.5C7 9.3 9 6.9 12 5.2C15 6.9 17 9.3 17 12.5V20.5"/><path d="M5 20.5H19"/><path d="M9.4 12.7 11.7 15 9.4 17.3" stroke-width="1.7"/><path d="M12.7 17.6H15" stroke-width="1.7"/><path fill="currentColor" fill-rule="evenodd" stroke="none" d="M11.65 0.78L11.51 0.10L12.49 0.10L12.35 0.78L13.00 1.05L13.00 1.05L13.39 0.47L14.08 1.16L13.50 1.55L13.77 2.20L13.77 2.20L14.45 2.06L14.45 3.04L13.77 2.90L13.50 3.55L13.50 3.55L14.08 3.94L13.39 4.63L13.00 4.05L12.35 4.32L12.35 4.32L12.49 5.00L11.51 5.00L11.65 4.32L11.00 4.05L11.00 4.05L10.61 4.63L9.92 3.94L10.50 3.55L10.23 2.90L10.23 2.90L9.55 3.04L9.55 2.06L10.23 2.20L10.50 1.55L10.50 1.55L9.92 1.16L10.61 0.47L11.00 1.05L11.65 0.78ZM12.80 2.55A0.8 0.8 0 1 0 11.20 2.55A0.8 0.8 0 1 0 12.80 2.55Z"/><path d="M3.5 22.6H20.5"/></svg>""";
+
+    // Archivist: two pinnacles
+    public const string ArchivistInsignia =
+        """<svg class="insignia" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 20.5V12.5C7 9.3 9 6.9 12 5.2C15 6.9 17 9.3 17 12.5V20.5"/><path d="M5 20.5H19"/><path d="M9.4 12.7 11.7 15 9.4 17.3" stroke-width="1.7"/><path d="M12.7 17.6H15" stroke-width="1.7"/><path fill="currentColor" fill-rule="evenodd" stroke="none" d="M11.65 0.78L11.51 0.10L12.49 0.10L12.35 0.78L13.00 1.05L13.00 1.05L13.39 0.47L14.08 1.16L13.50 1.55L13.77 2.20L13.77 2.20L14.45 2.06L14.45 3.04L13.77 2.90L13.50 3.55L13.50 3.55L14.08 3.94L13.39 4.63L13.00 4.05L12.35 4.32L12.35 4.32L12.49 5.00L11.51 5.00L11.65 4.32L11.00 4.05L11.00 4.05L10.61 4.63L9.92 3.94L10.50 3.55L10.23 2.90L10.23 2.90L9.55 3.04L9.55 2.06L10.23 2.20L10.50 1.55L10.50 1.55L9.92 1.16L10.61 0.47L11.00 1.05L11.65 0.78ZM12.80 2.55A0.8 0.8 0 1 0 11.20 2.55A0.8 0.8 0 1 0 12.80 2.55Z"/><path d="M3.5 22.6H20.5"/><path d="M3.2 20.5V13.6M20.8 20.5V13.6"/><path d="M3.2 10.4 4.3 12.2H2.1zM20.8 10.4 21.9 12.2H19.7z" fill="currentColor" stroke-width="1"/></svg>""";
+
+    // Elder of the Shrine: the niche filled solid, with “>_” cut out
+    public const string ElderOfTheShrineInsignia =
+        """<svg class="insignia" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path fill-rule="evenodd" fill="currentColor" stroke="none" d="M6 20.5V12.5C6 8.8 8.4 6 12 4C15.6 6 18 8.8 18 12.5V20.5ZM8.8 12.9 9.9 11.8 13.1 15 9.9 18.2 8.8 17.1 10.9 15ZM12.6 16.9H15.6V18.5H12.6Z"/><path d="M5 20.5H19"/><path fill="currentColor" fill-rule="evenodd" stroke="none" d="M11.65 0.78L11.51 0.10L12.49 0.10L12.35 0.78L13.00 1.05L13.00 1.05L13.39 0.47L14.08 1.16L13.50 1.55L13.77 2.20L13.77 2.20L14.45 2.06L14.45 3.04L13.77 2.90L13.50 3.55L13.50 3.55L14.08 3.94L13.39 4.63L13.00 4.05L12.35 4.32L12.35 4.32L12.49 5.00L11.51 5.00L11.65 4.32L11.00 4.05L11.00 4.05L10.61 4.63L9.92 3.94L10.50 3.55L10.23 2.90L10.23 2.90L9.55 3.04L9.55 2.06L10.23 2.20L10.50 1.55L10.50 1.55L9.92 1.16L10.61 0.47L11.00 1.05L11.65 0.78ZM12.80 2.55A0.8 0.8 0 1 0 11.20 2.55A0.8 0.8 0 1 0 12.80 2.55Z"/><path d="M3.5 22.6H20.5"/><path d="M3.2 20.5V13.6M20.8 20.5V13.6"/><path d="M3.2 10.4 4.3 12.2H2.1zM20.8 10.4 21.9 12.2H19.7z" fill="currentColor" stroke-width="1"/></svg>""";
 }

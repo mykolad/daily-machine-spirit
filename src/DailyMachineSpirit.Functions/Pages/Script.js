@@ -181,6 +181,26 @@
     };
     later();
   };
+  // A vote that raised the reader's rank says so instead (#201), with the office's insignia: the answer brings the words
+  // and the site's own glyph. The Breviary keeps the rank, so a missed toast loses nothing.
+  const sayRank = (rank) => {
+    clearTimeout(hideToast);
+    toast.innerHTML = '';
+    const pill = document.createElement('div');
+    pill.className = 'toast toast-rank';
+    pill.innerHTML = rank.insignia;
+    const words = document.createElement('span');
+    const office = document.createElement('span');
+    office.className = 'toast-office';
+    office.textContent = rank.office;
+    const next = document.createElement('span');
+    next.className = 'toast-next';
+    next.textContent = rank.next;
+    words.append(office, next);
+    pill.append(words);
+    toast.appendChild(pill);
+    hideToast = setTimeout(() => { toast.innerHTML = ''; }, 4000);
+  };
   // Whether the text reached the clipboard: the older fallback can fail quietly, and the toast must not lie.
   const copy = async (text) => {
     try {
@@ -372,7 +392,9 @@
         const answer = await response.json().catch(() => null);
         if (answer) remember(answer);
         show(vote, answer ?? hoped);
-        if (vote) {
+        if (answer?.rank) {
+          sayRank(answer.rank);
+        } else if (vote) {
           sayKept(vote);
         } else if (toast.querySelector('.toast-kept')) {
           // Taken back while the toast still says it's kept: it no longer is.
@@ -444,6 +466,7 @@
         tellConfession(!mine ? 'Thy confession is withdrawn.'
           : count === 1 ? 'Thy sin is recorded. Thou art the first to confess it.'
             : 'Thy sin is recorded. Thou art not alone.');
+        if (answer?.rank) sayRank(answer.rank);
       } catch {
         showConfession(previous, before);
         tellConfession('Thy confession wasn’t recorded. Try again.');

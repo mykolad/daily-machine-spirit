@@ -136,7 +136,9 @@ public sealed partial class ReaderTests : IClassFixture<Chromium>, IAsyncLifetim
         await Expect(blessed).ToHaveAttributeAsync("aria-pressed", "true");
         await Expect(blessed.Locator(".count")).ToHaveTextAsync("1");
         // Pressed at once, saved when the page says so.
-        await Expect(Page.Locator(".toast-kept")).ToContainTextAsync("Blessed. Kept in your Breviary");
+        // The reader's first rite makes them an Initiate (#201): the toast says so, in place of where the vote is kept.
+        await Expect(Page.Locator(".toast-rank")).ToContainTextAsync("Thou art now an Initiate.9 more rites to Acolyte.");
+        await Expect(Page.Locator(".toast-rank svg.insignia")).ToBeVisibleAsync();
         await Page.ReloadAsync();
         await Expect(Page.Locator(".reaction-blessed")).ToHaveAttributeAsync("aria-pressed", "true");
         await Expect(Page.Locator(".reaction-blessed .count")).ToHaveTextAsync("1");
@@ -154,7 +156,7 @@ public sealed partial class ReaderTests : IClassFixture<Chromium>, IAsyncLifetim
         await Page.GotoAsync("/");
         await Expect(Page.Locator(".vote-status[data-signed-in=true]")).ToBeVisibleAsync();
         await Page.Locator(".reaction-blessed").ClickAsync();
-        await Expect(Page.Locator(".toast-kept")).ToBeVisibleAsync();
+        await Expect(Page.Locator(".toast-rank")).ToBeVisibleAsync();
         var confess = Page.Locator("[data-confess]");
         await confess.ClickAsync();
 
