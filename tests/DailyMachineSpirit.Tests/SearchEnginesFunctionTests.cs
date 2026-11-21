@@ -42,7 +42,7 @@ public sealed class SearchEnginesFunctionTests : IAsyncLifetime
             .ToList() ?? [];
         Assert.Equal(
             [
-                $"https://{Site}/ 2026-10-09", $"https://{Site}/archive 2026-10-09", $"https://{Site}/reliquary", $"https://{Site}/catechism",
+                $"https://{Site}/ 2026-10-09", $"https://{Site}/archive 2026-10-09", $"https://{Site}/reliquary", $"https://{Site}/reliquary/confessed", $"https://{Site}/catechism",
                 .. RiteTags.All.Select(tag => $"https://{Site}/tags/{tag.Key}"),
                 $"https://{Site}/r/2 2026-10-09", $"https://{Site}/r/1 2026-10-08",
             ],

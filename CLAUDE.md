@@ -411,7 +411,7 @@ skills/                           — Consult the Machine Spirit, a skill that p
     Cloudflare). Signed out, it offers the sign-in. Signed in, it's linked from a book icon in the nav (beside search,
     shown by the script from the `dms-signed-in` cookie, below), the vote status under a rite, and the toast after a
     vote; the Catechism says it's there.
-  - **The Reliquary** (`/reliquary`, #154, `ReliquaryPage`): the readers' most venerated rites across the site: the
+  - **The Reliquary** (`/reliquary`, #154, `ReliquaryPage`; its other order, the most confessed, at `/reliquary/confessed`, #200, `Confession`, rows badged by `ConfessionBadge`): the readers' most venerated rites across the site: the
     Archive in its other order, with its masthead and sheet, the nav's Archive link current. Both pages offer the two
     orders under the heading, "Newest" and "Most venerated" (`ArchiveSheet.Orders`, links, like the Breviary's verdicts).
     A rite's veneration is its blessings less its heresies (`Veneration`): only rites above zero, the most first, a tie

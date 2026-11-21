@@ -19,4 +19,16 @@ public class RelicBadgeTests
     [Fact]
     public void For_ARiteTheReliquaryDoesntKeep_IsEmpty()
         => Assert.Empty(RelicBadge.For(7, new Dictionary<int, int> { [8] = 1 }));
+
+    [Theory]
+    [InlineData(1, ">Most confessed<")]
+    [InlineData(3, ">3rd most confessed<")]
+    [InlineData(12, ">12th most confessed<")]
+    public void ConfessionBadge_ForARiteAmongTheMostConfessed_SaysItsPlace_AndLeadsToThatOrder(int place, string said)
+    {
+        var badge = ConfessionBadge.For(7, new Dictionary<int, int> { [7] = place });
+
+        Assert.Contains(said, badge);
+        Assert.Contains("href=\"/reliquary/confessed\"", badge);
+    }
 }

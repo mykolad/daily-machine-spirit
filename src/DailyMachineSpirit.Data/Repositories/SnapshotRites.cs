@@ -54,7 +54,7 @@ public sealed class SnapshotRites : IRiteReader
         => Answer(rites.Select(rite => new RiteDay(rite.Number, rite.PublishedOnUtc)).ToList());
 
     public Task<Either<Error, List<RiteVotes>>> GetVotes(CancellationToken cancellationToken)
-        => Answer(rites.Select(rite => new RiteVotes(rite.Number, rite.BlessedCount, rite.HeresyCount)).ToList());
+        => Answer(rites.Select(rite => new RiteVotes(rite.Number, rite.BlessedCount, rite.HeresyCount, rite.ConfessionCount)).ToList());
 
     public Task<Either<Error, List<RiteWords>>> GetAllWords(CancellationToken cancellationToken)
         => Answer(rites.Select(rite => new RiteWords(

@@ -30,6 +30,11 @@ public sealed class RiteSnapshotTests : IAsyncLifetime
     public async Task TheSnapshot_AnswersEveryRead_AsCosmosDoes()
     {
         await AddRites();
+        // Counts to carry (#200): two confessions on one rite, a blessing on another.
+        var votes = new VoteRepository(cosmos.Container);
+        Ok(await votes.Vote(2, new VoterKey("a"), vote => vote with { Confessed = true }, CancellationToken.None));
+        Ok(await votes.Vote(2, new VoterKey("b"), vote => vote with { Confessed = true }, CancellationToken.None));
+        Ok(await votes.Vote(3, new VoterKey("a"), vote => vote with { Reaction = Some(Reaction.Blessed) }, CancellationToken.None));
         var copy = new SnapshotRites(Ok(await Rites.GetAllPublished(CancellationToken.None)));
         var none = CancellationToken.None;
 
@@ -53,6 +58,9 @@ public sealed class RiteSnapshotTests : IAsyncLifetime
             Assert.Equal([2, 4], Ok(await source.GetScoresByRiteNumber("jev/q1", none)).Keys.Order());
             Assert.Equal([3], Numbers(await source.GetTaggedOlderThan("caches", 4, 1, none)));
             Assert.Equal(Some(2), Ok(await source.GetPublishedOn(Day.AddDays(-2), none)).Map(rite => rite.Number));
+            Assert.Equal(
+                [new RiteVotes(1, 0, 0, 0), new RiteVotes(2, 0, 0, 2), new RiteVotes(3, 1, 0, 0), new RiteVotes(4, 0, 0, 0)],
+                Ok(await source.GetVotes(none)).OrderBy(rite => rite.Number));
         }
     }
 

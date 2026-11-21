@@ -174,6 +174,26 @@ public sealed partial class ReaderTests : IClassFixture<Chromium>, IAsyncLifetim
         Assert.Empty(scriptErrors);
     }
 
+    // A row of the most confessed with all three counts wraps between them on the narrowest phone, within the sheet.
+    [Fact]
+    public async Task AMostConfessedRow_FitsTheSheet_At320px()
+    {
+        await AddRites(1);
+        var votes = new VoteRepository(cosmos.Container);
+        foreach (var (voter, verdict) in new[] { ("a", Reaction.Blessed), ("b", Reaction.Heresy), ("c", Reaction.Blessed) })
+        {
+            Assert.True((await votes.Vote(1, new VoterKey(voter), vote => new ReaderVote(Some(verdict), true), CancellationToken.None)).IsRight);
+        }
+
+        await Page.SetViewportSizeAsync(320, 800);
+        await Page.GotoAsync("/reliquary/confessed");
+
+        await Expect(Page.Locator(".row-counts")).ToContainTextAsync("3 have confessed");
+        Assert.True(await Page.EvaluateAsync<bool>(
+            "document.querySelector('.row-counts').getBoundingClientRect().right <= document.querySelector('.sheet-inner').getBoundingClientRect().right"));
+        Assert.Empty(scriptErrors);
+    }
+
     // Either answer brings every count, and the page shows them all: a blessing and confession made elsewhere since the
     // page loaded show after the reader confesses, and another confession after they bless.
     [Fact]

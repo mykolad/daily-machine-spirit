@@ -74,14 +74,16 @@ public static class ArchiveSheet
             """;
 
     /// <summary>
-    /// The Archive's two orders: the newest first (the Archive) or the most venerated (the Reliquary). Links, as the
-    /// Breviary's verdicts are: each is a page of its own, so it works without the script, and the current one says so.
+    /// The Archive's orders: the newest first (the Archive), the most venerated or the most confessed (the Reliquary).
+    /// Links, as the Breviary's verdicts are: each is a page of its own, so it works without the script, and the current
+    /// one says so.
     /// </summary>
-    public static string Orders(bool byVeneration)
+    public static string Orders(ArchiveOrder shown)
         => $"""
             <nav class="orders" aria-label="Order">
-            <a class="order" href="{Paths.Archive}"{Current(!byVeneration)}>Newest</a>
-            <a class="order" href="{Paths.Reliquary}"{Current(byVeneration)}>Most venerated</a>
+            <a class="order" href="{Paths.Archive}"{Current(shown == ArchiveOrder.Newest)}>Newest</a>
+            <a class="order" href="{Paths.Reliquary}"{Current(shown == ArchiveOrder.MostVenerated)}>Most venerated</a>
+            <a class="order" href="{Paths.ReliquaryConfessed}"{Current(shown == ArchiveOrder.MostConfessed)}>Most confessed</a>
             </nav>
             """;
 
