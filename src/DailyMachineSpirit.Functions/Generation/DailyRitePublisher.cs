@@ -97,9 +97,7 @@ public sealed class DailyRitePublisher
                 .BindAsync(waiting => rites.GetNewest(augury.Value.RecentRitesCompared, cancellationToken)
                     .MapAsync(recent =>
                     {
-                        var feasts = PublishingDays.Feasts(waiting, today);
-                        var ordered = LiturgicalCalendar.Order(PublishingDays.Ordinary(waiting, feasts), recent, placements.Order, augury.Value);
-                        return Task.FromResult(PublishingDays.Of(ordered, feasts, today).Where(entry => entry.Day == today).Select(entry => entry.Draft).HeadOrNone());
+                        return Task.FromResult(PublishingDays.Of(waiting, recent, placements.Order, augury.Value, today).Where(entry => entry.Day == today).Select(entry => entry.Draft).HeadOrNone());
                     })));
 
     // Theirs stands, and this run's draft (if another) keeps waiting. When the day has no rite after all, or it can't be

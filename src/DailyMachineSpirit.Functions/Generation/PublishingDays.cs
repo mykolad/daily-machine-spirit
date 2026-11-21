@@ -4,7 +4,8 @@ namespace DailyMachineSpirit.Functions.Generation;
 
 /// <summary>
 /// The day each waiting draft goes out (#202): a feast's draft on its feast's day, the Calendar's order on the days
-/// between. What the publisher takes, and what the Scriptorium's Calendar shows.
+/// between, picked with each feast already among the rites before it. What the publisher takes, and what the
+/// Scriptorium's Calendar shows.
 /// </summary>
 public static class PublishingDays
 {
@@ -25,24 +26,15 @@ public static class PublishingDays
         return waiting.Where(draft => !kept.Contains(draft.Id)).ToList();
     }
 
-    /// <summary>Day by day from <paramref name="first"/>: the day's feast draft, or else the next in the order.</summary>
-    /// <param name="ordered">The ordinary drafts, in the Calendar's order.</param>
-    public static List<(Draft Draft, DateOnly Day)> Of(IReadOnlyList<Draft> ordered, IReadOnlyDictionary<DateOnly, Draft> feasts, DateOnly first)
+    /// <summary>Day by day from <paramref name="first"/>: the day's feast draft, or else the next the order picks.</summary>
+    /// <param name="placed">The Scribes' order.</param>
+    public static List<(Draft Draft, DateOnly Day)> Of(
+        IReadOnlyList<Draft> waiting, IReadOnlyList<Rite> recent, IReadOnlyList<Guid> placed, AuguryOptions augury, DateOnly first)
     {
-        var next = new Queue<Draft>(ordered);
-        var last = feasts.Keys.DefaultIfEmpty(first).Max();
-        var days = new List<(Draft Draft, DateOnly Day)>();
-        for (var day = first; next.Count > 0 || day <= last; day = day.AddDays(1))
-        {
-            if (feasts.TryGetValue(day, out var feast))
-            {
-                days.Add((feast, day));
-            }
-            else if (next.Count > 0)
-            {
-                days.Add((next.Dequeue(), day));
-            }
-        }
-        return days;
+        var feasts = Feasts(waiting, first);
+        var fixedDays = feasts.ToDictionary(feast => feast.Key.DayNumber - first.DayNumber, feast => feast.Value);
+        return LiturgicalCalendar.Schedule(Ordinary(waiting, feasts), recent, placed, augury, fixedDays)
+            .Select(entry => (entry.Draft, first.AddDays(entry.Day)))
+            .ToList();
     }
 }

@@ -464,7 +464,8 @@ skills/                           — Consult the Machine Spirit, a skill that p
     first of the year, 29 February, the 256th day, a Friday the 13th, the clocks' changes, the last Friday of July,
     19 January 2038). A refill first writes a draft for each feast in the next 14 days that has none waiting
     (`RiteWriting.FeastDay`, the feast's theme in the prompt), with every check a draft gets. `PublishingDays` gives
-    it its day, ahead of both orders, and the order the days between: the publisher and the Scriptorium's Calendar
+    it its day, ahead of both orders, and the order the days between, each pick made with the feasts before it among
+    the rites before (`LiturgicalCalendar.Schedule`): the publisher and the Scriptorium's Calendar
     (its own "Feast days" group, no Anoint) both use it. Burned, the next refill writes another. One whose day passed
     (only if publishing failed that day) joins the Augury's order, for the Scribes to keep or burn; the Machine
     Spirit doesn't burn it, as its decisions teach the Precepts.
