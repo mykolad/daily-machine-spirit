@@ -1,3 +1,4 @@
+using DailyMachineSpirit.Data.Entities;
 using LanguageExt;
 
 namespace DailyMachineSpirit.Functions.Generation.Feasts;
@@ -41,6 +42,9 @@ public static class Feasts
 
     /// <summary>The feast that falls on the day, if any.</summary>
     public static Option<Feast> On(DateOnly day) => All.Find(feast => feast.Falls(day));
+
+    /// <summary>The feast a rite was written for, if it went out on that day (one that missed it is an ordinary day's).</summary>
+    public static Option<Feast> Kept(Rite rite) => rite.Writing.FeastDay.Filter(day => day == rite.PublishedOnUtc).Bind(On);
 
     private static bool IsLastSunday(DateOnly day) => day.DayOfWeek == DayOfWeek.Sunday && day.AddDays(7).Month != day.Month;
 }

@@ -69,6 +69,7 @@ public static class Styles
         @media (min-width:700px){.margin-text{display:block}}
         .parchment-body{position:relative;display:flex;flex-direction:column;align-items:center;gap:12px}
         .kicker{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:14px;letter-spacing:.22em;color:#8f2a20}
+        .feast-line{margin:6px 0 0;font-family:var(--serif);font-style:italic;font-size:18px;color:#8f2a20}
         .rite-title{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:clamp(28px,4.6vw,44px);line-height:1.1;color:#8f2a20;text-wrap:balance}
         .rite-date{font-family:var(--serif);font-style:italic;font-size:18px;color:#5c4a33}
         .imperial{position:relative;display:inline-block}
@@ -265,6 +266,7 @@ public static class Styles
         .row-number{font-family:var(--mono);font-weight:500;font-size:12px;letter-spacing:.06em;color:#5c4a33}
         .kind{font-family:Cinzel,serif;font-weight:700;font-size:13px;letter-spacing:.16em;color:#c9a25a}
         .row .kind{font-size:10px;letter-spacing:.2em;color:#8f2a20}
+        .row-feast{display:block;font-family:var(--serif);font-style:italic;font-size:15px;color:#8f2a20}
         .row-main{min-width:0;display:flex;flex-direction:column;gap:2px}
         .row-title{font-family:Cinzel,serif;font-weight:700;font-size:17px;line-height:1.2;color:#8f2a20;text-decoration:none}
         .row-title:hover{color:#8f2a20}

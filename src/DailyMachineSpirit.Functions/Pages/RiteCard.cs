@@ -1,4 +1,5 @@
 using DailyMachineSpirit.Data.Entities;
+using DailyMachineSpirit.Functions.Generation.Feasts;
 using DailyMachineSpirit.Functions.Tags;
 
 namespace DailyMachineSpirit.Functions.Pages;
@@ -62,6 +63,7 @@ public static class RiteCard
             <span class="margin-text margin-right" aria-hidden="true">01001011 01001110 01001111 01010111 · 01001011 01001110</span>
             <div class="parchment-body">
             <p class="kicker">A {kind} · NO. {rite.Number}</p>
+            {Feasts.Kept(rite).Map(feast => $"""<p class="feast-line">{Html.Encode(feast.Name)}</p>""").IfNone(string.Empty)}
             <{heading} class="rite-title" id="rite-title">{Html.Encode(rite.Writing.Title)}</{heading}>
             {ImperialDate.WithTheDay(rite.PublishedOnUtc, "rite-day", "rite-date")}
             {Svg.RubricDivider}
