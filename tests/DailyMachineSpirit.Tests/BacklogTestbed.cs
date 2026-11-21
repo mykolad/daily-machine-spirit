@@ -115,6 +115,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
             DraftJudging(),
             Judge(),
             Options.Create(Settings.Backlog with { DraftsWaiting = BacklogSize }),
+            Time,
             Probe.Metrics,
             NullLogger<BacklogRefiller>.Instance);
     }

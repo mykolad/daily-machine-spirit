@@ -1,5 +1,6 @@
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
+using DailyMachineSpirit.Functions.Generation.Feasts;
 using DailyMachineSpirit.Functions.Generation.Judging;
 using DailyMachineSpirit.Functions.Generation.Writing;
 using DailyMachineSpirit.Functions.Telemetry;
@@ -25,6 +26,7 @@ public sealed class BacklogRefiller
     private readonly DraftJudging judging;
     private readonly IRiteJudge judge;
     private readonly IOptions<BacklogOptions> options;
+    private readonly TimeProvider time;
     private readonly SiteMetrics metrics;
     private readonly ILogger<BacklogRefiller> logger;
 
@@ -37,6 +39,7 @@ public sealed class BacklogRefiller
         DraftJudging judging,
         IRiteJudge judge,
         IOptions<BacklogOptions> options,
+        TimeProvider time,
         SiteMetrics metrics,
         ILogger<BacklogRefiller> logger)
     {
@@ -48,6 +51,7 @@ public sealed class BacklogRefiller
         this.judging = judging;
         this.judge = judge;
         this.options = options;
+        this.time = time;
         this.metrics = metrics;
         this.logger = logger;
     }
@@ -59,8 +63,9 @@ public sealed class BacklogRefiller
     public async Task<Either<Error, int>> Refill(CancellationToken cancellationToken)
     {
         await JudgeTheUnjudged(cancellationToken);
+        var feasts = await WriteFeasts(cancellationToken);
 
-        for (var written = 0; ; written++)
+        for (var written = feasts; ; written++)
         {
             var wroteOne = await drafts.GetWaiting(cancellationToken)
                 .BindAsync(async waiting => waiting.Count >= options.Value.DraftsWaiting
@@ -79,6 +84,31 @@ public sealed class BacklogRefiller
     }
 
     /// <summary>
+    /// A draft for each feast in the coming days (#202) that has none waiting, nor a rite already out on its day: written
+    /// ahead, for the Scribes to read, amend or burn; burned, the next refill writes another. Returns how many it wrote.
+    /// A failure is only logged: the ordinary drafts matter more, and the next refill tries again.
+    /// </summary>
+    private async Task<int> WriteFeasts(CancellationToken cancellationToken)
+    {
+        var today = DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime);
+        var written = 0;
+        foreach (var feast in Enumerable.Range(0, Feasts.Feasts.DaysAhead)
+            .Select(ahead => today.AddDays(ahead))
+            .SelectMany(day => Feasts.Feasts.On(day).Map(feast => new FeastDate(feast, day))))
+        {
+            var added = await drafts.GetWaiting(cancellationToken)
+                .BindAsync(waiting => rites.GetPublishedOn(feast.Day, cancellationToken)
+                    .BindAsync(published => waiting.Exists(draft => draft.Writing.FeastDay == Some(feast.Day)) || published.IsSome
+                        ? Task.FromResult(Right<Error, bool>(false))
+                        : AddDraft(waiting, Some(feast), cancellationToken).MapAsync(_ => Task.FromResult(true))));
+            added.Match(
+                Right: wrote => written += wrote ? 1 : 0,
+                Left: error => logger.LogWarning(error.ToException(), "No draft was written for {Feast} on {Day}: {Reason}", feast.Feast.Key, feast.Day, error.Message));
+        }
+        return written;
+    }
+
+    /// <summary>
     /// Writes, judges and saves one draft, of the kind the backlog has fewer of, in the form the recent rites and waiting
     /// drafts took least, resting the images they lean on (#193), and repeating no rite already written. The prompt
     /// lists the recent rites, the <paramref name="waiting"/> drafts and the recently burned ones (they teach the model
@@ -87,6 +117,10 @@ public sealed class BacklogRefiller
     /// <see cref="BacklogOptions.RewritesOfARepeatedRite"/> times, then kept, marked with what it repeats, for the Scribes to judge.
     /// </summary>
     public Task<Either<Error, Draft>> AddDraft(IReadOnlyList<Draft> waiting, CancellationToken cancellationToken)
+        => AddDraft(waiting, None, cancellationToken);
+
+    // Written for a feast, the draft is about it and keeps its day (#202); the rest is as for any draft.
+    private Task<Either<Error, Draft>> AddDraft(IReadOnlyList<Draft> waiting, Option<FeastDate> feast, CancellationToken cancellationToken)
         => rites.GetAllWords(cancellationToken)
             .BindAsync(published => scriptorium.GetBurned(options.Value.RecentRitesInPrompt, cancellationToken)
                 .BindAsync(burned =>
@@ -96,12 +130,15 @@ public sealed class BacklogRefiller
                     var kind = KindToWrite(waiting);
                     return Unrepeated(
                         kind,
-                        Variety(kind, newest, waiting),
+                        Variety(kind, newest, waiting, feast.Map(day => day.Feast)),
                         [.. newest.Select(Taken), .. drafted],
                         [.. published.Select(Taken), .. drafted],
                         options.Value.RewritesOfARepeatedRite,
                         cancellationToken);
                 }))
+            .MapAsync(draft => Task.FromResult(feast.Match(
+                Some: day => draft with { Writing = draft.Writing with { FeastDay = day.Day } },
+                None: () => draft)))
             .BindAsync(async draft => Right<Error, Draft>(await Judged(draft, cancellationToken)))
             .BindAsync(draft => drafts.Add(draft, cancellationToken));
 
@@ -185,13 +222,13 @@ public sealed class BacklogRefiller
     private static TakenRite Taken(Draft draft) => new(draft.Writing.Title, draft.Writing.HereticalTruth);
 
     // The form the newest rites and the waiting drafts took least, and the images their words lean on, to rest (#193).
-    private static RiteVariety Variety(RiteKind kind, IReadOnlyList<RiteWords> newest, IReadOnlyList<Draft> waiting)
+    private static RiteVariety Variety(RiteKind kind, IReadOnlyList<RiteWords> newest, IReadOnlyList<Draft> waiting, Option<Feast> feast)
     {
         var forms = newest.Select(rite => RiteForms.Of(rite.Form, rite.Title))
             .Concat(waiting.Select(draft => RiteForms.Of(draft.Writing.Form, draft.Writing.Title)))
             .Somes();
         var texts = newest.Select(rite => rite.Text).Concat(waiting.Select(draft => draft.Writing.Text));
-        return new RiteVariety(RiteForms.ToWrite(kind, forms), WornImages.In(texts, TimesAnImageIsWorn));
+        return new RiteVariety(RiteForms.ToWrite(kind, forms), WornImages.In(texts, TimesAnImageIsWorn), feast);
     }
 
     private static RiteKind KindToWrite(IReadOnlyList<Draft> waiting)

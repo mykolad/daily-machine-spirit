@@ -34,6 +34,11 @@ public static class RitePrompt
         sb.AppendLine("re-running a failed build until it passes, clearing caches, deleting and reinstalling dependencies, restarting");
         sb.AppendLine("things, adding sleeps, raising timeouts, copying answers without reading them, and so on. Not a habit that");
         sb.AppendLine("needs a particular tool's commands or settings to understand.");
+        variety.Bind(asked => asked.Feast).IfSome(feast =>
+        {
+            sb.AppendLine($"It's written for a feast day, and published on that day: {feast.Theme}. Choose the habit to fit it.");
+            sb.AppendLine("Speak of the day in the setting's own words: never by a name it has today, a holiday's, or a person's.");
+        });
         sb.AppendLine();
         sb.AppendLine("Then write the HERETICAL TRUTH: one or two plain, technically accurate sentences on what really happens and");
         sb.AppendLine("what would actually fix it, in general terms (two steps racing each other, a stale cache, a missing check),");

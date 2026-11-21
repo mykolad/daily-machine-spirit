@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using DailyMachineSpirit.Data.Entities;
+using DailyMachineSpirit.Functions.Generation.Feasts;
 using DailyMachineSpirit.Functions.Scriptorium.Naming;
 using DailyMachineSpirit.Functions.Tags;
 using LanguageExt;
@@ -93,15 +94,31 @@ public static partial class ScriptoriumPage
         html.Append(EveryRite());
         html.Append("</div>");
 
-        var anointed = calendar.Count(entry => entry.PlacedByScribes);
-        var rows = calendar.Select((entry, index) => new CalendarRow(entry, index + 1, index + 1 == anointed)).ToList();
-        Group(html, rows.Where(row => row.Entry.PlacedByScribes).ToList(), subject, view.NowUtc, acted, names, new(
+        // A feast's draft (#202) may go out among the anointed ones, so the first and last anointed are found, not
+        // counted from their places.
+        var firstAnointed = calendar.FindIndex(entry => entry.PlacedByScribes && !IsFeast(entry));
+        var lastAnointed = calendar.FindLastIndex(entry => entry.PlacedByScribes && !IsFeast(entry));
+        var rows = calendar.Select((entry, index) => new CalendarRow(entry, index + 1, index == firstAnointed, index == lastAnointed)).ToList();
+        var feasts = rows.Where(row => IsFeast(row.Entry)).ToList();
+        if (feasts.Count > 0)
+        {
+            Group(html, feasts, subject, view.NowUtc, acted, names, new(
+                "feasts", ScriptoriumIcons.Anoint, "Feast days", "Each published on its feast’s day, whatever the orders below say.",
+                "No feast is near.", "for a feast"));
+        }
+        Group(html, rows.Where(row => row.Entry.PlacedByScribes && !IsFeast(row.Entry)).ToList(), subject, view.NowUtc, acted, names, new(
             "scribes", ScriptoriumIcons.Anoint, "Anointed", "Published in this order, before the Augury’s.",
             "No rite is anointed yet.", "among the anointed"));
-        Group(html, rows.Where(row => !row.Entry.PlacedByScribes).ToList(), subject, view.NowUtc, acted, names, new(
+        Group(html, rows.Where(row => !row.Entry.PlacedByScribes && !IsFeast(row.Entry)).ToList(), subject, view.NowUtc, acted, names, new(
             "augury", ScriptoriumIcons.Augury, "The Augury’s order", "Ordered by quality and variety. Anoint one to give it a place.",
             "Every rite is anointed.", "in the Augury’s order"));
     }
+
+    private static string FeastName(CalendarEntry entry)
+        => IsFeast(entry) ? Feasts.On(entry.PublishesOnUtc).Map(feast => $"""<span class="feast">For {Encode(feast.Name)}</span>""").IfNone(string.Empty) : string.Empty;
+
+    // Kept for its feast's day; one whose day passed is in the orders like any other draft.
+    private static bool IsFeast(CalendarEntry entry) => entry.Draft.Writing.FeastDay == Some(entry.PublishesOnUtc);
 
     // What the rites on the page (waiting, or in the Ashes) are about, by their tags, most first, so the Scribes see a
     // calendar heavy on one subject; each narrows the page to its rites. Links, so the filter works without the script,
@@ -181,7 +198,7 @@ public static partial class ScriptoriumPage
     private static void Row(
         StringBuilder html, CalendarRow row, Option<Tag> subject, DateTime nowUtc, Option<Guid> acted, IReadOnlyList<ScribeName> names)
     {
-        var (entry, place, lastAnointed) = row;
+        var (entry, place, firstAnointed, lastAnointed) = row;
         var draft = entry.Draft;
         var id = draft.Id.ToString("D");
         var title = draft.Writing.Title;
@@ -198,10 +215,10 @@ public static partial class ScriptoriumPage
         html.Append($"""
             <div class="row-head">
             <p class="where"><span class="place">#{place}</span><span class="day"><time datetime="{entry.PublishesOnUtc:yyyy-MM-dd}">{Date(entry.PublishesOnUtc)}</time><span class="kind">{(draft.Writing.Kind == RiteKind.Prayer ? "Prayer" : "Ritual")}</span></span></p>
-            <div class="heading"><h4 class="row-title" id="title-{id}">{WithCode(title)}</h4>{Tags(draft)}</div>
+            <div class="heading">{FeastName(entry)}<h4 class="row-title" id="title-{id}">{WithCode(title)}</h4>{Tags(draft)}</div>
             <div class="cluster">
             {Score(draft)}
-            {(entry.PlacedByScribes ? $"""<span class="pair" role="group" aria-label="Reorder">{Exalt(id, title, place)}{Humble(id, title, lastAnointed)}</span>""" : string.Empty)}
+            {(entry.PlacedByScribes ? $"""<span class="pair" role="group" aria-label="Reorder">{Exalt(id, title, firstAnointed, place)}{Humble(id, title, lastAnointed)}</span>""" : string.Empty)}
             <button type="button" class="expand" aria-expanded="true" aria-controls="body-{id}" aria-label="Collapse {Encode(title)}" title="Show or fold away the whole rite" hidden>{ScriptoriumIcons.Chevron}</button>
             </div>
             </div>
@@ -223,7 +240,8 @@ public static partial class ScriptoriumPage
             """);
         html.Append($"""<div class="buttons">{string.Concat(
             // Anointing the Augury's first is useful too: it keeps it there, ahead of a better draft a refill may bring.
-            entry.PlacedByScribes ? string.Empty : Button(id, title, "anoint", ScriptoriumIcons.Anoint, "Anoint", "primary"),
+            // Not a feast's: its day is its feast's, which no order moves.
+            entry.PlacedByScribes || IsFeast(entry) ? string.Empty : Button(id, title, "anoint", ScriptoriumIcons.Anoint, "Anoint", "primary"),
             AmendLink(id, title, subject),
             // Only where judging couldn't score it: judging a judged draft again would change nothing its words did.
             draft.Augury.IsSome ? string.Empty : Button(id, title, "judge", ScriptoriumIcons.Augury, "Judge Again", "secondary"),
@@ -268,9 +286,9 @@ public static partial class ScriptoriumPage
 
     // Only the anointed are moved by hand (Scribes.Exalt, .Humble), among themselves: the Augury orders the rest. At the
     // ends of the anointed there's nowhere to go, so the button is there but can't be pressed.
-    private static string Exalt(string id, string title, int place)
-        => place == 1
-            ? Step(ScriptoriumIcons.Exalt, "Exalt", title, "Already next to publish", None)
+    private static string Exalt(string id, string title, bool firstAnointed, int place)
+        => firstAnointed
+            ? Step(ScriptoriumIcons.Exalt, "Exalt", title, place == 1 ? "Already next to publish" : "Already first among the anointed", None)
             : Step(ScriptoriumIcons.Exalt, "Exalt", title, "Exalt: one day earlier", Some($"/scriptorium/drafts/{id}/exalt"));
 
     private static string Humble(string id, string title, bool lastAnointed)
@@ -374,7 +392,7 @@ public static partial class ScriptoriumPage
 
     private static string Percent(float quality) => quality.ToString("0%", CultureInfo.InvariantCulture);
 
-    private sealed record CalendarRow(CalendarEntry Entry, int Place, bool LastAnointed);
+    private sealed record CalendarRow(CalendarEntry Entry, int Place, bool FirstAnointed, bool LastAnointed);
 
     /// <param name="Where">Where the group's rites are, for "No Caches rites …" when none of the subject's are.</param>
     private sealed record CalendarGroup(string Kind, string Icon, string Title, string Hint, string Empty, string Where);

@@ -447,6 +447,15 @@ skills/                           — Consult the Machine Spirit, a skill that p
     `RiteRepository.Publish` takes the number, saves the rite and marks the draft published in one batch, using the
     draft's ETag, so a draft is never published twice. An empty backlog never skips a day: a draft is written on the
     spot.
+  - **Feast days** (#202, `Generation/Feasts/`): a few days a rite is written for, in the far future's words (the
+    first of the year, 29 February, the 256th day, a Friday the 13th, the clocks' changes, the last Friday of July,
+    19 January 2038). A refill first writes a draft for each feast in the next 14 days that has none waiting
+    (`RiteWriting.FeastDay`, the feast's theme in the prompt), with every check a draft gets. `PublishingDays` gives
+    it its day, ahead of both orders, and the order the days between, each pick made with the feasts before it among
+    the rites before (`LiturgicalCalendar.Schedule`): the publisher and the Scriptorium's Calendar
+    (its own "Feast days" group, no Anoint) both use it. Burned, the next refill writes another. One whose day passed
+    (only if publishing failed that day) joins the Augury's order, for the Scribes to keep or burn; the Machine
+    Spirit doesn't burn it, as its decisions teach the Precepts.
   - **The Augury** (`LiturgicalCalendar`) orders the waiting drafts:
     - Better drafts go first, by the rubric judge's quality (below).
     - A draft much like the week's rites before it waits.
