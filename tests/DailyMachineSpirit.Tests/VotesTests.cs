@@ -209,7 +209,12 @@ public sealed class VotesTests : IAsyncLifetime
         var (status, body) = await Post(Function(), 1, """{"vote":"blessed"}""", "application/json", SignedIn());
 
         Assert.Equal(StatusCodes.Status200OK, status);
-        Assert.Equal("""{"blessed":1,"heresy":0,"confessions":0,"vote":"blessed","confessed":false,"countedAt":1791600000000}""", body);
+        // The reader's first rite makes them an Initiate (#201): the answer says so, for the toast.
+        Assert.StartsWith("""{"blessed":1,"heresy":0,"confessions":0,"vote":"blessed","confessed":false,"rank":{""", body);
+        using var answer = JsonDocument.Parse(body);
+        var rank = answer.RootElement.GetProperty("rank");
+        Assert.Equal(("Thou art now an Initiate.", "9 more rites to Acolyte."), (rank.GetProperty("office").GetString(), rank.GetProperty("next").GetString()));
+        Assert.StartsWith("""<svg class="insignia" """, rank.GetProperty("insignia").GetString());
     }
 
     // The cached pages that show the rite's counts: its own, Today, and the Reliquary, which the vote may reorder.
@@ -236,9 +241,22 @@ public sealed class VotesTests : IAsyncLifetime
         var (_, votes) = await Get(Function(), "?rites=1", SignedIn());
 
         Assert.Equal(StatusCodes.Status200OK, status);
-        Assert.Equal("""{"blessed":1,"heresy":0,"confessions":1,"vote":"blessed","confessed":true,"countedAt":1791600000000}""", body);
+        Assert.Equal("""{"blessed":1,"heresy":0,"confessions":1,"vote":"blessed","confessed":true,"rank":null,"countedAt":1791600000000}""", body);
         Assert.Equal("""{"1":"blessed","confessed":[1]}""", votes);
         Assert.Equal(["/", "/r/1", "/reliquary", "/reliquary/confessed"], Assert.Single(await Purged()).Order());
+    }
+
+    // A rank rises only when the count crosses a threshold: a second rite leaves an Initiate one, and says nothing.
+    [Fact]
+    public async Task Post_ASecondRite_RaisesNoRank()
+    {
+        await AddRite();
+        await AddRite(new DateOnly(2026, 10, 10));
+        await Post(Function(), 1, """{"vote":"blessed"}""", "application/json", SignedIn());
+
+        var (_, body) = await Post(Function(), 2, """{"confessed":true}""", "application/json", SignedIn());
+
+        Assert.Contains("\"rank\":null", body);
     }
 
     [Fact]
@@ -249,7 +267,7 @@ public sealed class VotesTests : IAsyncLifetime
 
         var (_, body) = await Post(Function(), 1, """{"vote":null}""", "application/json", SignedIn());
 
-        Assert.Equal("""{"blessed":0,"heresy":0,"confessions":0,"vote":null,"confessed":false,"countedAt":1791600000000}""", body);
+        Assert.Equal("""{"blessed":0,"heresy":0,"confessions":0,"vote":null,"confessed":false,"rank":null,"countedAt":1791600000000}""", body);
     }
 
     [Theory]

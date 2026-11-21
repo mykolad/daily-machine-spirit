@@ -42,7 +42,7 @@ public static class AboutPage
             ("How is a rite read?", $"""
                 <ul role="list">
                 <li>The date under its title is the far future’s reckoning: {ImperialDate.WithTheDay(DateOnly.FromDateTime(now.UtcDateTime), "catechism-day", "catechism-date")} counts the year’s thousandths passed, then the year, then the millennium. Point at it or tap it for the day as we count it.</li>
-                <li>Blessed or Heresy: your verdict on a rite. Sign in with GitHub to vote, once a rite. You can change your vote or take it back. Every rite you vote on is kept in <a href="{Paths.Breviary}">your Breviary</a>.</li>
+                <li>Blessed or Heresy: your verdict on a rite. Sign in with GitHub to vote, once a rite. You can change your vote or take it back. “I have done this” confesses to a rite, apart from the verdict. Every rite you vote on or confess to is kept in <a href="{Paths.Breviary}">your Breviary</a>, where your rank grows with them, from Supplicant to Elder of the Shrine.</li>
                 <li><a href="{Paths.Archive}">The Archive</a> keeps every rite, to search or browse by subject.</li>
                 </ul>
                 """),

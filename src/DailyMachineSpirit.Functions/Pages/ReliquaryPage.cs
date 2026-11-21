@@ -41,6 +41,7 @@ public static class ReliquaryPage
         return Layout.Page(Title, description, listing, Section.Reliquary, $"""
             {Masthead.Render(isHeading: false)}
             {ArchiveSheet.Render(
+                above: string.Empty,
                 kicker: string.Empty,
                 heading: Title,
                 sub: Html.Encode(description),
