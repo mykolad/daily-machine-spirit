@@ -1,4 +1,3 @@
-using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Voters;
 using LanguageExt;
@@ -36,9 +35,10 @@ public sealed class BreviaryFunction
     {
         var only = request.Query["verdict"].ToString() switch
         {
-            BreviaryPage.BlessedVerdict => Some(Reaction.Blessed),
-            BreviaryPage.HeresyVerdict => Some(Reaction.Heresy),
-            _ => None,
+            BreviaryPage.BlessedVerdict => Some(BreviaryFilter.Blessed),
+            BreviaryPage.HeresyVerdict => Some(BreviaryFilter.Heresies),
+            BreviaryPage.ConfessedVerdict => Some(BreviaryFilter.Confessions),
+            _ => Option<BreviaryFilter>.None,
         };
         // A key that's no subject's (an old or mistyped link) shows every chapter.
         var chapter = BreviaryChapter.Named(request.Query["chapter"].ToString());
@@ -53,7 +53,6 @@ public sealed class BreviaryFunction
                 // Read beside the reader's own, so it adds no wait.
                 var places = RelicPlaces.Read(rites, logger, cancellationToken);
                 return (await votes.GetAllVotes(voterKey, cancellationToken)
-                        .MapAsync(Verdicts)
                         .BindAsync(yours => rites.GetByNumbers(yours.Keys.ToList(), cancellationToken)
                             .MapAsync(async found => BreviaryPage.Render(
                                 found.OrderByDescending(rite => rite.Number).ToList(), yours, only, chapter, typed, words, await places))))
@@ -68,12 +67,6 @@ public sealed class BreviaryFunction
             },
             None: () => Personal(request, StatusCodes.Status200OK, BreviaryPage.SignedOut()));
     }
-
-    // The verdicts alone: the Breviary keeps the rites judged, and a confession (#200) isn't a verdict.
-    private static Dictionary<int, Reaction> Verdicts(Dictionary<int, ReaderVote> votes)
-        => votes
-            .SelectMany(vote => vote.Value.Reaction.Map(reaction => (Rite: vote.Key, Reaction: reaction)))
-            .ToDictionary(verdict => verdict.Rite, verdict => verdict.Reaction);
 
     // Cloudflare reads its own header before Cache-Control, so both say so.
     private static IActionResult Personal(HttpRequest request, int status, string html)
