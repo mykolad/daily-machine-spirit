@@ -381,7 +381,8 @@
         const answer = await response.json().catch(() => null);
         if (answer) remember(answer);
         const fresh = newer(answer);
-        show(vote, fresh ? answer : hoped);
+        // An answer older than the counts shown, or unreadable, leaves them be: only the reader's own vote moves.
+        show(vote, fresh ? answer : counts());
         // The answer counts the confessions too, which a cached page may show older.
         if (fresh && typeof answer.confessions === 'number') showConfession(reader.confessed, answer.confessions);
         if (vote) {
@@ -452,7 +453,7 @@
         const answer = await response.json().catch(() => null);
         if (answer) remember(answer);
         const fresh = newer(answer);
-        const count = fresh && typeof answer.confessions === 'number' ? answer.confessions : hoped;
+        const count = fresh && typeof answer.confessions === 'number' ? answer.confessions : confessions();
         showConfession(mine, count);
         // And the verdicts' counts, which a cached page may show older; the reader's own verdict stays as it is.
         if (fresh && typeof answer.blessed === 'number' && typeof answer.heresy === 'number') show(reader.vote, answer);

@@ -198,38 +198,46 @@ public sealed partial class ReaderTests : IClassFixture<Chromium>, IAsyncLifetim
         Assert.Empty(scriptErrors);
     }
 
-    // A confession and a blessing sent at once, their answers arriving in reverse: the confession's, its counts read
-    // before the blessing, doesn't undo the blessing's count.
-    [Fact]
-    public async Task AnAnswerArrivingLate_DoesntUndoANewerCount()
+    // A confession and a blessing sent at once, their answers arriving in reverse, and another reader blessing and
+    // confessing in between: the answer arriving last, its counts read first, undoes neither the newer counts nor the
+    // reader's own presses. Either one held back.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AnAnswerArrivingLate_DoesntUndoNewerCounts(bool holdTheConfession)
     {
         await AddRites(1);
         await SignIn("583231");
-        var blessed = new TaskCompletionSource();
+        var votes = new VoteRepository(cosmos.Container);
+        var (saved, otherAnswered, heldAnswered) = (new TaskCompletionSource(), new TaskCompletionSource(), new TaskCompletionSource());
         await Page.RouteAsync("**/api/rites/1/vote", async route =>
         {
-            var confessing = route.Request.PostData?.Contains("confessed", StringComparison.Ordinal) == true;
+            var held = route.Request.PostData?.Contains("confessed", StringComparison.Ordinal) == holdTheConfession;
             var answer = await route.FetchAsync();
-            if (confessing)
+            if (held)
             {
-                await blessed.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                saved.TrySetResult();
+                await otherAnswered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
             }
             await route.FulfillAsync(new() { Response = answer });
-            if (!confessing)
-            {
-                blessed.TrySetResult();
-            }
+            (held ? heldAnswered : otherAnswered).TrySetResult();
         });
+        var (first, second) = holdTheConfession ? ("[data-confess]", ".reaction-blessed") : (".reaction-blessed", "[data-confess]");
 
         await Page.GotoAsync("/");
         await Expect(Page.Locator(".vote-status[data-signed-in=true]")).ToBeVisibleAsync();
-        await Page.Locator("[data-confess]").ClickAsync();
+        await Page.Locator(first).ClickAsync();
+        await saved.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.True((await votes.Vote(1, new VoterKey("someone-else"), vote => new ReaderVote(Some(Reaction.Blessed), true), CancellationToken.None)).IsRight);
+        await Page.Locator(second).ClickAsync();
+        await heldAnswered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        // A moment for the page to take the held answer in.
         await Page.WaitForTimeoutAsync(300);
-        await Page.Locator(".reaction-blessed").ClickAsync();
 
-        await Expect(Page.Locator(".confess-status")).ToContainTextAsync("Thy sin is recorded");
-        await Expect(Page.Locator(".reaction-blessed .count")).ToHaveTextAsync("1");
+        await Expect(Page.Locator(".reaction-blessed .count")).ToHaveTextAsync("2");
+        await Expect(Page.Locator(".confessed-count")).ToHaveTextAsync("2 have confessed");
         await Expect(Page.Locator(".reaction-blessed")).ToHaveAttributeAsync("aria-pressed", "true");
+        await Expect(Page.Locator("[data-confess]")).ToHaveAttributeAsync("aria-pressed", "true");
         Assert.Empty(scriptErrors);
     }
 
