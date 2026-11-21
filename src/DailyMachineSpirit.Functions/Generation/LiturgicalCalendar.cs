@@ -36,7 +36,8 @@ public static class LiturgicalCalendar
 
         // Oldest first: each pick joins the end, as the rite before the next one.
         var before = recent.Take(augury.RecentRitesCompared).Reverse().Select(rite => Before(rite.Writing, rite.Similarity)).ToList();
-        var judge = NewestJudge(waiting);
+        // Among every draft waiting, feasts' too, as the Calendar decides which were ranked by quality.
+        var judge = NewestJudge([.. waiting, .. fixedDays.Values]);
         bool IsJudged(Draft draft) => JudgedBy(draft, judge);
         // A fixed order to start from, so equal values always resolve the same way.
         var judged = unplaced.Where(IsJudged).OrderBy(draft => draft.Writing.GeneratedAtUtc).ThenBy(draft => draft.Id).ToList();

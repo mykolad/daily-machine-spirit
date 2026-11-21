@@ -153,6 +153,38 @@ public sealed class FeastDaysTests : IAsyncLifetime
         Assert.Equal((Some(2), Some(2), Some(2)), (anointed.CalendarPlace, anointed.AuguryPlace, anointed.CalendarPlaceAfter));
     }
 
+    // The tab counts the Calendar's groups as it shows them: the feast's draft apart from the Augury's order.
+    [Fact]
+    public async Task TheTab_CountsTheFeastsDraftApart()
+    {
+        testbed.Time.SetUtcNow(new DateTimeOffset(2026, 10, 24, 0, 0, 5, TimeSpan.Zero));
+        await testbed.AddDraft("Best", 0.9f);
+        await AddFeastDraft("For the hour", TwiceHour);
+
+        var counted = await testbed.Tabs().Count(CancellationToken.None);
+
+        Assert.Equal(Some((1, 0, 1)), counted.Map(tabs => (tabs.ForFeasts, tabs.PlacedByScribes, tabs.PlacedByAugury)));
+    }
+
+    // The newest judge is found among every draft waiting, feasts' too: a feast judged by a newer judge leaves the
+    // others unranked, waiting by age, as the Calendar records them.
+    [Fact]
+    public void PublishingDays_FindTheNewestJudge_AmongTheFeastsToo()
+    {
+        var older = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
+        var written = Draft("Written first", RiteKind.Prayer, None) with { Augury = new Augury { Quality = 0.1f, JudgedBy = "rubric-1", JudgedAtUtc = older } };
+        var better = Draft("Better, written later", RiteKind.Prayer, None) with { Augury = new Augury { Quality = 0.9f, JudgedBy = "rubric-1", JudgedAtUtc = older } };
+        var feast = Draft("For the hour", RiteKind.Prayer, None) with
+        {
+            Writing = Draft("For the hour", RiteKind.Prayer, None).Writing with { FeastDay = TwiceHour.AddDays(2) },
+            Augury = new Augury { Quality = 0.5f, JudgedBy = "rubric-2", JudgedAtUtc = older.AddDays(1) },
+        };
+
+        var days = PublishingDays.Of([written, better, feast], [], [], Augury, TwiceHour);
+
+        Assert.Equal(["Written first", "Better, written later", "For the hour"], days.Select(entry => entry.Draft.Writing.Title));
+    }
+
     // Unjudged: no order ranks a feast's draft.
     private async Task AddFeastDraft(string title, DateOnly day)
     {

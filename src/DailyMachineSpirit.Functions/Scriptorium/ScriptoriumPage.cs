@@ -514,12 +514,14 @@ public static partial class ScriptoriumPage
 
     private static string Number(int count) => count.ToString("N0", CultureInfo.InvariantCulture);
 
-    // The calendar's two orders, as its groups show them: short to the eye, said in words to a screen reader, which
-    // would read the slash as one.
+    // The calendar's groups, as it shows them: short to the eye, said in words to a screen reader, which would read the
+    // slash as one. Feast days (#202) only while one is near, as their group shows.
     private static string CalendarCount(TabCounts counted)
     {
-        var (scribes, augury) = (Number(counted.PlacedByScribes), Number(counted.PlacedByAugury));
-        return $"""<span aria-hidden="true" title="Anointed / in the Augury’s order">{scribes}/{augury}</span><span class="visually-hidden">: {scribes} anointed, {augury} in the Augury’s order</span>""";
+        var (feasts, scribes, augury) = (Number(counted.ForFeasts), Number(counted.PlacedByScribes), Number(counted.PlacedByAugury));
+        return counted.ForFeasts > 0
+            ? $"""<span aria-hidden="true" title="For feast days / anointed / in the Augury’s order">{feasts}/{scribes}/{augury}</span><span class="visually-hidden">: {feasts} for feast days, {scribes} anointed, {augury} in the Augury’s order</span>"""
+            : $"""<span aria-hidden="true" title="Anointed / in the Augury’s order">{scribes}/{augury}</span><span class="visually-hidden">: {scribes} anointed, {augury} in the Augury’s order</span>""";
     }
 
     private static string Acted(Draft draft, Option<Guid> acted) => acted.Exists(id => id == draft.Id) ? " acted" : string.Empty;
