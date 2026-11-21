@@ -329,6 +329,7 @@ public static class Styles
         .row-verdict{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;font-weight:600;font-size:13px}
         .row-verdict-blessed{background:#b8862b;color:#1f160a}
         .row-verdict-heresy{background:#8f2a20;color:#f6eedb}
+        .row-verdict-confessed{padding:1px 9px;border:1px solid #8a6a2c;color:#3d2e17}
         .row-verdict svg{width:14px;height:14px}
         .verdicts,.orders{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:24px 0 8px}
         .verdict,.order{display:inline-flex;align-items:center;min-height:44px;padding:8px 18px;border:1px solid #8f2a20;border-radius:999px;font-weight:600;font-size:15px;color:#8f2a20;text-decoration:none}

@@ -399,9 +399,9 @@ skills/                           — Consult the Machine Spirit, a skill that p
     them, and nothing reads them, so the counts started again from zero.
   - **The page is the same for everyone:** both "Sign in with GitHub" and "Sign out" are in it, hidden, and the script
     shows the reader's own after asking `/api/me`. The API takes JSON only, so another site's form can't vote.
-  - **The Breviary** (`/breviary`, `BreviaryFunction`, `BreviaryPage`): every rite the signed-in reader voted on, on
-    the Archive's sheet, each row marked with their verdict, narrowed by links to the Blessed or the Heresies
-    (`?verdict=`), like bookmarks. In a chapter per subject (`BreviaryChapter`), by name, newest first within each, a
+  - **The Breviary** (`/breviary`, `BreviaryFunction`, `BreviaryPage`): every rite the signed-in reader voted on or
+    confessed to, on the Archive's sheet, each row marked with their verdict and confession, narrowed by links to the
+    Blessed, the Heresies or the confessions (`?verdict=`, `BreviaryFilter`), like bookmarks. In a chapter per subject (`BreviaryChapter`), by name, newest first within each, a
     rite in each of its subjects' chapters, as on the subjects' pages. Each chapter shows its 3 newest and links to
     itself whole (`?chapter=`, with a chip to take it off, as the Archive's subject has), so the page stays short; the
     right margin indexes the chapters, each linking to itself whole. Its own search (`?q=`) finds what the Archive's would

@@ -13,12 +13,12 @@ namespace DailyMachineSpirit.Functions.Pages;
 public static class ArchiveRows
 {
     /// <summary>For the pages every reader sees alike, which mark no one's votes.</summary>
-    public static readonly IReadOnlyDictionary<int, Reaction> NoVotes = new Dictionary<int, Reaction>();
+    public static readonly IReadOnlyDictionary<int, ReaderVote> NoVotes = new Dictionary<int, ReaderVote>();
 
     /// <param name="words">What a search looks for, marked wherever it's found; none for the Archive.</param>
     /// <param name="yours">The reader's own votes, marked on their rows; none but on their own page.</param>
     /// <param name="places">The places of the rites the Reliquary keeps, each worn as a badge.</param>
-    public static string Months(IReadOnlyList<Rite> rites, IReadOnlyList<string> words, IReadOnlyDictionary<int, Reaction> yours, RelicStandings places)
+    public static string Months(IReadOnlyList<Rite> rites, IReadOnlyList<string> words, IReadOnlyDictionary<int, ReaderVote> yours, RelicStandings places)
     {
         var html = new StringBuilder("""<div class="months">""");
         foreach (var month in rites.GroupBy(rite => (rite.PublishedOnUtc.Year, rite.PublishedOnUtc.Month)))
@@ -56,7 +56,7 @@ public static class ArchiveRows
     /// <param name="words">What a search looks for, marked wherever it's found, or none.</param>
     /// <param name="yours">The reader's own votes, marked on their rows.</param>
     /// <param name="places">The places of the rites the Reliquary keeps, each worn as a badge.</param>
-    public static string Row(Rite rite, IReadOnlyList<string> words, IReadOnlyDictionary<int, Reaction> yours, RelicStandings places)
+    public static string Row(Rite rite, IReadOnlyList<string> words, IReadOnlyDictionary<int, ReaderVote> yours, RelicStandings places)
         => RowWith(rite, words, Standing(RowVotes(rite, yours), RelicBadge.For(rite.Number, places.Venerated) + ConfessionBadge.For(rite.Number, places.Confessed)));
 
     /// <summary>
@@ -83,17 +83,23 @@ public static class ArchiveRows
 
     // The reader's own verdict counts the others who gave it ("You and 2 others blessed it"), so beside it only the
     // other verdict's count is left: no vote is said twice.
-    private static string RowVotes(Rite rite, IReadOnlyDictionary<int, Reaction> yours)
+    private static string RowVotes(Rite rite, IReadOnlyDictionary<int, ReaderVote> yours)
     {
         var (blessed, heresies) = (Blessed(rite), Heresies(rite));
-        if (!yours.TryGetValue(rite.Number, out var reaction))
+        if (!yours.TryGetValue(rite.Number, out var vote))
         {
             return Counts(blessed + heresies);
         }
 
-        return reaction == Reaction.Blessed
-            ? $"""<span class="row-yours"><span class="row-verdict row-verdict-blessed">{Svg.SmallFlameIcon}{YouAnd(rite.BlessedCount)} blessed it</span>{Counts(heresies)}</span>"""
-            : $"""<span class="row-yours"><span class="row-verdict row-verdict-heresy">{Svg.SmallSkullIcon}{YouAnd(rite.HeresyCount)} called it heresy</span>{Counts(blessed)}</span>""";
+        // A confession (#200) beside the verdict, or alone, counting the others too.
+        var confessed = vote.Confessed
+            ? $"""<span class="row-verdict row-verdict-confessed">{Svg.SmallCandleIcon}{YouAnd(rite.ConfessionCount)} confessed to it</span>"""
+            : string.Empty;
+        return vote.Reaction.Match(
+            Some: reaction => reaction == Reaction.Blessed
+                ? $"""<span class="row-yours"><span class="row-verdict row-verdict-blessed">{Svg.SmallFlameIcon}{YouAnd(rite.BlessedCount)} blessed it</span>{confessed}{Counts(heresies)}</span>"""
+                : $"""<span class="row-yours"><span class="row-verdict row-verdict-heresy">{Svg.SmallSkullIcon}{YouAnd(rite.HeresyCount)} called it heresy</span>{confessed}{Counts(blessed)}</span>""",
+            None: () => $"""<span class="row-yours">{confessed}{Counts(blessed + heresies)}</span>""");
     }
 
     private static string VerdictCounts(Rite rite) => Blessed(rite) + Heresies(rite);
