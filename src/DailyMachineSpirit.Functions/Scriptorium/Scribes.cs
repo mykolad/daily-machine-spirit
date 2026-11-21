@@ -237,10 +237,12 @@ public sealed class Scribes
                         {
                             // The next one goes out at the coming midnight: tonight's, unless today's is still to come.
                             var first = todays.IsSome ? today.AddDays(1) : today;
-                            var ordinary = PublishingDays.Ordinary(waiting, PublishingDays.Feasts(waiting, first));
+                            // The Augury's order alone is a schedule too, feasts on their days, so its places compare with the
+                            // Calendar's (#202).
                             return Task.FromResult(new CalendarState(
                                 PublishingDays.Of(waiting, recent, placements.Order, augury.Value, first),
-                                LiturgicalCalendar.Order(ordinary, recent, [], augury.Value),
+                                PublishingDays.Of(waiting, recent, [], augury.Value, first).Select(entry => entry.Draft).ToList(),
+                                PublishingDays.Feasts(waiting, first).Values.Select(draft => draft.Id).ToHashSet(),
                                 placements,
                                 order => PublishingDays.Of(waiting, recent, order, augury.Value, first)));
                         }))));
@@ -287,7 +289,11 @@ public sealed class Scribes
     /// <summary>The calendar as it is now, and the Augury's order alone, to record how far the Scribes disagree with it.</summary>
     // With: the days as they'd be with the Scribes' order changed, for where a moved draft goes.
     private sealed record CalendarState(
-        List<(Draft Draft, DateOnly Day)> Days, List<Draft> AuguryOrder, Placements Placements, Func<IReadOnlyList<Guid>, List<(Draft Draft, DateOnly Day)>> With)
+        List<(Draft Draft, DateOnly Day)> Days,
+        List<Draft> AuguryOrder,
+        IReadOnlySet<Guid> FeastDrafts,
+        Placements Placements,
+        Func<IReadOnlyList<Guid>, List<(Draft Draft, DateOnly Day)>> With)
     {
         /// <summary>The waiting drafts in the order they go out, feasts among them.</summary>
         public List<Draft> Ordered { get; } = Days.Select(entry => entry.Draft).ToList();
@@ -302,7 +308,8 @@ public sealed class Scribes
         /// <summary>The anointed drafts still waiting, in the Scribes' order: the calendar's first places.</summary>
         public List<Guid> Anointed() => Ordered.Select(draft => draft.Id).Where(Placements.Order.Contains).ToList();
 
-        public int AuguryPlace(Draft draft) => AuguryOrder.FindIndex(other => other.Id == draft.Id) + 1;
+        /// <summary>Where the Augury alone would put it (1 is next), feasts counted; 0 for a feast's own draft, which no order ranks.</summary>
+        public int AuguryPlace(Draft draft) => FeastDrafts.Contains(draft.Id) ? 0 : AuguryOrder.FindIndex(other => other.Id == draft.Id) + 1;
 
         public DraftPlaces PlacesOf((Draft Draft, int Place) found)
             => new(found.Place, AuguryPlace(found.Draft), AuguryPlace(found.Draft) > 0 && LiturgicalCalendar.RanksByQuality(found.Draft, AuguryOrder));

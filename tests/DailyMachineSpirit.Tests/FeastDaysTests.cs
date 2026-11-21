@@ -137,6 +137,22 @@ public sealed class FeastDaysTests : IAsyncLifetime
         Assert.Equal((Some(2), Some(3)), (humbled.CalendarPlace, humbled.CalendarPlaceAfter));
     }
 
+    // The Augury's own places count the feasts too: with a feast next, anointing the Augury's first pick leaves it
+    // where the Augury had it, #2, and records no disagreement.
+    [Fact]
+    public async Task AnointingTheAugurysPick_AfterAFeast_AgreesWithTheAugury()
+    {
+        testbed.Time.SetUtcNow(new DateTimeOffset(2026, 10, 25, 0, 0, 5, TimeSpan.Zero));
+        var best = await testbed.AddDraft("Best", 0.9f);
+        await testbed.AddDraft("Next best", 0.5f);
+        await AddFeastDraft("For the hour", TwiceHour);
+
+        Ok(await testbed.Scribes().Anoint(best.Id, "", Tester, CancellationToken.None));
+
+        var anointed = Ok(await testbed.Scriptorium.GetDecisions(10, CancellationToken.None)).First(decision => decision.Action == ScribeAction.Anoint);
+        Assert.Equal((Some(2), Some(2), Some(2)), (anointed.CalendarPlace, anointed.AuguryPlace, anointed.CalendarPlaceAfter));
+    }
+
     // Unjudged: no order ranks a feast's draft.
     private async Task AddFeastDraft(string title, DateOnly day)
     {
