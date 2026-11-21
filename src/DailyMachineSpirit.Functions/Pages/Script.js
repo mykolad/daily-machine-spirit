@@ -283,8 +283,17 @@
         localStorage.setItem(votesKey, JSON.stringify(all));
       } catch { }
     };
+    // When the counts shown were read: the page's, then the newest answer's. A vote and a confession may be sent at
+    // once and answered out of order, and the later answer's counts, read earlier, would undo the other's.
+    let countsAt = Number(reactions.dataset.countedAt);
+    const newer = (answer) => {
+      if (typeof answer?.countedAt !== 'number' || answer.countedAt < countsAt) return false;
+      countsAt = answer.countedAt;
+      return true;
+    };
     const kept = recalled()[rite];
     if (kept && typeof kept.blessed === 'number' && typeof kept.heresy === 'number' && kept.countedAt >= Number(reactions.dataset.countedAt)) {
+      countsAt = kept.countedAt;
       show(null, kept);
       // Kept before confessions were counted, an answer has none to show.
       if (typeof kept.confessions === 'number') showConfession(false, kept.confessions);
@@ -371,9 +380,10 @@
         reader.vote = vote;
         const answer = await response.json().catch(() => null);
         if (answer) remember(answer);
-        show(vote, answer ?? hoped);
+        const fresh = newer(answer);
+        show(vote, fresh ? answer : hoped);
         // The answer counts the confessions too, which a cached page may show older.
-        if (typeof answer?.confessions === 'number') showConfession(reader.confessed, answer.confessions);
+        if (fresh && typeof answer.confessions === 'number') showConfession(reader.confessed, answer.confessions);
         if (vote) {
           sayKept(vote);
         } else if (toast.querySelector('.toast-kept')) {
@@ -441,10 +451,11 @@
         reader.confessed = mine;
         const answer = await response.json().catch(() => null);
         if (answer) remember(answer);
-        const count = typeof answer?.confessions === 'number' ? answer.confessions : hoped;
+        const fresh = newer(answer);
+        const count = fresh && typeof answer.confessions === 'number' ? answer.confessions : hoped;
         showConfession(mine, count);
         // And the verdicts' counts, which a cached page may show older; the reader's own verdict stays as it is.
-        if (typeof answer?.blessed === 'number' && typeof answer?.heresy === 'number') show(reader.vote, answer);
+        if (fresh && typeof answer.blessed === 'number' && typeof answer.heresy === 'number') show(reader.vote, answer);
         tellConfession(!mine ? 'Thy confession is withdrawn.'
           : count === 1 ? 'Thy sin is recorded. Thou art the first to confess it.'
             : 'Thy sin is recorded. Thou art not alone.');

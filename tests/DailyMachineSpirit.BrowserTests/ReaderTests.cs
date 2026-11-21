@@ -198,6 +198,41 @@ public sealed partial class ReaderTests : IClassFixture<Chromium>, IAsyncLifetim
         Assert.Empty(scriptErrors);
     }
 
+    // A confession and a blessing sent at once, their answers arriving in reverse: the confession's, its counts read
+    // before the blessing, doesn't undo the blessing's count.
+    [Fact]
+    public async Task AnAnswerArrivingLate_DoesntUndoANewerCount()
+    {
+        await AddRites(1);
+        await SignIn("583231");
+        var blessed = new TaskCompletionSource();
+        await Page.RouteAsync("**/api/rites/1/vote", async route =>
+        {
+            var confessing = route.Request.PostData?.Contains("confessed", StringComparison.Ordinal) == true;
+            var answer = await route.FetchAsync();
+            if (confessing)
+            {
+                await blessed.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            }
+            await route.FulfillAsync(new() { Response = answer });
+            if (!confessing)
+            {
+                blessed.TrySetResult();
+            }
+        });
+
+        await Page.GotoAsync("/");
+        await Expect(Page.Locator(".vote-status[data-signed-in=true]")).ToBeVisibleAsync();
+        await Page.Locator("[data-confess]").ClickAsync();
+        await Page.WaitForTimeoutAsync(300);
+        await Page.Locator(".reaction-blessed").ClickAsync();
+
+        await Expect(Page.Locator(".confess-status")).ToContainTextAsync("Thy sin is recorded");
+        await Expect(Page.Locator(".reaction-blessed .count")).ToHaveTextAsync("1");
+        await Expect(Page.Locator(".reaction-blessed")).ToHaveAttributeAsync("aria-pressed", "true");
+        Assert.Empty(scriptErrors);
+    }
+
     // Signed out, a press confesses nothing and offers the sign-in beside the button.
     [Fact]
     public async Task ASignedOutReadersConfession_OffersTheSignIn()
