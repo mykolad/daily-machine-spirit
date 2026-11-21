@@ -185,6 +185,25 @@ public sealed class FeastDaysTests : IAsyncLifetime
         Assert.Equal(["Written first", "Better, written later", "For the hour"], days.Select(entry => entry.Draft.Writing.Title));
     }
 
+    // Once today's feast, the only draft a newer judge scored, has gone out, the older judge is the newest of those still
+    // waiting, and the rest go by its quality: as the publisher will find them the next day.
+    [Fact]
+    public void PublishingDays_FindTheJudgeAnew_AfterAFeastGoesOut()
+    {
+        var older = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
+        var written = Draft("Written first", RiteKind.Prayer, None) with { Augury = new Augury { Quality = 0.1f, JudgedBy = "rubric-1", JudgedAtUtc = older } };
+        var better = Draft("Better, written later", RiteKind.Prayer, None) with { Augury = new Augury { Quality = 0.9f, JudgedBy = "rubric-1", JudgedAtUtc = older } };
+        var feast = Draft("For the hour", RiteKind.Prayer, None) with
+        {
+            Writing = Draft("For the hour", RiteKind.Prayer, None).Writing with { FeastDay = TwiceHour },
+            Augury = new Augury { Quality = 0.5f, JudgedBy = "rubric-2", JudgedAtUtc = older.AddDays(1) },
+        };
+
+        var days = PublishingDays.Of([written, better, feast], [], [], Augury, TwiceHour);
+
+        Assert.Equal(["For the hour", "Better, written later", "Written first"], days.Select(entry => entry.Draft.Writing.Title));
+    }
+
     // Unjudged: no order ranks a feast's draft.
     private async Task AddFeastDraft(string title, DateOnly day)
     {
