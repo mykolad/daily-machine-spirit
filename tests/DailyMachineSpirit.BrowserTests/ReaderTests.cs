@@ -231,8 +231,9 @@ public sealed partial class ReaderTests : IClassFixture<Chromium>, IAsyncLifetim
         Assert.True((await votes.Vote(1, new VoterKey("someone-else"), vote => new ReaderVote(Some(Reaction.Blessed), true), CancellationToken.None)).IsRight);
         await Page.Locator(second).ClickAsync();
         await heldAnswered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
-        // A moment for the page to take the held answer in.
-        await Page.WaitForTimeoutAsync(300);
+        // Each control clears its busy mark once its answer is handled: the held one too, by now.
+        await Expect(Page.Locator(".reactions")).Not.ToHaveAttributeAsync("aria-busy", "true");
+        await Expect(Page.Locator(".confession")).Not.ToHaveAttributeAsync("aria-busy", "true");
 
         await Expect(Page.Locator(".reaction-blessed .count")).ToHaveTextAsync("2");
         await Expect(Page.Locator(".confessed-count")).ToHaveTextAsync("2 have confessed");
