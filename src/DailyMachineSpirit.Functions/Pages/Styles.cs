@@ -320,7 +320,8 @@ public static class Styles
         .row-title:focus-visible{outline:none}
         .row-title::after{content:'';position:absolute;inset:0;border-radius:8px}
         .row-line{font-family:var(--serif);font-size:16px;line-height:1.45;color:#2b2117;text-wrap:pretty}
-        .row-counts{display:flex;gap:16px;margin-top:4px;font-weight:600;font-size:13px;color:#5c4a33}
+        .row-counts{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:4px;font-weight:600;font-size:13px;color:#5c4a33}
+        .row-counts>span{white-space:nowrap}
         .row-counts span{display:inline-flex;align-items:center;gap:6px}
         .row-counts svg{width:16px;height:16px}
         .row-yours{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;margin-top:6px}

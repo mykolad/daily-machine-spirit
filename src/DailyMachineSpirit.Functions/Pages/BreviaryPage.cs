@@ -110,8 +110,8 @@ public static class BreviaryPage
 
     private static int Counted(IEnumerable<ReaderVote> votes, BreviaryFilter filter) => votes.Count(vote => Holds(vote, filter));
 
-    /// <summary>The filter's word in the page's address (<c>?verdict=</c>).</summary>
-    public static string Key(BreviaryFilter filter) => filter switch
+    // The filter's word in the page's address (?verdict=).
+    private static string Key(BreviaryFilter filter) => filter switch
     {
         BreviaryFilter.Blessed => BlessedVerdict,
         BreviaryFilter.Heresies => HeresyVerdict,
