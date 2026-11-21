@@ -98,6 +98,7 @@ public static partial class ScriptoriumPage
         .day { display: grid; gap: 2px; width: 88px; }
         .day time { font: 500 13px var(--mono); color: #cdbd9e; white-space: nowrap; }
         .kind { font: 700 11px Cinzel, serif; letter-spacing: .14em; text-transform: uppercase; color: #b6a98f; }
+        .feast { display: block; margin-bottom: 2px; font: italic 15px var(--serif); color: #d9b874; }
         .heading { flex: 1 1 240px; min-width: 0; display: grid; gap: 6px; }
         .row-title { margin: 0; font: 700 18px/1.25 Cinzel, serif; color: #ede3cf; text-wrap: pretty; }
         .burn-day .group-title { color: #e88a78; }

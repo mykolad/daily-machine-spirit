@@ -58,7 +58,7 @@ public sealed class DailyRitePublisher
 
     private async Task<Either<Error, PublishedRite>> Publish(DateOnly today, CancellationToken cancellationToken)
     {
-        var published = await NextDraft(cancellationToken)
+        var published = await NextDraft(today, cancellationToken)
             .BindAsync(draft => publishing.Publish(draft.Id, today, cancellationToken));
         return await published.MatchAsync(
             RightAsync: rite =>
@@ -72,8 +72,8 @@ public sealed class DailyRitePublisher
             LeftAsync: error => PublishedMeanwhile(today, error, cancellationToken));
     }
 
-    private Task<Either<Error, Draft>> NextDraft(CancellationToken cancellationToken)
-        => TopOfTheCalendar(cancellationToken)
+    private Task<Either<Error, Draft>> NextDraft(DateOnly today, CancellationToken cancellationToken)
+        => TopOfTheCalendar(today, cancellationToken)
             .BindAsync(top => top.Match(
                 Some: draft => Task.FromResult(Right<Error, Draft>(draft)),
                 // An empty backlog never leaves a day without its rite: one is written on the spot. The calendar is read
@@ -84,17 +84,23 @@ public sealed class DailyRitePublisher
                     // happens about once a day at most (observability/README.md, "Backlog ran empty").
                     logger.LogWarning("The backlog was empty: today's rite is written on the spot, unmoderated.");
                     return refiller.AddDraft([], cancellationToken)
-                        .BindAsync(_ => TopOfTheCalendar(cancellationToken))
+                        .BindAsync(_ => TopOfTheCalendar(today, cancellationToken))
                         .BindAsync(again => again.ToEither(Error.New("The backlog is still empty after writing a draft.")));
                 }));
 
     // The Scribes' order is read before the waiting drafts, so every draft it places is among them, as in the Scriptorium:
-    // a draft that arrives and is anointed in between is simply not in this snapshot, rather than placed but unknown.
-    private Task<Either<Error, Option<Draft>>> TopOfTheCalendar(CancellationToken cancellationToken)
+    // a draft that arrives and is anointed in between is simply not in this snapshot, rather than placed but unknown. A
+    // feast's draft goes out on its day, ahead of the order (#202).
+    private Task<Either<Error, Option<Draft>>> TopOfTheCalendar(DateOnly today, CancellationToken cancellationToken)
         => scriptorium.GetPlacements(cancellationToken)
             .BindAsync(placements => drafts.GetWaiting(cancellationToken)
                 .BindAsync(waiting => rites.GetNewest(augury.Value.RecentRitesCompared, cancellationToken)
-                    .MapAsync(recent => Task.FromResult(LiturgicalCalendar.Order(waiting, recent, placements.Order, augury.Value).HeadOrNone()))));
+                    .MapAsync(recent =>
+                    {
+                        var feasts = PublishingDays.Feasts(waiting, today);
+                        var ordered = LiturgicalCalendar.Order(PublishingDays.Ordinary(waiting, feasts), recent, placements.Order, augury.Value);
+                        return Task.FromResult(PublishingDays.Of(ordered, feasts, today).Where(entry => entry.Day == today).Select(entry => entry.Draft).HeadOrNone());
+                    })));
 
     // Theirs stands, and this run's draft (if another) keeps waiting. When the day has no rite after all, or it can't be
     // read, the original error stands, and the retry chooses again.
