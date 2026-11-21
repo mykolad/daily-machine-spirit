@@ -301,6 +301,28 @@ public sealed class BreviaryTests : IAsyncLifetime
         Assert.Equal(["/r/1"], Titles((await Get(Function(), "?verdict=blessed", SignedIn())).Html));
     }
 
+    // The reader's rank (#201), from the rites they judged, each once: in the kicker, and in the margin and the narrow
+    // screen's band, with the way to the next office. A reader with none yet is a Supplicant.
+    [Fact]
+    public async Task TheRank_IsShown_FromTheRitesJudged()
+    {
+        await AddRites(2);
+        var (_, before, _) = await Get(Function(), string.Empty, SignedIn());
+        await Vote(1, Reaction.Blessed);
+        Ok(await Votes.Vote(1, Voter, vote => vote with { Confessed = true }, CancellationToken.None));
+        Ok(await Votes.Vote(2, Voter, vote => vote with { Confessed = true }, CancellationToken.None));
+
+        var (_, html, _) = await Get(Function(), string.Empty, SignedIn());
+
+        Assert.Contains("Rites judged by a Supplicant", before);
+        Assert.Contains("1 more rite to Initiate", before);
+        Assert.Contains("Rites judged by an Initiate", html);
+        Assert.Contains("""<p class="rank-name">Initiate</p>""", html);
+        Assert.Contains("8 more rites to Acolyte", html);
+        Assert.Contains("""aria-labelledby="rank-label">""", html);
+        Assert.Contains("""aria-labelledby="rank-label-band">""", html);
+    }
+
     [Fact]
     public async Task WhenTheVotesCantBeRead_Is503_AndNeverCached()
     {

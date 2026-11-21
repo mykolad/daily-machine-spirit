@@ -29,9 +29,9 @@ namespace DailyMachineSpirit.BrowserTests;
 /// </summary>
 public sealed class SiteHost : IAsyncDisposable
 {
-    // What a reader's pages call: the pages, voting, witnessed rites, who's signed in, drawing, search, the fonts.
+    // What a reader's pages call: the pages, the Breviary, voting, witnessed rites, who's signed in, drawing, search, the fonts.
     private static readonly Type[] Served =
-        [typeof(SitePages), typeof(VotesFunction), typeof(WitnessedFunction), typeof(SignInFunction), typeof(DrawFunction), typeof(SearchIndexFunction), typeof(FontsFunction)];
+        [typeof(SitePages), typeof(BreviaryFunction), typeof(VotesFunction), typeof(WitnessedFunction), typeof(SignInFunction), typeof(DrawFunction), typeof(SearchIndexFunction), typeof(FontsFunction)];
 
     private static readonly VoterOptions Voters = new()
     {

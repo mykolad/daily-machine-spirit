@@ -31,6 +31,7 @@ public static class BreviaryPage
     /// <summary>For a reader who isn't signed in: what the page keeps, and the way to sign in.</summary>
     public static string SignedOut()
         => Layout.Page(Title, Description, SearchListing.Unlisted, Section.Breviary, ArchiveSheet.Render(
+            above: string.Empty,
             kicker: "Rites you have judged",
             heading: Title,
             sub: Description,
@@ -65,19 +66,23 @@ public static class BreviaryPage
         var key = chapter.Map(subject => subject.Key);
         var left = $"""
             <aside class="marginalia" aria-label="Your votes">
+            {RankBlock.Of(yours.Count, band: false)}
             {ArchiveSheet.Note("Blessed", $"""<p class="margin-number">{Html.Count(Counted(yours.Values, BreviaryFilter.Blessed))}</p>""")}
             {ArchiveSheet.Note("Heresy", $"""<p class="margin-number">{Html.Count(Counted(yours.Values, BreviaryFilter.Heresies))}</p>""")}
             {ArchiveSheet.Note("Confessed", $"""<p class="margin-number">{Html.Count(Counted(yours.Values, BreviaryFilter.Confessions))}</p>""")}
             </aside>
             """;
         var inChapterVotes = inChapter.Select(rite => yours[rite.Number]).ToList();
+        // Each rite once, voted on or confessed to (#201).
+        var rank = Ranks.Of(yours.Count);
         // What the search found with the verdict shown, as the verdicts' links count what each would show. The count is
         // in the title too, which a screen reader reads first when the results load.
         var title = words.Count == 0
             ? chapter.Map(subject => $"{subject.Label} in your Breviary").IfNone(Title)
             : $"“{typed}” in {chapter.Map(subject => $"{subject.Label}, in ").IfNone(string.Empty)}your Breviary: {(shown.Count == 0 ? "no rites" : Rites(shown.Count))}";
         return Layout.Page(title, Description, SearchListing.Unlisted, Section.Breviary, ArchiveSheet.Render(
-            kicker: "Rites you have judged",
+            above: RankBlock.Of(yours.Count, band: true),
+            kicker: $"Rites judged by {rank.Article} {rank.Name}",
             heading: Title,
             sub: Sub(chapter.IsSome ? inChapter.Count : yours.Count, chapter.IsSome, words.Count == 0 ? None : Some(shown.Count)),
             search: yours.Count == 0
