@@ -286,14 +286,16 @@ public sealed class BreviaryTests : IAsyncLifetime
         Ok(await Votes.Vote(1, Voter, vote => vote with { Confessed = true }, CancellationToken.None));
         Ok(await Votes.Vote(2, Voter, vote => vote with { Confessed = true }, CancellationToken.None));
         Ok(await Votes.Vote(2, new VoterKey("a"), vote => vote with { Confessed = true }, CancellationToken.None));
+        await Vote(3, Reaction.Heresy);
 
         var (_, all, _) = await Get(Function(), string.Empty, SignedIn());
         var (_, confessed, _) = await Get(Function(), "?verdict=confessed", SignedIn());
 
-        Assert.Equal(["/r/2", "/r/1"], Titles(all));
+        Assert.Equal(["/r/3", "/r/2", "/r/1"], Titles(all));
         Assert.Contains("You blessed it</span><span class=\"row-verdict row-verdict-confessed\">", all);
         Assert.Contains("You and 1 other confessed to it</span>", all);
         Assert.Contains("""href="/breviary?verdict=confessed">Confessed 2</a>""", all);
+        // A verdict alone isn't a confession.
         Assert.Equal(["/r/2", "/r/1"], Titles(confessed));
         Assert.Contains("""href="/breviary?verdict=confessed" aria-current="page">""", confessed);
         Assert.Equal(["/r/1"], Titles((await Get(Function(), "?verdict=blessed", SignedIn())).Html));
