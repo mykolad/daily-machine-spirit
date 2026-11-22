@@ -94,6 +94,7 @@ public sealed class OpenApiTests : IAsyncLifetime
     [InlineData("""{ "type": "integer", "minimum": 1 }""", "0")]
     [InlineData("""{ "type": "string", "format": "date" }""", "\"8 October\"")]
     [InlineData("""{ "type": "string", "format": "uri" }""", "\"/r/1\"")]
+    [InlineData("""{ "type": "string", "format": "uri" }""", "\"https:///r/1\"")]
     [InlineData("""{ "type": "array", "items": { "type": "string" } }""", "[1]")]
     [InlineData("""{ "$ref": "#/components/schemas/NoSuchSchema" }""", "{}")]
     [InlineData("""{ "type": "string", "pattern": "^a" }""", "\"a\"")]
@@ -234,7 +235,8 @@ public sealed class OpenApiTests : IAsyncLifetime
     private static bool InFormat(string value, string format) => format switch
     {
         "date" => DateOnly.TryParseExact(value, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out _),
-        "uri" => Uri.TryCreate(value, UriKind.Absolute, out _),
+        // A web address with a host: on Linux, .NET reads "/r/1" as an absolute file path.
+        "uri" => Uri.TryCreate(value, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp) && uri.Host.Length > 0,
         _ => false,
     };
 
