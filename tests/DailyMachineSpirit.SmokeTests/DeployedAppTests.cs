@@ -99,6 +99,8 @@ public sealed partial class DeployedAppTests
             // Spelled another way, it's not found: the worker failed such an address with a 500 once, before the app saw it.
             var spelled = await app.Get($"/api/v1/rites/0{rite.GetProperty("number").GetInt32()}/heretical-truth");
             Assert.True(spelled.Status == HttpStatusCode.NotFound, $"{spelled.Path} answered {(int)spelled.Status}, not 404.");
+            // Saying why, as Problem Details (#177): nothing between the app and the reader replaced the body.
+            Assert.Equal("Not this API's address", JsonSerializer.Deserialize<JsonElement>(spelled.Text).GetProperty("title").GetString());
         }
     }
 

@@ -65,7 +65,19 @@ As on the site, each rite's **Heretical Truth** stays sealed until it's asked fo
 
 ## Errors
 
-`503` when the rites can't be read just now (not cached): try again later.
+Errors are Problem Details ([RFC 9457](https://www.rfc-editor.org/rfc/rfc9457), `application/problem+json`), never
+cached: `type` is `about:blank`, `title` names the kind of error, `status` repeats the code, and `detail` says what went
+wrong this time.
+
+```json
+{"type":"about:blank","title":"No such rite","status":404,"detail":"No rite 9999 has been published (yet)."}
+```
+
+- `404` **No such rite**: no rite with that number has been published yet.
+- `404` **Not a rite's number**: the number isn't a whole number from 1, without leading zeros.
+- `404` **Not this API's address**: another spelling of an address (another case, `/01/`). A query string or a trailing
+  slash is redirected to the address instead.
+- `503` **The rites can't be read just now**: try again later.
 
 ## The feed
 

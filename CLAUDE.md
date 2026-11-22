@@ -358,7 +358,8 @@ skills/                           — Consult the Machine Spirit, a skill that p
   a `v2` beside it. Read-only, open to any site's page (`Access-Control-Allow-Origin: *`), and nothing about the caller
   is kept; it reads only the words and tags (`GetAllUnrevealed`), or one truth (`GetHereticalTruth`), never scores or
   votes. Kept at Cloudflare until a new rite or an erasure purges it, with the search index (a truth no rite has yet,
-  `404`, isn't kept); a query string is redirected to the one address. The skill
+  `404`, isn't kept); a query string is redirected to the one address. Its errors are Problem Details (#177,
+  `ApiProblem`, `application/problem+json`), each with a title and a detail, never kept. The skill
   fetches the whole list and lets the user's own model choose, so the trouble never leaves their machine and the site
   pays for no model.
 - **The MCP connector** (#119, `src/DailyMachineSpirit.Mcp`, `docs/api.md`): the rites API's two reads as MCP tools

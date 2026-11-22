@@ -14,6 +14,10 @@ namespace DailyMachineSpirit.Tests;
 /// <summary>The public rites API (#101), against the Cosmos DB emulator: its shape is a contract with outside clients.</summary>
 public sealed class RitesFunctionTests : IAsyncLifetime
 {
+    private const string ProblemJson = "application/problem+json; charset=utf-8";
+
+    private static readonly System.Text.Json.JsonSerializerOptions ProblemOptions = new() { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+
     private readonly CosmosTestContainer cosmos = new();
 
     public ValueTask InitializeAsync() => cosmos.InitializeAsync();
@@ -82,9 +86,10 @@ public sealed class RitesFunctionTests : IAsyncLifetime
         var missing = new RiteRepository(cosmos.Container.Database.GetContainer("no-such-container"), TimeProvider.System, NullLogger<RiteRepository>.Instance);
         var context = At("/api/v1/rites");
 
-        var result = Assert.IsType<StatusCodeResult>(await Function(missing).Rites(context.Request, CancellationToken.None));
+        var result = Assert.IsType<ContentResult>(await Function(missing).Rites(context.Request, CancellationToken.None));
 
-        Assert.Equal(StatusCodes.Status503ServiceUnavailable, result.StatusCode);
+        Assert.Equal((StatusCodes.Status503ServiceUnavailable, ProblemJson), (result.StatusCode, result.ContentType));
+        Assert.Equal("""{"type":"about:blank","title":"The rites can't be read just now","status":503,"detail":"Try again in a minute."}""", result.Content);
         Assert.Equal("no-store", context.Response.Headers.CacheControl.ToString());
     }
 
@@ -104,19 +109,20 @@ public sealed class RitesFunctionTests : IAsyncLifetime
         Assert.Equal("""{"number":1,"hereticalTruth":"Your test depends on `timing`."}""", result.Content);
     }
 
-    // Not kept, so the rite published with that number later is found.
+    // Not kept, so the rite published with that number later is found. The answer says why (#177).
     [Theory]
-    [InlineData("7")]
-    [InlineData("0")]
-    [InlineData("seven")]
-    [InlineData("-1")]
-    public async Task HereticalTruth_OfNoRite_IsNotFound_AndNotCached(string id)
+    [InlineData("7", "No such rite", "No rite 7 has been published (yet).")]
+    [InlineData("0", "Not a rite's number", "\"0\" isn't a rite's number: a whole number from 1, written without leading zeros.")]
+    [InlineData("seven", "Not a rite's number", "\"seven\" isn't a rite's number: a whole number from 1, written without leading zeros.")]
+    [InlineData("-1", "Not a rite's number", "\"-1\" isn't a rite's number: a whole number from 1, written without leading zeros.")]
+    public async Task HereticalTruth_OfNoRite_IsNotFound_AndNotCached(string id, string title, string detail)
     {
         var context = At($"/api/v1/rites/{id}/heretical-truth");
 
-        var result = Assert.IsType<StatusCodeResult>(await Function(Repository).HereticalTruth(context.Request, id, CancellationToken.None));
+        var result = Assert.IsType<ContentResult>(await Function(Repository).HereticalTruth(context.Request, id, CancellationToken.None));
 
-        Assert.Equal(StatusCodes.Status404NotFound, result.StatusCode);
+        Assert.Equal((StatusCodes.Status404NotFound, ProblemJson), (result.StatusCode, result.ContentType));
+        Assert.Equal(Problem(title, 404, detail), result.Content);
         Assert.Equal("no-store", context.Response.Headers.CacheControl.ToString());
     }
 
@@ -143,9 +149,10 @@ public sealed class RitesFunctionTests : IAsyncLifetime
         await Add(new DateOnly(2026, 10, 8), RiteKind.Prayer, "The Litany of the Warm Cache", None, None);
         var context = At(path);
 
-        var result = Assert.IsType<StatusCodeResult>(await Function(Repository).HereticalTruth(context.Request, id, CancellationToken.None));
+        var result = Assert.IsType<ContentResult>(await Function(Repository).HereticalTruth(context.Request, id, CancellationToken.None));
 
         Assert.Equal((StatusCodes.Status404NotFound, "no-store"), (result.StatusCode, context.Response.Headers.CacheControl.ToString()));
+        Assert.Equal(Problem("Not this API's address", 404, "The Heretical Truth of rite 1 is at /api/v1/rites/1/heretical-truth, spelled exactly so."), result.Content);
     }
 
     [Fact]
@@ -153,10 +160,17 @@ public sealed class RitesFunctionTests : IAsyncLifetime
     {
         var context = At("/API/v1/rites");
 
-        var result = Assert.IsType<StatusCodeResult>(await Function(Repository).Rites(context.Request, CancellationToken.None));
+        var result = Assert.IsType<ContentResult>(await Function(Repository).Rites(context.Request, CancellationToken.None));
 
         Assert.Equal((StatusCodes.Status404NotFound, "no-store"), (result.StatusCode, context.Response.Headers.CacheControl.ToString()));
+        Assert.Equal(Problem("Not this API's address", 404, "The rites are at /api/v1/rites, spelled exactly so."), result.Content);
     }
+
+    // The problem as the API writes it (#177), field for field.
+    private static string Problem(string title, int status, string detail)
+        => System.Text.Json.JsonSerializer.Serialize(
+            new { type = "about:blank", title, status, detail },
+            ProblemOptions);
 
     private static DefaultHttpContext At(string path)
     {
