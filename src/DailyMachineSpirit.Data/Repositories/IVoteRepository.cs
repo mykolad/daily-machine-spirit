@@ -22,4 +22,7 @@ public interface IVoteRepository
 
     /// <summary>Every vote the reader has, by rite number.</summary>
     Task<Either<Error, Dictionary<int, ReaderVote>>> GetAllVotes(VoterKey voterKey, CancellationToken cancellationToken);
+
+    /// <summary>How many rites the reader has a say on (#201): voted on or confessed to, each once.</summary>
+    Task<Either<Error, int>> CountRites(VoterKey voterKey, CancellationToken cancellationToken);
 }

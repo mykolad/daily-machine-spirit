@@ -34,6 +34,7 @@ public static class TagPage
             </section>
             """;
         return Layout.Page($"Filed under {tag.Label}", about, listing, Section.Other, ArchiveSheet.Render(
+            above: string.Empty,
             kicker: "Filed under",
             heading: label,
             sub: Html.Encode(about),

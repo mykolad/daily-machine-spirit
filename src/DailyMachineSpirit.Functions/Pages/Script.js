@@ -181,6 +181,26 @@
     };
     later();
   };
+  // A vote that raised the reader's rank says so instead (#201), with the office's insignia: the answer brings the words
+  // and the site's own glyph. The Breviary keeps the rank, so a missed toast loses nothing.
+  const sayRank = (rank) => {
+    clearTimeout(hideToast);
+    toast.innerHTML = '';
+    const pill = document.createElement('div');
+    pill.className = 'toast toast-rank';
+    pill.innerHTML = rank.insignia;
+    const words = document.createElement('span');
+    const office = document.createElement('span');
+    office.className = 'toast-office';
+    office.textContent = rank.office;
+    const next = document.createElement('span');
+    next.className = 'toast-next';
+    next.textContent = rank.next;
+    words.append(office, next);
+    pill.append(words);
+    toast.appendChild(pill);
+    hideToast = setTimeout(() => { toast.innerHTML = ''; }, 4000);
+  };
   // Whether the text reached the clipboard: the older fallback can fail quietly, and the toast must not lie.
   const copy = async (text) => {
     try {
@@ -385,7 +405,9 @@
         show(vote, fresh ? answer : counts());
         // The answer counts the confessions too, which a cached page may show older.
         if (fresh && typeof answer.confessions === 'number') showConfession(reader.confessed, answer.confessions);
-        if (vote) {
+        if (answer?.rank) {
+          sayRank(answer.rank);
+        } else if (vote) {
           sayKept(vote);
         } else if (toast.querySelector('.toast-kept')) {
           // Taken back while the toast still says it's kept: it no longer is.
@@ -460,6 +482,7 @@
         tellConfession(!mine ? 'Thy confession is withdrawn.'
           : count === 1 ? 'Thy sin is recorded. Thou art the first to confess it.'
             : 'Thy sin is recorded. Thou art not alone.');
+        if (answer?.rank) sayRank(answer.rank);
       } catch {
         showConfession(previous, before);
         tellConfession('Thy confession wasn’t recorded. Try again.');
@@ -594,8 +617,9 @@
     const form = field.form;
     let typing;
     let request;
-    // Everything on the sheet but the field (which keeps focus and what's typed), and everything beside and
-    // below the sheet but the traces (the margins come anew, their candles with them).
+    // Everything on the sheet but the field (which keeps focus and what's typed), and everything around the sheet but
+    // the traces (the margins come anew, their candles with them), each on its side of the sheet as the page has it:
+    // the Breviary's rank band stands above (#201).
     const swap = (page) => {
       const fresh = [...page.querySelector('.sheet-inner').children].map((part) => document.importNode(part, true));
       const at = fresh.findIndex((part) => part.matches('.sheet-search'));
@@ -608,8 +632,12 @@
       const hero = document.querySelector('.archive-hero');
       const stays = (part) => part.matches('.sheet, .traces');
       [...hero.children].filter((part) => !stays(part)).forEach((part) => part.remove());
-      hero.querySelector('.sheet').after(...[...page.querySelector('.archive-hero').children]
-        .filter((part) => !stays(part)).map((part) => document.importNode(part, true)));
+      const around = [...page.querySelector('.archive-hero').children];
+      const sheetAt = around.findIndex((part) => part.matches('.sheet'));
+      const copies = (parts) => parts.filter((part) => !stays(part)).map((part) => document.importNode(part, true));
+      const sheet = hero.querySelector('.sheet');
+      sheet.before(...copies(around.slice(0, sheetAt)));
+      sheet.after(...copies(around.slice(sheetAt + 1)));
       document.title = page.title;
       placeMargins();
     };
