@@ -49,7 +49,7 @@ public sealed class RitesFunction
         }
         if (!SpelledAs(request, Paths.RitesApi))
         {
-            return NotFound(request);
+            return NotFound(request, "Not this API's address", $"The rites are at {Paths.RitesApi}, spelled exactly so.");
         }
 
         var site = SiteOrigin.Of(request);
@@ -68,7 +68,7 @@ public sealed class RitesFunction
         // Read as text: the worker can't bind `01` to an int, and fails the request.
         if (!int.TryParse(id, NumberStyles.None, CultureInfo.InvariantCulture, out var number) || number < 1)
         {
-            return NotFound(request);
+            return NotFound(request, "Not a rite's number", $"\"{id}\" isn't a rite's number: a whole number from 1, written without leading zeros.");
         }
         if (WithQueryOrSlash(request, Paths.HereticalTruthApi(number)))
         {
@@ -76,14 +76,14 @@ public sealed class RitesFunction
         }
         if (!SpelledAs(request, Paths.HereticalTruthApi(number)))
         {
-            return NotFound(request);
+            return NotFound(request, "Not this API's address", $"The Heretical Truth of rite {number} is at {Paths.HereticalTruthApi(number)}, spelled exactly so.");
         }
 
         return (await rites.GetHereticalTruth(number, cancellationToken)).Match(
             Right: truth => truth.Match(
                 Some: words => Answer(request, new RevealedTruth(number, words)),
                 // Not kept: the rite with that number may be published tomorrow, and nothing would purge this.
-                None: () => NotFound(request)),
+                None: () => NotFound(request, "No such rite", $"No rite {number} has been published (yet).")),
             Left: error => Unavailable(request, error, "A Heretical Truth couldn't be revealed"));
     }
 
@@ -117,12 +117,21 @@ public sealed class RitesFunction
         };
     }
 
-    private static IActionResult NotFound(HttpRequest request) => NeverCached(request, new StatusCodeResult(StatusCodes.Status404NotFound));
+    private static ContentResult Problem(int status, string title, string detail)
+        => new()
+        {
+            Content = JsonSerializer.Serialize(new ApiProblem("about:blank", title, status, detail), Json),
+            ContentType = "application/problem+json; charset=utf-8",
+            StatusCode = status,
+        };
+
+    private static IActionResult NotFound(HttpRequest request, string title, string detail)
+        => NeverCached(request, Problem(StatusCodes.Status404NotFound, title, detail));
 
     private IActionResult Unavailable(HttpRequest request, Error error, string what)
     {
         logger.LogError(error.ToException(), "{What}: {Reason}", what, error.Message);
-        return NeverCached(request, new StatusCodeResult(StatusCodes.Status503ServiceUnavailable));
+        return NeverCached(request, Problem(StatusCodes.Status503ServiceUnavailable, "The rites can't be read just now", "Try again in a minute."));
     }
 
     private static IActionResult NeverCached(HttpRequest request, IActionResult result)
