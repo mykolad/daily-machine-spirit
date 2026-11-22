@@ -13,12 +13,12 @@ namespace DailyMachineSpirit.Functions.Pages;
 public static class ArchiveRows
 {
     /// <summary>For the pages every reader sees alike, which mark no one's votes.</summary>
-    public static readonly IReadOnlyDictionary<int, Reaction> NoVotes = new Dictionary<int, Reaction>();
+    public static readonly IReadOnlyDictionary<int, ReaderVote> NoVotes = new Dictionary<int, ReaderVote>();
 
     /// <param name="words">What a search looks for, marked wherever it's found; none for the Archive.</param>
     /// <param name="yours">The reader's own votes, marked on their rows; none but on their own page.</param>
     /// <param name="places">The places of the rites the Reliquary keeps, each worn as a badge.</param>
-    public static string Months(IReadOnlyList<Rite> rites, IReadOnlyList<string> words, IReadOnlyDictionary<int, Reaction> yours, IReadOnlyDictionary<int, int> places)
+    public static string Months(IReadOnlyList<Rite> rites, IReadOnlyList<string> words, IReadOnlyDictionary<int, ReaderVote> yours, RelicStandings places)
     {
         var html = new StringBuilder("""<div class="months">""");
         foreach (var month in rites.GroupBy(rite => (rite.PublishedOnUtc.Year, rite.PublishedOnUtc.Month)))
@@ -56,7 +56,17 @@ public static class ArchiveRows
     /// <param name="words">What a search looks for, marked wherever it's found, or none.</param>
     /// <param name="yours">The reader's own votes, marked on their rows.</param>
     /// <param name="places">The places of the rites the Reliquary keeps, each worn as a badge.</param>
-    public static string Row(Rite rite, IReadOnlyList<string> words, IReadOnlyDictionary<int, Reaction> yours, IReadOnlyDictionary<int, int> places)
+    public static string Row(Rite rite, IReadOnlyList<string> words, IReadOnlyDictionary<int, ReaderVote> yours, RelicStandings places)
+        => RowWith(rite, words, Standing(RowVotes(rite, yours), RelicBadge.For(rite.Number, places.Venerated) + ConfessionBadge.For(rite.Number, places.Confessed)));
+
+    /// <summary>
+    /// A row of the Reliquary's confessed order (#200): its counts led by the confessions, which rank it ("58 have
+    /// confessed · Blessed 12 · Heresy 30"). No badge: the order says its place.
+    /// </summary>
+    public static string ConfessedRow(Rite rite)
+        => RowWith(rite, [], Standing(Counts($"<span>{Svg.SmallUnlitCandleIcon}{ConfessedWords.Of(rite.ConfessionCount)}</span>" + VerdictCounts(rite)), string.Empty));
+
+    private static string RowWith(Rite rite, IReadOnlyList<string> words, string standing)
     {
         var line = words.Count == 0 ? RowLine.Opening(rite) : RowLine.For(rite, words);
         var tags = RiteTags.Of(rite.Tags);
@@ -66,26 +76,39 @@ public static class ArchiveRows
         return $"""
             <li class="row">
             <span class="row-meta">{ImperialDate.InALink(rite.PublishedOnUtc, "row-date")}<span class="kind">{(rite.Writing.Kind == RiteKind.Prayer ? "PRAYER" : "RITUAL")}</span><span class="row-number"><span aria-hidden="true">NO. </span><span class="sr-only">Rite </span>{rite.Number}</span></span>
-            <span class="row-main"><a class="row-title" href="{Paths.Rite(rite.Number)}" title="{ImperialDate.Day(rite.PublishedOnUtc)}">{Highlight.Of(rite.Writing.Title, words)}</a><span class="row-line">{Highlight.Of(line, words)}</span>{Standing(RowVotes(rite, yours), RelicBadge.For(rite.Number, places))}{tagLinks}</span>
+            <span class="row-main"><a class="row-title" href="{Paths.Rite(rite.Number)}" title="{ImperialDate.Day(rite.PublishedOnUtc)}">{Highlight.Of(rite.Writing.Title, words)}</a><span class="row-line">{Highlight.Of(line, words)}</span>{standing}{tagLinks}</span>
             </li>
             """;
     }
 
     // The reader's own verdict counts the others who gave it ("You and 2 others blessed it"), so beside it only the
     // other verdict's count is left: no vote is said twice.
-    private static string RowVotes(Rite rite, IReadOnlyDictionary<int, Reaction> yours)
+    private static string RowVotes(Rite rite, IReadOnlyDictionary<int, ReaderVote> yours)
     {
-        var blessed = rite.BlessedCount > 0 ? $"<span>{Svg.SmallFlameIcon}Blessed {Html.Count(rite.BlessedCount)}</span>" : string.Empty;
-        var heresies = rite.HeresyCount > 0 ? $"<span>{Svg.SmallSkullIcon}Heresy {Html.Count(rite.HeresyCount)}</span>" : string.Empty;
-        if (!yours.TryGetValue(rite.Number, out var reaction))
+        var (blessed, heresies) = (Blessed(rite), Heresies(rite));
+        if (!yours.TryGetValue(rite.Number, out var vote))
         {
             return Counts(blessed + heresies);
         }
 
-        return reaction == Reaction.Blessed
-            ? $"""<span class="row-yours"><span class="row-verdict row-verdict-blessed">{Svg.SmallFlameIcon}{YouAnd(rite.BlessedCount)} blessed it</span>{Counts(heresies)}</span>"""
-            : $"""<span class="row-yours"><span class="row-verdict row-verdict-heresy">{Svg.SmallSkullIcon}{YouAnd(rite.HeresyCount)} called it heresy</span>{Counts(blessed)}</span>""";
+        // A confession (#200) beside the verdict, or alone, counting the others too.
+        var confessed = vote.Confessed
+            ? $"""<span class="row-verdict row-verdict-confessed">{Svg.SmallCandleIcon}{YouAnd(rite.ConfessionCount)} confessed to it</span>"""
+            : string.Empty;
+        return vote.Reaction.Match(
+            Some: reaction => reaction == Reaction.Blessed
+                ? $"""<span class="row-yours"><span class="row-verdict row-verdict-blessed">{Svg.SmallFlameIcon}{YouAnd(rite.BlessedCount)} blessed it</span>{confessed}{Counts(heresies)}</span>"""
+                : $"""<span class="row-yours"><span class="row-verdict row-verdict-heresy">{Svg.SmallSkullIcon}{YouAnd(rite.HeresyCount)} called it heresy</span>{confessed}{Counts(blessed)}</span>""",
+            None: () => $"""<span class="row-yours">{confessed}{Counts(blessed + heresies)}</span>""");
     }
+
+    private static string VerdictCounts(Rite rite) => Blessed(rite) + Heresies(rite);
+
+    private static string Blessed(Rite rite)
+        => rite.BlessedCount > 0 ? $"<span>{Svg.SmallFlameIcon}Blessed {Html.Count(rite.BlessedCount)}</span>" : string.Empty;
+
+    private static string Heresies(Rite rite)
+        => rite.HeresyCount > 0 ? $"<span>{Svg.SmallSkullIcon}Heresy {Html.Count(rite.HeresyCount)}</span>" : string.Empty;
 
     // The votes and the relic badge share a line, wrapping only where it's too narrow; no line when there's neither.
     private static string Standing(string votes, string badge)

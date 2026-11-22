@@ -99,10 +99,13 @@ public sealed class ConnectorTelemetryTests : IAsyncLifetime
 
     private int ToolCallSpans() => spans.Count(span => span.Source.Name == ConnectorTelemetry.McpSource);
 
+    // The span arrives a moment after the answer: looked for every 20ms, for two seconds at most, then the test fails,
+    // so none passes on spans that never came.
     private static async Task Eventually(Func<bool> condition)
     {
-        for (var tries = 0; !condition() && tries < 100; tries++)
+        for (var tries = 0; !condition(); tries++)
         {
+            Assert.True(tries < 100, "The tool call's span didn't arrive within two seconds.");
             await Task.Delay(20);
         }
     }

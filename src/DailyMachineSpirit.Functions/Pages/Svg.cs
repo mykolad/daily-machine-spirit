@@ -87,11 +87,24 @@ public static class Svg
     public const string SkullIcon =
         """<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 22a1 1 0 0 0 1-1v-1a2 2 0 0 0 1.56-3.25 8 8 0 1 0-11.12 0A2 2 0 0 0 8 20v1a1 1 0 0 0 1 1z"></path><circle cx="9" cy="12" r="1"></circle><circle cx="15" cy="12" r="1"></circle><path d="m12.5 17-.5-1-.5 1h1z"></path></svg>""";
 
+    // Confess (#200): a candle, lit when pressed, so the pressed state is a change of shape and not colour alone. Our own,
+    // drawn in the verdict icons' weight.
+    public const string CandleIcon =
+        """<svg class="candle" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path class="flame" d="M12 2.5c1.7 1.9 2.2 3.5 0 5.4-2.2-1.9-1.7-3.5 0-5.4z" fill="#f0b45a" stroke="#f0b45a"/><path d="M12 8v3"/><rect x="8.5" y="11" width="7" height="10" rx="1.2"/><path d="M6 21h12"/></svg>""";
+
     public const string SmallFlameIcon =
         """<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>""";
 
     public const string SmallSkullIcon =
         """<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 22a1 1 0 0 0 1-1v-1a2 2 0 0 0 1.56-3.25 8 8 0 1 0-11.12 0A2 2 0 0 0 8 20v1a1 1 0 0 0 1 1z"></path><circle cx="9" cy="12" r="1"></circle><circle cx="15" cy="12" r="1"></circle></svg>""";
+
+    // The most confessed (#200): a candle, our own, in the small icons' weight. Lit on the relic badge, its flame in the
+    // badge's own colour; unlit beside a row's count of confessions, as the Confess button is before it's pressed.
+    public const string SmallCandleIcon =
+        """<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 2.5c1.7 1.9 2.2 3.5 0 5.4-2.2-1.9-1.7-3.5 0-5.4z" fill="currentColor"/><path d="M12 8v3"/><rect x="8.5" y="11" width="7" height="10" rx="1.2"/><path d="M6 21h12"/></svg>""";
+
+    public const string SmallUnlitCandleIcon =
+        """<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 8v3"/><rect x="8.5" y="11" width="7" height="10" rx="1.2"/><path d="M6 21h12"/></svg>""";
 
     public const string LinkIcon =
         """<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>""";

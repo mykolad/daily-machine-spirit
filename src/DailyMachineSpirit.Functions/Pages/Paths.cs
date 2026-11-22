@@ -58,13 +58,16 @@ public static class Paths
     /// <summary>The readers' most venerated rites (<see cref="ReliquaryPage"/>).</summary>
     public const string Reliquary = "/reliquary";
 
+    /// <summary>The Reliquary's other order: the rites the readers most confess to (#200).</summary>
+    public const string ReliquaryConfessed = "/reliquary/confessed";
+
     /// <summary>
     /// The cached pages that show a rite's counts and change with its votes: its own, Today, which shows the newest, and
-    /// the Reliquary, which any vote may reorder (purging either for a rite it doesn't show costs one render). The
-    /// archive, a tag's page and search results show counts too, but which of their pages holds a rite moves as rites
-    /// are added, so they're only cached briefly (<see cref="SitePages"/>).
+    /// the Reliquary in both its orders, which any vote or confession may reorder (purging one for a rite it doesn't show
+    /// costs one render). The archive, a tag's page and search results show counts too, but which of their pages holds a
+    /// rite moves as rites are added, so they're only cached briefly (<see cref="SitePages"/>).
     /// </summary>
-    public static IReadOnlyCollection<string> ShowingVotesOf(int number) => [Today, Rite(number), Reliquary];
+    public static IReadOnlyCollection<string> ShowingVotesOf(int number) => [Today, Rite(number), Reliquary, ReliquaryConfessed];
 
     /// <summary>The Breviary, the signed-in reader's own page: the rites they voted on.</summary>
     public const string Breviary = "/breviary";

@@ -272,9 +272,11 @@ skills/                           — Consult the Machine Spirit, a skill that p
   - **Recent rites** (Today): the four before today's, read with it in one query, so a new rite's purge of Today
     refreshes them too. The motto sits between the countdown and them. They and More rites are the same small
     parchments (`ParchmentCards`: kind, day and title); fewer than four share the row evenly.
-  - **Wide screens** (1280px and up) give the rite margins: the countdown and tags on the left, the votes on the right,
-    nothing the parchment already says. The markup stays in reading order and the stylesheet places it
-    (`docs/design/accessibility.md`). The Scriptorium puts its heading on the same altar: candles beside it, the glow
+  - **Wide screens** (1280px and up) give the rite margins: the countdown and tags on the left, the votes and the
+    confession on the right, nothing the parchment already says. The markup stays in reading order and the stylesheet
+    places it (`docs/design/accessibility.md`). Each margin's candle stands at the foot of the rite's row, so the votes'
+    margin keeps 176px under its notes (the candle's 120, and the Archive's 56 between): a tall margin moves the candle
+    down rather than through the words. The Scriptorium puts its heading on the same altar: candles beside it, the glow
     behind, the traces beyond. The candles and traces are `Styles.Altar`, which the Scriptorium's own stylesheet
     includes.
   - **The Archive** (`ArchivePage`, `ArchiveSheet`, `ArchiveRows`): Today's masthead, then one parchment sheet of rows
@@ -386,16 +388,20 @@ skills/                           — Consult the Machine Spirit, a skill that p
 - **Votes** (Blessed / Heresy, `Api/VotesFunction`): one per account per rite, which the reader can switch or
   take back, signed in as below. `POST /api/rites/{number}/vote` with `{"vote": "blessed" | "heresy" | null}`, and
   `GET /api/votes?rites=12` for the page to show the reader's own vote pressed.
+  - **Confessions** (#200, "I have done this"): apart from the verdict, on the same vote (`ReaderVote`), so one may
+    bless a rite and confess to it. The POST takes `"confessed": true | false` too; whichever of the two a body leaves
+    out stays as it was, and `{}` is refused. `GET /api/votes` keeps the verdicts by rite, as a page cached with an
+    older script reads them, with the confessions beside them: `{"12": "blessed", "confessed": [12]}`.
   - **A vote document per account and rite** (`VoteRepository`), its id the rite's number and the voter key, so Cosmos
-    itself allows one. The vote and the rite's counts (`blessedVotes`, `heresyVotes`) change in one transactional batch,
-    so the counts are always the votes there are.
+    itself allows one, kept while it holds a verdict or a confession. The vote and the rite's counts (`blessedVotes`,
+    `heresyVotes`, `confessions`) change in one transactional batch, so the counts are always the votes there are.
   - **The anonymous reactions before sign-in** counted in `blessedCount` and `heresyCount`: older rites still have
     them, and nothing reads them, so the counts started again from zero.
   - **The page is the same for everyone:** both "Sign in with GitHub" and "Sign out" are in it, hidden, and the script
     shows the reader's own after asking `/api/me`. The API takes JSON only, so another site's form can't vote.
-  - **The Breviary** (`/breviary`, `BreviaryFunction`, `BreviaryPage`): every rite the signed-in reader voted on, on
-    the Archive's sheet, each row marked with their verdict, narrowed by links to the Blessed or the Heresies
-    (`?verdict=`), like bookmarks. In a chapter per subject (`BreviaryChapter`), by name, newest first within each, a
+  - **The Breviary** (`/breviary`, `BreviaryFunction`, `BreviaryPage`): every rite the signed-in reader voted on or
+    confessed to, on the Archive's sheet, each row marked with their verdict and confession, narrowed by links to the
+    Blessed, the Heresies or the confessions (`?verdict=`, `BreviaryFilter`), like bookmarks. In a chapter per subject (`BreviaryChapter`), by name, newest first within each, a
     rite in each of its subjects' chapters, as on the subjects' pages. Each chapter shows its 3 newest and links to
     itself whole (`?chapter=`, with a chip to take it off, as the Archive's subject has), so the page stays short; the
     right margin indexes the chapters, each linking to itself whole. Its own search (`?q=`) finds what the Archive's would
@@ -405,7 +411,7 @@ skills/                           — Consult the Machine Spirit, a skill that p
     Cloudflare). Signed out, it offers the sign-in. Signed in, it's linked from a book icon in the nav (beside search,
     shown by the script from the `dms-signed-in` cookie, below), the vote status under a rite, and the toast after a
     vote; the Catechism says it's there.
-  - **The Reliquary** (`/reliquary`, #154, `ReliquaryPage`): the readers' most venerated rites across the site: the
+  - **The Reliquary** (`/reliquary`, #154, `ReliquaryPage`; its other order, the most confessed, at `/reliquary/confessed`, #200, `Confession`, rows badged by `ConfessionBadge`): the readers' most venerated rites across the site: the
     Archive in its other order, with its masthead and sheet, the nav's Archive link current. Both pages offer the two
     orders under the heading, "Newest" and "Most venerated" (`ArchiveSheet.Orders`, links, like the Breviary's verdicts).
     A rite's veneration is its blessings less its heresies (`Veneration`): only rites above zero, the most first, a tie

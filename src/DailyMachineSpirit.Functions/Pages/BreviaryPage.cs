@@ -7,17 +7,17 @@ using static LanguageExt.Prelude;
 namespace DailyMachineSpirit.Functions.Pages;
 
 /// <summary>
-/// The Breviary (<c>/breviary</c>), the signed-in reader's own book of rites: every rite they voted on, on the Archive's
-/// sheet, in a chapter per subject (<see cref="BreviaryChapter"/>), each marked with their verdict. Each chapter shows
-/// its newest rites and links to itself, whole. Narrowed to the Blessed or the Heresies by links, and to the rites
-/// holding some words by its own search, so it works without the script. Kept like favourites: a Blessed vote is a
-/// bookmark.
+/// The Breviary (<c>/breviary</c>), the signed-in reader's own book of rites: every rite they voted on or confessed to
+/// (#200), on the Archive's sheet, in a chapter per subject (<see cref="BreviaryChapter"/>), each marked with their
+/// verdict and confession. Each chapter shows its newest rites and links to itself, whole. Narrowed to the Blessed, the
+/// Heresies or the confessions by links, and to the rites holding some words by its own search, so it works without the
+/// script. Kept like favourites: a Blessed vote is a bookmark.
 /// </summary>
 public static class BreviaryPage
 {
     private const string Title = "Your Breviary";
 
-    private const string Description = "The rites you voted on, Blessed or Heresy.";
+    private const string Description = "The rites you voted on, Blessed or Heresy, and the ones you confessed to.";
 
     // How many of a chapter's rites the whole Breviary shows; its link shows the rest.
     private const int NewestPerChapter = 3;
@@ -25,6 +25,8 @@ public static class BreviaryPage
     public const string BlessedVerdict = "blessed";
 
     public const string HeresyVerdict = "heresy";
+
+    public const string ConfessedVerdict = "confessed";
 
     /// <summary>For a reader who isn't signed in: what the page keeps, and the way to sign in.</summary>
     public static string SignedOut()
@@ -35,7 +37,7 @@ public static class BreviaryPage
             search: string.Empty,
             body: $"""
                 <div class="sheet-none">
-                <p>Sign in with GitHub, and every rite you bless,<br>or call heresy, is kept here.</p>
+                <p>Sign in with GitHub, and every rite you bless,<br>call heresy, or confess to, is kept here.</p>
                 <a class="sheet-button" href="{Html.Encode(Paths.SignIn(Paths.Breviary))}">Sign in with GitHub</a>
                 </div>
                 """,
@@ -44,32 +46,31 @@ public static class BreviaryPage
             right: string.Empty));
 
     /// <param name="rites">The rites voted on, newest first, as each chapter keeps them.</param>
-    /// <param name="yours">The reader's vote on each.</param>
-    /// <param name="only">The one verdict shown, or None for both.</param>
+    /// <param name="yours">The reader's vote on each: a verdict, a confession, or both.</param>
+    /// <param name="only">What the page is narrowed to, or None for every rite.</param>
     /// <param name="chapter">The one chapter shown, whole, or None for every chapter's newest.</param>
     /// <param name="typed">What the reader searched for, shown back in the field, or empty.</param>
     /// <param name="words">The words looked for, from what was typed; none shows every rite.</param>
     /// <param name="places">The places of the rites the Reliquary keeps, each worn as a badge.</param>
     public static string Render(
-        IReadOnlyList<Rite> rites, IReadOnlyDictionary<int, Reaction> yours, Option<Reaction> only, Option<Tag> chapter, string typed, IReadOnlyList<string> words,
-        IReadOnlyDictionary<int, int> places)
+        IReadOnlyList<Rite> rites, IReadOnlyDictionary<int, ReaderVote> yours, Option<BreviaryFilter> only, Option<Tag> chapter, string typed, IReadOnlyList<string> words,
+        RelicStandings places)
     {
-        var blessed = yours.Values.Count(reaction => reaction == Reaction.Blessed);
-        var heresies = yours.Count - blessed;
         var found = rites.Where(rite => SearchWords.FoundIn(rite, words)).ToList();
         var inChapter = found.Where(rite => chapter.ForAll(subject => BreviaryChapter.SubjectsOf(rite).Contains(subject))).ToList();
-        var inChapterBlessed = inChapter.Count(rite => VerdictOn(rite, yours) == Reaction.Blessed);
-        var shown = inChapter.Where(rite => HasVerdict(rite, yours, only)).ToList();
+        var shown = inChapter.Where(rite => Shows(rite, yours, only)).ToList();
         // Every chapter, the one shown among them, so the index leads from one to the next.
-        var chapters = BreviaryChapter.Of(found.Where(rite => HasVerdict(rite, yours, only)).ToList());
-        var verdict = only.Map(reaction => reaction == Reaction.Blessed ? BlessedVerdict : HeresyVerdict);
+        var chapters = BreviaryChapter.Of(found.Where(rite => Shows(rite, yours, only)).ToList());
+        var verdict = only.Map(Key);
         var key = chapter.Map(subject => subject.Key);
         var left = $"""
             <aside class="marginalia" aria-label="Your votes">
-            {ArchiveSheet.Note("Blessed", $"""<p class="margin-number">{Html.Count(blessed)}</p>""")}
-            {ArchiveSheet.Note("Heresy", $"""<p class="margin-number">{Html.Count(heresies)}</p>""")}
+            {ArchiveSheet.Note("Blessed", $"""<p class="margin-number">{Html.Count(Counted(yours.Values, BreviaryFilter.Blessed))}</p>""")}
+            {ArchiveSheet.Note("Heresy", $"""<p class="margin-number">{Html.Count(Counted(yours.Values, BreviaryFilter.Heresies))}</p>""")}
+            {ArchiveSheet.Note("Confessed", $"""<p class="margin-number">{Html.Count(Counted(yours.Values, BreviaryFilter.Confessions))}</p>""")}
             </aside>
             """;
+        var inChapterVotes = inChapter.Select(rite => yours[rite.Number]).ToList();
         // What the search found with the verdict shown, as the verdicts' links count what each would show. The count is
         // in the title too, which a screen reader reads first when the results load.
         var title = words.Count == 0
@@ -81,7 +82,7 @@ public static class BreviaryPage
             sub: Sub(chapter.IsSome ? inChapter.Count : yours.Count, chapter.IsSome, words.Count == 0 ? None : Some(shown.Count)),
             search: yours.Count == 0
                 ? string.Empty
-                : Search(typed, verdict, chapter) + Verdicts(only, key, typed, inChapter.Count, inChapterBlessed, inChapter.Count - inChapterBlessed),
+                : Search(typed, verdict, chapter) + Verdicts(only, key, typed, inChapterVotes),
             body: shown.Count == 0
                 ? NothingShown(yours.Count, only, chapter, words.Count > 0, verdict)
                 : chapter.IsSome ? Rows(shown, words, yours, places) : Chapters(BreviaryChapter.Of(shown), verdict, typed, words, yours, places),
@@ -92,10 +93,25 @@ public static class BreviaryPage
             right: Index(chapters, chapter, verdict, typed)));
     }
 
-    private static Reaction VerdictOn(Rite rite, IReadOnlyDictionary<int, Reaction> yours) => yours[rite.Number];
+    private static bool Shows(Rite rite, IReadOnlyDictionary<int, ReaderVote> yours, Option<BreviaryFilter> only)
+        => only.ForAll(filter => Holds(yours[rite.Number], filter));
 
-    private static bool HasVerdict(Rite rite, IReadOnlyDictionary<int, Reaction> yours, Option<Reaction> only)
-        => only.ForAll(verdict => VerdictOn(rite, yours) == verdict);
+    private static bool Holds(ReaderVote vote, BreviaryFilter filter) => filter switch
+    {
+        BreviaryFilter.Blessed => vote.Reaction == Some(Reaction.Blessed),
+        BreviaryFilter.Heresies => vote.Reaction == Some(Reaction.Heresy),
+        _ => vote.Confessed,
+    };
+
+    private static int Counted(IEnumerable<ReaderVote> votes, BreviaryFilter filter) => votes.Count(vote => Holds(vote, filter));
+
+    // The filter's word in the page's address (?verdict=).
+    private static string Key(BreviaryFilter filter) => filter switch
+    {
+        BreviaryFilter.Blessed => BlessedVerdict,
+        BreviaryFilter.Heresies => HeresyVerdict,
+        _ => ConfessedVerdict,
+    };
 
     // What the reader has, in the chapter if one's shown, or what their search found among it.
     private static string Sub(int voted, bool inAChapter, Option<int> found)
@@ -106,7 +122,7 @@ public static class BreviaryPage
                 1 => "1 of your rites mentions it.",
                 _ => $"{Html.Count(count)} of your rites mention it.",
             },
-            None: () => voted == 0 ? Description : $"{Rites(voted)} you voted on, {(inAChapter ? "newest first" : "by subject")}.");
+            None: () => voted == 0 ? Description : $"{Rites(voted)} you voted on or confessed to, {(inAChapter ? "newest first" : "by subject")}.");
 
     // A plain form, so it works without the script, which shows the results as the reader types (the Archive's field
     // does the same). The verdict and chapter shown come along, and clearing the words keeps them. The chapter's chip
@@ -128,14 +144,18 @@ public static class BreviaryPage
 
     // Links, not a form: each is a page of its own, so it works without the script, and the current one says so. Each
     // keeps the chapter and the words searched for, and counts what it would show.
-    private static string Verdicts(Option<Reaction> only, Option<string> chapter, string typed, int all, int blessed, int heresies)
+    private static string Verdicts(Option<BreviaryFilter> only, Option<string> chapter, string typed, IReadOnlyList<ReaderVote> votes)
         => $"""
             <nav class="verdicts" aria-label="Show">
-            {Verdict(Paths.BreviaryShowing(None, chapter, typed), $"All {Html.Count(all)}", only.IsNone)}
-            {Verdict(Paths.BreviaryShowing(Some(BlessedVerdict), chapter, typed), $"Blessed {Html.Count(blessed)}", only.Exists(verdict => verdict == Reaction.Blessed))}
-            {Verdict(Paths.BreviaryShowing(Some(HeresyVerdict), chapter, typed), $"Heresy {Html.Count(heresies)}", only.Exists(verdict => verdict == Reaction.Heresy))}
+            {Verdict(Paths.BreviaryShowing(None, chapter, typed), $"All {Html.Count(votes.Count)}", only.IsNone)}
+            {Filter(BreviaryFilter.Blessed, "Blessed", only, chapter, typed, votes)}
+            {Filter(BreviaryFilter.Heresies, "Heresy", only, chapter, typed, votes)}
+            {Filter(BreviaryFilter.Confessions, "Confessed", only, chapter, typed, votes)}
             </nav>
             """;
+
+    private static string Filter(BreviaryFilter filter, string label, Option<BreviaryFilter> only, Option<string> chapter, string typed, IReadOnlyList<ReaderVote> votes)
+        => Verdict(Paths.BreviaryShowing(Some(Key(filter)), chapter, typed), $"{label} {Html.Count(Counted(votes, filter))}", only == Some(filter));
 
     private static string Verdict(string href, string label, bool current)
         => $"""<a class="verdict" href="{Html.Encode(href)}"{Current(current)}>{label}</a>""";
@@ -144,8 +164,8 @@ public static class BreviaryPage
 
     // Every chapter's newest few, so the page stays short however many rites the reader keeps, and a link to the rest.
     private static string Chapters(
-        IReadOnlyList<BreviaryChapter> chapters, Option<string> verdict, string typed, IReadOnlyList<string> words, IReadOnlyDictionary<int, Reaction> yours,
-        IReadOnlyDictionary<int, int> places)
+        IReadOnlyList<BreviaryChapter> chapters, Option<string> verdict, string typed, IReadOnlyList<string> words, IReadOnlyDictionary<int, ReaderVote> yours,
+        RelicStandings places)
     {
         var html = new StringBuilder("""<div class="chapters">""");
         foreach (var chapter in chapters)
@@ -164,7 +184,7 @@ public static class BreviaryPage
         return html.Append("</div>").ToString();
     }
 
-    private static string Rows(IReadOnlyList<Rite> rites, IReadOnlyList<string> words, IReadOnlyDictionary<int, Reaction> yours, IReadOnlyDictionary<int, int> places)
+    private static string Rows(IReadOnlyList<Rite> rites, IReadOnlyList<string> words, IReadOnlyDictionary<int, ReaderVote> yours, RelicStandings places)
         => $"""<ol class="rows">{string.Concat(rites.Select(rite => ArchiveRows.Row(rite, words, yours, places)))}</ol>""";
 
     private static string ChapterLink(Tag subject, Option<string> verdict, string typed) => Paths.BreviaryShowing(verdict, Some(subject.Key), typed);
@@ -182,11 +202,11 @@ public static class BreviaryPage
 
     // Said instead of the rows: nothing voted on yet, nothing the search found, or nothing with the verdict, or in the
     // chapter, shown.
-    private static string NothingShown(int voted, Option<Reaction> only, Option<Tag> chapter, bool searched, Option<string> verdict)
+    private static string NothingShown(int voted, Option<BreviaryFilter> only, Option<Tag> chapter, bool searched, Option<string> verdict)
     {
         if (voted == 0)
         {
-            return Nothing("You haven’t voted on a rite yet.<br>Bless one, or call it heresy, and it’s kept here.", Paths.Today, "Read today’s rite");
+            return Nothing("You haven’t voted on a rite yet.<br>Bless one, call it heresy, or confess to it, and it’s kept here.", Paths.Today, "Read today’s rite");
         }
         var whole = Paths.BreviaryShowing(verdict, None, string.Empty);
         if (searched)
@@ -195,7 +215,12 @@ public static class BreviaryPage
         }
         var where = chapter.Map(subject => $" in {Html.Encode(subject.Label)}").IfNone(string.Empty);
         var said = only.Match(
-            Some: reaction => reaction == Reaction.Blessed ? $"You haven’t blessed a rite{where} yet." : $"You haven’t called a rite heresy{where} yet.",
+            Some: filter => filter switch
+            {
+                BreviaryFilter.Blessed => $"You haven’t blessed a rite{where} yet.",
+                BreviaryFilter.Heresies => $"You haven’t called a rite heresy{where} yet.",
+                _ => $"You haven’t confessed to a rite{where} yet.",
+            },
             None: () => $"You haven’t voted on a rite{where} yet.");
         return chapter.IsSome ? Nothing(said, whole, "Show your whole Breviary") : Nothing(said, Paths.Today, "Read today’s rite");
     }

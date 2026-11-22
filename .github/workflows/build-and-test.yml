@@ -36,10 +36,12 @@ jobs:
       version: ${{ steps.version.outputs.version }}
 
     # The repository tests run against the Cosmos DB emulator. It has a well-known key and holds nothing but the
-    # tests' throwaway databases. HTTPS, because the .NET SDK doesn't talk HTTP to it.
+    # tests' throwaway databases. HTTPS, because the .NET SDK doesn't talk HTTP to it. Pinned to the vnext image of
+    # 2026-11-20: the one published the next day answers concurrent writes to one document with a 500 ("cannot drop
+    # portal") now and then, failing WitnessedTests' two-tabs test. Back to vnext-latest once a newer image is fixed.
     services:
       cosmos:
-        image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-latest
+        image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-latest@sha256:db53613dae19d0a3d5ad50688d14aa6e957af082dafea56b52e1bd3a6b3f1406
         ports:
           - 8081:8081
           - 8080:8080

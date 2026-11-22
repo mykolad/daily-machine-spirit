@@ -49,6 +49,11 @@ public sealed partial class DeployedAppTests
     public async Task TheReliquary_Answers()
         => AssertAnswers(await app.Get("/reliquary"), HttpStatusCode.OK, $"<title>The Reliquary · {SiteName}</title>");
 
+    // Its other order (#200), at a route of its own.
+    [Fact]
+    public async Task TheReliquaryMostConfessed_Answers()
+        => AssertAnswers(await app.Get("/reliquary/confessed"), HttpStatusCode.OK, $"<title>The Reliquary · {SiteName}</title>");
+
     // A query of its own, over the rites' text, for the deployed database to answer.
     [Fact]
     public async Task Search_Answers()
