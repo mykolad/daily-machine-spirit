@@ -38,6 +38,12 @@ public sealed record RiteWriting
     /// </summary>
     public Option<string> Form { get; init; }
 
+    /// <summary>
+    /// The feast day it was written for (#202: <c>Feasts</c> in the Functions app): published on that day, ahead of the
+    /// Calendar's order. None for an ordinary rite.
+    /// </summary>
+    public Option<DateOnly> FeastDay { get; init; }
+
     public string GeneratedByModel { get; init; } = string.Empty;
 
     public DateTime GeneratedAtUtc { get; init; }

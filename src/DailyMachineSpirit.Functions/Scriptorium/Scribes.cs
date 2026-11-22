@@ -64,22 +64,20 @@ public sealed class Scribes
     public Task<Either<Error, ScriptoriumView>> View(CancellationToken cancellationToken)
     {
         var now = time.GetUtcNow().UtcDateTime;
-        var today = DateOnly.FromDateTime(now);
         return Calendar(cancellationToken)
-            .BindAsync(calendar => rites.GetPublishedOn(today, cancellationToken)
-                .BindAsync(todays => scriptorium.GetDecisions(pages.Value.JudgmentsShown, cancellationToken)
-                    .MapAsync(decisions =>
-                    {
-                        // The next one goes out at the coming midnight: tonight's, unless today's is still to come.
-                        var first = todays.IsSome ? today.AddDays(1) : today;
-                        var placed = calendar.Placements.Order.ToHashSet();
-                        var entries = calendar.Ordered
-                            .Select((draft, place) => new CalendarEntry(
-                                draft, first.AddDays(place), placed.Contains(draft.Id), Placer(calendar.Placements, draft.Id),
-                                calendar.AuguryPlace(draft)))
-                            .ToList();
-                        return Task.FromResult(new ScriptoriumView(entries, decisions, now, backlog.Value.DraftsWaiting));
-                    })));
+            .BindAsync(calendar => scriptorium.GetDecisions(pages.Value.JudgmentsShown, cancellationToken)
+                .MapAsync(decisions =>
+                {
+                    // A feast's own draft isn't placed by the Scribes, even if anointed before it was kept for its day: no order
+                    // places it now (#202).
+                    var placed = calendar.Placements.Order.Where(id => !calendar.FeastDrafts.Contains(id)).ToHashSet();
+                    var entries = calendar.Days
+                        .Select(entry => new CalendarEntry(
+                            entry.Draft, entry.Day, placed.Contains(entry.Draft.Id), Placer(calendar.Placements, entry.Draft.Id),
+                            calendar.AuguryPlace(entry.Draft)))
+                        .ToList();
+                    return Task.FromResult(new ScriptoriumView(entries, decisions, now, backlog.Value.DraftsWaiting));
+                }));
     }
 
     /// <summary>The Ashes: the drafts burned most recently, the newest first.</summary>
@@ -191,8 +189,8 @@ public sealed class Scribes
                         // must the one acted on, a released one too: published meanwhile, there's nothing to release.
                         Right: order =>
                         {
-                            var after = order.IndexOf(draftId) + 1;
-                            var placeAfter = after > 0 ? Some(after) : None;
+                            // Counted as the Calendar shows it, feasts among the places (#202).
+                            var placeAfter = calendar.PlaceWith(order, draftId);
                             return scriptorium.SavePlacements(
                                 Placed(calendar.Placements, order, draftId, scribe),
                                 Decision(found.Draft, action, checkedNote, Some(calendar.PlacesOf(found))) with { CalendarPlaceAfter = placeAfter },
@@ -228,14 +226,29 @@ public sealed class Scribes
 
     // The Scribes' order is read first: a draft placed after that changes the order's ETag, so saving a change based on a
     // waiting list without that draft fails (ChangedMeanwhile) rather than dropping its placement.
+    // Each draft has its day as the publisher will take it (PublishingDays): a feast's on its feast (#202), the order on
+    // the days between.
     private Task<Either<Error, CalendarState>> Calendar(CancellationToken cancellationToken)
-        => scriptorium.GetPlacements(cancellationToken)
+    {
+        var today = DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime);
+        return scriptorium.GetPlacements(cancellationToken)
             .BindAsync(placements => drafts.GetWaiting(cancellationToken)
                 .BindAsync(waiting => rites.GetNewest(augury.Value.RecentRitesCompared, cancellationToken)
-                    .MapAsync(recent => Task.FromResult(new CalendarState(
-                        LiturgicalCalendar.Order(waiting, recent, placements.Order, augury.Value),
-                        LiturgicalCalendar.Order(waiting, recent, [], augury.Value),
-                        placements)))));
+                    .BindAsync(recent => rites.GetPublishedOn(today, cancellationToken)
+                        .MapAsync(todays =>
+                        {
+                            // The next one goes out at the coming midnight: tonight's, unless today's is still to come.
+                            var first = todays.IsSome ? today.AddDays(1) : today;
+                            // The Augury's order alone is a schedule too, feasts on their days, so its places compare with the
+                            // Calendar's (#202).
+                            return Task.FromResult(new CalendarState(
+                                PublishingDays.Of(waiting, recent, placements.Order, augury.Value, first),
+                                PublishingDays.Of(waiting, recent, [], augury.Value, first).Select(entry => entry.Draft).ToList(),
+                                PublishingDays.Feasts(waiting, first).Values.Select(draft => draft.Id).ToHashSet(),
+                                placements,
+                                order => PublishingDays.Of(waiting, recent, order, augury.Value, first)));
+                        }))));
+    }
 
     private ScribeDecision Decision(Draft draft, ScribeAction action, Option<string> note, Option<DraftPlaces> places)
         => new()
@@ -276,8 +289,17 @@ public sealed class Scribes
     }
 
     /// <summary>The calendar as it is now, and the Augury's order alone, to record how far the Scribes disagree with it.</summary>
-    private sealed record CalendarState(List<Draft> Ordered, List<Draft> AuguryOrder, Placements Placements)
+    // With: the days as they'd be with the Scribes' order changed, for where a moved draft goes.
+    private sealed record CalendarState(
+        List<(Draft Draft, DateOnly Day)> Days,
+        List<Draft> AuguryOrder,
+        IReadOnlySet<Guid> FeastDrafts,
+        Placements Placements,
+        Func<IReadOnlyList<Guid>, List<(Draft Draft, DateOnly Day)>> With)
     {
+        /// <summary>The waiting drafts in the order they go out, feasts among them.</summary>
+        public List<Draft> Ordered { get; } = Days.Select(entry => entry.Draft).ToList();
+
         /// <summary>The draft and its place (1 is next), if it's waiting.</summary>
         public Option<(Draft Draft, int Place)> Find(Guid draftId)
         {
@@ -285,12 +307,24 @@ public sealed class Scribes
             return index < 0 ? None : Some((Ordered[index], index + 1));
         }
 
-        /// <summary>The anointed drafts still waiting, in the Scribes' order: the calendar's first places.</summary>
-        public List<Guid> Anointed() => Ordered.Select(draft => draft.Id).Where(Placements.Order.Contains).ToList();
+        /// <summary>
+        /// The anointed drafts still waiting, in the Scribes' order: the calendar's first places. Not a feast's own draft,
+        /// even if anointed before it was kept for its day: no order moves it, so a move aimed at it finds it gone.
+        /// </summary>
+        public List<Guid> Anointed() => Ordered.Select(draft => draft.Id).Where(id => Placements.Order.Contains(id) && !FeastDrafts.Contains(id)).ToList();
 
-        public int AuguryPlace(Draft draft) => AuguryOrder.FindIndex(other => other.Id == draft.Id) + 1;
+        /// <summary>Where the Augury alone would put it (1 is next), feasts counted; 0 for a feast's own draft, which no order ranks.</summary>
+        public int AuguryPlace(Draft draft) => FeastDrafts.Contains(draft.Id) ? 0 : AuguryOrder.FindIndex(other => other.Id == draft.Id) + 1;
 
         public DraftPlaces PlacesOf((Draft Draft, int Place) found)
-            => new(found.Place, AuguryPlace(found.Draft), LiturgicalCalendar.RanksByQuality(found.Draft, AuguryOrder));
+            => new(found.Place, AuguryPlace(found.Draft), AuguryPlace(found.Draft) > 0 && LiturgicalCalendar.RanksByQuality(found.Draft, Ordinary));
+
+        /// <summary>The draft's place (1 is next) once the Scribes' order is the one given, if it's placed by it.</summary>
+        public Option<int> PlaceWith(IReadOnlyList<Guid> order, Guid draftId)
+            => order.Contains(draftId) ? Some(With(order).FindIndex(entry => entry.Draft.Id == draftId) + 1) : None;
+
+        // The drafts the Augury ranks: a feast's own draft, judged by whichever judge, says nothing of which judge is newest
+        // among them.
+        private List<Draft> Ordinary => AuguryOrder.Where(draft => !FeastDrafts.Contains(draft.Id)).ToList();
     }
 }

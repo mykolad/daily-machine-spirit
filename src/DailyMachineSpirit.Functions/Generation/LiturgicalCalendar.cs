@@ -1,6 +1,7 @@
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Functions.Generation.Writing;
 using LanguageExt;
+using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Functions.Generation;
 
@@ -16,32 +17,61 @@ public static class LiturgicalCalendar
     /// <param name="recent">Published rites, newest first (only the first <see cref="AuguryOptions.RecentRitesCompared"/> count).</param>
     /// <param name="placed">The Scribes' order; drafts in it that aren't waiting any more are skipped.</param>
     public static List<Draft> Order(IReadOnlyList<Draft> waiting, IReadOnlyList<Rite> recent, IReadOnlyList<Guid> placed, AuguryOptions augury)
+        => Schedule(waiting, recent, placed, augury, new Dictionary<int, Draft>()).Select(entry => entry.Draft).ToList();
+
+    /// <summary>
+    /// The order day by day (day 0 the first), with drafts kept for feasts on their days (#202): each joins the rites
+    /// before the next pick, as it will have been published by then, so the order around a feast is the one the
+    /// publisher will choose. A day with nothing to fill (only feasts left, further on) goes without.
+    /// </summary>
+    /// <param name="waiting">The drafts the order may place: not those kept for feasts.</param>
+    /// <param name="fixedDays">The feasts' drafts, by their day.</param>
+    public static List<(Draft Draft, int Day)> Schedule(
+        IReadOnlyList<Draft> waiting, IReadOnlyList<Rite> recent, IReadOnlyList<Guid> placed, AuguryOptions augury, IReadOnlyDictionary<int, Draft> fixedDays)
     {
         var waitingById = waiting.ToDictionary(draft => draft.Id);
-        var ordered = placed.Distinct().Where(waitingById.ContainsKey).Select(id => waitingById[id]).ToList();
-        var placedIds = ordered.Select(draft => draft.Id).ToHashSet();
+        var anointed = new Queue<Draft>(placed.Distinct().Where(waitingById.ContainsKey).Select(id => waitingById[id]));
+        var placedIds = anointed.Select(draft => draft.Id).ToHashSet();
         var unplaced = waiting.Where(draft => !placedIds.Contains(draft.Id)).ToList();
 
         // Oldest first: each pick joins the end, as the rite before the next one.
-        var before = recent.Take(augury.RecentRitesCompared).Reverse().Select(rite => Before(rite.Writing, rite.Similarity))
-            .Concat(ordered.Select(draft => Before(draft.Writing, draft.Similarity)))
-            .ToList();
-        var judge = NewestJudge(waiting);
-        bool IsJudged(Draft draft) => JudgedBy(draft, judge);
+        var before = recent.Take(augury.RecentRitesCompared).Reverse().Select(rite => Before(rite.Writing, rite.Similarity)).ToList();
         // A fixed order to start from, so equal values always resolve the same way.
-        var judged = unplaced.Where(IsJudged).OrderBy(draft => draft.Writing.GeneratedAtUtc).ThenBy(draft => draft.Id).ToList();
+        var pool = unplaced.OrderBy(draft => draft.Writing.GeneratedAtUtc).ThenBy(draft => draft.Id).ToList();
+        var lastFixed = fixedDays.Keys.DefaultIfEmpty(-1).Max();
 
-        while (judged.Count > 0)
+        var days = new List<(Draft Draft, int Day)>();
+        for (var day = 0; anointed.Count + pool.Count > 0 || day <= lastFixed; day++)
         {
-            // The sort is stable, so of equal values the earlier draft wins.
-            var next = judged.OrderByDescending(draft => Value(draft, before, augury)).First();
-            judged.Remove(next);
-            ordered.Add(next);
-            before.Add(Before(next.Writing, next.Similarity));
+            var next = fixedDays.TryGetValue(day, out var feast) ? Some(feast)
+                : anointed.Count > 0 ? Some(anointed.Dequeue())
+                : pool.Count > 0 ? Some(Pick(pool, StillWaiting(anointed, pool, fixedDays, day), before, augury))
+                : None;
+            next.IfSome(draft =>
+            {
+                days.Add((draft, day));
+                before.Add(Before(draft.Writing, draft.Similarity));
+            });
         }
+        return days;
+    }
 
-        ordered.AddRange(unplaced.Where(draft => !IsJudged(draft)).OrderBy(draft => draft.Writing.GeneratedAtUtc).ThenBy(draft => draft.Id));
-        return ordered;
+    // What the publisher will find waiting on the day: the rest of the orders, and the feasts still to come.
+    private static List<Draft> StillWaiting(Queue<Draft> anointed, List<Draft> pool, IReadOnlyDictionary<int, Draft> fixedDays, int day)
+        => [.. anointed, .. pool, .. fixedDays.Where(fixedDay => fixedDay.Key > day).Select(fixedDay => fixedDay.Value)];
+
+    // The day's pick from the pool, as the publisher will make it then: by quality among the drafts the newest judge of
+    // those still waiting scored, or else the oldest. The judge is found anew each day, as one draft going out (a
+    // feast's, say) can leave an older judge the newest.
+    private static Draft Pick(
+        List<Draft> pool, List<Draft> stillWaiting, List<(RiteKind Kind, Option<string> Form, Option<RiteSimilarity> Similarity)> before, AuguryOptions augury)
+    {
+        var judge = NewestJudge(stillWaiting);
+        var judged = pool.Where(draft => JudgedBy(draft, judge)).ToList();
+        // The sort is stable, so of equal values the earlier draft wins.
+        var next = judged.Count > 0 ? judged.OrderByDescending(draft => Value(draft, before, augury)).First() : pool[0];
+        pool.Remove(next);
+        return next;
     }
 
     /// <summary>
