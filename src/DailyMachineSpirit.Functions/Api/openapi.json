@@ -1,0 +1,151 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "The Daily Machine Spirit: the rites API",
+    "version": "1",
+    "summary": "Every rite The Daily Machine Spirit has published, each Heretical Truth sealed until it's asked for.",
+    "description": "Read-only and open: no sign-in, no key, and nothing about the caller is kept. Each answer has one address and is cached; a query string or a trailing slash is redirected (301) to the address without it, and any other spelling is not found. Fields may be added within v1; a client ignores what it doesn't know. The guide: https://github.com/mykolad/daily-machine-spirit/blob/master/docs/api.md",
+    "license": {
+      "name": "MIT",
+      "identifier": "MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://dailymachinespirit.fyi"
+    }
+  ],
+  "paths": {
+    "/api/v1/rites": {
+      "get": {
+        "operationId": "listRites",
+        "summary": "Every published rite, the newest first, each Heretical Truth sealed",
+        "responses": {
+          "200": {
+            "description": "Every published rite.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PublishedRites" }
+              }
+            }
+          },
+          "301": { "$ref": "#/components/responses/ToTheAddress" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "503": { "$ref": "#/components/responses/Unavailable" }
+        }
+      }
+    },
+    "/api/v1/rites/{number}/heretical-truth": {
+      "get": {
+        "operationId": "revealHereticalTruth",
+        "summary": "One rite's Heretical Truth: what really happens, and what to do instead",
+        "parameters": [
+          {
+            "name": "number",
+            "in": "path",
+            "required": true,
+            "description": "The rite's number, as listed: a whole number from 1, without leading zeros.",
+            "schema": { "type": "integer", "minimum": 1 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The rite's Heretical Truth.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RevealedTruth" }
+              }
+            }
+          },
+          "301": { "$ref": "#/components/responses/ToTheAddress" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "503": { "$ref": "#/components/responses/Unavailable" }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "PublishedRites": {
+        "type": "object",
+        "required": ["rites"],
+        "properties": {
+          "rites": {
+            "type": "array",
+            "description": "Every published rite, the newest first.",
+            "items": { "$ref": "#/components/schemas/PublishedRite" }
+          }
+        }
+      },
+      "PublishedRite": {
+        "type": "object",
+        "required": ["number", "day", "kind", "title", "text", "ailment", "subjects", "url"],
+        "properties": {
+          "number": { "type": "integer", "minimum": 1, "description": "The rite's number, NO. 12 on the site." },
+          "day": { "type": "string", "format": "date", "description": "The day it was published (UTC)." },
+          "kind": { "type": "string", "enum": ["prayer", "ritual"] },
+          "title": { "type": "string", "description": "As published; commands and file names in `backticks`, an erased word an emoji." },
+          "text": { "type": "string", "description": "As published; commands and file names in `backticks`, an erased word an emoji." },
+          "ailment": { "type": "string", "description": "The trouble the rite is for, in a line, without its fix: what to match a trouble on. Empty for a rite that has none yet." },
+          "subjects": {
+            "type": "array",
+            "description": "What it's filed under; empty for a rite filed under nothing.",
+            "items": { "$ref": "#/components/schemas/RiteSubject" }
+          },
+          "url": { "type": "string", "format": "uri", "description": "The rite's page, where its Heretical Truth is a click away." }
+        }
+      },
+      "RiteSubject": {
+        "type": "object",
+        "required": ["key", "label"],
+        "properties": {
+          "key": { "type": "string", "description": "Never changes: match on it. The subject's page is /tags/{key}." },
+          "label": { "type": "string", "description": "May change." }
+        }
+      },
+      "RevealedTruth": {
+        "type": "object",
+        "required": ["number", "hereticalTruth"],
+        "properties": {
+          "number": { "type": "integer", "minimum": 1 },
+          "hereticalTruth": { "type": "string", "description": "One or two plain sentences on what really happens, and what to do instead." }
+        }
+      },
+      "Problem": {
+        "type": "object",
+        "description": "Problem Details (RFC 9457).",
+        "required": ["type", "title", "status", "detail"],
+        "properties": {
+          "type": { "type": "string", "const": "about:blank" },
+          "title": { "type": "string", "description": "The kind of error: No such rite, Not a rite's number, Not this API's address, The rites can't be read just now." },
+          "status": { "type": "integer", "description": "The status code again." },
+          "detail": { "type": "string", "description": "What went wrong this time." }
+        }
+      }
+    },
+    "responses": {
+      "ToTheAddress": {
+        "description": "A query string or a trailing slash: redirected to the address without it.",
+        "headers": {
+          "Location": { "schema": { "type": "string" } }
+        }
+      },
+      "NotFound": {
+        "description": "No such rite, not a rite's number, or another spelling of the address. Not cached.",
+        "content": {
+          "application/problem+json": {
+            "schema": { "$ref": "#/components/schemas/Problem" }
+          }
+        }
+      },
+      "Unavailable": {
+        "description": "The rites can't be read just now: try again later. Not cached.",
+        "content": {
+          "application/problem+json": {
+            "schema": { "$ref": "#/components/schemas/Problem" }
+          }
+        }
+      }
+    }
+  }
+}
