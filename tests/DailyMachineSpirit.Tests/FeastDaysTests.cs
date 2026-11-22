@@ -1,4 +1,5 @@
 using DailyMachineSpirit.Data.Entities;
+using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Generation;
 using DailyMachineSpirit.Functions.Generation.Feasts;
 using LanguageExt;
@@ -202,6 +203,38 @@ public sealed class FeastDaysTests : IAsyncLifetime
         var days = PublishingDays.Of([written, better, feast], [], [], Augury, TwiceHour);
 
         Assert.Equal(["For the hour", "Better, written later", "Written first"], days.Select(entry => entry.Draft.Writing.Title));
+    }
+
+    // A feast's own draft isn't among the anointed, even if it was anointed: no order moves it, so a move aimed at it
+    // is refused as for a draft no longer anointed.
+    [Fact]
+    public async Task AFeastsDraft_IsNotMovedAmongTheAnointed()
+    {
+        testbed.Time.SetUtcNow(new DateTimeOffset(2026, 10, 24, 0, 0, 5, TimeSpan.Zero));
+        await testbed.AddDraft("Best", 0.9f);
+        await AddFeastDraft("For the hour", TwiceHour);
+        var feast = Assert.Single(await testbed.Waiting(), draft => draft.Writing.FeastDay.IsSome);
+        Ok(await testbed.Scribes().Anoint(feast.Id, "", Tester, CancellationToken.None));
+
+        var exalted = await testbed.Scribes().Exalt(feast.Id, "", Tester, CancellationToken.None);
+
+        Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Assert.Single(exalted.LeftToSeq()));
+        var view = Ok(await testbed.Scribes().View(CancellationToken.None));
+        Assert.Equal(("For the hour", TwiceHour), view.Calendar.Where(entry => entry.Draft.Id == feast.Id).Select(entry => (entry.Draft.Writing.Title, entry.PublishesOnUtc)).Single());
+    }
+
+    // Nothing waits for today but a later feast's prayer: today's rite, written on the spot, is written knowing it, so
+    // it's a ritual.
+    [Fact]
+    public async Task TodaysRiteWrittenOnTheSpot_KnowsTheFeastsWaiting()
+    {
+        testbed.Time.SetUtcNow(new DateTimeOffset(2026, 10, 24, 0, 0, 5, TimeSpan.Zero));
+        await AddFeastDraft("For the hour", TwiceHour);
+        testbed.Models.Answers(Sol, Answer("The Rite of the Empty Backlog"));
+
+        var published = Ok(await testbed.Publisher().PublishToday(CancellationToken.None)).Rite;
+
+        Assert.Equal(("The Rite of the Empty Backlog", RiteKind.Ritual), (published.Writing.Title, published.Writing.Kind));
     }
 
     // Unjudged: no order ranks a feast's draft.

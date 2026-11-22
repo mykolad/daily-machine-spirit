@@ -218,7 +218,7 @@ public static partial class ScriptoriumPage
             <div class="heading">{FeastName(entry)}<h4 class="row-title" id="title-{id}">{WithCode(title)}</h4>{Tags(draft)}</div>
             <div class="cluster">
             {Score(draft)}
-            {(entry.PlacedByScribes ? $"""<span class="pair" role="group" aria-label="Reorder">{Exalt(id, title, firstAnointed, place)}{Humble(id, title, lastAnointed)}</span>""" : string.Empty)}
+            {(entry.PlacedByScribes && !IsFeast(entry) ? $"""<span class="pair" role="group" aria-label="Reorder">{Exalt(id, title, firstAnointed, place)}{Humble(id, title, lastAnointed)}</span>""" : string.Empty)}
             <button type="button" class="expand" aria-expanded="true" aria-controls="body-{id}" aria-label="Collapse {Encode(title)}" title="Show or fold away the whole rite" hidden>{ScriptoriumIcons.Chevron}</button>
             </div>
             </div>
@@ -245,7 +245,7 @@ public static partial class ScriptoriumPage
             AmendLink(id, title, subject),
             // Only where judging couldn't score it: judging a judged draft again would change nothing its words did.
             draft.Augury.IsSome ? string.Empty : Button(id, title, "judge", ScriptoriumIcons.Augury, "Judge Again", "secondary"),
-            entry.PlacedByScribes ? Button(id, title, "release", ScriptoriumIcons.Release, "Release to the Augury", "secondary") : string.Empty,
+            entry.PlacedByScribes && !IsFeast(entry) ? Button(id, title, "release", ScriptoriumIcons.Release, "Release to the Augury", "secondary") : string.Empty,
             Button(id, title, "burn", ScriptoriumIcons.Burn, "Consign to the Flames", "danger burn"))}</div>""");
         BurnPanel(html, id, title);
         html.Append("</div></form></article></li>");

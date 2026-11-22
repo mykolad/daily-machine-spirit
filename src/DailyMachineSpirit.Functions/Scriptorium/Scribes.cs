@@ -305,8 +305,11 @@ public sealed class Scribes
             return index < 0 ? None : Some((Ordered[index], index + 1));
         }
 
-        /// <summary>The anointed drafts still waiting, in the Scribes' order: the calendar's first places.</summary>
-        public List<Guid> Anointed() => Ordered.Select(draft => draft.Id).Where(Placements.Order.Contains).ToList();
+        /// <summary>
+        /// The anointed drafts still waiting, in the Scribes' order: the calendar's first places. Not a feast's own draft,
+        /// even if anointed before it was kept for its day: no order moves it, so a move aimed at it finds it gone.
+        /// </summary>
+        public List<Guid> Anointed() => Ordered.Select(draft => draft.Id).Where(id => Placements.Order.Contains(id) && !FeastDrafts.Contains(id)).ToList();
 
         /// <summary>Where the Augury alone would put it (1 is next), feasts counted; 0 for a feast's own draft, which no order ranks.</summary>
         public int AuguryPlace(Draft draft) => FeastDrafts.Contains(draft.Id) ? 0 : AuguryOrder.FindIndex(other => other.Id == draft.Id) + 1;

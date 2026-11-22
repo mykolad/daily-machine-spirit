@@ -83,7 +83,9 @@ public sealed class DailyRitePublisher
                     // Logged, not counted: a counter's first value in a process that soon stops is easily lost, and this
                     // happens about once a day at most (observability/README.md, "Backlog ran empty").
                     logger.LogWarning("The backlog was empty: today's rite is written on the spot, unmoderated.");
-                    return refiller.AddDraft([], cancellationToken)
+                    // Feasts' drafts for later days may be waiting (#202): it's written knowing them, to differ from them.
+                    return drafts.GetWaiting(cancellationToken)
+                        .BindAsync(waiting => refiller.AddDraft(waiting, cancellationToken))
                         .BindAsync(_ => TopOfTheCalendar(today, cancellationToken))
                         .BindAsync(again => again.ToEither(Error.New("The backlog is still empty after writing a draft.")));
                 }));
