@@ -167,6 +167,12 @@ public static partial class ScriptoriumPage
         .ailment { background: #211a12; border: 1px solid #5a4630; border-radius: 16px; padding: 12px 16px; color: #ede3cf; margin: 0 0 12px; }
         .truth-label { display: block; font: 500 14px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: #8cc4ae; }
         .ailment .truth-label { color: #c9a25a; }
+        /* The two lies a reader picks the Heretical Truth from: one box in a colour of their own, so they're never read as
+           the truth beside them. */
+        .false-truths { background: #1c1620; border: 1px solid #45364f; border-radius: 16px; padding: 12px 16px; color: #e6dde9; margin: 0 0 12px; }
+        .false-truths p { margin: 0; }
+        .false-truths p + p { margin-top: 8px; padding-top: 8px; border-top: 1px solid #45364f; }
+        .false-truths .truth-label { color: #c8a8dc; }
         code { font-family: var(--mono); font-size: .9em; background: #0b1214; color: #f0d58c; padding: 1px 6px; border-radius: 6px; }
         .text code, .ailment code { background: #2b2117; color: #f0d58c; }
         .meta, .when, .optional { color: #b6a98f; }
@@ -597,7 +603,7 @@ public static partial class ScriptoriumPage
     // before them, until the backfill writes them.
     private static string FalseTruthsOf(RiteWriting writing)
         => writing.FalseTruths.Match(
-            Some: truths => $"""<p class="truth"><span class="truth-label">False Truths</span> {WithCode(truths.First)}</p><p class="truth">{WithCode(truths.Second)}</p>""",
+            Some: truths => $"""<div class="false-truths"><span class="truth-label">False Truths</span><p>{WithCode(truths.First)}</p><p>{WithCode(truths.Second)}</p></div>""",
             None: () => string.Empty);
 
     // The trouble the rite is for, which the rites API serves.
