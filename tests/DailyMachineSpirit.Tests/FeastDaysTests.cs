@@ -237,6 +237,41 @@ public sealed class FeastDaysTests : IAsyncLifetime
         Assert.Equal(("The Rite of the Empty Backlog", RiteKind.Ritual), (published.Writing.Title, published.Writing.Kind));
     }
 
+    // An anointed draft kept for its feast isn't shown as placed by the Scribes: no order places it now.
+    [Fact]
+    public async Task AFeastsDraft_AnointedBefore_IsNotShownAsAnointed()
+    {
+        testbed.Time.SetUtcNow(new DateTimeOffset(2026, 10, 24, 0, 0, 5, TimeSpan.Zero));
+        await AddFeastDraft("For the hour", TwiceHour);
+        var feast = Assert.Single(await testbed.Waiting());
+        Ok(await testbed.Scribes().Anoint(feast.Id, "", Tester, CancellationToken.None));
+
+        var view = Ok(await testbed.Scribes().View(CancellationToken.None));
+
+        Assert.False(Assert.Single(view.Calendar).PlacedByScribes);
+    }
+
+    // Today's feast, the only draft a newer judge scored, goes out first; the rest are then picked by the older judge's
+    // quality, and a Scribe's burn of one is recorded as of a draft the Augury ranked by quality.
+    [Fact]
+    public async Task ADraftRankedByQualityAfterAFeast_IsRecordedSo()
+    {
+        testbed.Time.SetUtcNow(new DateTimeOffset(2026, 10, 25, 0, 0, 5, TimeSpan.Zero));
+        var best = await testbed.AddDraft("Best", 0.9f);
+        await testbed.AddDraft("Next best", 0.5f);
+        var feast = Draft("For the hour", RiteKind.Prayer, None);
+        Ok(await testbed.Drafts.Add(feast with
+        {
+            Writing = feast.Writing with { FeastDay = TwiceHour },
+            Augury = new Augury { Quality = 0.5f, JudgedBy = "a-newer-judge", JudgedAtUtc = new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+        }, CancellationToken.None));
+
+        Ok(await testbed.Scribes().Burn(best.Id, "", Tester, CancellationToken.None));
+
+        var burned = Ok(await testbed.Scriptorium.GetDecisions(10, CancellationToken.None)).First(decision => decision.Action == ScribeAction.Burn);
+        Assert.Equal((Some(2), true), (burned.AuguryPlace, burned.AuguryRankedByQuality));
+    }
+
     // Unjudged: no order ranks a feast's draft.
     private async Task AddFeastDraft(string title, DateOnly day)
     {

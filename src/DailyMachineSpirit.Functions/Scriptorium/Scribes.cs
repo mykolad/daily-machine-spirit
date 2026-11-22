@@ -68,7 +68,9 @@ public sealed class Scribes
             .BindAsync(calendar => scriptorium.GetDecisions(pages.Value.JudgmentsShown, cancellationToken)
                 .MapAsync(decisions =>
                 {
-                    var placed = calendar.Placements.Order.ToHashSet();
+                    // A feast's own draft isn't placed by the Scribes, even if anointed before it was kept for its day: no order
+                    // places it now (#202).
+                    var placed = calendar.Placements.Order.Where(id => !calendar.FeastDrafts.Contains(id)).ToHashSet();
                     var entries = calendar.Days
                         .Select(entry => new CalendarEntry(
                             entry.Draft, entry.Day, placed.Contains(entry.Draft.Id), Placer(calendar.Placements, entry.Draft.Id),
@@ -315,10 +317,14 @@ public sealed class Scribes
         public int AuguryPlace(Draft draft) => FeastDrafts.Contains(draft.Id) ? 0 : AuguryOrder.FindIndex(other => other.Id == draft.Id) + 1;
 
         public DraftPlaces PlacesOf((Draft Draft, int Place) found)
-            => new(found.Place, AuguryPlace(found.Draft), AuguryPlace(found.Draft) > 0 && LiturgicalCalendar.RanksByQuality(found.Draft, AuguryOrder));
+            => new(found.Place, AuguryPlace(found.Draft), AuguryPlace(found.Draft) > 0 && LiturgicalCalendar.RanksByQuality(found.Draft, Ordinary));
 
         /// <summary>The draft's place (1 is next) once the Scribes' order is the one given, if it's placed by it.</summary>
         public Option<int> PlaceWith(IReadOnlyList<Guid> order, Guid draftId)
             => order.Contains(draftId) ? Some(With(order).FindIndex(entry => entry.Draft.Id == draftId) + 1) : None;
+
+        // The drafts the Augury ranks: a feast's own draft, judged by whichever judge, says nothing of which judge is newest
+        // among them.
+        private List<Draft> Ordinary => AuguryOrder.Where(draft => !FeastDrafts.Contains(draft.Id)).ToList();
     }
 }
