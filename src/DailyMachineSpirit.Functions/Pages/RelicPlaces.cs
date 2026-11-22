@@ -7,15 +7,15 @@ namespace DailyMachineSpirit.Functions.Pages;
 public static class RelicPlaces
 {
     /// <summary>
-    /// Every rite's counts, a few hundred numbers, ranked. A nicety, like More rites: if the counts can't be read, the
-    /// page goes without badges rather than failing.
+    /// Every rite's counts, a few hundred numbers, ranked both ways. A nicety, like More rites: if the counts can't be
+    /// read, the page goes without badges rather than failing.
     /// </summary>
-    public static async Task<IReadOnlyDictionary<int, int>> Read(IRiteReader rites, ILogger logger, CancellationToken cancellationToken)
+    public static async Task<RelicStandings> Read(IRiteReader rites, ILogger logger, CancellationToken cancellationToken)
         => (await rites.GetVotes(cancellationToken)).Match(
-            Right: Veneration.Places,
+            Right: votes => new RelicStandings(Veneration.Places(votes), Confession.Places(votes)),
             Left: error =>
             {
                 logger.LogWarning(error.ToException(), "A page is shown without its relic badges: {Reason}", error.Message);
-                return Veneration.NoPlaces;
+                return RelicStandings.None;
             });
 }

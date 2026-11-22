@@ -1,4 +1,3 @@
-using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Voters;
 using LanguageExt;
@@ -36,9 +35,10 @@ public sealed class BreviaryFunction
     {
         var only = request.Query["verdict"].ToString() switch
         {
-            BreviaryPage.BlessedVerdict => Some(Reaction.Blessed),
-            BreviaryPage.HeresyVerdict => Some(Reaction.Heresy),
-            _ => None,
+            BreviaryPage.BlessedVerdict => Some(BreviaryFilter.Blessed),
+            BreviaryPage.HeresyVerdict => Some(BreviaryFilter.Heresies),
+            BreviaryPage.ConfessedVerdict => Some(BreviaryFilter.Confessions),
+            _ => Option<BreviaryFilter>.None,
         };
         // A key that's no subject's (an old or mistyped link) shows every chapter.
         var chapter = BreviaryChapter.Named(request.Query["chapter"].ToString());

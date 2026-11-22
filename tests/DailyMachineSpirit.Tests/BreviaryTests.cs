@@ -52,7 +52,7 @@ public sealed class BreviaryTests : IAsyncLifetime
         Assert.Contains("You called it heresy</span>", html);
         Assert.Contains("You blessed it</span>", html);
         Assert.Contains("""<a class="verdict" href="/breviary" aria-current="page">All 2</a>""", html);
-        Assert.Contains("2 rites you voted on, by subject.", html);
+        Assert.Contains("2 rites you voted on or confessed to, by subject.", html);
         // The nav's link, which the script shows to a signed-in reader, says it's this page.
         Assert.Contains("""<a class="nav-breviary" href="/breviary" aria-label="Your Breviary" title="Your Breviary" aria-current="page" hidden>""", html);
         NeverCached(headers);
@@ -140,7 +140,7 @@ public sealed class BreviaryTests : IAsyncLifetime
         // The chip names the chapter, so no rubric says it again.
         Assert.Empty(Chapters(html));
         Assert.Contains("<title>Builds in your Breviary ·", html);
-        Assert.Contains("4 rites you voted on, newest first.", html);
+        Assert.Contains("4 rites you voted on or confessed to, newest first.", html);
         Assert.Contains("""<input type="hidden" name="chapter" value="builds">""", html);
         Assert.Contains("""<a class="filter-chip" href="/breviary" aria-label="Show every chapter, not only Builds">""", html);
         Assert.Contains("""<a class="verdict" href="/breviary?verdict=heresy&amp;chapter=builds">Heresy 1</a>""", html);
@@ -274,6 +274,53 @@ public sealed class BreviaryTests : IAsyncLifetime
         Assert.Contains("Heresy 1</span>", html);
         Assert.DoesNotContain("Blessed 3", html);
         Assert.Contains("You called it heresy</span></span>", html);
+    }
+
+    // A confession (#200) keeps a rite in the Breviary without a verdict, is marked beside one, counted in the margin and
+    // in its own link, which narrows the Breviary to the rites confessed to.
+    [Fact]
+    public async Task Confessions_AreKept_Marked_AndShownByThemselves()
+    {
+        await AddRites(3);
+        await Vote(1, Reaction.Blessed);
+        Ok(await Votes.Vote(1, Voter, vote => vote with { Confessed = true }, CancellationToken.None));
+        Ok(await Votes.Vote(2, Voter, vote => vote with { Confessed = true }, CancellationToken.None));
+        Ok(await Votes.Vote(2, new VoterKey("a"), vote => vote with { Confessed = true }, CancellationToken.None));
+        await Vote(3, Reaction.Heresy);
+
+        var (_, all, _) = await Get(Function(), string.Empty, SignedIn());
+        var (_, confessed, _) = await Get(Function(), "?verdict=confessed", SignedIn());
+
+        Assert.Equal(["/r/3", "/r/2", "/r/1"], Titles(all));
+        Assert.Contains("You blessed it</span><span class=\"row-verdict row-verdict-confessed\">", all);
+        Assert.Contains("You and 1 other confessed to it</span>", all);
+        Assert.Contains("""href="/breviary?verdict=confessed">Confessed 2</a>""", all);
+        // A verdict alone isn't a confession.
+        Assert.Equal(["/r/2", "/r/1"], Titles(confessed));
+        Assert.Contains("""href="/breviary?verdict=confessed" aria-current="page">""", confessed);
+        Assert.Equal(["/r/1"], Titles((await Get(Function(), "?verdict=blessed", SignedIn())).Html));
+    }
+
+    // The reader's rank (#201), from the rites they judged, each once: in the kicker, and in the margin and the narrow
+    // screen's band, with the way to the next office. A reader with none yet is a Supplicant.
+    [Fact]
+    public async Task TheRank_IsShown_FromTheRitesJudged()
+    {
+        await AddRites(2);
+        var (_, before, _) = await Get(Function(), string.Empty, SignedIn());
+        await Vote(1, Reaction.Blessed);
+        Ok(await Votes.Vote(1, Voter, vote => vote with { Confessed = true }, CancellationToken.None));
+        Ok(await Votes.Vote(2, Voter, vote => vote with { Confessed = true }, CancellationToken.None));
+
+        var (_, html, _) = await Get(Function(), string.Empty, SignedIn());
+
+        Assert.Contains("Rites judged by a Supplicant", before);
+        Assert.Contains("1 more rite to Initiate", before);
+        Assert.Contains("Rites judged by an Initiate", html);
+        Assert.Contains("""<p class="rank-name">Initiate</p>""", html);
+        Assert.Contains("8 more rites to Acolyte", html);
+        Assert.Contains("""aria-labelledby="rank-label">""", html);
+        Assert.Contains("""aria-labelledby="rank-label-band">""", html);
     }
 
     [Fact]

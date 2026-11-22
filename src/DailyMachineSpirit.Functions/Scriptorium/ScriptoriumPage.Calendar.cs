@@ -94,9 +94,11 @@ public static partial class ScriptoriumPage
         html.Append(EveryRite());
         html.Append("</div>");
 
-        // A feast's draft (#202) may go out between anointed ones, so the last anointed is found, not counted.
+        // A feast's draft (#202) may go out among the anointed ones, so the first and last anointed are found, not
+        // counted from their places.
+        var firstAnointed = calendar.FindIndex(entry => entry.PlacedByScribes && !IsFeast(entry));
         var lastAnointed = calendar.FindLastIndex(entry => entry.PlacedByScribes && !IsFeast(entry));
-        var rows = calendar.Select((entry, index) => new CalendarRow(entry, index + 1, index == lastAnointed)).ToList();
+        var rows = calendar.Select((entry, index) => new CalendarRow(entry, index + 1, index == firstAnointed, index == lastAnointed)).ToList();
         var feasts = rows.Where(row => IsFeast(row.Entry)).ToList();
         if (feasts.Count > 0)
         {
@@ -196,7 +198,7 @@ public static partial class ScriptoriumPage
     private static void Row(
         StringBuilder html, CalendarRow row, Option<Tag> subject, DateTime nowUtc, Option<Guid> acted, IReadOnlyList<ScribeName> names)
     {
-        var (entry, place, lastAnointed) = row;
+        var (entry, place, firstAnointed, lastAnointed) = row;
         var draft = entry.Draft;
         var id = draft.Id.ToString("D");
         var title = draft.Writing.Title;
@@ -216,7 +218,7 @@ public static partial class ScriptoriumPage
             <div class="heading">{FeastName(entry)}<h4 class="row-title" id="title-{id}">{WithCode(title)}</h4>{Tags(draft)}</div>
             <div class="cluster">
             {Score(draft)}
-            {(entry.PlacedByScribes ? $"""<span class="pair" role="group" aria-label="Reorder">{Exalt(id, title, place)}{Humble(id, title, lastAnointed)}</span>""" : string.Empty)}
+            {(entry.PlacedByScribes && !IsFeast(entry) ? $"""<span class="pair" role="group" aria-label="Reorder">{Exalt(id, title, firstAnointed, place)}{Humble(id, title, lastAnointed)}</span>""" : string.Empty)}
             <button type="button" class="expand" aria-expanded="true" aria-controls="body-{id}" aria-label="Collapse {Encode(title)}" title="Show or fold away the whole rite" hidden>{ScriptoriumIcons.Chevron}</button>
             </div>
             </div>
@@ -243,7 +245,7 @@ public static partial class ScriptoriumPage
             AmendLink(id, title, subject),
             // Only where judging couldn't score it: judging a judged draft again would change nothing its words did.
             draft.Augury.IsSome ? string.Empty : Button(id, title, "judge", ScriptoriumIcons.Augury, "Judge Again", "secondary"),
-            entry.PlacedByScribes ? Button(id, title, "release", ScriptoriumIcons.Release, "Release to the Augury", "secondary") : string.Empty,
+            entry.PlacedByScribes && !IsFeast(entry) ? Button(id, title, "release", ScriptoriumIcons.Release, "Release to the Augury", "secondary") : string.Empty,
             Button(id, title, "burn", ScriptoriumIcons.Burn, "Consign to the Flames", "danger burn"))}</div>""");
         BurnPanel(html, id, title);
         html.Append("</div></form></article></li>");
@@ -284,9 +286,9 @@ public static partial class ScriptoriumPage
 
     // Only the anointed are moved by hand (Scribes.Exalt, .Humble), among themselves: the Augury orders the rest. At the
     // ends of the anointed there's nowhere to go, so the button is there but can't be pressed.
-    private static string Exalt(string id, string title, int place)
-        => place == 1
-            ? Step(ScriptoriumIcons.Exalt, "Exalt", title, "Already next to publish", None)
+    private static string Exalt(string id, string title, bool firstAnointed, int place)
+        => firstAnointed
+            ? Step(ScriptoriumIcons.Exalt, "Exalt", title, place == 1 ? "Already next to publish" : "Already first among the anointed", None)
             : Step(ScriptoriumIcons.Exalt, "Exalt", title, "Exalt: one day earlier", Some($"/scriptorium/drafts/{id}/exalt"));
 
     private static string Humble(string id, string title, bool lastAnointed)
@@ -390,7 +392,7 @@ public static partial class ScriptoriumPage
 
     private static string Percent(float quality) => quality.ToString("0%", CultureInfo.InvariantCulture);
 
-    private sealed record CalendarRow(CalendarEntry Entry, int Place, bool LastAnointed);
+    private sealed record CalendarRow(CalendarEntry Entry, int Place, bool FirstAnointed, bool LastAnointed);
 
     /// <param name="Where">Where the group's rites are, for "No Caches rites …" when none of the subject's are.</param>
     private sealed record CalendarGroup(string Kind, string Icon, string Title, string Hint, string Empty, string Where);

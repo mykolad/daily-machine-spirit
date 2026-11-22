@@ -25,6 +25,7 @@ public static class ArchiveSheet
     // another day may find another.
     private static readonly string[] Closings = ["Archived (probably)", "Backed up, never restored", "Retention: forever", "Read by no one since"];
 
+    /// <param name="above">What stands on the ground above the sheet on a narrow screen (the Breviary's rank), or empty.</param>
     /// <param name="kicker">The small red line over the heading, or empty.</param>
     /// <param name="heading">The page's h1, as HTML.</param>
     /// <param name="sub">The line under it, as HTML.</param>
@@ -33,9 +34,10 @@ public static class ArchiveSheet
     /// <param name="below">What follows the sheet: the link to older rites, or the end.</param>
     /// <param name="left">The left margin on a wide screen.</param>
     /// <param name="right">The right margin on a wide screen, or empty.</param>
-    public static string Render(string kicker, string heading, string sub, string search, string body, string below, string left, string right)
+    public static string Render(string above, string kicker, string heading, string sub, string search, string body, string below, string left, string right)
         => $"""
             <div class="hero archive-hero">
+            {above}
             <div class="sheet">
             <span class="rule-outer" aria-hidden="true"></span><span class="rule-inner" aria-hidden="true"></span>
             {Svg.Corners}
@@ -74,14 +76,16 @@ public static class ArchiveSheet
             """;
 
     /// <summary>
-    /// The Archive's two orders: the newest first (the Archive) or the most venerated (the Reliquary). Links, as the
-    /// Breviary's verdicts are: each is a page of its own, so it works without the script, and the current one says so.
+    /// The Archive's orders: the newest first (the Archive), the most venerated or the most confessed (the Reliquary).
+    /// Links, as the Breviary's verdicts are: each is a page of its own, so it works without the script, and the current
+    /// one says so.
     /// </summary>
-    public static string Orders(bool byVeneration)
+    public static string Orders(ArchiveOrder shown)
         => $"""
             <nav class="orders" aria-label="Order">
-            <a class="order" href="{Paths.Archive}"{Current(!byVeneration)}>Newest</a>
-            <a class="order" href="{Paths.Reliquary}"{Current(byVeneration)}>Most venerated</a>
+            <a class="order" href="{Paths.Archive}"{Current(shown == ArchiveOrder.Newest)}>Newest</a>
+            <a class="order" href="{Paths.Reliquary}"{Current(shown == ArchiveOrder.MostVenerated)}>Most venerated</a>
+            <a class="order" href="{Paths.ReliquaryConfessed}"{Current(shown == ArchiveOrder.MostConfessed)}>Most confessed</a>
             </nav>
             """;
 

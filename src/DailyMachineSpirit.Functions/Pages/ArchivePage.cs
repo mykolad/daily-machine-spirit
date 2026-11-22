@@ -30,7 +30,7 @@ public static class ArchivePage
     /// <param name="days">Every rite's number and day, newest first, Today's too: the same as the list, so the count,
     /// the months and the list agree.</param>
     /// <param name="places">The places of the rites the Reliquary keeps, each worn as a badge.</param>
-    public static string Render(IReadOnlyList<Rite> rites, Option<int> olderThan, IReadOnlyList<RiteDay> days, IReadOnlyDictionary<int, int> places, DateTimeOffset now, SearchListing listing)
+    public static string Render(IReadOnlyList<Rite> rites, Option<int> olderThan, IReadOnlyList<RiteDay> days, RelicStandings places, DateTimeOffset now, SearchListing listing)
     {
         var first = days.HeadOrNone().Map(day => day.Number);
         var months = ArchiveMonth.Of(days);
@@ -56,10 +56,11 @@ public static class ArchivePage
         return Layout.Page("The Archive", Description, listing, Section.Archive, $"""
             {Masthead.Render(isHeading: false)}
             {ArchiveSheet.Render(
+                above: string.Empty,
                 kicker: string.Empty,
                 heading: "The Archive",
                 sub: sub,
-                search: ArchiveSheet.Search(string.Empty, None) + ArchiveSheet.Orders(byVeneration: false) + WitnessedLine(days.Count),
+                search: ArchiveSheet.Search(string.Empty, None) + ArchiveSheet.Orders(ArchiveOrder.Newest) + WitnessedLine(days.Count),
                 body: ArchiveRows.Months(rites, [], ArchiveRows.NoVotes, places),
                 below: ArchiveRows.More(olderThan.Map(Paths.ArchiveBefore), "Load older rites", "The archive ends here. Earlier knowledge is lost.", ArchiveSheet.Closing(days.Count)),
                 left: left,
@@ -71,7 +72,7 @@ public static class ArchivePage
     /// <param name="words">The words looked for, marked in the rows.</param>
     /// <param name="tag">The subject the search is narrowed to, if any.</param>
     /// <param name="places">The places of the rites the Reliquary keeps, each worn as a badge.</param>
-    public static string Results(string typed, IReadOnlyList<string> words, Option<Tag> tag, SearchResults results, IReadOnlyDictionary<int, int> places, DateTimeOffset now)
+    public static string Results(string typed, IReadOnlyList<string> words, Option<Tag> tag, SearchResults results, RelicStandings places, DateTimeOffset now)
     {
         var quoted = $"“{typed}”";
         var tagKey = tag.Map(filter => filter.Key);
@@ -114,6 +115,7 @@ public static class ArchivePage
         return Layout.Page(title, Description, SearchListing.Unlisted, Section.Archive, $"""
             {Masthead.Render(isHeading: false)}
             {ArchiveSheet.Render(
+                above: string.Empty,
                 kicker: "Search the Archive",
                 heading: Html.Encode(quoted),
                 sub: sub,

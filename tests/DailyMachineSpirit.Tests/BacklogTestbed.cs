@@ -125,7 +125,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
     public Scribes Scribes() => new(Drafts, Rites, Scriptorium, Options.Create(Settings.Augury), Options.Create(Settings.ScriptoriumPages),
         Options.Create(Settings.Backlog with { DraftsWaiting = BacklogSize }), Time);
 
-    public TabCounting Tabs() => new(Drafts, Scriptorium, Precepts, Audit, new FalseTruthsRepository(cosmos.Container), NullLogger<TabCounting>.Instance);
+    public TabCounting Tabs() => new(Drafts, Scriptorium, Precepts, Audit, new FalseTruthsRepository(cosmos.Container), Rites, Time, NullLogger<TabCounting>.Instance);
 
     public DraftJudging DraftJudging() => new(Drafts, Judge(), Time, NullLogger<DraftJudging>.Instance);
 
@@ -183,7 +183,7 @@ public sealed class BacklogTestbed : IAsyncLifetime
     {
         var missing = cosmos.Container.Database.GetContainer("missing");
         return new TabCounting(new DraftRepository(missing, TimeProvider.System), new ScriptoriumRepository(missing), new PreceptRepository(missing), new AuditRepository(missing),
-            new FalseTruthsRepository(missing), NullLogger<TabCounting>.Instance);
+            new FalseTruthsRepository(missing), new RiteRepository(missing, TimeProvider.System, NullLogger<RiteRepository>.Instance), TimeProvider.System, NullLogger<TabCounting>.Instance);
     }
 
     public Scribes ScribesWithoutCosmos()

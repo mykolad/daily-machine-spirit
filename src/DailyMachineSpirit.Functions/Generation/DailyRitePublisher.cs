@@ -83,7 +83,9 @@ public sealed class DailyRitePublisher
                     // Logged, not counted: a counter's first value in a process that soon stops is easily lost, and this
                     // happens about once a day at most (observability/README.md, "Backlog ran empty").
                     logger.LogWarning("The backlog was empty: today's rite is written on the spot, unmoderated.");
-                    return refiller.AddDraft([], cancellationToken)
+                    // Feasts' drafts for later days may be waiting (#202): it's written knowing them, to differ from them.
+                    return drafts.GetWaiting(cancellationToken)
+                        .BindAsync(waiting => refiller.AddDraft(waiting, cancellationToken))
                         .BindAsync(_ => TopOfTheCalendar(today, cancellationToken))
                         .BindAsync(again => again.ToEither(Error.New("The backlog is still empty after writing a draft.")));
                 }));
@@ -97,9 +99,7 @@ public sealed class DailyRitePublisher
                 .BindAsync(waiting => rites.GetNewest(augury.Value.RecentRitesCompared, cancellationToken)
                     .MapAsync(recent =>
                     {
-                        var feasts = PublishingDays.Feasts(waiting, today);
-                        var ordered = LiturgicalCalendar.Order(PublishingDays.Ordinary(waiting, feasts), recent, placements.Order, augury.Value);
-                        return Task.FromResult(PublishingDays.Of(ordered, feasts, today).Where(entry => entry.Day == today).Select(entry => entry.Draft).HeadOrNone());
+                        return Task.FromResult(PublishingDays.Of(waiting, recent, placements.Order, augury.Value, today).Where(entry => entry.Day == today).Select(entry => entry.Draft).HeadOrNone());
                     })));
 
     // Theirs stands, and this run's draft (if another) keeps waiting. When the day has no rite after all, or it can't be

@@ -136,10 +136,170 @@ public sealed partial class ReaderTests : IClassFixture<Chromium>, IAsyncLifetim
         await Expect(blessed).ToHaveAttributeAsync("aria-pressed", "true");
         await Expect(blessed.Locator(".count")).ToHaveTextAsync("1");
         // Pressed at once, saved when the page says so.
-        await Expect(Page.Locator(".toast-kept")).ToContainTextAsync("Blessed. Kept in your Breviary");
+        // The reader's first rite makes them an Initiate (#201): the toast says so, in place of where the vote is kept.
+        await Expect(Page.Locator(".toast-rank")).ToContainTextAsync("Thou art now an Initiate.9 more rites to Acolyte.");
+        await Expect(Page.Locator(".toast-rank svg.insignia")).ToBeVisibleAsync();
         await Page.ReloadAsync();
         await Expect(Page.Locator(".reaction-blessed")).ToHaveAttributeAsync("aria-pressed", "true");
         await Expect(Page.Locator(".reaction-blessed .count")).ToHaveTextAsync("1");
+        Assert.Empty(scriptErrors);
+    }
+
+    // A confession (#200) lights the candle and is counted at once, apart from the verdict, and is still the reader's on
+    // the next visit; pressed again, it's withdrawn.
+    [Fact]
+    public async Task ASignedInReadersConfession_IsCounted_ApartFromTheVerdict_AndKept()
+    {
+        await AddRites(1);
+        await SignIn("583231");
+
+        await Page.GotoAsync("/");
+        await Expect(Page.Locator(".vote-status[data-signed-in=true]")).ToBeVisibleAsync();
+        await Page.Locator(".reaction-blessed").ClickAsync();
+        await Expect(Page.Locator(".toast-rank")).ToBeVisibleAsync();
+        var confess = Page.Locator("[data-confess]");
+        await confess.ClickAsync();
+
+        await Expect(confess).ToHaveAttributeAsync("aria-pressed", "true");
+        await Expect(Page.Locator(".confessed-count")).ToHaveTextAsync("Thou alone hast confessed");
+        await Expect(Page.Locator(".confess-status")).ToHaveTextAsync("Thy sin is recorded. Thou art the first to confess it.");
+        await Page.ReloadAsync();
+        await Expect(confess).ToHaveAttributeAsync("aria-pressed", "true");
+        await Expect(Page.Locator(".reaction-blessed")).ToHaveAttributeAsync("aria-pressed", "true");
+        await confess.ClickAsync();
+        await Expect(Page.Locator(".confess-status")).ToHaveTextAsync("Thy confession is withdrawn.");
+        await Expect(Page.Locator(".confessed-count")).ToHaveTextAsync("None have confessed");
+        await Page.ReloadAsync();
+        await Expect(Page.Locator(".vote-status[data-signed-in=true]")).ToBeVisibleAsync();
+        await Expect(confess).ToHaveAttributeAsync("aria-pressed", "false");
+        await Expect(Page.Locator(".reaction-blessed")).ToHaveAttributeAsync("aria-pressed", "true");
+        Assert.Empty(scriptErrors);
+    }
+
+    // A row of the most confessed with all three counts wraps between them on the narrowest phone, within the sheet.
+    [Fact]
+    public async Task AMostConfessedRow_FitsTheSheet_At320px()
+    {
+        await AddRites(1);
+        var votes = new VoteRepository(cosmos.Container);
+        foreach (var (voter, verdict) in new[] { ("a", Reaction.Blessed), ("b", Reaction.Heresy), ("c", Reaction.Blessed) })
+        {
+            Assert.True((await votes.Vote(1, new VoterKey(voter), vote => new ReaderVote(Some(verdict), true), CancellationToken.None)).IsRight);
+        }
+
+        await Page.SetViewportSizeAsync(320, 800);
+        await Page.GotoAsync("/reliquary/confessed");
+
+        await Expect(Page.Locator(".row-counts")).ToContainTextAsync("3 have confessed");
+        Assert.True(await Page.EvaluateAsync<bool>(
+            "document.querySelector('.row-counts').getBoundingClientRect().right <= document.querySelector('.sheet-inner').getBoundingClientRect().right"));
+        Assert.Empty(scriptErrors);
+    }
+
+    // Either answer brings every count, and the page shows them all: a blessing and confession made elsewhere since the
+    // page loaded show after the reader confesses, and another confession after they bless.
+    [Fact]
+    public async Task EitherAnswer_RefreshesEveryCount()
+    {
+        await AddRites(1);
+        await SignIn("583231");
+        var votes = new VoteRepository(cosmos.Container);
+
+        await Page.GotoAsync("/");
+        await Expect(Page.Locator(".vote-status[data-signed-in=true]")).ToBeVisibleAsync();
+        Assert.True((await votes.Vote(1, new VoterKey("someone-else"), vote => new ReaderVote(Some(Reaction.Blessed), true), CancellationToken.None)).IsRight);
+        await Page.Locator("[data-confess]").ClickAsync();
+        await Expect(Page.Locator(".reaction-blessed .count")).ToHaveTextAsync("1");
+        await Expect(Page.Locator(".confessed-count")).ToHaveTextAsync("2 have confessed");
+        await Expect(Page.Locator(".reaction-blessed")).ToHaveAttributeAsync("aria-pressed", "false");
+
+        Assert.True((await votes.Vote(1, new VoterKey("a-third"), vote => vote with { Confessed = true }, CancellationToken.None)).IsRight);
+        await Page.Locator(".reaction-heresy").ClickAsync();
+        await Expect(Page.Locator(".confessed-count")).ToHaveTextAsync("3 have confessed");
+        await Expect(Page.Locator("[data-confess]")).ToHaveAttributeAsync("aria-pressed", "true");
+        Assert.Empty(scriptErrors);
+    }
+
+    // A confession and a blessing sent at once, their answers arriving in reverse, and another reader blessing and
+    // confessing in between: the answer arriving last, its counts read first, undoes neither the newer counts nor the
+    // reader's own presses. Either one held back.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AnAnswerArrivingLate_DoesntUndoNewerCounts(bool holdTheConfession)
+    {
+        await AddRites(1);
+        await SignIn("583231");
+        var votes = new VoteRepository(cosmos.Container);
+        var (saved, otherAnswered, heldAnswered) = (new TaskCompletionSource(), new TaskCompletionSource(), new TaskCompletionSource());
+        await Page.RouteAsync("**/api/rites/1/vote", async route =>
+        {
+            var held = route.Request.PostData?.Contains("confessed", StringComparison.Ordinal) == holdTheConfession;
+            var answer = await route.FetchAsync();
+            if (held)
+            {
+                saved.TrySetResult();
+                await otherAnswered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+            }
+            await route.FulfillAsync(new() { Response = answer });
+            (held ? heldAnswered : otherAnswered).TrySetResult();
+        });
+        var (first, second) = holdTheConfession ? ("[data-confess]", ".reaction-blessed") : (".reaction-blessed", "[data-confess]");
+
+        await Page.GotoAsync("/");
+        await Expect(Page.Locator(".vote-status[data-signed-in=true]")).ToBeVisibleAsync();
+        await Page.Locator(first).ClickAsync();
+        await saved.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.True((await votes.Vote(1, new VoterKey("someone-else"), vote => new ReaderVote(Some(Reaction.Blessed), true), CancellationToken.None)).IsRight);
+        await Page.Locator(second).ClickAsync();
+        await heldAnswered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        // Each control clears its busy mark once its answer is handled: the held one too, by now.
+        await Expect(Page.Locator(".reactions")).Not.ToHaveAttributeAsync("aria-busy", "true");
+        await Expect(Page.Locator(".confession")).Not.ToHaveAttributeAsync("aria-busy", "true");
+
+        await Expect(Page.Locator(".reaction-blessed .count")).ToHaveTextAsync("2");
+        await Expect(Page.Locator(".confessed-count")).ToHaveTextAsync("2 have confessed");
+        await Expect(Page.Locator(".reaction-blessed")).ToHaveAttributeAsync("aria-pressed", "true");
+        await Expect(Page.Locator("[data-confess]")).ToHaveAttributeAsync("aria-pressed", "true");
+        Assert.Empty(scriptErrors);
+    }
+
+    // Signed out, a press confesses nothing and offers the sign-in beside the button.
+    [Fact]
+    public async Task ASignedOutReadersConfession_OffersTheSignIn()
+    {
+        await AddRites(1);
+
+        await Page.GotoAsync("/");
+        await Page.Locator("[data-confess]").ClickAsync();
+
+        await Expect(Page.Locator(".confess-status")).ToHaveTextAsync("Sign in with GitHub to confess. Thy name stays thine: only a one-way key is kept.");
+        await Expect(Page.Locator(".confess-status a")).ToHaveAttributeAsync("href", "/auth/github?return=%2F");
+        await Expect(Page.Locator("[data-confess]")).ToHaveAttributeAsync("aria-pressed", "false");
+        Assert.Empty(scriptErrors);
+    }
+
+    // On a narrow screen the rank stands above the sheet (#201), and a search, its results loading in place, keeps it there.
+    [Fact]
+    public async Task TheRankBand_StaysAboveTheSheet_WhenTheBreviaryIsSearched()
+    {
+        await AddRites(1);
+        await SignIn("583231");
+        await Page.SetViewportSizeAsync(375, 900);
+        await Page.GotoAsync("/");
+        await Expect(Page.Locator(".vote-status[data-signed-in=true]")).ToBeVisibleAsync();
+        await Page.Locator(".reaction-blessed").ClickAsync();
+        await Expect(Page.Locator(".toast-rank")).ToBeVisibleAsync();
+
+        await Page.GotoAsync("/breviary");
+        // With the script, the nav's search searches the Breviary in place.
+        await Page.Locator(".nav-find-open").ClickAsync();
+        await Page.Locator("#nav-find-field").FillAsync("words");
+        await Expect(Page).ToHaveTitleAsync(new Regex("“words” in your Breviary"));
+
+        Assert.True(await Page.EvaluateAsync<bool>(
+            "document.querySelector('.rank-band').compareDocumentPosition(document.querySelector('.sheet')) & Node.DOCUMENT_POSITION_FOLLOWING"));
+        await Expect(Page.Locator(".rank-band")).ToBeVisibleAsync();
         Assert.Empty(scriptErrors);
     }
 

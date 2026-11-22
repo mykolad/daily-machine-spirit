@@ -100,6 +100,7 @@ public static class RiteCard
             </div>
             <div class="vote-status" data-signed-in="false" hidden><a href="{Html.Encode(Paths.SignIn(here))}">Sign in with GitHub</a> to vote<span class="vote-privacy">Only a one-way key made from your account's id is kept: never your name, email or GitHub token.</span></div>
             <div class="vote-status" data-signed-in="true" hidden>Voting with your GitHub account · <a href="{Paths.Breviary}">Your Breviary</a> · <form method="post" action="{Html.Encode(Paths.SignOutFrom(here))}"><button type="submit" class="text-button">Sign out</button></form></div>
+            {Confession(rite)}
             </div>
             <div class="sharing">
             <button type="button" class="button button-ghost" data-copy="link" data-url="{url}">{Svg.LinkIcon}Share link</button>
@@ -112,6 +113,21 @@ public static class RiteCard
             </div>
             """;
     }
+
+    /// <summary>
+    /// Confess (#200), "I have done this": apart from the verdicts, under them. The script shows it, and presses it for a
+    /// reader who confessed; without the script it stays hidden, as voting needs the script anyway. The count is read
+    /// with the button (<c>aria-describedby</c>); the script says it again after a press, in the reader's words.
+    /// </summary>
+    private static string Confession(Rite rite)
+        => $"""
+            <div class="confession" hidden>
+            <span class="confession-rule" aria-hidden="true"><svg width="8" height="8" viewBox="0 0 8 8" focusable="false"><path d="M4 0l4 4-4 4-4-4z" fill="#c9a25a"/></svg></span>
+            <button type="button" class="confess" aria-pressed="false" aria-describedby="confessed-count" data-confess>{Svg.CandleIcon}I have done this</button>
+            <p class="confessed-count" id="confessed-count" data-confessions="{rite.ConfessionCount}">{ConfessedWords.Of(rite.ConfessionCount)}</p>
+            <p class="confess-status" role="status"></p>
+            </div>
+            """;
 
     /// <summary>
     /// Guessing the Heretical Truth (#199): the first press of the seal cracks it, and the truth and the two false ones

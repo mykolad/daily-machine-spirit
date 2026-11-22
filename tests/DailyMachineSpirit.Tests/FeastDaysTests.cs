@@ -1,4 +1,5 @@
 using DailyMachineSpirit.Data.Entities;
+using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Generation;
 using DailyMachineSpirit.Functions.Generation.Feasts;
 using LanguageExt;
@@ -13,6 +14,10 @@ namespace DailyMachineSpirit.Tests;
 public sealed class FeastDaysTests : IAsyncLifetime
 {
     private static readonly DateOnly TwiceHour = new(2026, 10, 25);
+
+    private static readonly AuguryOptions Augury = new() { RecentRitesCompared = 7, SameKindPenalty = 0.1f };
+
+    private static int made;
 
     private readonly BacklogTestbed testbed = new();
 
@@ -44,16 +49,27 @@ public sealed class FeastDaysTests : IAsyncLifetime
     [Fact]
     public void PublishingDays_GiveAFeastItsDay_AndTheOrderTheDaysBetween()
     {
-        var (first, second, third) = (Draft("First"), Draft("Second"), Draft("Third"));
-        var feast = Draft("For the hour") with { Writing = Draft("For the hour").Writing with { FeastDay = TwiceHour } };
-        var waiting = new List<Draft> { first, second, third, feast };
+        var feast = Draft("For the hour", RiteKind.Prayer, None) with { Writing = Draft("For the hour", RiteKind.Prayer, None).Writing with { FeastDay = TwiceHour } };
+        var waiting = new List<Draft> { Draft("First", RiteKind.Prayer, None), Draft("Second", RiteKind.Prayer, None), Draft("Third", RiteKind.Prayer, None), feast };
 
-        var feasts = PublishingDays.Feasts(waiting, TwiceHour.AddDays(-1));
-        var days = PublishingDays.Of(PublishingDays.Ordinary(waiting, feasts).Where(draft => draft != feast).ToList(), feasts, TwiceHour.AddDays(-1));
+        var days = PublishingDays.Of(waiting, [], [], Augury, TwiceHour.AddDays(-1));
 
         Assert.Equal(
             [("First", TwiceHour.AddDays(-1)), ("For the hour", TwiceHour), ("Second", TwiceHour.AddDays(1)), ("Third", TwiceHour.AddDays(2))],
             days.Select(entry => (entry.Draft.Writing.Title, entry.Day)));
+    }
+
+    // The order after a feast is picked with the feast among the rites before it: after a prayer, a ritual of nearly the
+    // same quality goes first, as the publisher will choose on that day.
+    [Fact]
+    public void PublishingDays_PickTheDayAfterAFeast_WithTheFeastBeforeIt()
+    {
+        var feast = Draft("For the hour", RiteKind.Prayer, None) with { Writing = Draft("For the hour", RiteKind.Prayer, None).Writing with { FeastDay = TwiceHour } };
+        var waiting = new List<Draft> { Draft("A prayer", RiteKind.Prayer, Some(0.5f)), Draft("A ritual", RiteKind.Ritual, Some(0.48f)), feast };
+
+        var days = PublishingDays.Of(waiting, [], [], Augury, TwiceHour);
+
+        Assert.Equal(["For the hour", "A ritual", "A prayer"], days.Select(entry => entry.Draft.Writing.Title));
     }
 
     // A refill writes the coming feast's draft first, about the feast, keeping its day; once it waits, none other.
@@ -104,14 +120,143 @@ public sealed class FeastDaysTests : IAsyncLifetime
             view.Calendar.Select(entry => (entry.Draft.Writing.Title, entry.PublishesOnUtc)));
     }
 
+    // With the feast's draft first, places count it: humbling the first anointed moves it from #2 to #3, and so it's
+    // recorded.
+    [Fact]
+    public async Task AScribesMove_IsRecorded_InTheCalendarsPlaces_FeastsAmongThem()
+    {
+        testbed.Time.SetUtcNow(new DateTimeOffset(2026, 10, 25, 0, 0, 5, TimeSpan.Zero));
+        var first = await testbed.AddDraft("First anointed", 0.5f);
+        var second = await testbed.AddDraft("Second anointed", 0.5f);
+        await AddFeastDraft("For the hour", TwiceHour);
+        Ok(await testbed.Scribes().Anoint(first.Id, "", Tester, CancellationToken.None));
+        Ok(await testbed.Scribes().Anoint(second.Id, "", Tester, CancellationToken.None));
+
+        Ok(await testbed.Scribes().Humble(first.Id, "", Tester, CancellationToken.None));
+
+        var humbled = Ok(await testbed.Scriptorium.GetDecisions(10, CancellationToken.None)).First(decision => decision.Action == ScribeAction.Humble);
+        Assert.Equal((Some(2), Some(3)), (humbled.CalendarPlace, humbled.CalendarPlaceAfter));
+    }
+
+    // The Augury's own places count the feasts too: with a feast next, anointing the Augury's first pick leaves it
+    // where the Augury had it, #2, and records no disagreement.
+    [Fact]
+    public async Task AnointingTheAugurysPick_AfterAFeast_AgreesWithTheAugury()
+    {
+        testbed.Time.SetUtcNow(new DateTimeOffset(2026, 10, 25, 0, 0, 5, TimeSpan.Zero));
+        var best = await testbed.AddDraft("Best", 0.9f);
+        await testbed.AddDraft("Next best", 0.5f);
+        await AddFeastDraft("For the hour", TwiceHour);
+
+        Ok(await testbed.Scribes().Anoint(best.Id, "", Tester, CancellationToken.None));
+
+        var anointed = Ok(await testbed.Scriptorium.GetDecisions(10, CancellationToken.None)).First(decision => decision.Action == ScribeAction.Anoint);
+        Assert.Equal((Some(2), Some(2), Some(2)), (anointed.CalendarPlace, anointed.AuguryPlace, anointed.CalendarPlaceAfter));
+    }
+
+    // The tab counts the Calendar's groups as it shows them: the feast's draft apart from the Augury's order.
+    [Fact]
+    public async Task TheTab_CountsTheFeastsDraftApart()
+    {
+        testbed.Time.SetUtcNow(new DateTimeOffset(2026, 10, 24, 0, 0, 5, TimeSpan.Zero));
+        await testbed.AddDraft("Best", 0.9f);
+        await AddFeastDraft("For the hour", TwiceHour);
+
+        var counted = await testbed.Tabs().Count(CancellationToken.None);
+
+        Assert.Equal(Some((1, 0, 1)), counted.Map(tabs => (tabs.ForFeasts, tabs.PlacedByScribes, tabs.PlacedByAugury)));
+    }
+
+    // The newest judge is found among every draft waiting, feasts' too: a feast judged by a newer judge leaves the
+    // others unranked, waiting by age, as the Calendar records them.
+    [Fact]
+    public void PublishingDays_FindTheNewestJudge_AmongTheFeastsToo()
+    {
+        var older = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
+        var written = Draft("Written first", RiteKind.Prayer, None) with { Augury = new Augury { Quality = 0.1f, JudgedBy = "rubric-1", JudgedAtUtc = older } };
+        var better = Draft("Better, written later", RiteKind.Prayer, None) with { Augury = new Augury { Quality = 0.9f, JudgedBy = "rubric-1", JudgedAtUtc = older } };
+        var feast = Draft("For the hour", RiteKind.Prayer, None) with
+        {
+            Writing = Draft("For the hour", RiteKind.Prayer, None).Writing with { FeastDay = TwiceHour.AddDays(2) },
+            Augury = new Augury { Quality = 0.5f, JudgedBy = "rubric-2", JudgedAtUtc = older.AddDays(1) },
+        };
+
+        var days = PublishingDays.Of([written, better, feast], [], [], Augury, TwiceHour);
+
+        Assert.Equal(["Written first", "Better, written later", "For the hour"], days.Select(entry => entry.Draft.Writing.Title));
+    }
+
+    // Once today's feast, the only draft a newer judge scored, has gone out, the older judge is the newest of those still
+    // waiting, and the rest go by its quality: as the publisher will find them the next day.
+    [Fact]
+    public void PublishingDays_FindTheJudgeAnew_AfterAFeastGoesOut()
+    {
+        var older = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
+        var written = Draft("Written first", RiteKind.Prayer, None) with { Augury = new Augury { Quality = 0.1f, JudgedBy = "rubric-1", JudgedAtUtc = older } };
+        var better = Draft("Better, written later", RiteKind.Prayer, None) with { Augury = new Augury { Quality = 0.9f, JudgedBy = "rubric-1", JudgedAtUtc = older } };
+        var feast = Draft("For the hour", RiteKind.Prayer, None) with
+        {
+            Writing = Draft("For the hour", RiteKind.Prayer, None).Writing with { FeastDay = TwiceHour },
+            Augury = new Augury { Quality = 0.5f, JudgedBy = "rubric-2", JudgedAtUtc = older.AddDays(1) },
+        };
+
+        var days = PublishingDays.Of([written, better, feast], [], [], Augury, TwiceHour);
+
+        Assert.Equal(["For the hour", "Better, written later", "Written first"], days.Select(entry => entry.Draft.Writing.Title));
+    }
+
+    // A feast's own draft isn't among the anointed, even if it was anointed: no order moves it, so a move aimed at it
+    // is refused as for a draft no longer anointed.
+    [Fact]
+    public async Task AFeastsDraft_IsNotMovedAmongTheAnointed()
+    {
+        testbed.Time.SetUtcNow(new DateTimeOffset(2026, 10, 24, 0, 0, 5, TimeSpan.Zero));
+        await testbed.AddDraft("Best", 0.9f);
+        await AddFeastDraft("For the hour", TwiceHour);
+        var feast = Assert.Single(await testbed.Waiting(), draft => draft.Writing.FeastDay.IsSome);
+        Ok(await testbed.Scribes().Anoint(feast.Id, "", Tester, CancellationToken.None));
+
+        var exalted = await testbed.Scribes().Exalt(feast.Id, "", Tester, CancellationToken.None);
+
+        Assert.Equal(ScriptoriumRepository.ChangedMeanwhile, Assert.Single(exalted.LeftToSeq()));
+        var view = Ok(await testbed.Scribes().View(CancellationToken.None));
+        Assert.Equal(("For the hour", TwiceHour), view.Calendar.Where(entry => entry.Draft.Id == feast.Id).Select(entry => (entry.Draft.Writing.Title, entry.PublishesOnUtc)).Single());
+    }
+
+    // Nothing waits for today but a later feast's prayer: today's rite, written on the spot, is written knowing it, so
+    // it's a ritual.
+    [Fact]
+    public async Task TodaysRiteWrittenOnTheSpot_KnowsTheFeastsWaiting()
+    {
+        testbed.Time.SetUtcNow(new DateTimeOffset(2026, 10, 24, 0, 0, 5, TimeSpan.Zero));
+        await AddFeastDraft("For the hour", TwiceHour);
+        testbed.Models.Answers(Sol, Answer("The Rite of the Empty Backlog"));
+
+        var published = Ok(await testbed.Publisher().PublishToday(CancellationToken.None)).Rite;
+
+        Assert.Equal(("The Rite of the Empty Backlog", RiteKind.Ritual), (published.Writing.Title, published.Writing.Kind));
+    }
+
     // Unjudged: no order ranks a feast's draft.
     private async Task AddFeastDraft(string title, DateOnly day)
-        => Ok(await testbed.Drafts.Add(Draft(title) with { Writing = Draft(title).Writing with { FeastDay = day } }, CancellationToken.None));
+    {
+        var draft = Draft(title, RiteKind.Prayer, None);
+        Ok(await testbed.Drafts.Add(draft with { Writing = draft.Writing with { FeastDay = day } }, CancellationToken.None));
+    }
 
-    private static Draft Draft(string title) => new()
+    // Written in the order made, a minute apart, so drafts the Augury doesn't rank keep that order.
+    private static Draft Draft(string title, RiteKind kind, Option<float> quality) => new()
     {
         Id = Guid.NewGuid(),
         State = DraftState.Waiting,
-        Writing = new RiteWriting { Kind = RiteKind.Prayer, Title = title, Text = "Words.", HereticalTruth = "Truth." },
+        Writing = new RiteWriting
+        {
+            Kind = kind,
+            Title = title,
+            Text = "Words.",
+            HereticalTruth = "Truth.",
+            GeneratedAtUtc = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc).AddMinutes(made++),
+        },
+        Augury = quality.Map(value => new Augury { Quality = value, JudgedBy = "rubric", JudgedAtUtc = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc) }),
     };
 }

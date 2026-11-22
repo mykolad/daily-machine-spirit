@@ -183,6 +183,22 @@ public static class Styles
         .reaction-heresy[aria-pressed=true]{background:#3b1814;border-color:#d0604d;color:#f6cfc6}
         .reactions[aria-busy=true] .reaction{cursor:progress}
         .vote-status{flex-basis:100%;margin-top:2px;font-size:15px;color:#bfb39a;text-align:center}
+        .confession{flex-basis:100%;display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:18px;text-align:center}
+        .confession[hidden]{display:none}
+        .confession-rule{display:flex;align-items:center;gap:10px;width:160px;margin-bottom:6px}
+        .confession-rule::before,.confession-rule::after{content:'';flex:1;height:1px;background:rgba(201,162,90,.35)}
+        .confess{display:inline-flex;align-items:center;gap:12px;min-height:48px;padding:10px 18px 10px 14px;border-radius:12px;border:1px solid rgba(237,227,207,.22);background:transparent;color:#ede3cf;cursor:pointer;font-family:Cinzel,serif;font-weight:700;font-size:14px;line-height:1.25;letter-spacing:.08em;text-align:left;text-transform:uppercase;text-wrap:balance;white-space:nowrap;transition:border-color 120ms,background-color 120ms}
+        .confess .candle{flex:none}
+        .confess .flame{opacity:0;transition:opacity 160ms}
+        .confess:hover{border-color:#c9a25a;background:rgba(201,162,90,.06)}
+        .confess:focus-visible{outline:2px solid #f0d59a;outline-offset:2px}
+        .confess[aria-pressed=true]{border:2px solid #f0b45a;padding:9px 17px 9px 13px;background:rgba(240,180,90,.12);color:#f7e7c4}
+        .confess[aria-pressed=true] .flame{opacity:1}
+        .confession[aria-busy=true] .confess{cursor:progress}
+        .confessed-count{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#b6a98f}
+        .confess-status{margin:2px 0 0;max-width:300px;font-family:var(--serif);font-style:italic;font-size:17px;line-height:1.35;color:#cdbd9e;text-wrap:balance}
+        .confess-status:empty{margin:0}
+        .confess-status a{font-family:var(--ui);font-style:normal;font-weight:600;font-size:15px;color:#d9b874;text-decoration:underline;text-underline-offset:3px}
         .vote-status[hidden]{display:none}
         .vote-status form{display:inline}
         .vote-privacy{display:block;margin-top:4px;font-size:13px;color:#a89d86}
@@ -306,14 +322,16 @@ public static class Styles
         .row-title:focus-visible{outline:none}
         .row-title::after{content:'';position:absolute;inset:0;border-radius:8px}
         .row-line{font-family:var(--serif);font-size:16px;line-height:1.45;color:#2b2117;text-wrap:pretty}
-        .row-counts{display:flex;gap:16px;margin-top:4px;font-weight:600;font-size:13px;color:#5c4a33}
+        .row-counts{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:4px;font-weight:600;font-size:13px;color:#5c4a33}
+        .row-counts>span{white-space:nowrap}
         .row-counts span{display:inline-flex;align-items:center;gap:6px}
         .row-counts svg{width:16px;height:16px}
         .row-yours{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;margin-top:6px}
         .row-yours>.row-counts{margin-top:0}
-        .row-verdict{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;font-weight:600;font-size:13px}
+        .row-verdict{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:2px 12px;border:1px solid transparent;border-radius:999px;font-weight:600;font-size:13px}
         .row-verdict-blessed{background:#b8862b;color:#1f160a}
         .row-verdict-heresy{background:#8f2a20;color:#f6eedb}
+        .row-verdict-confessed{border-color:#8a6a2c;color:#3d2e17}
         .row-verdict svg{width:14px;height:14px}
         .verdicts,.orders{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:24px 0 8px}
         .verdict,.order{display:inline-flex;align-items:center;min-height:44px;padding:8px 18px;border:1px solid #8f2a20;border-radius:999px;font-weight:600;font-size:15px;color:#8f2a20;text-decoration:none}
@@ -444,6 +462,28 @@ public static class Styles
         .toast-lasting{pointer-events:auto}
         .toast-lasting a{color:#8f2a20;text-decoration:underline;text-underline-offset:3px}
         .toast-lasting a:focus-visible{outline-color:#8f2a20;outline-offset:2px}
+        .toast-rank{display:flex;align-items:center;gap:12px;padding:12px 22px 12px 16px;text-align:left}
+        .toast-rank .insignia{flex:none;color:#8f2a20}
+        .toast-office{display:block;font-family:Cinzel,serif;font-weight:700;font-size:14px;line-height:1.3;letter-spacing:.06em;text-transform:uppercase;color:#8f2a20}
+        .toast-next{display:block;font-size:14px;font-weight:600;color:#5c4a33}
+        .rank p{margin:0}
+        .rank .insignia{flex:none;color:#c9a25a}
+        .rank-label{font-family:Cinzel,serif;font-weight:700;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#c9a25a}
+        .rank-name{margin-top:4px!important;font-family:Cinzel,serif;font-weight:700;font-size:22px;line-height:1.15;letter-spacing:.06em;text-transform:uppercase;color:#ede3cf;text-wrap:balance}
+        .rank-rule{position:relative;display:block;width:150px;height:2px;margin:12px 0 9px;background:rgba(201,162,90,.28)}
+        .rank-fill{position:absolute;top:0;bottom:0;left:0;background:#c9a25a}
+        .rank-knob{position:absolute;top:50%;width:7px;height:7px;background:#f0d59a;transform:translate(-50%,-50%) rotate(45deg)}
+        .rank-next{font-family:Cinzel,serif;font-weight:700;font-size:11px;line-height:1.5;letter-spacing:.16em;text-transform:uppercase;color:#b6a98f}
+        .rank-top{margin-top:8px!important;max-width:170px;font-family:var(--serif);font-style:italic;font-size:17px;line-height:1.35;color:#cdbd9e;text-wrap:balance}
+        .rank-band{display:flex;align-items:center;gap:16px;width:100%;box-sizing:border-box;margin:0 0 18px;padding:14px 18px;text-align:left;border-top:1px solid #2f2820;border-bottom:1px solid #2f2820}
+        .rank-band .insignia{width:40px;height:40px}
+        .rank-band .rank-name{font-size:19px}
+        .rank-band .rank-rule{width:160px;margin:10px 0 8px}
+        .rank-band .rank-top{max-width:none}
+        .marginalia .rank{display:none;flex-direction:column;align-items:flex-end;gap:10px}
+        .marginalia .rank .insignia{width:52px;height:52px}
+        .marginalia .rank .rank-words{display:flex;flex-direction:column;align-items:flex-end}
+        @media (min-width:1280px){.marginalia .rank{display:flex}.rank-band{display:none}}
         @media (min-width:700px){
         .page:has(.masthead) .site-header{margin-bottom:28px}
         .masthead{gap:12px;margin-bottom:28px}
@@ -471,6 +511,7 @@ public static class Styles
         .actions{display:contents}
         .faithful,.marginalia{grid-row:1;display:flex;flex-direction:column;gap:28px;margin-top:80px}
         .faithful{grid-column:3;gap:10px;align-items:flex-start;padding-left:28px;border-left:1px solid #2f2820;text-align:left}
+        .hero .faithful{margin-bottom:176px}
         .marginalia{grid-column:1;align-items:flex-end;padding-right:28px;border-right:1px solid #2f2820;text-align:right}
         .faithful>.margin-label,.margin-countdown{display:block}
         .margin-label{margin:0 0 10px;font-family:Cinzel,serif;font-weight:700;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:#c9a25a}
@@ -478,6 +519,9 @@ public static class Styles
         .margin-value{margin:0;font-family:var(--serif);font-size:24px;color:#ede3cf;font-variant-numeric:tabular-nums}
         .faithful .reactions{justify-content:flex-start}
         .faithful .vote-status{margin-top:18px;text-align:left}
+        .faithful .confession{align-items:flex-start;text-align:left;margin-top:18px;padding-top:22px;border-top:1px solid rgba(237,227,207,.12)}
+        .faithful .confess{max-width:180px;white-space:normal}
+        .faithful .confess-status{max-width:220px}
         .sharing{grid-column:2;grid-row:3;display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:28px}
         .marginalia .tags{justify-content:flex-end;margin:0}
         .tags .margin-label{flex-basis:100%;margin-bottom:0}

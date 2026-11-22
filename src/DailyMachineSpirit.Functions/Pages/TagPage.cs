@@ -14,7 +14,7 @@ public static class TagPage
     /// <param name="isFirstPage">An empty first page means the tag has no rites yet; an empty later one, only that
     /// none are older.</param>
     /// <param name="places">The places of the rites the Reliquary keeps, each worn as a badge.</param>
-    public static string Render(Tag tag, IReadOnlyList<Rite> rites, Option<int> olderThan, bool isFirstPage, IReadOnlyDictionary<int, int> places, DateTimeOffset now, SearchListing listing)
+    public static string Render(Tag tag, IReadOnlyList<Rite> rites, Option<int> olderThan, bool isFirstPage, RelicStandings places, DateTimeOffset now, SearchListing listing)
     {
         var label = Html.Encode(tag.Label);
         var about = $"Rites about {tag.About}, newest first.";
@@ -34,6 +34,7 @@ public static class TagPage
             </section>
             """;
         return Layout.Page($"Filed under {tag.Label}", about, listing, Section.Other, ArchiveSheet.Render(
+            above: string.Empty,
             kicker: "Filed under",
             heading: label,
             sub: Html.Encode(about),
