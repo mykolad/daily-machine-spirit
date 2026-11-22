@@ -3,11 +3,13 @@ using System.Text.Json;
 using DailyMachineSpirit.Data.Entities;
 using DailyMachineSpirit.Data.Repositories;
 using DailyMachineSpirit.Functions.Api;
+using LanguageExt;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging.Abstractions;
 using static DailyMachineSpirit.Tests.Expect;
+using static LanguageExt.Prelude;
 
 namespace DailyMachineSpirit.Tests;
 
@@ -17,6 +19,10 @@ namespace DailyMachineSpirit.Tests;
 /// </summary>
 public sealed class OpenApiTests : IAsyncLifetime
 {
+    // The part of JSON Schema the document uses, which the checker below checks (or, for the last two, needn't).
+    private static readonly string[] CheckedKeywords =
+        ["$ref", "type", "properties", "required", "items", "enum", "const", "minimum", "format", "description", "example"];
+
     private readonly CosmosTestContainer cosmos = new();
 
     public ValueTask InitializeAsync() => cosmos.InitializeAsync();
@@ -51,30 +57,48 @@ public sealed class OpenApiTests : IAsyncLifetime
         Assert.Equal(routes, Paths().Select(path => path.Name).Order());
     }
 
-    // Every field of every real answer is in its schema, and required, and the schema names no other.
+    // Every real answer with a body matches the schema its operation names for its status, followed through each $ref:
+    // the types and values of its fields, nested ones too, and exactly its fields, all required.
     [Fact]
-    public async Task ItsSchemas_NameEveryFieldOfTheRealAnswers()
+    public async Task EveryRealAnswer_MatchesTheSchemaListedForIt()
     {
         await AddRite();
         var function = Function(Repository);
-
-        var rites = Json(await function.Rites(At("/api/v1/rites").Request, CancellationToken.None));
-        var truth = Json(await function.HereticalTruth(At("/api/v1/rites/1/heretical-truth").Request, "1", CancellationToken.None));
-        var noRite = Json(await function.HereticalTruth(At("/api/v1/rites/9/heretical-truth").Request, "9", CancellationToken.None));
-        var unavailable = Json(await Function(Missing).Rites(At("/api/v1/rites").Request, CancellationToken.None));
-
-        var rite = rites.GetProperty("rites")[0];
-        foreach (var (schema, answer) in new[]
+        var answers = new (string Path, IActionResult Answer)[]
         {
-            ("PublishedRites", rites), ("PublishedRite", rite), ("RiteSubject", rite.GetProperty("subjects")[0]),
-            ("RevealedTruth", truth), ("Problem", noRite), ("Problem", unavailable),
-        })
+            ("/api/v1/rites", await function.Rites(At("/api/v1/rites").Request, CancellationToken.None)),
+            ("/api/v1/rites", await function.Rites(At("/API/v1/rites").Request, CancellationToken.None)),
+            ("/api/v1/rites", await Function(Missing).Rites(At("/api/v1/rites").Request, CancellationToken.None)),
+            ("/api/v1/rites/{number}/heretical-truth", await function.HereticalTruth(At("/api/v1/rites/1/heretical-truth").Request, "1", CancellationToken.None)),
+            ("/api/v1/rites/{number}/heretical-truth", await function.HereticalTruth(At("/api/v1/rites/01/heretical-truth").Request, "01", CancellationToken.None)),
+            ("/api/v1/rites/{number}/heretical-truth", await function.HereticalTruth(At("/api/v1/rites/9/heretical-truth").Request, "9", CancellationToken.None)),
+            ("/api/v1/rites/{number}/heretical-truth", await Function(Missing).HereticalTruth(At("/api/v1/rites/1/heretical-truth").Request, "1", CancellationToken.None)),
+        };
+
+        foreach (var (path, answer) in answers)
         {
-            var fields = answer.EnumerateObject().Select(field => field.Name).Order().ToList();
-            Assert.Equal(fields, Schema(schema).GetProperty("properties").EnumerateObject().Select(field => field.Name).Order());
-            Assert.Equal(fields, Schema(schema).GetProperty("required").EnumerateArray().Select(field => field.GetString()).Order());
+            var status = Status(answer).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            var listed = MustResolve(Document().GetProperty("paths").GetProperty(path).GetProperty("get").GetProperty("responses").GetProperty(status));
+            var schema = listed.GetProperty("content").EnumerateObject().Single().Value.GetProperty("schema");
+            Assert.Empty(Mismatches(schema, Json(answer), $"{path} {status}"));
         }
     }
+
+    // The checker itself: it finds a wrong type, a missing or unlisted field, a value outside the schema's, and a $ref
+    // to nothing, so a pass above means what it says.
+    [Theory]
+    [InlineData("""{ "type": "integer" }""", "\"1\"")]
+    [InlineData("""{ "type": "object", "required": ["a"], "properties": { "a": { "type": "string" } } }""", "{}")]
+    [InlineData("""{ "type": "object", "required": [], "properties": {} }""", """{ "a": 1 }""")]
+    [InlineData("""{ "type": "string", "enum": ["prayer"] }""", "\"psalm\"")]
+    [InlineData("""{ "type": "integer", "minimum": 1 }""", "0")]
+    [InlineData("""{ "type": "string", "format": "date" }""", "\"8 October\"")]
+    [InlineData("""{ "type": "string", "format": "uri" }""", "\"/r/1\"")]
+    [InlineData("""{ "type": "array", "items": { "type": "string" } }""", "[1]")]
+    [InlineData("""{ "$ref": "#/components/schemas/NoSuchSchema" }""", "{}")]
+    [InlineData("""{ "type": "string", "pattern": "^a" }""", "\"a\"")]
+    public void TheChecker_FindsWhatDoesntMatch(string schema, string value)
+        => Assert.NotEmpty(Mismatches(JsonDocument.Parse(schema).RootElement, JsonDocument.Parse(value).RootElement, "value"));
 
     // Each address answers as its document says: the statuses it lists, each with the content type listed for it.
     [Fact]
@@ -116,16 +140,103 @@ public sealed class OpenApiTests : IAsyncLifetime
 
     private static IEnumerable<JsonProperty> Paths() => Document().GetProperty("paths").EnumerateObject();
 
-    private static JsonElement Schema(string name) => Document().GetProperty("components").GetProperty("schemas").GetProperty(name);
-
     // The content type a listed response names (followed through its $ref), or none for a redirect.
     private static string ContentTypeOf(JsonElement response)
+        => MustResolve(response).TryGetProperty("content", out var content) ? content.EnumerateObject().Single().Name : string.Empty;
+
+    // A response or schema, or the one its $ref names within the document; none if it names nothing there.
+    private static Option<JsonElement> Resolved(JsonElement element)
     {
-        var resolved = response.TryGetProperty("$ref", out var reference)
-            ? Document().GetProperty("components").GetProperty("responses").GetProperty(reference.GetString()!.Split('/')[^1])
-            : response;
-        return resolved.TryGetProperty("content", out var content) ? content.EnumerateObject().Single().Name : string.Empty;
+        if (!element.TryGetProperty("$ref", out var reference))
+        {
+            return Some(element);
+        }
+        var target = Document();
+        foreach (var step in reference.GetString()!.TrimStart('#', '/').Split('/'))
+        {
+            if (!target.TryGetProperty(step, out target))
+            {
+                return None;
+            }
+        }
+        return Some(target);
     }
+
+    private static JsonElement MustResolve(JsonElement element)
+        => Resolved(element).IfNone(() => throw new Xunit.Sdk.XunitException($"{element} names nothing in the document"));
+
+    // Where the value differs from the schema, for the subset of JSON Schema the document uses. A keyword outside it
+    // is a mismatch too, so the document can't use one these tests don't check.
+    private static List<string> Mismatches(JsonElement schema, JsonElement value, string at)
+        => Resolved(schema).Match(
+            Some: resolved => MismatchesOf(resolved, value, at),
+            None: () => [$"{at}: {schema} names nothing in the document"]);
+
+    private static List<string> MismatchesOf(JsonElement resolved, JsonElement value, string at)
+    {
+        var unknown = resolved.EnumerateObject().Select(keyword => keyword.Name).Except(CheckedKeywords).ToList();
+        if (unknown.Count > 0)
+        {
+            return [$"{at}: the checker doesn't know {string.Join(", ", unknown)}"];
+        }
+        var type = resolved.TryGetProperty("type", out var named) ? named.GetString()! : string.Empty;
+        if (!IsOfType(value, type))
+        {
+            return [$"{at}: {value.ValueKind}, not {type}"];
+        }
+
+        var found = new List<string>();
+        if (resolved.TryGetProperty("const", out var only) && value.GetRawText() != only.GetRawText())
+        {
+            found.Add($"{at}: {value.GetRawText()}, not {only.GetRawText()}");
+        }
+        if (resolved.TryGetProperty("enum", out var allowed) && !allowed.EnumerateArray().Any(option => option.GetRawText() == value.GetRawText()))
+        {
+            found.Add($"{at}: \"{value}\" isn't one of {allowed}");
+        }
+        if (resolved.TryGetProperty("minimum", out var minimum) && value.GetInt64() < minimum.GetInt64())
+        {
+            found.Add($"{at}: {value} is below {minimum}");
+        }
+        if (resolved.TryGetProperty("format", out var format) && !InFormat(value.GetString()!, format.GetString()!))
+        {
+            found.Add($"{at}: \"{value}\" isn't a {format}");
+        }
+        if (resolved.TryGetProperty("items", out var items))
+        {
+            found.AddRange(value.EnumerateArray().SelectMany((item, index) => Mismatches(items, item, $"{at}[{index}]")));
+        }
+        if (type == "object")
+        {
+            var properties = resolved.TryGetProperty("properties", out var listed) ? listed : JsonDocument.Parse("{}").RootElement;
+            var required = resolved.TryGetProperty("required", out var names) ? names.EnumerateArray().Select(name => name.GetString()!).ToList() : [];
+            var fields = value.EnumerateObject().Select(field => field.Name).ToList();
+            var listedNames = properties.EnumerateObject().Select(property => property.Name).ToList();
+            found.AddRange(listedNames.Except(required).Select(name => $"{at}.{name}: listed but not required"));
+            found.AddRange(required.Except(fields).Select(name => $"{at}.{name}: required but missing"));
+            found.AddRange(fields.Except(listedNames).Select(name => $"{at}.{name}: answered but not listed"));
+            found.AddRange(value.EnumerateObject()
+                .Where(field => properties.TryGetProperty(field.Name, out _))
+                .SelectMany(field => Mismatches(properties.GetProperty(field.Name), field.Value, $"{at}.{field.Name}")));
+        }
+        return found;
+    }
+
+    private static bool IsOfType(JsonElement value, string type) => type switch
+    {
+        "object" => value.ValueKind == JsonValueKind.Object,
+        "array" => value.ValueKind == JsonValueKind.Array,
+        "string" => value.ValueKind == JsonValueKind.String,
+        "integer" => value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out _),
+        _ => false,
+    };
+
+    private static bool InFormat(string value, string format) => format switch
+    {
+        "date" => DateOnly.TryParseExact(value, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out _),
+        "uri" => Uri.TryCreate(value, UriKind.Absolute, out _),
+        _ => false,
+    };
 
     private static string ContentTypeOf(IActionResult result)
         => result is ContentResult content ? content.ContentType!.Split(';')[0] : string.Empty;
@@ -142,6 +253,9 @@ public sealed class OpenApiTests : IAsyncLifetime
     private static DefaultHttpContext At(string path)
     {
         var context = new DefaultHttpContext();
+        // As a real request comes, so the rites' addresses are whole.
+        context.Request.Scheme = "https";
+        context.Request.Host = new HostString("dailymachinespirit.fyi");
         context.Request.Path = path;
         return context;
     }
