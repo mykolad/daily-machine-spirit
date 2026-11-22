@@ -61,6 +61,8 @@
     <EmbeddedResource Include="ShareCards\Assets\*.png" />
     <!-- The pages' scripts (EmbeddedScripts.cs). -->
     <EmbeddedResource Include="Pages\*.js;Scriptorium\*.js" />
+    <!-- The rites API's OpenAPI document (Api/OpenApiFunction.cs). -->
+    <EmbeddedResource Include="Api\openapi.json" />
   </ItemGroup>
 
   <ItemGroup>

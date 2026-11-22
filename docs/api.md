@@ -12,6 +12,8 @@ As on the site, each rite's **Heretical Truth** stays sealed until it's asked fo
   Any other spelling (`/01/` for `/1/`, another case) is not found (`404`).
 - **Versioned in the path:** `v1` keeps its fields, their names and their meaning. A change that would break a client
   comes as `v2`, beside it. Fields may be added; a client ignores what it doesn't know.
+- **Described for tools:** an OpenAPI 3.1 document of both addresses, their answers and errors, for tools that import
+  one (assistants' actions, API directories, client generators): `GET https://dailymachinespirit.fyi/api/v1/openapi.json`.
 
 ## The rites
 

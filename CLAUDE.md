@@ -359,7 +359,11 @@ skills/                           — Consult the Machine Spirit, a skill that p
   is kept; it reads only the words and tags (`GetAllUnrevealed`), or one truth (`GetHereticalTruth`), never scores or
   votes. Kept at Cloudflare until a new rite or an erasure purges it, with the search index (a truth no rite has yet,
   `404`, isn't kept); a query string is redirected to the one address. Its errors are Problem Details (#177,
-  `ApiProblem`, `application/problem+json`), each with a title and a detail, never kept. The skill
+  `ApiProblem`, `application/problem+json`), each with a title and a detail, never kept. An OpenAPI 3.1 document
+  describes it (#178, `Api/openapi.json`, written by hand, served at `/api/v1/openapi.json`); `OpenApiTests` check it
+  against the API's routes and real answers (each against its schema, with a small checker of the JSON Schema the
+  document uses, which refuses any other keyword), so a change to the API changes it too. Cloudflare keeps it an hour,
+  under the Cache Rule's `/api/v1/`. The skill
   fetches the whole list and lets the user's own model choose, so the trouble never leaves their machine and the site
   pays for no model.
 - **The MCP connector** (#119, `src/DailyMachineSpirit.Mcp`, `docs/api.md`): the rites API's two reads as MCP tools

@@ -44,6 +44,16 @@ public sealed partial class DeployedAppTests
     public async Task ATagsPage_Answers()
         => AssertAnswers(await app.Get("/tags/builds"), HttpStatusCode.OK, $"<title>Filed under Builds · {SiteName}</title>");
 
+    // The API's OpenAPI document (#178), embedded in the package: it's there, and it's JSON.
+    [Fact]
+    public async Task TheApisOpenApiDocument_Answers()
+    {
+        var document = await app.Get("/api/v1/openapi.json");
+
+        Assert.True(document.Status == HttpStatusCode.OK, $"{document.Path} answered {(int)document.Status}, not 200.");
+        Assert.Equal("3.1.0", JsonSerializer.Deserialize<JsonElement>(document.Text).GetProperty("openapi").GetString());
+    }
+
     // Its query (every rite's counts) is its own, so the deployed database answers it too.
     [Fact]
     public async Task TheReliquary_Answers()
