@@ -1113,6 +1113,10 @@ public sealed class ScriptoriumFunctionTests : IAsyncLifetime
         Assert.Equal(
             Some(new FalseTruths("The disk is too cold to read quickly.", "The cache sleeps until midnight.")),
             Assert.Single(await testbed.Waiting()).Writing.FalseTruths);
+        // Both shown together on the calendar, in a box of their own, never read as the truth beside them.
+        Assert.Contains(
+            """<div class="false-truths"><span class="truth-label">False Truths</span><p>The disk is too cold to read quickly.</p><p>The cache sleeps until midnight.</p></div>""",
+            Html(await Function().Page(Get(""), CancellationToken.None), 200));
     }
 
     // Refused, the page comes back with what the Scribe typed and why: nothing they wrote is lost.
