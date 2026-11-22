@@ -31,6 +31,8 @@ internal sealed record DraftDocument
 
     public string? Form { get; init; }
 
+    public DateOnly? FeastDay { get; init; }
+
     public string GeneratedByModel { get; init; } = string.Empty;
 
     public DateTime GeneratedAtUtc { get; init; }
@@ -69,6 +71,7 @@ internal sealed record DraftDocument
         FalseTruths = draft.Writing.FalseTruths.OrNull(),
         Ailment = draft.Writing.Ailment.OrNull(),
         Form = draft.Writing.Form.OrNull(),
+        FeastDay = draft.Writing.FeastDay.OrNullable(),
         GeneratedByModel = draft.Writing.GeneratedByModel,
         GeneratedAtUtc = Utc.From(draft.Writing.GeneratedAtUtc),
         Edited = draft.Writing.Edited,
@@ -96,6 +99,7 @@ internal sealed record DraftDocument
             FalseTruths = Optional(FalseTruths),
             Ailment = Optional(Ailment),
             Form = Optional(Form),
+            FeastDay = Optional(FeastDay),
             GeneratedByModel = GeneratedByModel,
             GeneratedAtUtc = GeneratedAtUtc,
             Edited = Edited,

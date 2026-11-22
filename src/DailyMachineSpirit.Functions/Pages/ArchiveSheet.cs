@@ -25,6 +25,7 @@ public static class ArchiveSheet
     // another day may find another.
     private static readonly string[] Closings = ["Archived (probably)", "Backed up, never restored", "Retention: forever", "Read by no one since"];
 
+    /// <param name="above">What stands on the ground above the sheet on a narrow screen (the Breviary's rank), or empty.</param>
     /// <param name="kicker">The small red line over the heading, or empty.</param>
     /// <param name="heading">The page's h1, as HTML.</param>
     /// <param name="sub">The line under it, as HTML.</param>
@@ -33,9 +34,10 @@ public static class ArchiveSheet
     /// <param name="below">What follows the sheet: the link to older rites, or the end.</param>
     /// <param name="left">The left margin on a wide screen.</param>
     /// <param name="right">The right margin on a wide screen, or empty.</param>
-    public static string Render(string kicker, string heading, string sub, string search, string body, string below, string left, string right)
+    public static string Render(string above, string kicker, string heading, string sub, string search, string body, string below, string left, string right)
         => $"""
             <div class="hero archive-hero">
+            {above}
             <div class="sheet">
             <span class="rule-outer" aria-hidden="true"></span><span class="rule-inner" aria-hidden="true"></span>
             {Svg.Corners}

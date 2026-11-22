@@ -522,7 +522,7 @@ public sealed class PreceptsFunctionTests : IAsyncLifetime
         => new(new PreceptKeeping(precepts, testbed.PreceptCheck(), testbed.Time, NullLogger<PreceptKeeping>.Instance),
             new PreceptDistiller(testbed.Scriptorium, precepts, testbed.Models, testbed.PreceptCheck(), Options.Create(Settings.PreceptDistilling), testbed.Time, testbed.Probe.Metrics, NullLogger<PreceptDistiller>.Instance),
             new AgreementTrend(testbed.Scriptorium, Options.Create(Settings.ScriptoriumPages), testbed.Time),
-            new TabCounting(testbed.Drafts, testbed.Scriptorium, precepts, testbed.Audit, testbed.FalseTruths, NullLogger<TabCounting>.Instance),
+            new TabCounting(testbed.Drafts, testbed.Scriptorium, precepts, testbed.Audit, testbed.FalseTruths, testbed.Rites, testbed.Time, NullLogger<TabCounting>.Instance),
             testbed.NamesShown(), new EveryoneIsScribeSignIn(), testbed.Time, NullLogger<PreceptsFunction>.Instance);
 
     private DistilPreceptsFunction Timer()

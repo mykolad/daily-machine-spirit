@@ -98,6 +98,7 @@ public static partial class ScriptoriumPage
         .day { display: grid; gap: 2px; width: 88px; }
         .day time { font: 500 13px var(--mono); color: #cdbd9e; white-space: nowrap; }
         .kind { font: 700 11px Cinzel, serif; letter-spacing: .14em; text-transform: uppercase; color: #b6a98f; }
+        .feast { display: block; margin-bottom: 2px; font: italic 15px var(--serif); color: #d9b874; }
         .heading { flex: 1 1 240px; min-width: 0; display: grid; gap: 6px; }
         .row-title { margin: 0; font: 700 18px/1.25 Cinzel, serif; color: #ede3cf; text-wrap: pretty; }
         .burn-day .group-title { color: #e88a78; }
@@ -166,6 +167,12 @@ public static partial class ScriptoriumPage
         .ailment { background: #211a12; border: 1px solid #5a4630; border-radius: 16px; padding: 12px 16px; color: #ede3cf; margin: 0 0 12px; }
         .truth-label { display: block; font: 500 14px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: #8cc4ae; }
         .ailment .truth-label { color: #c9a25a; }
+        /* The two lies a reader picks the Heretical Truth from: one box in a colour of their own, so they're never read as
+           the truth beside them. */
+        .false-truths { background: #1c1620; border: 1px solid #45364f; border-radius: 16px; padding: 12px 16px; color: #e6dde9; margin: 0 0 12px; }
+        .false-truths p { margin: 0; }
+        .false-truths p + p { margin-top: 8px; padding-top: 8px; border-top: 1px solid #45364f; }
+        .false-truths .truth-label { color: #c8a8dc; }
         code { font-family: var(--mono); font-size: .9em; background: #0b1214; color: #f0d58c; padding: 1px 6px; border-radius: 6px; }
         .text code, .ailment code { background: #2b2117; color: #f0d58c; }
         .meta, .when, .optional { color: #b6a98f; }
@@ -513,12 +520,14 @@ public static partial class ScriptoriumPage
 
     private static string Number(int count) => count.ToString("N0", CultureInfo.InvariantCulture);
 
-    // The calendar's two orders, as its groups show them: short to the eye, said in words to a screen reader, which
-    // would read the slash as one.
+    // The calendar's groups, as it shows them: short to the eye, said in words to a screen reader, which would read the
+    // slash as one. Feast days (#202) only while one is near, as their group shows.
     private static string CalendarCount(TabCounts counted)
     {
-        var (scribes, augury) = (Number(counted.PlacedByScribes), Number(counted.PlacedByAugury));
-        return $"""<span aria-hidden="true" title="Anointed / in the Augury’s order">{scribes}/{augury}</span><span class="visually-hidden">: {scribes} anointed, {augury} in the Augury’s order</span>""";
+        var (feasts, scribes, augury) = (Number(counted.ForFeasts), Number(counted.PlacedByScribes), Number(counted.PlacedByAugury));
+        return counted.ForFeasts > 0
+            ? $"""<span aria-hidden="true" title="For feast days / anointed / in the Augury’s order">{feasts}/{scribes}/{augury}</span><span class="visually-hidden">: {feasts} for feast days, {scribes} anointed, {augury} in the Augury’s order</span>"""
+            : $"""<span aria-hidden="true" title="Anointed / in the Augury’s order">{scribes}/{augury}</span><span class="visually-hidden">: {scribes} anointed, {augury} in the Augury’s order</span>""";
     }
 
     private static string Acted(Draft draft, Option<Guid> acted) => acted.Exists(id => id == draft.Id) ? " acted" : string.Empty;
@@ -594,7 +603,7 @@ public static partial class ScriptoriumPage
     // before them, until the backfill writes them.
     private static string FalseTruthsOf(RiteWriting writing)
         => writing.FalseTruths.Match(
-            Some: truths => $"""<p class="truth"><span class="truth-label">False Truths</span> {WithCode(truths.First)}</p><p class="truth">{WithCode(truths.Second)}</p>""",
+            Some: truths => $"""<div class="false-truths"><span class="truth-label">False Truths</span><p>{WithCode(truths.First)}</p><p>{WithCode(truths.Second)}</p></div>""",
             None: () => string.Empty);
 
     // The trouble the rite is for, which the rites API serves.

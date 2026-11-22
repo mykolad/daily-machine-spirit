@@ -995,6 +995,24 @@ public sealed class SitePagesTests : IAsyncLifetime
         Assert.Contains("""<section class="truth" id="truth-panel" aria-labelledby="truth-heading" tabindex="-1" hidden>""", plain);
     }
 
+    // A rite written for a feast (#202) says so on its card and its row, when it went out on its day; one that missed its
+    // day is an ordinary day's, and says nothing.
+    [Fact]
+    public async Task ARiteOnItsFeastDay_NamesTheFeast_OnItsCardAndRow()
+    {
+        var fullByte = new DateOnly(2026, 9, 13);
+        await AddWritten(fullByte, "The Litany of the Full Byte", fullByte);
+        await AddWritten(fullByte.AddDays(1), "The Late Litany", fullByte);
+
+        var (_, onItsDay) = await Rite("1");
+        var (_, missed) = await Rite("2");
+        var (_, archive) = await Archive("");
+
+        Assert.Contains("""<p class="feast-line">The Feast of the Full Byte</p>""", onItsDay);
+        Assert.DoesNotContain("""<p class="feast-line">""", missed);
+        Assert.Single(Regex.Matches(archive, """<span class="row-feast">The Feast of the Full Byte</span>"""));
+    }
+
     // A rite's link, pasted into a chat, shows the rite's own card (#191), its alt text the joke; any other page shows
     // the site's card; a page in no index names no picture.
     [Fact]
@@ -1222,7 +1240,7 @@ public sealed class SitePagesTests : IAsyncLifetime
         // The commands scroll rather than wrap, so a keyboard must be able to reach their block; their prompts are
         // shown, never copied.
         Assert.Contains("""<ul role="list">""", about.Html);
-        Assert.Contains("""Every rite you vote on is kept in <a href="/breviary">your Breviary</a>.""", about.Html);
+        Assert.Contains("""Every rite you vote on or confess to is kept in <a href="/breviary">your Breviary</a>, where your rank grows with them""", about.Html);
         Assert.Contains("""<pre tabindex="0" aria-label="Commands"><code><span class="prompt" aria-hidden="true">$ </span>git clone --depth 1 https://github.com/mykolad/daily-machine-spirit.git""", about.Html);
         Assert.Contains("""
             data-text="git clone --depth 1 https://github.com/mykolad/daily-machine-spirit.git
@@ -1376,6 +1394,22 @@ public sealed class SitePagesTests : IAsyncLifetime
     private async Task Tag(DateOnly day, params string[] tags)
         => await cosmos.Container.PatchItemAsync<RiteDocument>(RiteDocument.IdFor(day), CosmosCalls.SharedPartitionKey,
             [Microsoft.Azure.Cosmos.PatchOperation.Set("/tags", tags)]);
+
+    private async Task AddWritten(DateOnly day, string title, DateOnly feastDay)
+        => Ok(await Repository.Add(new Rite
+        {
+            PublishedOnUtc = day,
+            Writing = new RiteWriting
+            {
+                Kind = RiteKind.Ritual,
+                Title = title,
+                Text = "Count to two hundred and fifty-five, and no further.",
+                HereticalTruth = "A byte holds 256 values.",
+                FeastDay = feastDay,
+                GeneratedByModel = "gpt-6-sol",
+                GeneratedAtUtc = day.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
+            },
+        }, CancellationToken.None));
 
     private async Task Add(DateOnly day, string title)
         => Ok(await Repository.Add(new Rite

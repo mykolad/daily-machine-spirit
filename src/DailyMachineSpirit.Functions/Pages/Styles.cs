@@ -69,6 +69,7 @@ public static class Styles
         @media (min-width:700px){.margin-text{display:block}}
         .parchment-body{position:relative;display:flex;flex-direction:column;align-items:center;gap:12px}
         .kicker{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:14px;letter-spacing:.22em;color:#8f2a20}
+        .feast-line{margin:6px 0 0;font-family:var(--serif);font-style:italic;font-size:18px;color:#8f2a20}
         .rite-title{margin:0;font-family:Cinzel,serif;font-weight:700;font-size:clamp(28px,4.6vw,44px);line-height:1.1;color:#8f2a20;text-wrap:balance}
         .rite-date{font-family:var(--serif);font-style:italic;font-size:18px;color:#5c4a33}
         .imperial{position:relative;display:inline-block}
@@ -281,6 +282,7 @@ public static class Styles
         .row-number{font-family:var(--mono);font-weight:500;font-size:12px;letter-spacing:.06em;color:#5c4a33}
         .kind{font-family:Cinzel,serif;font-weight:700;font-size:13px;letter-spacing:.16em;color:#c9a25a}
         .row .kind{font-size:10px;letter-spacing:.2em;color:#8f2a20}
+        .row-feast{display:block;font-family:var(--serif);font-style:italic;font-size:15px;color:#8f2a20}
         .row-main{min-width:0;display:flex;flex-direction:column;gap:2px}
         .row-title{font-family:Cinzel,serif;font-weight:700;font-size:17px;line-height:1.2;color:#8f2a20;text-decoration:none}
         .row-title:hover{color:#8f2a20}
@@ -326,10 +328,10 @@ public static class Styles
         .row-counts svg{width:16px;height:16px}
         .row-yours{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;margin-top:6px}
         .row-yours>.row-counts{margin-top:0}
-        .row-verdict{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;font-weight:600;font-size:13px}
+        .row-verdict{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:2px 12px;border:1px solid transparent;border-radius:999px;font-weight:600;font-size:13px}
         .row-verdict-blessed{background:#b8862b;color:#1f160a}
         .row-verdict-heresy{background:#8f2a20;color:#f6eedb}
-        .row-verdict-confessed{padding:1px 9px;border:1px solid #8a6a2c;color:#3d2e17}
+        .row-verdict-confessed{border-color:#8a6a2c;color:#3d2e17}
         .row-verdict svg{width:14px;height:14px}
         .verdicts,.orders{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:24px 0 8px}
         .verdict,.order{display:inline-flex;align-items:center;min-height:44px;padding:8px 18px;border:1px solid #8f2a20;border-radius:999px;font-weight:600;font-size:15px;color:#8f2a20;text-decoration:none}
@@ -460,6 +462,28 @@ public static class Styles
         .toast-lasting{pointer-events:auto}
         .toast-lasting a{color:#8f2a20;text-decoration:underline;text-underline-offset:3px}
         .toast-lasting a:focus-visible{outline-color:#8f2a20;outline-offset:2px}
+        .toast-rank{display:flex;align-items:center;gap:12px;padding:12px 22px 12px 16px;text-align:left}
+        .toast-rank .insignia{flex:none;color:#8f2a20}
+        .toast-office{display:block;font-family:Cinzel,serif;font-weight:700;font-size:14px;line-height:1.3;letter-spacing:.06em;text-transform:uppercase;color:#8f2a20}
+        .toast-next{display:block;font-size:14px;font-weight:600;color:#5c4a33}
+        .rank p{margin:0}
+        .rank .insignia{flex:none;color:#c9a25a}
+        .rank-label{font-family:Cinzel,serif;font-weight:700;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#c9a25a}
+        .rank-name{margin-top:4px!important;font-family:Cinzel,serif;font-weight:700;font-size:22px;line-height:1.15;letter-spacing:.06em;text-transform:uppercase;color:#ede3cf;text-wrap:balance}
+        .rank-rule{position:relative;display:block;width:150px;height:2px;margin:12px 0 9px;background:rgba(201,162,90,.28)}
+        .rank-fill{position:absolute;top:0;bottom:0;left:0;background:#c9a25a}
+        .rank-knob{position:absolute;top:50%;width:7px;height:7px;background:#f0d59a;transform:translate(-50%,-50%) rotate(45deg)}
+        .rank-next{font-family:Cinzel,serif;font-weight:700;font-size:11px;line-height:1.5;letter-spacing:.16em;text-transform:uppercase;color:#b6a98f}
+        .rank-top{margin-top:8px!important;max-width:170px;font-family:var(--serif);font-style:italic;font-size:17px;line-height:1.35;color:#cdbd9e;text-wrap:balance}
+        .rank-band{display:flex;align-items:center;gap:16px;width:100%;box-sizing:border-box;margin:0 0 18px;padding:14px 18px;text-align:left;border-top:1px solid #2f2820;border-bottom:1px solid #2f2820}
+        .rank-band .insignia{width:40px;height:40px}
+        .rank-band .rank-name{font-size:19px}
+        .rank-band .rank-rule{width:160px;margin:10px 0 8px}
+        .rank-band .rank-top{max-width:none}
+        .marginalia .rank{display:none;flex-direction:column;align-items:flex-end;gap:10px}
+        .marginalia .rank .insignia{width:52px;height:52px}
+        .marginalia .rank .rank-words{display:flex;flex-direction:column;align-items:flex-end}
+        @media (min-width:1280px){.marginalia .rank{display:flex}.rank-band{display:none}}
         @media (min-width:700px){
         .page:has(.masthead) .site-header{margin-bottom:28px}
         .masthead{gap:12px;margin-bottom:28px}

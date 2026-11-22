@@ -56,6 +56,7 @@ public static class ArchivePage
         return Layout.Page("The Archive", Description, listing, Section.Archive, $"""
             {Masthead.Render(isHeading: false)}
             {ArchiveSheet.Render(
+                above: string.Empty,
                 kicker: string.Empty,
                 heading: "The Archive",
                 sub: sub,
@@ -114,6 +115,7 @@ public static class ArchivePage
         return Layout.Page(title, Description, SearchListing.Unlisted, Section.Archive, $"""
             {Masthead.Render(isHeading: false)}
             {ArchiveSheet.Render(
+                above: string.Empty,
                 kicker: "Search the Archive",
                 heading: Html.Encode(quoted),
                 sub: sub,

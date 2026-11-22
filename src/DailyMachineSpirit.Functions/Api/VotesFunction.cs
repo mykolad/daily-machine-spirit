@@ -82,6 +82,9 @@ public sealed class VotesFunction
         // Taken after the save: any page whose counts were read later has this vote (see Script).
         var countedAt = time.GetUtcNow().ToUnixTimeMilliseconds();
         saved.IfRight(counted => counted.IfSome(result => Counted(number, result)));
+        var raised = await saved.Match(
+            Right: counted => counted.Match(Some: result => Raised(voterKey, result, cancellationToken), None: () => Task.FromResult(Option<RaisedRank>.None)),
+            Left: _ => Task.FromResult(Option<RaisedRank>.None));
         return saved.Match(
             Right: counted => counted.Match<IActionResult>(
                 Some: shown => new OkObjectResult(new
@@ -91,6 +94,8 @@ public sealed class VotesFunction
                     confessions = shown.Counts.Confessions,
                     vote = Name(shown.After.Reaction),
                     confessed = shown.After.Confessed,
+                    // Null unless the vote raised the reader's rank.
+                    rank = raised.MatchUnsafe(Some: office => (object)new { office = office.Office, next = office.Next, insignia = office.Insignia }, None: () => null),
                     countedAt,
                 }),
                 None: () => new NotFoundResult()),
@@ -140,6 +145,23 @@ public sealed class VotesFunction
         return numbers.Count is > 0 and <= MaxRitesPerRequest && numbers.All(number => number.IsSome)
             ? Some<IReadOnlyCollection<int>>(numbers.Somes().ToList())
             : None;
+    }
+
+    // A vote that gives the reader a say on a new rite may raise their rank (#201): only then are their rites counted.
+    // A count that fails costs only the toast; the Breviary shows the rank anyway.
+    private async Task<Option<RaisedRank>> Raised(VoterKey voterKey, SavedVote saved, CancellationToken cancellationToken)
+    {
+        if (!saved.Before.IsNothing || saved.After.IsNothing)
+        {
+            return None;
+        }
+        return (await votes.CountRites(voterKey, cancellationToken)).Match(
+            Right: judged => Ranks.RaisedBy(judged).Map(rank => new RaisedRank($"Thou art now {rank.Article} {rank.Name}.", $"{Ranks.ToNext(judged)}.", rank.Insignia)),
+            Left: error =>
+            {
+                logger.LogWarning(error.ToException(), "A reader's rites couldn't be counted for their rank: {Reason}", error.Message);
+                return Option<RaisedRank>.None;
+            });
     }
 
     // Only a vote that changed something: the same vote sent again changes no count, and no page. The verdict and the

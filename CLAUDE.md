@@ -412,6 +412,13 @@ skills/                           — Consult the Machine Spirit, a skill that p
     Cloudflare). Signed out, it offers the sign-in. Signed in, it's linked from a book icon in the nav (beside search,
     shown by the script from the `dms-signed-in` cookie, below), the vote status under a rite, and the toast after a
     vote; the Catechism says it's there.
+    - **Ranks** (#201, `Ranks`, `RankBlock`): an office from the rites the reader judged, voted on or confessed to,
+      each once (Supplicant, then Initiate at 1, Acolyte 10, Lector 25, Keeper of Rites 50, Archivist 100, Elder of
+      the Shrine 250), worked out from the votes the page reads: nothing is stored, and only the reader sees it. In
+      the kicker ("Rites judged by an Acolyte"), the left margin on a wide screen and a band above the sheet on a
+      narrow one, with the way to the next office. A vote that gives the reader a say on a new rite counts their
+      rites (`IVoteRepository.CountRites`, only then), and its answer carries the office it raised them to, for the
+      toast; a count that fails costs only the toast.
   - **The Reliquary** (`/reliquary`, #154, `ReliquaryPage`; its other order, the most confessed, at `/reliquary/confessed`, #200, `Confession`, rows badged by `ConfessionBadge`): the readers' most venerated rites across the site: the
     Archive in its other order, with its masthead and sheet, the nav's Archive link current. Both pages offer the two
     orders under the heading, "Newest" and "Most venerated" (`ArchiveSheet.Orders`, links, like the Breviary's verdicts).
@@ -454,6 +461,15 @@ skills/                           — Consult the Machine Spirit, a skill that p
     `RiteRepository.Publish` takes the number, saves the rite and marks the draft published in one batch, using the
     draft's ETag, so a draft is never published twice. An empty backlog never skips a day: a draft is written on the
     spot.
+  - **Feast days** (#202, `Generation/Feasts/`): a few days a rite is written for, in the far future's words (the
+    first of the year, 29 February, the 256th day, a Friday the 13th, the clocks' changes, the last Friday of July,
+    19 January 2038). A refill first writes a draft for each feast in the next 14 days that has none waiting
+    (`RiteWriting.FeastDay`, the feast's theme in the prompt), with every check a draft gets. `PublishingDays` gives
+    it its day, ahead of both orders, and the order the days between, each pick made with the feasts before it among
+    the rites before (`LiturgicalCalendar.Schedule`): the publisher and the Scriptorium's Calendar
+    (its own "Feast days" group, no Anoint) both use it. Burned, the next refill writes another. One whose day passed
+    (only if publishing failed that day) joins the Augury's order, for the Scribes to keep or burn; the Machine
+    Spirit doesn't burn it, as its decisions teach the Precepts.
   - **The Augury** (`LiturgicalCalendar`) orders the waiting drafts:
     - Better drafts go first, by the rubric judge's quality (below).
     - A draft much like the week's rites before it waits.
